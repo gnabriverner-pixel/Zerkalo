@@ -7,7 +7,7 @@ import "dotenv/config";
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
 
@@ -87,7 +87,20 @@ async function startServer() {
       
       let responseText = response.text || "{}";
       responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
-      const resultJson = JSON.parse(responseText);
+      
+      let resultJson;
+      try {
+        resultJson = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Developer Log: Gemini returned invalid JSON:", responseText);
+        return res.status(200).json({
+          mode: req.body.mode,
+          status: "error",
+          ui: {
+            safe_message: "Сервис временно не смог подготовить текстовую интерпретацию. Расчёт сохранён. Попробуйте повторить позже."
+          }
+        });
+      }
 
       res.json(resultJson);
     } catch (error) {
