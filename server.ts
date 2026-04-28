@@ -11,21 +11,20 @@ async function startServer() {
 
   app.use(express.json());
 
-  // API Routes
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", message: "Digital Code Mirror is active." });
-  });
-
-  app.post("/api/generate-reading", async (req, res) => {
+  app.post("/api/generate", async (req, res) => {
     try {
-      const { date, calc } = req.body;
-      const rawApiKey = process.env.GEMINI_API_KEY;
-      const apiKey = rawApiKey ? rawApiKey.replace(/['"]/g, '').trim() : undefined;
+      const { mode, date, calc, storyInputs } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
       
-      console.log("SERVER LOG:", apiKey ? `Key exists: ${apiKey.substring(0, 10)}...` : "Key is undefined!");
+      console.log(`SERVER LOG: Generating for mode=${mode}. Key exists: ${!!apiKey}`);
 
-      if (!apiKey) {
-        return res.status(500).json({ error: "Ключ GEMINI_API_KEY не найден. Пожалуйста, зайдите в настройки 'Settings -> Secrets' и добавьте ваш рабочий ключ Google AI Studio." });
+      if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.length < 10 || apiKey.includes("API_KEY")) {
+        console.error("Developer Log: Gemini request failed: invalid API key.");
+        return res.status(200).json({ 
+          mode,
+          status: "demo",
+          ui: { safe_message: "Сейчас доступна демонстрационная версия истории. Полная персональная генерация будет доступна после подключения сервиса." }
+        });
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -33,69 +32,81 @@ async function startServer() {
       // Read AGENTS.md
       const agentsPrompt = await fs.readFile(path.join(process.cwd(), 'AGENTS.md'), 'utf-8').catch(() => '');
       
-      // Read all skills
-      const skillsDir = path.join(process.cwd(), 'skills');
-      let skillsContent = '';
-      try {
-        const skillFiles = await fs.readdir(skillsDir);
-        for (const file of skillFiles) {
-          if (file.endsWith('.md')) {
-            const content = await fs.readFile(path.join(skillsDir, file), 'utf-8');
-            skillsContent += `\n\n--- SKILL: ${file} ---\n${content}`;
-          }
-        }
-      } catch (e) {
-        console.warn("Skills folder not found or empty");
+      const systemInstruction = `Ты — старший продукт-дизайнер и AI-стратег проекта «Зеркало». Отвечай строго в формате JSON без markdown-оборачивания, валидный JSON.\n\n${agentsPrompt}`;
+      
+      let prompt = "";
+      if (mode === "code") {
+        prompt = `Пользователь запросил короткое зеркало для "Архитектуры Кода". Дата: ${date}.
+Рассчитанные данные: Душа ${calc.soul}, Путь ${calc.path}, Направление ${calc.direction}, Выражение ${calc.expression}, Результат ${calc.result}.
+
+Сгенерируй короткое "Первое зеркало" (3-5 предложений, не generic, без мистики, с опорой на числа, один практический вывод).
+Верни JSON:
+{
+  "mode": "code",
+  "status": "ok",
+  "code_result": { "mirror_text": "твой текст" }
+}`;
+      } else if (mode === "story") {
+        prompt = `Пользователь запросил "Личный миф". Ответы на вопросы:
+1. Что происходит: ${storyInputs.q1}
+2. Предмет/стихия: ${storyInputs.q2}
+3. Момент на своем месте: ${storyInputs.q3}
+4. Чего хочется: ${storyInputs.q4}
+
+Проверь на SAFETY: Если текст содержит угрозу жизни, насилие или острый кризис, верни:
+{ "mode": "story", "status": "crisis", "ui": { "safe_message": "Это образная история для саморефлексии. Она не является терапией... Если вы в остром кризисе, обратитесь к специалисту." } }
+
+Иначе сгенерируй сказку по структуре (Мир, стихия, попытка, остановка, узнавание, ресурс, изменение, финал). Без морали, без happy end, без "всё будет хорошо". Взрослый образный язык.
+Верни JSON:
+{
+  "mode": "story",
+  "status": "ok",
+  "story_result": {
+    "title": "название сказки",
+    "story": "полный текст сказки (с абзацами, используй \\n\\n)",
+    "meaning": [
+      "Что означает главный образ...",
+      "Что означает препятствие...",
+      "Что означает ресурс...",
+      "Где находится первый поворот..."
+    ],
+    "one_step": "одно простое действие на сегодня",
+    "journal_question": "Какой момент в этой истории отозвался сильнее всего?"
+  }
+}`;
       }
 
-      const systemInstruction = `${agentsPrompt}\n\nKNOWLEDGE BASE:\n${skillsContent}`;
-      
-      const prompt = `Пользователь запросил PREMIUM_FILE для даты рождения: ${date}.
-      
-Рассчитанные данные (используй их строго, не пересчитывай):
-- Число Души (ЧДш): ${calc.soul} (составное: ${calc.soulComposite})
-- Число Пути (ЧП): ${calc.path} (составное: ${calc.pathComposite})
-- Число Направления (ЧН): ${calc.direction} (составное: ${calc.directionComposite})
-- Число Выражения (ЧВ): ${calc.expression} (составное: ${calc.expressionComposite})
-- Число Результата (ЧРз): ${calc.result} (составное: ${calc.resultComposite})
-- Детальная Матрица: ${JSON.stringify(calc.detailedMatrix)}
-
-Сгенерируй полный разбор в режиме PREMIUM_FILE, следуя всем правилам AGENTS.md и скиллов.`;
-
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
           systemInstruction: systemInstruction,
           temperature: 0.7,
         }
       });
+      
+      let responseText = response.text || "{}";
+      responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+      const resultJson = JSON.parse(responseText);
 
-      res.json({ reading: response.text });
+      res.json(resultJson);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Неизвестная ошибка";
-      
-      console.error("AI Generation Error:", errorMessage);
-
-      if (errorMessage.includes("API key not valid")) {
-        const rawApiKey = process.env.GEMINI_API_KEY || "";
-        const apiKey = rawApiKey.replace(/['"]/g, '').trim();
-        return res.status(500).json({ error: `Debug: API KEY INVALID. Key starts with ${apiKey.substring(0, 10)}, length is ${apiKey.length}. Original length was ${rawApiKey.length}. Exact error: ${errorMessage}` });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("API key not valid") || errorMessage.includes("API_KEY_INVALID")) {
+        console.error("Developer Log: Gemini request failed: invalid API key.");
+        return res.status(200).json({ 
+          mode: req.body.mode,
+          status: "demo",
+          ui: { safe_message: "Сейчас доступна демонстрационная версия истории. Полная персональная генерация будет доступна после подключения сервиса." }
+        });
+      } else {
+        console.error("Developer Log: AI Generation Error:", error);
       }
-
-      if (errorMessage.includes("403") || errorMessage.includes("insufficient authentication")) {
-         return res.status(500).json({ error: "Ключ GEMINI_API_KEY не найден или недоступен. Пожалуйста, добавьте его в настройках (Settings -> Secrets)." });
-      }
-      
-      if (errorMessage.includes("429") || errorMessage.includes("quota")) {
-        return res.status(500).json({ error: "Превышен лимит запросов к API (Quota Exceeded). Пожалуйста, проверьте биллинг вашего ключа или попробуйте позже." });
-      }
-
-      if (errorMessage.includes("503") || errorMessage.includes("high demand")) {
-        return res.status(500).json({ error: "Серверы Google сейчас перегружены (High Demand). Пожалуйста, попробуйте через несколько минут." });
-      }
-      
-      res.status(500).json({ error: `Ошибка создания зеркала: ${errorMessage}` });
+      res.status(200).json({ 
+        mode: req.body.mode,
+        status: "error",
+        ui: { safe_message: "Сервис временно не смог подготовить текстовую интерпретацию. Расчёт сохранён. Попробуйте повторить позже." }
+      });
     }
   });
 

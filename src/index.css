@@ -12,8 +12,7 @@
 
 @layer base {
   body {
-    @apply bg-[var(--color-alabaster)] text-[var(--color-ink)] font-sans antialiased;
-    background-image: radial-gradient(circle at 50% 0%, #ffffff 0%, transparent 70%);
+    @apply font-sans antialiased text-gray-900;
   }
   
   h1, h2, h3, h4, h5, h6 {

@@ -1,20 +1,7 @@
 // src/services/calculator.ts
 // The Core Mathematical Engine for the Vyazemsky System
 
-export interface CalculationResult {
-  soul: number;
-  soulComposite: string;
-  path: number;
-  pathComposite: string;
-  direction: number;
-  directionComposite: string;
-  expression: number;
-  expressionComposite: string;
-  result: number;
-  resultComposite: string;
-  baseMatrix: Record<string, number>;
-  detailedMatrix: Record<string, number>;
-}
+import { CalculationResult } from '../types';
 
 /**
  * Reduces a number to a single digit, unless it's a master number (11, 22, 33).
