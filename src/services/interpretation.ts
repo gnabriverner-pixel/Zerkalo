@@ -15,20 +15,27 @@ export function generateFirstMirror(calc: CalculationResult): string {
     ? getCompoundKnowledge(calc.resultComposite.split('/')[0])
     : null;
 
-  let text = `### Сильная сторона\n`;
-  text += `Сильная сторона этого первого слоя может проявляться в следующем: ${soul.positions.soul.strength.toLowerCase()} И кроме того: ${path.positions.path.strength.toLowerCase()}\n\n`;
+  let text = `Вы обладаете уникальной архитектурой личности, в которой заложены как мощные точки опоры, так и зоны глубокого внутреннего напряжения. Формируясь на пересечении ${soul.number} и ${path.number}, ваш код требует особого пути.\n\n`;
 
-  text += `### Внутреннее напряжение\n`;
-  text += `Базовое напряжение часто возникает там, где ${soul.positions.soul.tension.toLowerCase()} `;
-  text += `Часто это сочетается с вызовом на уровне действий: ${path.positions.path.tension.toLowerCase()}\n\n`;
+  text += `### Внутренний стержень и сила\n`;
+  text += `Ваша главная опора кроется в вашей сути: ${soul.positions.soul.strength.toLowerCase()} Внешний мир при этом открывает для вас двери через ваши стратегические действия: ${path.positions.path.strength.toLowerCase()} Эта комбинация позволяет вам двигаться вперед даже тогда, когда другие теряют почву под ногами.\n\n`;
 
-  text += `### Первый практический шаг\n`;
+  text += `### Скрытые напряжения\n`;
+  text += `Однако ни одна сильная архитектура не обходится без точек давления. Чаще всего вы можете сталкиваться с тем, что ${soul.positions.soul.tension.toLowerCase()} Это базовое сопротивление усиливается вызовом на уровне пути: ${path.positions.path.tension.toLowerCase()} Именно здесь вам предстоит проделать главную внутреннюю работу.\n\n`;
+
+  text += `### Архитектура действий\n`;
   if (resultCompoundInfo && resultCompoundInfo.compound !== 11) {
     text += `${resultCompoundInfo.recommendation} `;
   } else {
-    text += `На ближайший период полезно ${soul.positions.soul.recommendation.toLowerCase()} `;
+    text += `В качестве первого практического шага на ближайший период вам будет полезно ${soul.positions.soul.recommendation.toLowerCase()} `;
   }
-  text += `Помните: первый слой показывает лишь общие контуры архитектуры. Полная карта требует намного более глубокого структурного разбора напряжений и точек развития.`;
+  text += `Энергия вашего числа пути дополняет это правило: ${path.positions.path.recommendation.toLowerCase()}\n\n`;
+
+  if (compoundPath) {
+    text += `*Дополнительный оттенок вашего маршрута (${compoundPath.compound}):* ${compoundPath.accent} Однако остерегайтесь того, чтобы ${compoundPath.risk.toLowerCase()}\n\n`;
+  }
+
+  text += `_Обратите внимание: этот краткий срез показывает лишь несущие конструкции. Полная гармонизация кода требует детального разбора каждого сектора вашей матрицы в Большом исследовании._`;
 
   return text;
 }
