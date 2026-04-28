@@ -216,12 +216,12 @@ export default function CodeArchitecture() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] }}
-      className={`flex flex-col items-center p-8 bg-[var(--color-surface)] bg-marble ${selectedMainNumber === title ? 'bg-[var(--color-ivory)]' : 'hover:bg-[var(--color-ivory)]'} relative overflow-hidden group transition-all duration-500 w-full outline-none border hover:border-transparent ${selectedMainNumber === title ? 'border-transparent' : 'border-transparent'}`}
+      className={`flex flex-col items-center p-8 bg-[var(--color-surface)] bg-marble ${selectedMainNumber === title ? 'bg-[var(--color-ivory)]' : 'hover:bg-[var(--color-ivory)]'} relative overflow-hidden group transition-all duration-500 w-full outline-none border hover:border-transparent ${selectedMainNumber === title ? 'border-[var(--color-gold)] border-opacity-30' : 'border-transparent'}`}
     >
-      <div className={`absolute top-2 left-2 w-2 h-2 border-t border-l border-[var(--color-gold)] transition-opacity duration-500 ${selectedMainNumber === title ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
-      <div className={`absolute top-2 right-2 w-2 h-2 border-t border-r border-[var(--color-gold)] transition-opacity duration-500 ${selectedMainNumber === title ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
-      <div className={`absolute bottom-2 left-2 w-2 h-2 border-b border-l border-[var(--color-gold)] transition-opacity duration-500 ${selectedMainNumber === title ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
-      <div className={`absolute bottom-2 right-2 w-2 h-2 border-b border-r border-[var(--color-gold)] transition-opacity duration-500 ${selectedMainNumber === title ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
+      <div className={`absolute top-3 left-3 w-3 h-3 border-t border-l border-[var(--color-gold)] transition-opacity duration-500 ${selectedMainNumber === title ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`}></div>
+      <div className={`absolute top-3 right-3 w-3 h-3 border-t border-r border-[var(--color-gold)] transition-opacity duration-500 ${selectedMainNumber === title ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`}></div>
+      <div className={`absolute bottom-3 left-3 w-3 h-3 border-b border-l border-[var(--color-gold)] transition-opacity duration-500 ${selectedMainNumber === title ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`}></div>
+      <div className={`absolute bottom-3 right-3 w-3 h-3 border-b border-r border-[var(--color-gold)] transition-opacity duration-500 ${selectedMainNumber === title ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`}></div>
       
       <span className={`font-serif text-[1rem] tracking-[0.1em] mb-6 z-10 transition-colors duration-500 text-[var(--color-muted)]`}>
         {title}
@@ -231,11 +231,11 @@ export default function CodeArchitecture() {
           {value}
         </span>
         {composite !== value.toString() ? (
-          <span className={`font-serif text-sm mt-4 tracking-widest transition-colors duration-500 ${selectedMainNumber === title ? 'text-[var(--color-gold)] opacity-80' : 'text-[var(--color-muted)]'}`}>
+          <span className={`font-sans text-[0.65rem] mt-4 tracking-[0.2em] uppercase transition-colors duration-500 ${selectedMainNumber === title ? 'text-[var(--color-gold)] opacity-80' : 'text-[var(--color-muted)]'}`}>
             {composite}
           </span>
         ) : (
-          <span className="font-serif text-sm mt-4 opacity-0 select-none tracking-widest">—</span>
+          <span className="font-sans text-[0.65rem] mt-4 opacity-0 select-none tracking-[0.2em] uppercase">—</span>
         )}
       </div>
     </motion.button>
@@ -569,29 +569,33 @@ export default function CodeArchitecture() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="w-full mb-12 p-8 md:p-14 bg-[var(--color-surface)] bg-marble border border-[var(--color-border)] shadow-[0_10px_40px_-15px_rgba(0,0,0,0.03)] relative"
+                  className="w-full mb-12 p-10 md:p-16 bg-[var(--color-surface)] bg-marble border shadow-[0_10px_40px_-15px_rgba(0,0,0,0.03)] relative rounded-sm"
+                  style={{ borderColor: 'var(--color-border)' }}
                 >
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-gold)] to-transparent opacity-20"></div>
-                  <div className="premium-mirror text-left">
+                  <div className="absolute top-4 left-4 w-4 h-4 border-t border-l border-[var(--color-gold)] opacity-30"></div>
+                  <div className="absolute top-4 right-4 w-4 h-4 border-t border-r border-[var(--color-gold)] opacity-30"></div>
+                  <div className="absolute bottom-4 left-4 w-4 h-4 border-b border-l border-[var(--color-gold)] opacity-30"></div>
+                  <div className="absolute bottom-4 right-4 w-4 h-4 border-b border-r border-[var(--color-gold)] opacity-30"></div>
+                  
+                  <div className="premium-mirror text-left relative z-10 px-2 md:px-6">
                     <ReactMarkdown>{reading}</ReactMarkdown>
                     
                     {result && (
-                      <div className="mt-12 pt-10 border-t border-[var(--color-border)] relative">
-                        <div className="absolute top-6 right-0 opacity-5">
-                           <Sparkles className="w-24 h-24 text-[var(--color-gold)]" />
-                        </div>
-                        <h3 className="font-serif text-3xl text-[var(--color-ink)] mb-6">
+                      <div className="mt-16 pt-12 border-t border-[var(--color-border)] relative flex flex-col items-center">
+                        <MeanderDivider />
+                        <h3 className="font-serif text-3xl text-[var(--color-ink)] mb-6 mt-6">
                           Главный узор
                         </h3>
-                        <p className="font-serif text-[1.15rem] leading-relaxed text-[var(--color-ink)] opacity-90 whitespace-pre-wrap md:pr-16">
+                        <p className="font-serif text-[1.15rem] leading-relaxed text-[var(--color-ink)] opacity-90 whitespace-pre-wrap md:px-12 text-center italic">
                            {generateSynthesisText(result.soul, result.pathComposite || result.path.toString())}
                         </p>
                       </div>
                     )}
                   </div>
                   {demoNotice && (
-                    <div className="mt-12 pt-6 border-t border-[var(--color-border)] opacity-70">
-                      <p className="text-center font-sans text-xs tracking-wide text-[var(--color-muted)]">
+                    <div className="mt-16 pt-8 border-t border-[var(--color-border)] opacity-70">
+                      <p className="text-center font-sans text-[0.7rem] tracking-[0.1em] text-[var(--color-muted)] uppercase">
                         {demoNotice}
                       </p>
                     </div>
@@ -603,25 +607,25 @@ export default function CodeArchitecture() {
                  <motion.div 
                    initial={{ opacity: 0, y: 10 }}
                    animate={{ opacity: 1, y: 0 }}
-                   className="w-full max-w-2xl text-center flex flex-col items-center mt-8 py-16 px-8 relative bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm bg-marble overflow-hidden"
+                   className="w-full max-w-2xl text-center flex flex-col items-center mt-8 py-20 px-8 relative bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm bg-marble overflow-hidden"
                  >
                    <div className="absolute inset-0 pointer-events-none p-4 w-full h-full">
-                     <div className="w-full h-full border border-[var(--color-gold)] opacity-10"></div>
+                     <div className="w-full h-full border border-[var(--color-border)] opacity-40"></div>
                    </div>
                    
-                   <h4 className="font-serif text-3xl md:text-5xl text-[var(--color-ink)] mb-6 z-10 italic">Хотите увидеть полную карту?</h4>
+                   <h4 className="font-serif text-3xl md:text-5xl text-[var(--color-ink)] mb-6 z-10">Полная Архитектура</h4>
                    <MeanderDivider />
-                   <p className="font-sans text-[0.95rem] md:text-[1.05rem] text-[var(--color-muted)] leading-loose max-w-lg mb-10 z-10">
-                     Большое исследование раскрывает не только числа, но и связи между ними: внутренние опоры, напряжения, сценарии выбора и ваш персональный маршрут.
+                   <p className="font-serif text-[1.1rem] md:text-[1.25rem] text-[var(--color-muted)] leading-relaxed max-w-lg mb-12 z-10 italic">
+                     Большое исследование раскрывает не только числа, но и связи между ними: внутренние опоры, напряжения, линии судьбы и ваш персональный маршрут.
                    </p>
                    <button 
                      onClick={() => setShowLeadForm(true)}
-                     className="px-10 py-5 bg-[var(--color-ink)] text-[var(--color-ivory)] font-sans text-xs tracking-[0.2em] uppercase hover:bg-gray-800 transition-colors shadow-xl z-10"
+                     className="px-12 py-5 bg-[var(--color-ink)] text-[var(--color-ivory)] font-sans text-xs tracking-[0.2em] uppercase hover:bg-black transition-colors shadow-xl z-10 rounded-sm"
                    >
                      Получить Большое исследование
                    </button>
-                   <p className="text-[9px] md:text-[10px] text-[var(--color-muted)] font-sans tracking-widest uppercase mt-8 opacity-60 z-10">
-                     Информационно-аналитический формат. Не диагноз и не предсказание.
+                   <p className="text-[9px] md:text-[10px] text-[var(--color-muted)] font-sans tracking-widest uppercase mt-10 opacity-60 z-10">
+                     Информационно-аналитический формат. Не предсказание.
                    </p>
                  </motion.div>
               )}
