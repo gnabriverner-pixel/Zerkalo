@@ -497,7 +497,7 @@ export default function CodeArchitecture() {
                             <span className="text-[var(--color-border)]">/</span>
                             <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${hoveredLines.includes('d2') ? LINE_STYLES['d'].text : 'text-[var(--color-antique-gold)]'}`} title={`Темперамент (3-5-7): ${d2}`}>{d2}</span>
                           </div>
-                          <span className={`text-[0.4rem] sm:text-[0.45rem] tracking-widest uppercase mt-1 text-center leading-[1.2] transition-colors duration-300 ${hoveredLines.includes('d1') || hoveredLines.includes('d2') ? LINE_STYLES['d'].text : 'text-[var(--color-muted)] opacity-60'}`}>ДУХ.<br/>ТЕМП.</span>
+                          <span className={`text-[0.4rem] sm:text-[0.45rem] tracking-widest uppercase mt-1 text-center leading-[1.2] transition-colors duration-300 ${hoveredLines.includes('d1') || hoveredLines.includes('d2') ? LINE_STYLES['d'].text : 'text-[var(--color-muted)] opacity-60'}`}>ВНУТР.<br/>ТЕМП.</span>
                         </motion.div>
                       </>
                     );
