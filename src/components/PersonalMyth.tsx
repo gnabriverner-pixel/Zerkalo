@@ -12,31 +12,49 @@ export default function PersonalMyth() {
   const resultRef = useRef<HTMLDivElement>(null);
 
   const steps = [
-    {
-      id: 'q1',
-      title: 'Расскажите, что сейчас происходит. Как если бы вы описывали это человеку, который ничего не знает о вашем мире.',
-      placeholder: 'Опишите так, как чувствуется...'
-    },
-    {
-      id: 'q2',
-      title: 'Если то, что сейчас давит, было бы существом, предметом или стихией — как бы оно выглядело?',
-      placeholder: 'Например: туман, железное одеяло, зверь, закрытая дверь...'
-    },
-    {
-      id: 'q3',
-      title: 'Вспомните момент, когда вы чувствовали себя на своём месте. Пусть даже короткий.',
-      placeholder: 'Где вы были? Что в вас тогда оживало?'
-    },
-    {
-      id: 'q4',
-      title: 'Чего вам сейчас не хватает больше всего? Не "что надо делать", а чего по-настоящему хочется?',
-      placeholder: 'Тепла, смысла, покоя, признания, тишины, смелости...'
-    }
+      {
+        id: 'q1',
+        title: 'Что сейчас внутри требует внимания? Опишите не фактами, а ощущением.',
+        placeholder: 'Например: тяжесть, шум, ожидание, пустота, развилка, застывшее движение...'
+      },
+      {
+        id: 'q2',
+        title: 'Если это состояние стало бы образом, существом, погодой, комнатой или предметом — что бы это было?',
+        placeholder: 'Туман, закрытая дверь, дом без окон, зверь у порога, холодный сад...'
+      },
+      {
+        id: 'q3',
+        title: 'Вспомните момент, где вы чувствовали себя живее, яснее или ближе к себе. Что там было?',
+        placeholder: 'Место, человек, дело, движение, звук, свет, состояние...'
+      },
+      {
+        id: 'q4',
+        title: 'Какого качества вам сейчас не хватает?',
+        placeholder: 'Тишины, смелости, тепла, границы, движения, признания, воздуха, опоры...'
+      }
   ];
 
   const handleNext = () => {
     if (step < 4) setStep(step + 1);
     else handleGenerate();
+  };
+
+  const applyFallback = () => {
+    setResult({
+      title: "Отражение",
+      story: "Сейчас личный миф не удалось собрать. Вы можете сохранить ответы и вернуться позже.",
+      mirror: {
+        mainImage: inputs.q2 || "—",
+        innerTension: "—",
+        hiddenResource: inputs.q4 || "—",
+        newView: "—"
+      },
+      meaning: [],
+      one_step: "Выберите одно маленькое действие, которое сегодня вернёт вам ощущение опоры: убрать лишнее, выйти на воздух, записать одну мысль или поговорить с человеком, которому доверяете.",
+      journal_question: "Какое крошечное действие я могу сделать прямо сейчас?",
+      disclaimer: "Образный формат для саморефлексии. Не диагностика и не инструкция к действию."
+    });
+    setStep(6);
   };
 
   const handleGenerate = async () => {
@@ -55,8 +73,7 @@ export default function PersonalMyth() {
         setErrorText(data.ui?.safe_message || "Мы не можем сгенерировать историю в данный момент.");
         setStep(4);
       } else if (data.status === 'error') {
-        setErrorText(data.ui?.safe_message || "Ошибка генерации. Попробуйте позже.");
-        setStep(4);
+        applyFallback();
       } else {
         if (data.ui?.safe_message) setSafeMessage(data.ui.safe_message);
         setResult(data.story_result || null);
@@ -64,8 +81,7 @@ export default function PersonalMyth() {
       }
     } catch (err) {
       console.error(err);
-      setErrorText("Сбой сети. Проверьте подключение.");
-      setStep(4);
+      applyFallback();
     }
   };
 
@@ -90,23 +106,23 @@ export default function PersonalMyth() {
               exit={{ opacity: 0, y: -20 }}
               className="text-center w-full mt-10"
             >
-              <h1 className="font-serif text-5xl md:text-6xl mb-4 text-[#F4F4F4]">Сказка о тебе</h1>
+              <h1 className="font-serif text-5xl md:text-6xl mb-4 text-[#F4F4F4]">Личный миф</h1>
               <h2 className="font-serif italic text-lg md:text-xl text-[#A3B8AD] mb-8">
-                История, которая помогает увидеть своё состояние в образе.
+                Сказка про тебя
               </h2>
               <p className="text-sm text-gray-400 leading-relaxed mb-12 max-w-lg mx-auto">
-                Расскажите, что сейчас тяжело, а система соберёт личный миф — мягкую метафорическую историю для саморефлексии и одного ближайшего шага.
+                Образная история, которая помогает увидеть своё состояние со стороны и найти один мягкий следующий шаг.
               </p>
               
               <button 
                 onClick={() => setStep(1)}
                 className="px-8 py-4 bg-[#1A2621] text-[#A3B8AD] border border-[#2A3B33] hover:bg-[#202F29] hover:border-[#3A4B43] tracking-widest uppercase text-xs transition-colors"
               >
-                Вступить на порог
+                Собрать личный миф
               </button>
               
               <div className="mt-16 text-[10px] text-gray-600 tracking-wide uppercase">
-                Это не диагностика и не инструкция.
+                 Образный формат для саморефлексии. Не диагностика и не инструкция к действию.
               </div>
             </motion.div>
           )}
@@ -181,13 +197,14 @@ export default function PersonalMyth() {
                 </div>
               )}
               
+              {/* Title Block */}
+              <div className="flex flex-col mb-4">
+                 <span className="text-xs tracking-widest uppercase text-[#A3B8AD] mb-4">ЛИЧНЫЙ МИФ</span>
+                 <h2 className="font-serif text-4xl text-[#F4F4F4]">{result.title}</h2>
+              </div>
+
               {/* BLOCK 1: STORY */}
               <div className="flex flex-col">
-                 <div className="flex items-center gap-3 mb-8 opacity-80">
-                   <BookOpen className="w-4 h-4 text-[#A3B8AD]" />
-                   <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Сказка</span>
-                 </div>
-                 <h2 className="font-serif text-4xl mb-8 text-[#F4F4F4]">{result.title}</h2>
                  <div className="font-serif text-lg md:text-xl leading-loose text-gray-300 space-y-6">
                     {result.story.split('\n\n').map((paragraph, i) => (
                       <p key={i}>{paragraph}</p>
@@ -195,26 +212,51 @@ export default function PersonalMyth() {
                  </div>
               </div>
 
-              <hr className="border-[#2A3B33]" />
+              <hr className="border-[#2A3B33] my-8" />
 
-              {/* BLOCK 2: MEANING */}
-              <div className="flex flex-col">
-                 <div className="flex items-center gap-3 mb-8 opacity-80">
+              {/* BLOCK 2: MIRROR */}
+              <div className="flex flex-col space-y-12">
+                 <div className="flex items-center gap-3 opacity-80">
                    <Sparkles className="w-4 h-4 text-[#A3B8AD]" />
-                   <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Что в этой сказке про вас</span>
+                   <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Что в этом образе про вас</span>
                  </div>
-                 <ul className="space-y-4 font-sans text-sm md:text-base text-gray-400">
-                    {result.meaning.map((m, i) => (
-                      <li key={i} className="flex gap-4">
-                        <span className="text-[#A3B8AD] opacity-50">—</span>
-                        <span dangerouslySetInnerHTML={{ __html: m.replace(/\\*\\*(.*?)\\*\\*/g, '<span class="text-gray-200">$1</span>') }} />
-                      </li>
-                    ))}
-                 </ul>
+
+                 {result.mirror && (
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
+                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Главный образ</h4>
+                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.mainImage}</p>
+                     </div>
+                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
+                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Внутреннее напряжение</h4>
+                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.innerTension}</p>
+                     </div>
+                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
+                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Скрытый ресурс</h4>
+                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.hiddenResource}</p>
+                     </div>
+                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
+                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Новый взгляд</h4>
+                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.newView}</p>
+                     </div>
+                   </div>
+                 )}
+
+                 {/* Fallback for meaning strings if API hasn't synced or legacy */}
+                 {result.meaning && result.meaning.length > 0 && !result.mirror && (
+                   <ul className="space-y-4 font-sans text-sm md:text-base text-gray-400">
+                      {result.meaning.map((m, i) => (
+                        <li key={i} className="flex gap-4">
+                          <span className="text-[#A3B8AD] opacity-50">—</span>
+                          <span dangerouslySetInnerHTML={{ __html: m.replace(/\\*\\*(.*?)\\*\\*/g, '<span class="text-gray-200">$1</span>') }} />
+                        </li>
+                      ))}
+                   </ul>
+                 )}
               </div>
 
               {/* BLOCK 3: ONE STEP */}
-              <div className="flex flex-col bg-[#111A16] border border-[#2A3B33] p-8 -mx-4 sm:mx-0">
+              <div className="flex flex-col mt-12 bg-[#111A16] border border-[#2A3B33] p-8 -mx-4 sm:mx-0">
                  <div className="flex items-center gap-3 mb-4 opacity-80">
                    <Feather className="w-4 h-4 text-[#A3B8AD]" />
                    <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Один шаг сегодня</span>
@@ -225,25 +267,32 @@ export default function PersonalMyth() {
               </div>
 
               {/* BLOCK 4: JOURNAL */}
-              <div className="flex flex-col">
+              <div className="flex flex-col mt-12">
                  <div className="flex items-center gap-3 mb-6 opacity-80">
                    <Archive className="w-4 h-4 text-[#A3B8AD]" />
-                   <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Дневник</span>
+                   <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Вопрос для дневника</span>
                  </div>
-                 <p className="font-sans text-lg text-gray-300 mb-6">{result.journal_question}</p>
+                 <p className="font-sans text-lg text-gray-300 mb-6">{result.journal_question || "Какой первый маленький шаг можно сделать сегодня?"}</p>
                  <textarea 
                     className="w-full bg-[#1A2621]/30 border border-[#2A3B33] text-[#EAEAEA] placeholder:text-[#3A4B43] text-base p-4 outline-none focus:border-[#A3B8AD] transition-colors resize-none h-32"
                     placeholder="Напишите здесь свои впечатления..."
                  />
               </div>
 
-              <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
-                 <button className="px-6 py-3 bg-[#A3B8AD] text-[#0F1412] tracking-widest uppercase text-xs font-medium hover:bg-[#8CA296] transition-colors">
-                   Сохранить в дневник
-                 </button>
-                 <button onClick={() => { setStep(0); setInputs({q1:'', q2:'', q3:'', q4:''}) }} className="px-6 py-3 bg-transparent border border-[#2A3B33] text-gray-400 tracking-widest uppercase text-xs hover:text-[#A3B8AD] transition-colors">
-                   Вернуться в начало
-                 </button>
+              {/* CTA Full Profile */}
+              <div className="mt-16 text-center border p-8 border-[#2A3B33] bg-[#111A16]">
+                <h3 className="font-serif text-2xl text-[#EAEAEA] mb-4">Собрать полное зеркало</h3>
+                <p className="text-sm text-gray-400 mb-8 max-w-md mx-auto">
+                  Большое исследование соединяет вашу дату рождения, числовую архитектуру и образный слой в один персональный документ.
+                </p>
+                <div className="flex flex-col sm:flex-row justify-center gap-4">
+                   <button className="px-6 py-3 bg-[#A3B8AD] text-[#0F1412] tracking-widest uppercase text-xs font-medium hover:bg-[#8CA296] transition-colors" onClick={() => alert("Открытие модального окна заявки...")}>
+                     Получить Большое исследование
+                   </button>
+                   <button onClick={() => { setStep(0); setInputs({q1:'', q2:'', q3:'', q4:''}) }} className="px-6 py-3 bg-transparent border border-[#2A3B33] text-[#A3B8AD] tracking-widest uppercase text-xs hover:text-[#EAEAEA] transition-colors">
+                     Новый миф
+                   </button>
+                </div>
               </div>
 
             </motion.div>

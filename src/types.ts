@@ -45,6 +45,13 @@ export interface StoryInputs {
   q4: string;
 }
 
+export type PersonalMythMirror = {
+  mainImage: string;
+  innerTension: string;
+  hiddenResource: string;
+  newView: string;
+};
+
 export interface ApiResponse {
   mode: "code" | "story";
   status: "ok" | "demo" | "error" | "crisis";
@@ -55,9 +62,11 @@ export interface ApiResponse {
   story_result?: {
     title: string;
     story: string;
+    mirror: PersonalMythMirror;
     meaning: string[];
     one_step: string;
     journal_question: string;
+    disclaimer: string;
   };
   ui?: {
     safe_message?: string;
