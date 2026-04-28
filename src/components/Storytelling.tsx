@@ -15,7 +15,7 @@ export default function Storytelling() {
   const [errorText, setErrorText] = useState('');
   const [safeMessage, setSafeMessage] = useState('');
   const [showLeadForm, setShowLeadForm] = useState(false);
-  const [leadForm, setLeadForm] = useState({ name: '', contact: '', request: '' });
+  const [leadForm, setLeadForm] = useState({ name: '', birthDate: '', contact: '', request: '' });
   const [leadStatus, setLeadStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [leadMessage, setLeadMessage] = useState('');
   const [date, setDate] = useState('');
@@ -42,19 +42,23 @@ export default function Storytelling() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...leadForm,
-          birthDate: date,
           source: 'personal_myth_big_research'
         })
       });
 
-      if (!res.ok) throw new Error('Ошибка отправки');
-      
-      setLeadStatus('success');
-      setLeadMessage('Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования.');
-      setLeadForm({ name: '', contact: '', request: '' });
+      const data = await res.json();
+
+      if (data.status === 'ok') {
+        setLeadStatus('success');
+        setLeadMessage(data.ui?.safe_message || 'Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования.');
+        setLeadForm({ name: '', birthDate: '', contact: '', request: '' });
+      } else {
+        setLeadStatus('error');
+        setLeadMessage(data.ui?.safe_message || 'Пожалуйста, проверьте данные и попробуйте ещё раз.');
+      }
     } catch (err) {
       setLeadStatus('error');
-      setLeadMessage('Произошла ошибка при отправке. Пожалуйста, попробуйте еще раз.');
+      setLeadMessage('Произошла ошибка при отправке. Пожалуйста, проверьте данные и попробуйте ещё раз.');
     }
   };
 
@@ -119,7 +123,8 @@ export default function Storytelling() {
       if (data.status === 'crisis') {
         setErrorText(data.ui?.safe_message || "Мы не можем сгенерировать историю в данный момент.");
         setStep(4);
-      } else if (data.status === 'error') {
+      } else if (data.status === 'error' || data.status === 'demo' || !data.story_result) {
+        if (data.ui?.safe_message) setSafeMessage(data.ui.safe_message);
         applyFallback();
       } else {
         if (data.ui?.safe_message) setSafeMessage(data.ui.safe_message);
@@ -324,12 +329,15 @@ export default function Storytelling() {
                  {/* Fallback for meaning strings if API hasn't synced or legacy */}
                  {result.meaning && result.meaning.length > 0 && !result.mirror && (
                    <ul className="space-y-4 font-sans text-sm md:text-base text-gray-400">
-                      {result.meaning.map((m, i) => (
-                        <li key={i} className="flex gap-4">
-                          <span className="text-[#A3B8AD] opacity-50">—</span>
-                          <span dangerouslySetInnerHTML={{ __html: m.replace(/\*\*(.*?)\*\*/g, '<span class="text-gray-200">$1</span>') }} />
-                        </li>
-                      ))}
+                      {result.meaning.map((m, i) => {
+                        const cleanText = m.replace(/\\*\\*(.*?)\\*\\*/g, '$1');
+                        return (
+                          <li key={i} className="flex gap-4">
+                            <span className="text-[#A3B8AD] opacity-50">—</span>
+                            <span>{cleanText}</span>
+                          </li>
+                        );
+                      })}
                    </ul>
                  )}
               </div>
@@ -442,28 +450,13 @@ export default function Storytelling() {
                     onChange={e => setLeadForm({...leadForm, contact: e.target.value})}
                     className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors"
                   />
-                  <DatePicker
-                    selected={selectedDate}
-                    onChange={(d: Date | null) => {
-                      setSelectedDate(d);
-                      if (d) {
-                        const dayStr = String(d.getDate()).padStart(2, '0');
-                        const monthStr = String(d.getMonth() + 1).padStart(2, '0');
-                        const yearStr = String(d.getFullYear());
-                        setDate(`${dayStr}.${monthStr}.${yearStr}`);
-                      } else {
-                        setDate('');
-                      }
-                    }}
-                    dateFormat="dd.MM.yyyy"
-                    locale="ru"
-                    showYearDropdown
-                    showMonthDropdown
-                    dropdownMode="select"
-                    placeholderText="Дата рождения (ДД.ММ.ГГГГ)"
-                    className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors"
-                    wrapperClassName="w-full"
+                  <input 
+                    type="text" 
+                    placeholder="Дата рождения для полного исследования" 
                     required
+                    value={leadForm.birthDate}
+                    onChange={e => setLeadForm({...leadForm, birthDate: e.target.value})}
+                    className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors"
                   />
                   <textarea 
                     placeholder="Короткий запрос (необязательно)" 

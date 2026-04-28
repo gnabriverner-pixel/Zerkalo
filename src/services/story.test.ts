@@ -61,4 +61,18 @@ describe('Story Module constraints', () => {
       expect(serverContent).toContain('"innerTension"');
     }
   });
+
+  it('PersonalMyth.tsx содержит birthDate в leadForm и отправляет в /api/lead', () => {
+    const fileContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
+    expect(fileContent).toMatch(/setLeadForm\(\{.*birthDate:/);
+    expect(fileContent).toMatch(/\.\.\.leadForm/);
+  });
+
+  it('PersonalMyth.tsx проверяет data.status и закрывает опасные баги', () => {
+    const fileContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
+    expect(fileContent).toMatch(/data\.status === 'ok'/);
+    expect(fileContent).toMatch(/data\.status === 'demo'/);
+    expect(fileContent).toMatch(/applyFallback\(\)/);
+    expect(fileContent).not.toMatch(/dangerouslySetInnerHTML/);
+  });
 });
