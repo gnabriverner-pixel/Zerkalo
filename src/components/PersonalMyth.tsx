@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2, BookOpen, Sparkles, Feather, Archive } from 'lucide-react';
+import { Loader2, BookOpen, Sparkles, Feather, Archive, X } from 'lucide-react';
 import { ApiResponse, StoryInputs } from '../types';
 
 export default function PersonalMyth() {
@@ -9,7 +9,37 @@ export default function PersonalMyth() {
   const [result, setResult] = useState<ApiResponse['story_result'] | null>(null);
   const [errorText, setErrorText] = useState('');
   const [safeMessage, setSafeMessage] = useState('');
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [leadForm, setLeadForm] = useState({ name: '', contact: '', request: '' });
+  const [leadStatus, setLeadStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [leadMessage, setLeadMessage] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
+
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLeadStatus('submitting');
+    setLeadMessage('');
+
+    try {
+      const res = await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...leadForm,
+          source: 'personal_myth_big_research'
+        })
+      });
+
+      if (!res.ok) throw new Error('Ошибка отправки');
+      
+      setLeadStatus('success');
+      setLeadMessage('Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования.');
+      setLeadForm({ name: '', contact: '', request: '' });
+    } catch (err) {
+      setLeadStatus('error');
+      setLeadMessage('Произошла ошибка при отправке. Пожалуйста, попробуйте еще раз.');
+    }
+  };
 
   const steps = [
       {
@@ -44,10 +74,10 @@ export default function PersonalMyth() {
       title: "Отражение",
       story: "Сейчас личный миф не удалось собрать. Вы можете сохранить ответы и вернуться позже.",
       mirror: {
-        mainImage: inputs.q2 || "—",
-        innerTension: "—",
-        hiddenResource: inputs.q4 || "—",
-        newView: "—"
+        mainImage: inputs.q2 || "Образ пока не назван",
+        innerTension: inputs.q1 || "Состояние пока требует уточнения",
+        hiddenResource: inputs.q4 || "Качество, которого сейчас не хватает",
+        newView: inputs.q3 || "Точка живости пока не описана"
       },
       meaning: [],
       one_step: "Выберите одно маленькое действие, которое сегодня вернёт вам ощущение опоры: убрать лишнее, выйти на воздух, записать одну мысль или поговорить с человеком, которому доверяете.",
@@ -286,7 +316,7 @@ export default function PersonalMyth() {
                   Большое исследование соединяет вашу дату рождения, числовую архитектуру и образный слой в один персональный документ.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
-                   <button className="px-6 py-3 bg-[#A3B8AD] text-[#0F1412] tracking-widest uppercase text-xs font-medium hover:bg-[#8CA296] transition-colors" onClick={() => alert("Открытие модального окна заявки...")}>
+                   <button className="px-6 py-3 bg-[#A3B8AD] text-[#0F1412] tracking-widest uppercase text-xs font-medium hover:bg-[#8CA296] transition-colors" onClick={() => setShowLeadForm(true)}>
                      Получить Большое исследование
                    </button>
                    <button onClick={() => { setStep(0); setInputs({q1:'', q2:'', q3:'', q4:''}) }} className="px-6 py-3 bg-transparent border border-[#2A3B33] text-[#A3B8AD] tracking-widest uppercase text-xs hover:text-[#EAEAEA] transition-colors">
@@ -303,11 +333,91 @@ export default function PersonalMyth() {
         {/* Safety Footer */}
         <div className="mt-20 pt-8 border-t border-[#1A2621] w-full text-center pb-8">
           <p className="text-[10px] text-gray-600 max-w-sm mx-auto leading-relaxed uppercase tracking-wider">
-            Это образная история для саморефлексии. Она не является руководством к действию или единственно верным прочтением. Если вы чувствуете сильное внутреннее напряжение, лучше обратиться к живому специалисту.
+            Это образная история для саморефлексии. Она не является руководством к действию или единственно верным прочтением. При ощущении небезопасности или потери контроля лучше обратиться к человеку рядом или профильному специалисту.
           </p>
         </div>
 
       </div>
+
+      {/* Lead Form Modal */}
+      <AnimatePresence>
+        {showLeadForm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F1412]/90 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-[#111A16] p-8 md:p-12 max-w-md w-full relative shadow-2xl border border-[#2A3B33]"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#A3B8AD] to-transparent opacity-20"></div>
+              <button 
+                onClick={() => setShowLeadForm(false)}
+                className="absolute top-6 right-6 text-gray-500 hover:text-[#A3B8AD] transition-colors"
+              >
+                <X className="w-6 h-6" strokeWidth={1} />
+              </button>
+              
+              <h3 className="font-serif text-3xl text-[#EAEAEA] mb-4">Большое исследование</h3>
+              <p className="font-sans text-[0.95rem] text-gray-400 mb-8 leading-relaxed">Оставьте заявку, и я свяжусь с вами, чтобы обсудить детали и начать работу над вашим персональным разбором.</p>
+              
+              {leadStatus === 'success' ? (
+                <div className="bg-[#1A2621]/30 border border-[#2A3B33] p-8 text-center font-serif text-[1.1rem]">
+                  <p className="text-[#A3B8AD]">{leadMessage}</p>
+                  <button 
+                    onClick={() => setShowLeadForm(false)}
+                    className="mt-8 px-8 py-3 bg-[#A3B8AD] text-[#0F1412] font-sans text-xs tracking-[0.15em] uppercase hover:bg-[#8CA296] transition-colors"
+                  >
+                    Закрыть
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleLeadSubmit} className="flex flex-col gap-5">
+                  <input 
+                    type="text" 
+                    placeholder="Ваше имя" 
+                    required
+                    value={leadForm.name}
+                    onChange={e => setLeadForm({...leadForm, name: e.target.value})}
+                    className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors"
+                  />
+                  <input 
+                    type="text" 
+                    placeholder="Ваш контакт (Telegram, Email...)" 
+                    required
+                    value={leadForm.contact}
+                    onChange={e => setLeadForm({...leadForm, contact: e.target.value})}
+                    className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors"
+                  />
+                  <textarea 
+                    placeholder="Короткий запрос (необязательно)" 
+                    rows={3}
+                    value={leadForm.request}
+                    onChange={e => setLeadForm({...leadForm, request: e.target.value})}
+                    className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors resize-none mt-2"
+                  ></textarea>
+                  
+                  {leadStatus === 'error' && (
+                    <div className="text-red-400 bg-red-900/20 p-3 text-sm font-sans mt-2 border border-red-900/50">{leadMessage}</div>
+                  )}
+                  
+                  <button 
+                    type="submit" 
+                    disabled={leadStatus === 'submitting'}
+                    className="mt-6 w-full py-5 bg-[#A3B8AD] text-[#0F1412] font-sans text-xs tracking-[0.15em] uppercase hover:bg-[#8CA296] transition-colors disabled:opacity-50 flex justify-center items-center"
+                  >
+                    {leadStatus === 'submitting' ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Отправить заявку'}
+                  </button>
+                </form>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
