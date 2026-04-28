@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs/promises";
 import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
-import { generateFullInterpretationPayload } from "./src/services/interpretation";
+import { generateFullInterpretationPayload, generateFirstMirror } from "./src/services/interpretation";
 
 async function startServer() {
   const app = express();
@@ -76,8 +76,21 @@ async function startServer() {
       
       console.log(`SERVER LOG: Generating for mode=${mode}. Key exists: ${!!apiKey}`);
 
+      let deterministicMirror;
+      if (mode === "code") {
+        deterministicMirror = generateFirstMirror(calc);
+      }
+
       if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.length < 10 || apiKey.includes("API_KEY")) {
-        console.error("Developer Log: Gemini request failed: invalid API key.");
+        console.error("Developer Log: Gemini request bypassed: invalid or missing API key.");
+        if (mode === "code") {
+           return res.status(200).json({ 
+             mode,
+             status: "demo",
+             code_result: { first_mirror: deterministicMirror },
+             ui: { safe_message: "Показана базовая версия первого слоя. Полная персональная генерация доступна в Большом исследовании." }
+           });
+        }
         return res.status(200).json({ 
           mode,
           status: "demo",
@@ -99,19 +112,33 @@ async function startServer() {
 Рассчитанные данные и структурированная смысловая база (СТРОГО используй эти значения):
 ${payloadStr}
 
-Сгенерируй короткое "Первое зеркало", опираясь ТОЛЬКО на предоставленную смысловую базу проекта. 
-ОБЯЗАТЕЛЬНО используй Markdown-заголовки h3 (###) для следующих трех блоков, и дай внутри каждого 1-2 предложения сути:
-### Сильная сторона
-### Внутреннее напряжение
-### Первый практический шаг
+Схема ответа FirstMirror:
+{
+  "title": "string",
+  "subtitle": "string",
+  "formula": { "numbers": "string", "planets": "string", "positions": "string" },
+  "blocks": [
+    { "id": "main_pattern", "title": "Главный узор", "text": "string" },
+    { "id": "strength", "title": "Что уже является силой", "text": "string" },
+    { "id": "tension", "title": "Где возникает напряжение", "text": "string" },
+    { "id": "step", "title": "Первый практический шаг", "text": "string" }
+  ],
+  "keyInsight": "string",
+  "strengthTags": ["string"],
+  "tensionTags": ["string"],
+  "practicalStep": "string",
+  "cta": { "title": "string", "text": "string", "button": "string" },
+  "disclaimer": "string"
+}
 
-Не добавляй других заголовков. Выдавай текст прямо внутри поля mirror_text.
+Сгенерируй персонализированное "Первое зеркало", опираясь на смысловую базу проекта и базовый макет deterministicMirror (${JSON.stringify(deterministicMirror)}). 
+Сделай текст в блоках живым, глубоким и премиальным, избегая клише и запрещенных слов (исцеление, фатальность, гарантировано, вы точно).
 
 Верни JSON:
 {
   "mode": "code",
   "status": "ok",
-  "code_result": { "mirror_text": "твой текст с ### заголовками" }
+  "code_result": { "first_mirror": <YOUR_FIRST_MIRROR_OBJECT> }
 }`;
       } else if (mode === "story") {
         prompt = `Пользователь запросил "Личный миф". Ответы на вопросы:
@@ -158,12 +185,18 @@ ${payloadStr}
         resultJson = JSON.parse(responseText);
       } catch (parseError) {
         console.error("Developer Log: Gemini returned invalid JSON:", responseText);
+        if (mode === "code") {
+           return res.status(200).json({
+             mode,
+             status: "ok",
+             code_result: { first_mirror: deterministicMirror },
+             ui: { safe_message: "Сетевая ошибка LLM. Показана базовая версия первого слоя." }
+           });
+        }
         return res.status(200).json({
           mode: req.body.mode,
           status: "error",
-          ui: {
-            safe_message: "Сервис временно не смог подготовить текстовую интерпретацию. Расчёт сохранён. Попробуйте повторить позже."
-          }
+          ui: { safe_message: "Сервис временно не смог подготовить текст. Расчёт сохранён." }
         });
       }
 
@@ -172,18 +205,23 @@ ${payloadStr}
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (errorMessage.includes("API key not valid") || errorMessage.includes("API_KEY_INVALID")) {
         console.error("Developer Log: Gemini request failed: invalid API key.");
-        return res.status(200).json({ 
-          mode: req.body.mode,
-          status: "demo",
-          ui: { safe_message: "Сейчас доступна демонстрационная версия." }
-        });
       } else {
         console.error("Developer Log: AI Generation Error:", error);
       }
+      
+      if (req.body.mode === "code") {
+         return res.status(200).json({ 
+           mode: req.body.mode,
+           status: "demo",
+           code_result: { first_mirror: generateFirstMirror(req.body.calc) },
+           ui: { safe_message: "Сервис LLM недоступен. Показана базовая версия." }
+         });
+      }
+
       res.status(200).json({ 
         mode: req.body.mode,
         status: "error",
-        ui: { safe_message: "Сервис временно не смог подготовить текстовую интерпретацию. Расчёт сохранён. Попробуйте повторить позже." }
+        ui: { safe_message: "Сервис временно не смог подготовить текстовую интерпретацию. Попробуйте повторить позже." }
       });
     }
   });

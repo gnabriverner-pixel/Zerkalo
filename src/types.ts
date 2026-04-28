@@ -13,6 +13,31 @@ export interface CalculationResult {
   detailedMatrix: Record<string, number>;
 }
 
+export type FirstMirror = {
+  title: string;
+  subtitle: string;
+  formula: {
+    numbers: string;
+    planets: string;
+    positions: string;
+  };
+  blocks: {
+    id: "main_pattern" | "strength" | "tension" | "step";
+    title: string;
+    text: string;
+  }[];
+  keyInsight: string;
+  strengthTags: string[];
+  tensionTags: string[];
+  practicalStep: string;
+  cta: {
+    title: string;
+    text: string;
+    button: string;
+  };
+  disclaimer: string;
+};
+
 export interface StoryInputs {
   q1: string;
   q2: string;
@@ -24,7 +49,8 @@ export interface ApiResponse {
   mode: "code" | "story";
   status: "ok" | "demo" | "error" | "crisis";
   code_result?: {
-    mirror_text: string;
+    mirror_text?: string;
+    first_mirror?: FirstMirror;
   };
   story_result?: {
     title: string;
