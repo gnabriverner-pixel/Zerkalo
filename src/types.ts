@@ -53,11 +53,25 @@ export type PersonalMythMirror = {
 };
 
 export interface ApiResponse {
-  mode: "code" | "story";
+  mode: "code" | "story" | "compatibility";
   status: "ok" | "demo" | "error" | "crisis";
   code_result?: {
     mirror_text?: string;
     first_mirror?: FirstMirror;
+  };
+  compatibility_result?: {
+    introduction: string;
+    cards_summary: string;
+    levels: {
+      soul_to_soul: string;
+      path_to_path: string;
+      cross_dynamic: string;
+      matrix_overlay: string;
+      cycles_sync: string;
+    };
+    strength_point: string;
+    tension_point: string;
+    practice_or_parable: string;
   };
   story_result?: {
     title: string;

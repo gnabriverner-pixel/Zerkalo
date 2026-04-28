@@ -224,6 +224,45 @@ ${payloadStr}
     "disclaimer": "Образный формат для саморефлексии. Не диагностика и не инструкция к действию."
   }
 }`;
+      } else if (mode === "compatibility") {
+        const { date, calc, date2, calc2 } = req.body;
+        const payload1 = JSON.stringify(generateFullInterpretationPayload(calc), null, 2);
+        const payload2 = JSON.stringify(generateFullInterpretationPayload(calc2), null, 2);
+        
+        prompt = `Пользователь запросил анализ Совместимости. 
+Первый человек: ${date}
+${payload1}
+
+Второй человек: ${date2}
+${payload2}
+
+Используй режим COMPATIBILITY. 
+Уровни: 
+1. Душа ↔ Душа
+2. Путь ↔ Путь
+3. Перекрестная динамика
+4. Наложение матриц
+5. Синхронность циклов
+
+Верни строго JSON:
+{
+  "mode": "compatibility",
+  "status": "ok",
+  "compatibility_result": {
+    "introduction": "string (краткое введение об их союзе)",
+    "cards_summary": "string (основные цифры душ и путей обоих)",
+    "levels": {
+      "soul_to_soul": "string",
+      "path_to_path": "string",
+      "cross_dynamic": "string",
+      "matrix_overlay": "string",
+      "cycles_sync": "string"
+    },
+    "strength_point": "string",
+    "tension_point": "string",
+    "practice_or_parable": "string"
+  }
+}`;
       }
 
       const response = await ai.models.generateContent({
