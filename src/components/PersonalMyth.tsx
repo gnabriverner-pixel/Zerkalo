@@ -106,7 +106,7 @@ export default function PersonalMyth() {
               </button>
               
               <div className="mt-16 text-[10px] text-gray-600 tracking-wide uppercase">
-                Это не терапия и не предсказание.
+                Это не диагностика и не инструкция.
               </div>
             </motion.div>
           )}
@@ -254,7 +254,7 @@ export default function PersonalMyth() {
         {/* Safety Footer */}
         <div className="mt-20 pt-8 border-t border-[#1A2621] w-full text-center pb-8">
           <p className="text-[10px] text-gray-600 max-w-sm mx-auto leading-relaxed uppercase tracking-wider">
-            Это образная история для саморефлексии. Она не является терапией, диагнозом или предсказанием. Если вы в остром кризисе или небезопасной ситуации, обратитесь к живому специалисту или человеку рядом.
+            Это образная история для саморефлексии. Она не является руководством к действию или единственно верным прочтением. Если вы чувствуете сильное внутреннее напряжение, лучше обратиться к живому специалисту.
           </p>
         </div>
 

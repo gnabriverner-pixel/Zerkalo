@@ -26,9 +26,18 @@ describe('numberKnowledge', () => {
 
   it('does not contain forbidden words', () => {
     const jsonStr = JSON.stringify(numberKnowledge).toLowerCase();
-    expect(jsonStr).not.toContain('исцеление');
-    expect(jsonStr).not.toContain('вампир');
-    expect(jsonStr).not.toContain('гарантированно');
+    expect(jsonStr).not.toMatch(/исцел/i);
+    expect(jsonStr).not.toMatch(/духовн/i);
+    expect(jsonStr).not.toMatch(/кризис/i);
+    expect(jsonStr).not.toMatch(/карм/i);
+    expect(jsonStr).not.toMatch(/гарантир/i);
+    expect(jsonStr).not.toMatch(/предсказ/i);
+    expect(jsonStr).not.toMatch(/диагноз/i);
+    expect(jsonStr).not.toMatch(/обреч/i);
+    expect(jsonStr).not.toMatch(/вампир/i);
+    expect(jsonStr).not.toMatch(/синдром/i);
+    expect(jsonStr).not.toMatch(/судьба неизбежна/i);
+    expect(jsonStr).not.toMatch(/высшие энергии/i);
   });
 });
 
@@ -41,11 +50,23 @@ describe('compoundKnowledge', () => {
     });
   });
 
-  it('does not contain generic boilerplate strings', () => {
-    const jsonStr = JSON.stringify(compoundKnowledge);
+  it('does not contain generic boilerplate strings or forbidden words', () => {
+    const jsonStr = JSON.stringify(compoundKnowledge).toLowerCase();
     expect(jsonStr).not.toContain('и  ');
-    expect(jsonStr).not.toContain('Балансировать проявление составных частей');
-    expect(jsonStr).not.toContain('Дисбаланс между');
+    expect(jsonStr).not.toContain('балансировать проявление составных частей');
+    expect(jsonStr).not.toContain('дисбаланс между');
+    expect(jsonStr).not.toMatch(/исцел/i);
+    expect(jsonStr).not.toMatch(/духовн/i);
+    expect(jsonStr).not.toMatch(/кризис/i);
+    expect(jsonStr).not.toMatch(/карм/i);
+    expect(jsonStr).not.toMatch(/гарантир/i);
+    expect(jsonStr).not.toMatch(/предсказ/i);
+    expect(jsonStr).not.toMatch(/диагноз/i);
+    expect(jsonStr).not.toMatch(/обреч/i);
+    expect(jsonStr).not.toMatch(/вампир/i);
+    expect(jsonStr).not.toMatch(/синдром/i);
+    expect(jsonStr).not.toMatch(/судьба неизбежна/i);
+    expect(jsonStr).not.toMatch(/высшие энергии/i);
   });
 
   it('has sufficient length for accent, risk, and recommendation', () => {

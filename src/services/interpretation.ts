@@ -2,6 +2,28 @@ import { CalculationResult, FirstMirror } from '../types';
 import { numberKnowledge } from '../data/numberKnowledge';
 import { getCompoundKnowledge } from '../data/compoundKnowledge';
 
+export function determineKeyInsight(soul: number, path: number, result: number): string {
+  if ([1, 4, 8].includes(soul) && [1, 4, 8].includes(result)) {
+    return "Ваша формула показывает не просто набор качеств, а бескомпромиссный способ превращать внутренний импульс в материальную форму, которую можно увидеть и применить.";
+  }
+  if ([2, 6].includes(soul) && [2, 6].includes(result)) {
+    return "Главная тема этой архитектуры — не масштаб ради масштаба, а умение дать своей силе человеческий язык, выстраивая глубокие, резонирующие связи.";
+  }
+  if ([7, 11].includes(soul) || [7, 11].includes(result)) {
+    return "Первый слой вашей карты показывает связку тонкого наблюдения и зрелого итога: именно между ними возникает ваш главный маршрут и уникальная экспертиза.";
+  }
+  if ([3, 5].includes(soul) || [3, 5].includes(path)) {
+    return "Эта матрица выстроена вокруг скорости и слова: ваша задача — перевести хаос постоянного поиска в точный, измеримый результат.";
+  }
+  if (result === 9 || soul === 9) {
+    return "Архитектура вашего кода заряжена на длинные дистанции: это потенциал завершать то, что другие только начинают, и мыслить категориями мирового масштаба.";
+  }
+  if (path === 8 || path === 4) {
+    return "Ваша связка чисел указывает на мощную несущую конструкцию: вы не адаптируетесь под систему, вы способны её создавать и удерживать.";
+  }
+  return "Первый слой показывает плотную связку внутреннего желания, способа действия и зрелого результата: именно между ними возникает ваш главный жизненный алгоритм.";
+}
+
 export function generateFirstMirror(calc: CalculationResult): FirstMirror {
   const soul = numberKnowledge[calc.soul] || numberKnowledge[1];
   const pathNum = calc.path === 11 ? 11 : calc.path;
@@ -33,27 +55,27 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
       planets: `${soul.planet} · ${path.planet} · ${expression.planet} · ${direction.planet} · ${result.planet}`,
       positions: "Душа · Путь · Выражение · Направление · Результат"
     },
-    keyInsight: `Основа вашей архитектуры: ${soul.core.toLowerCase()}.`,
+    keyInsight: determineKeyInsight(soul.number, path.number, result.number),
     blocks: [
       {
         id: "main_pattern",
         title: "Главный узор",
-        text: `Ядро вашей матрицы опирается на энергию ${soul.number} (${soul.planet}). ${soul.positions.soul.essence} Внешний мир при этом открывается через ваши стратегические действия по линии Пути (${path.number}): ${path.positions.path.essence.toLowerCase()} Этот способ двигаться неизбежно ведёт вас к финальной сборке — энергии ${result.number}. Ваша главная задача — прийти к состоянию, в котором ${result.positions.result.essence.toLowerCase()}`
+        text: `Ядро вашей матрицы опирается на связку амбиции (Душа ${soul.number}), стратегии (Путь ${path.number}) и финальной цели (Результат ${result.number}). Изнутри вы чувствуете, что ${soul.positions.soul.essence.toLowerCase()} Внешний мир открывается, когда вы действуете по линии Пути: ${path.positions.path.essence.toLowerCase()} Этот способ двигаться неизбежно ведёт вас к финальной сборке: ${result.positions.result.essence.toLowerCase()}`
       },
       {
         id: "strength",
         title: "Что уже является силой",
-        text: `Ваша главная опора кроется в вашей сути: ${soul.positions.soul.strength.toLowerCase()} Этот глубокий внутренний ресурс транслируется вовне через ваш образ и манеру контакта с миром — энергию Выражения (${expression.number}). Окружающие считывают вас как человека, чья сила в том, чтобы ${expression.positions.expression.strength.toLowerCase()} Это сочетание позволяет вам открывать нужные двери, просто оставаясь собой.`
+        text: `Ваша опора — это резонанс между внутренней потребностью (Душа ${soul.number}) и внешним стилем контакта с миром (Выражение ${expression.number}). У вас есть врожденная способность: ${soul.positions.soul.strength.toLowerCase()} И этот механизм усиливается в тот момент, когда через Выражение вы транслируете ${expression.positions.expression.strength.toLowerCase()} Это сочетание позволяет открывать двери, просто оставаясь собой.`
       },
       {
         id: "tension",
         title: "Где возникает напряжение",
-        text: `Сильная архитектура выявляет зоны трения при столкновении с реальностью. Ваш Путь (${path.number}) сталкивается с Направлением (${direction.number}). Вы можете чувствовать сопротивление, когда вам нужно ${direction.positions.direction.tension.toLowerCase()}, в то время как ваш привычный метод требует ${path.positions.path.tension.toLowerCase()} ${compoundPath ? `Сценарий перехода ${calc.pathComposite} добавляет скрытый риск: ${compoundPath.risk.toLowerCase()} ` : ''} ${compoundDir ? `А вектор ${calc.directionComposite} предупреждает: ${compoundDir.risk.toLowerCase()}` : ''}`
+        text: `Сильная архитектура выявляет зоны трения там, где стратегия (Путь ${path.number}) сталкивается с фокусом приложения усилий (Направление ${direction.number}). Вы можете чувствовать сопротивление, когда вам нужно ${direction.positions.direction.tension.toLowerCase()}, в то время как ваш привычный метод требует ${path.positions.path.tension.toLowerCase()}${compoundPath ? ` Скрытый сценарий перехода (${calc.pathComposite}) добавляет нюанс: ${compoundPath.risk.toLowerCase()} ` : ''}${compoundDir ? ` А вектор (${calc.directionComposite}) уточняет: ${compoundDir.risk.toLowerCase()}` : ''}`
       },
       {
         id: "step",
         title: "Первый практический шаг",
-        text: `Чтобы вектор развития не замирал, начните с осознанного применения вашей энергии Направления (${direction.number}): ${direction.positions.direction.recommendation.toLowerCase()} Это не просто действие, это способ проложить дорогу к вашему итоговому смыслу — Результату (${result.number}). Зрелость вашей матрицы наступит тогда, когда вы сможете ${result.positions.result.recommendation.toLowerCase()} ${compoundRes ? compoundRes.recommendation : ''}`
+        text: `Чтобы ваш потенциал не замирал, начните с точного применения энергии Направления (${direction.number}) с прицелом на ваш смысловой Результат (${result.number}). Ваш шаг: ${direction.positions.direction.recommendation.toLowerCase()} Это не просто действие, это способ проложить дорогу к вашему итоговому смыслу, где вы сможете ${result.positions.result.recommendation.toLowerCase()}${compoundRes ? ` Дополнительно: ${compoundRes.recommendation.toLowerCase()}` : ''}`
       }
     ],
     strengthTags: [soul.gift.split(',')[0], path.gift.split(',')[0], expression.keywords[0], direction.keywords[1]],
@@ -111,13 +133,13 @@ export function generateFullInterpretationPayload(calc: CalculationResult): obje
       "не копировать дословно источники",
       "не писать мистически",
       "не обещать результата",
-      "не ставить диагнозов",
+      "не использовать медицинскую, эзотерическую или терапевтическую терминологию",
       "не давать советов",
       "никакой фатальности",
       "не утверждать 'вы точно такой-то'"
     ],
     safetyRules: [
-      "при признаках кризиса вернуть status: 'crisis'"
+      "при сильном эмоциональном напряжении или неадекватности в тексте пользователя вернуть status: 'crisis'"
     ]
   };
 }

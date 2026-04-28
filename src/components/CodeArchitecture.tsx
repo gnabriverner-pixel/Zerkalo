@@ -493,7 +493,7 @@ export default function CodeArchitecture() {
                           className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-300 cursor-default ${(hoveredLines.includes('d1') || hoveredLines.includes('d2')) ? LINE_STYLES['d'].bg : 'bg-[var(--color-surface)] bg-marble'}`}
                         >
                           <div className="flex gap-2 sm:gap-3 mb-1">
-                            <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${hoveredLines.includes('d1') ? LINE_STYLES['d'].text : 'text-[var(--color-ink)]'}`} title={`Духовность (1-5-9): ${d1}`}>{d1}</span>
+                            <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${hoveredLines.includes('d1') ? LINE_STYLES['d'].text : 'text-[var(--color-ink)]'}`} title={`Внутренний компас (1-5-9): ${d1}`}>{d1}</span>
                             <span className="text-[var(--color-border)]">/</span>
                             <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${hoveredLines.includes('d2') ? LINE_STYLES['d'].text : 'text-[var(--color-antique-gold)]'}`} title={`Темперамент (3-5-7): ${d2}`}>{d2}</span>
                           </div>

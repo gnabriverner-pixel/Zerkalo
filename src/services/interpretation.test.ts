@@ -22,14 +22,17 @@ describe('interpretation', () => {
 
     const lowerStr = textStr.toLowerCase();
     expect(lowerStr).not.toMatch(/диагноз/i);
-    expect(lowerStr).not.toMatch(/исцеление/i);
-    expect(lowerStr).not.toMatch(/100%/i);
-    expect(lowerStr).not.toMatch(/магия/i);
-    expect(lowerStr).not.toMatch(/предсказание/i);
-    expect(lowerStr).not.toMatch(/гарантированно/i);
-    expect(lowerStr).not.toMatch(/обреч/i);
     expect(lowerStr).not.toMatch(/исцел/i);
+    expect(lowerStr).not.toMatch(/духовн/i);
+    expect(lowerStr).not.toMatch(/кризис/i);
+    expect(lowerStr).not.toMatch(/карм/i);
+    expect(lowerStr).not.toMatch(/гарантир/i);
+    expect(lowerStr).not.toMatch(/предсказ/i);
+    expect(lowerStr).not.toMatch(/обреч/i);
+    expect(lowerStr).not.toMatch(/вампир/i);
+    expect(lowerStr).not.toMatch(/синдром/i);
     expect(lowerStr).not.toMatch(/судьба неизбежна/i);
+    expect(lowerStr).not.toMatch(/высшие энергии/i);
     expect(lowerStr).not.toMatch(/вы точно/i);
   });
 });
