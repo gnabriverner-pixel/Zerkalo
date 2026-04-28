@@ -1,7 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, BookOpen, Sparkles, Feather, Archive, X } from 'lucide-react';
+import DatePicker, { registerLocale } from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { ru } from 'date-fns/locale';
 import { ApiResponse, StoryInputs } from '../types';
+
+registerLocale('ru', ru);
 
 export default function PersonalMyth() {
   const [step, setStep] = useState(0); // 0 = Intro, 1-4 = questions, 5 = generating, 6 = result
@@ -13,7 +18,18 @@ export default function PersonalMyth() {
   const [leadForm, setLeadForm] = useState({ name: '', contact: '', request: '' });
   const [leadStatus, setLeadStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [leadMessage, setLeadMessage] = useState('');
+  const [date, setDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isFocused, setIsFocused] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
+
+  const themeByStep = [
+    { color: 'transparent', shadow: 'transparent', name: '' },
+    { color: '#8A5A44', shadow: 'rgba(138, 90, 68, 0.2)', name: 'Напряжение' }, // Шаг 1: Напряжение (тёмно-терракотовый)
+    { color: '#7C9082', shadow: 'rgba(124, 144, 130, 0.2)', name: 'Образ' }, // Шаг 2: Образ (приглушенно-оливковый)
+    { color: '#B59E74', shadow: 'rgba(181, 158, 116, 0.2)', name: 'Живость' }, // Шаг 3: Живость (старое золото)
+    { color: '#6B7A87', shadow: 'rgba(107, 122, 135, 0.2)', name: 'Потребность' }  // Шаг 4: Потребность (сумеречно-сизый)
+  ];
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +42,7 @@ export default function PersonalMyth() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...leadForm,
+          birthDate: date,
           source: 'personal_myth_big_research'
         })
       });
@@ -146,7 +163,7 @@ export default function PersonalMyth() {
               
               <button 
                 onClick={() => setStep(1)}
-                className="px-8 py-4 bg-[#1A2621] text-[#A3B8AD] border border-[#2A3B33] hover:bg-[#202F29] hover:border-[#3A4B43] tracking-widest uppercase text-xs transition-colors"
+                className="px-10 py-4 bg-transparent text-[#EAEAEA] border border-[#2A3B33] hover:border-[#A3B8AD] hover:bg-[#1A2621] hover:shadow-[0_0_20px_rgba(163,184,173,0.1)] tracking-[0.2em] uppercase text-xs transition-all duration-500"
               >
                 Собрать личный миф
               </button>
@@ -168,7 +185,12 @@ export default function PersonalMyth() {
               <div className="flex justify-between items-center mb-8">
                 <span className="text-xs tracking-widest text-[#A3B8AD] uppercase">Шаг {step} из 4</span>
                 {step > 1 && (
-                   <button onClick={() => setStep(step - 1)} className="text-xs text-gray-500 hover:text-gray-300">Назад</button>
+                   <button 
+                     onClick={() => setStep(step - 1)} 
+                     className="text-xs tracking-[0.15em] uppercase text-gray-500 hover:text-[#A3B8AD] transition-colors duration-300"
+                   >
+                     Назад
+                   </button>
                 )}
               </div>
               
@@ -176,13 +198,40 @@ export default function PersonalMyth() {
                 {steps[step - 1].title}
               </h3>
               
-              <textarea 
-                autoFocus
-                className="w-full bg-transparent border-b border-[#2A3B33] text-[#EAEAEA] placeholder:text-[#3A4B43] text-lg font-serif py-4 outline-none focus:border-[#A3B8AD] transition-colors resize-none mb-10 h-32"
-                placeholder={steps[step - 1].placeholder}
-                value={inputs[steps[step - 1].id as keyof StoryInputs]}
-                onChange={(e) => setInputs({ ...inputs, [steps[step - 1].id]: e.target.value })}
-              />
+              <div className="relative mb-10 w-full group">
+                <div 
+                   className="absolute -inset-4 rounded-xl transition-all duration-700 blur-xl pointer-events-none"
+                   style={{
+                     backgroundColor: isFocused ? themeByStep[step]?.color : 'transparent',
+                     opacity: isFocused ? 0.08 : 0,
+                     boxShadow: isFocused ? `0 0 40px 10px ${themeByStep[step]?.shadow}` : 'none'
+                   }}
+                />
+                
+                <textarea 
+                  autoFocus
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  className="relative z-10 w-full bg-transparent border-b text-[#EAEAEA] placeholder:text-[#3A4B43] text-lg font-serif py-4 outline-none transition-all duration-500 resize-none h-32 focus:bg-[#111A16]"
+                  style={{
+                    borderColor: isFocused ? themeByStep[step]?.color : '#2A3B33'
+                  }}
+                  placeholder={steps[step - 1].placeholder}
+                  value={inputs[steps[step - 1].id as keyof StoryInputs]}
+                  onChange={(e) => setInputs({ ...inputs, [steps[step - 1].id]: e.target.value })}
+                />
+
+                <div 
+                  className="absolute right-0 -bottom-6 text-[10px] tracking-widest uppercase transition-all duration-500 pointer-events-none"
+                  style={{
+                     opacity: isFocused ? 0.8 : 0,
+                     color: themeByStep[step]?.color,
+                     transform: isFocused ? 'translateY(0)' : 'translateY(-10px)'
+                  }}
+                >
+                  {themeByStep[step]?.name}
+                </div>
+              </div>
               
               {errorText && (
                 <div className="mb-6 bg-red-900/20 text-red-400 border border-red-900/50 p-4 text-sm font-sans">
@@ -193,9 +242,9 @@ export default function PersonalMyth() {
               <button 
                 onClick={handleNext}
                 disabled={inputs[steps[step - 1].id as keyof StoryInputs].length < 3}
-                className="self-end px-8 py-4 bg-[#1A2621] text-[#A3B8AD] disabled:opacity-50 disabled:cursor-not-allowed border border-[#2A3B33] hover:bg-[#202F29] tracking-widest uppercase text-xs transition-colors"
+                className="self-end px-10 py-4 bg-transparent text-[#A3B8AD] border border-[#2A3B33] hover:border-[#A3B8AD] hover:text-[#EAEAEA] hover:bg-[#1A2621] tracking-[0.2em] uppercase text-xs transition-all duration-500 disabled:opacity-30 disabled:hover:border-[#2A3B33] disabled:hover:bg-transparent disabled:hover:text-[#A3B8AD] disabled:cursor-not-allowed"
               >
-                {step === 4 ? 'Сплести сказку' : 'Дальше'}
+                {step === 4 ? 'Сплести сказку' : 'Далее'}
               </button>
             </motion.div>
           )}
@@ -316,10 +365,10 @@ export default function PersonalMyth() {
                   Большое исследование соединяет вашу дату рождения, числовую архитектуру и образный слой в один персональный документ.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
-                   <button className="px-6 py-3 bg-[#A3B8AD] text-[#0F1412] tracking-widest uppercase text-xs font-medium hover:bg-[#8CA296] transition-colors" onClick={() => setShowLeadForm(true)}>
+                   <button className="px-8 py-4 bg-[#A3B8AD] text-[#0F1412] tracking-[0.2em] font-sans uppercase text-xs font-medium border border-[#A3B8AD] hover:bg-[#8CA296] hover:border-[#8CA296] transition-all duration-500" onClick={() => setShowLeadForm(true)}>
                      Получить Большое исследование
                    </button>
-                   <button onClick={() => { setStep(0); setInputs({q1:'', q2:'', q3:'', q4:''}) }} className="px-6 py-3 bg-transparent border border-[#2A3B33] text-[#A3B8AD] tracking-widest uppercase text-xs hover:text-[#EAEAEA] transition-colors">
+                   <button onClick={() => { setStep(0); setInputs({q1:'', q2:'', q3:'', q4:''}) }} className="px-8 py-4 bg-transparent border border-[#2A3B33] text-[#A3B8AD] tracking-[0.2em] font-sans uppercase text-xs hover:text-[#EAEAEA] hover:border-[#A3B8AD] hover:bg-[#1A2621] transition-all duration-500">
                      Новый миф
                    </button>
                 </div>
@@ -392,6 +441,29 @@ export default function PersonalMyth() {
                     value={leadForm.contact}
                     onChange={e => setLeadForm({...leadForm, contact: e.target.value})}
                     className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors"
+                  />
+                  <DatePicker
+                    selected={selectedDate}
+                    onChange={(d: Date | null) => {
+                      setSelectedDate(d);
+                      if (d) {
+                        const dayStr = String(d.getDate()).padStart(2, '0');
+                        const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+                        const yearStr = String(d.getFullYear());
+                        setDate(`${dayStr}.${monthStr}.${yearStr}`);
+                      } else {
+                        setDate('');
+                      }
+                    }}
+                    dateFormat="dd.MM.yyyy"
+                    locale="ru"
+                    showYearDropdown
+                    showMonthDropdown
+                    dropdownMode="select"
+                    placeholderText="Дата рождения (ДД.ММ.ГГГГ)"
+                    className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors"
+                    wrapperClassName="w-full"
+                    required
                   />
                   <textarea 
                     placeholder="Короткий запрос (необязательно)" 

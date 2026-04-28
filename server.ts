@@ -100,10 +100,22 @@ async function startServer() {
 
       const ai = new GoogleGenAI({ apiKey });
       
-      // Read AGENTS.md
+      // Read AGENTS.md and SKILLS
       const agentsPrompt = await fs.readFile(path.join(process.cwd(), 'AGENTS.md'), 'utf-8').catch(() => '');
+      const skill13 = await fs.readFile(path.join(process.cwd(), 'skills/VYAZEMSKY__SKILL_13__EDITORIAL_STYLE_v1.md'), 'utf-8').catch(() => '');
       
-      const systemInstruction = `Ты — эксперт проекта «Цифровой Код». Отвечай строго в формате JSON без markdown-оборачивания, валидный JSON.\n\n${agentsPrompt}`;
+      const strictGrammarPrompt = `
+ОЧЕНЬ ВАЖНО: Твои тексты должны быть безупречны с точки зрения орфографии, пунктуации и грамматики русского языка. 
+Пользователи жалуются на ошибки в окончаниях, склонениях, спряжениях и построении предложений (в т.ч. деепричастных оборотах).
+Твоя задача — выступать в роли профессионального литературного редактора. 
+1. Проверяй каждое согласование падежей, лиц и чисел. Никаких машинных ошибок в окончаниях.
+2. Проверяй синтаксис и пунктуацию — запятые, тире, причастные/деепричастные обороты должны быть расставлены по учебнику Розенталя.
+3. Стиль должен быть живым, естественным, ясным и точным.
+СТРОГО следуй SKILL_13:
+${skill13}
+`;
+
+      const systemInstruction = `Ты — эксперт проекта «Цифровой Код». Отвечай строго в формате JSON без markdown-оборачивания, валидный JSON.\n\n${agentsPrompt}\n\n${strictGrammarPrompt}`;
       
       let prompt = "";
       if (mode === "code") {

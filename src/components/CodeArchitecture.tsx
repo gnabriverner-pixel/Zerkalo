@@ -1,7 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, Loader2, X } from 'lucide-react';
+import DatePicker, { registerLocale } from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { ru } from 'date-fns/locale';
 import { CalculationResult, ApiResponse, FirstMirror } from '../types';
+
+registerLocale('ru', ru);
 import { calculateDigitalCode } from '../services/calculator';
 import { generateFirstMirror } from '../services/interpretation';
 import { numberKnowledge } from '../data/numberKnowledge';
@@ -28,6 +33,7 @@ const MeanderDivider = () => (
 
 export default function CodeArchitecture() {
   const [date, setDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [reading, setReading] = useState<FirstMirror | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -45,19 +51,6 @@ export default function CodeArchitecture() {
 
   const matrixRef = useRef<HTMLDivElement>(null);
   
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, '');
-    if (val.length > 8) val = val.slice(0, 8);
-    
-    let formatted = val;
-    if (val.length >= 5) {
-      formatted = `${val.slice(0, 2)}.${val.slice(2, 4)}.${val.slice(4)}`;
-    } else if (val.length >= 3) {
-      formatted = `${val.slice(0, 2)}.${val.slice(2)}`;
-    }
-    setDate(formatted);
-  };
-
   const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorInfo(null);
@@ -224,12 +217,27 @@ export default function CodeArchitecture() {
         className="w-full max-w-md flex flex-col items-center mb-10"
       >
         <div className="relative w-full flex items-center group">
-          <input
-            type="text"
-            value={date}
-            onChange={handleDateChange}
-            placeholder="ДД.ММ.ГГГГ"
+          <DatePicker
+            selected={selectedDate}
+            onChange={(d: Date | null) => {
+              setSelectedDate(d);
+              if (d) {
+                const dayStr = String(d.getDate()).padStart(2, '0');
+                const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+                const yearStr = String(d.getFullYear());
+                setDate(`${dayStr}.${monthStr}.${yearStr}`);
+              } else {
+                setDate('');
+              }
+            }}
+            dateFormat="dd.MM.yyyy"
+            locale="ru"
+            showYearDropdown
+            showMonthDropdown
+            dropdownMode="select"
+            placeholderText="ДД.ММ.ГГГГ"
             className="w-full bg-transparent border-b border-[var(--color-border)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl md:text-3xl py-4 outline-none transition-colors placeholder:text-[var(--color-border)] text-[var(--color-ink)]"
+            wrapperClassName="w-full"
           />
           <button 
             type="submit" 
