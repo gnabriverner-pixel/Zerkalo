@@ -21,8 +21,6 @@ export const LeadModal: React.FC<LeadModalProps> = ({
   const [leadStatus, setLeadStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [leadMessage, setLeadMessage] = useState('');
 
-  // Update birthDate if defaultBirthDate changes, only if form is untouched ideally, 
-  // but let's just initialize it on open using useEffect.
   React.useEffect(() => {
     if (isOpen) {
       setLeadForm(prev => ({ ...prev, birthDate: defaultBirthDate }));
@@ -150,10 +148,10 @@ export const LeadModal: React.FC<LeadModalProps> = ({
                     type="checkbox" 
                     id="lead_consent" 
                     required
-                    className={`w-4 h-4 cursor-pointer accent-[var(--color-antique-gold)]`}
+                    className="w-4 h-4 cursor-pointer accent-[var(--color-antique-gold)]"
                   />
                   <label htmlFor="lead_consent" className={`text-[10px] sm:text-xs cursor-pointer select-none left-0 ${textMuted}`}>
-                     Я согласен с положениями <a href="/privacy.html" target="_blank" className="underline hover:text-[var(--color-antique-gold)]">Политикой обработки персональных данных</a>
+                    Я согласен с <a href="/privacy.html" target="_blank" className="underline hover:text-[var(--color-antique-gold)]">Политикой обработки персональных данных</a>
                   </label>
                 </div>
 
