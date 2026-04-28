@@ -15,16 +15,7 @@ export function generateFirstMirror(calc: CalculationResult): string {
     ? getCompoundKnowledge(calc.resultComposite.split('/')[0])
     : null;
 
-  let text = `### Главный узор\n`;
-  text += `В вашей конфигурации ярко проявлено сочетание внутренней потребности в том, чтобы ${soul.positions.soul.short.toLowerCase().replace('внутренняя потребность ', '')} `;
-  text += `и поведенческого маршрута, где движение происходит через ${path.positions.path.short.toLowerCase().replace('движение через ', '')}. `;
-  if (compoundPath && compoundPath.compound !== 11) {
-      text += `Этот путь дополняется оттенком союза энергий: ${compoundPath.digits.join(' и ')}.\n\n`;
-  } else {
-      text += `\n\n`;
-  }
-
-  text += `### Сильная сторона\n`;
+  let text = `### Сильная сторона\n`;
   text += `Сильная сторона этого первого слоя может проявляться в следующем: ${soul.positions.soul.strength.toLowerCase()} И кроме того: ${path.positions.path.strength.toLowerCase()}\n\n`;
 
   text += `### Внутреннее напряжение\n`;
