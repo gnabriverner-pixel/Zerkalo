@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { CalculationResult, ApiResponse } from '../types';
 import { calculateDigitalCode } from '../services/calculator';
+import { generateFirstMirror } from '../services/interpretation';
 import ReactMarkdown from 'react-markdown';
 
 const NUMBER_MEANINGS: Record<string, { title: string, text: string }> = {
@@ -47,6 +48,12 @@ export default function CodeArchitecture() {
   const [hoveredLines, setHoveredLines] = useState<string[]>([]);
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
   const [selectedMainNumber, setSelectedMainNumber] = useState<string | null>(null);
+  
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [leadForm, setLeadForm] = useState({ name: '', contact: '', request: '' });
+  const [leadStatus, setLeadStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [leadMessage, setLeadMessage] = useState('');
+
   const matrixRef = useRef<HTMLDivElement>(null);
   
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,10 +98,16 @@ export default function CodeArchitecture() {
           const data: ApiResponse = await res.json();
           if (data.status === 'ok' && data.code_result) {
             setReading(data.code_result.mirror_text);
-          } else if (data.status === 'error' && data.ui?.safe_message) {
-             setErrorInfo({ message: data.ui.safe_message, type: "network" });
-          } else if (data.status === 'demo' && data.ui?.safe_message) {
-            setReading(data.ui.safe_message);
+          } else if (data.status === 'error' || data.status === 'demo') {
+             if (data.ui?.safe_message && data.status === 'demo') {
+               // Show demo message but keep the generic error out of error display
+               setReading(`${data.ui.safe_message}\n\n${generateFirstMirror(calc)}`);
+             } else if (data.status === 'error' && data.ui?.safe_message) {
+               setErrorInfo({ message: data.ui.safe_message, type: "network" });
+               setReading(generateFirstMirror(calc));
+             } else {
+               setReading(generateFirstMirror(calc));
+             }
           }
         } catch (err) {
           console.error(err);
@@ -110,6 +123,36 @@ export default function CodeArchitecture() {
       }
     } else {
       setErrorInfo({ message: "Формат: ДД.ММ.ГГГГ", type: "validation" });
+    }
+  };
+
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLeadStatus('submitting');
+    setLeadMessage('');
+
+    try {
+      const res = await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...leadForm,
+          birthDate: date,
+          source: 'CodeArchitecture_BigResearch_CTA'
+        })
+      });
+
+      const data = await res.json();
+      if (data.status === 'ok') {
+        setLeadStatus('success');
+        setLeadMessage(data.ui?.safe_message || "Заявка успешно отправлена.");
+      } else {
+        setLeadStatus('error');
+        setLeadMessage(data.ui?.safe_message || "Произошла ошибка при отправке.");
+      }
+    } catch (err) {
+      setLeadStatus('error');
+      setLeadMessage("Ошибка сети. Пожалуйста, попробуйте позже.");
     }
   };
 
@@ -149,6 +192,9 @@ export default function CodeArchitecture() {
         </h1>
         <p className="font-sans text-xs md:text-sm tracking-[0.3em] uppercase text-gray-400">
           Познай самого себя
+        </p>
+        <p className="font-sans text-sm text-gray-500 mt-6 max-w-md mx-auto">
+          Введите дату рождения — система покажет первый слой вашей внутренней архитектуры.
         </p>
       </motion.div>
 
@@ -385,8 +431,9 @@ export default function CodeArchitecture() {
                           className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-300 cursor-default ${(hoveredLines.includes('d1') || hoveredLines.includes('d2')) ? LINE_STYLES['d'].bg : 'bg-white/80'}`}
                         >
                           <div className="flex gap-2 sm:gap-3 mb-1">
-                            <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${hoveredLines.includes('d1') || hoveredLines.includes('d2') ? LINE_STYLES['d'].text : 'text-gray-900'}`} title={`Духовность (1-5-9): ${d1}`}>↘<span className="text-[9px] sm:text-[10px] ml-0.5">{d1}</span></span>
-                            <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${hoveredLines.includes('d1') || hoveredLines.includes('d2') ? LINE_STYLES['d'].text : 'text-[var(--color-gold)]'}`} title={`Темперамент (3-5-7): ${d2}`}>↙<span className="text-[9px] sm:text-[10px] ml-0.5">{d2}</span></span>
+                            <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${hoveredLines.includes('d1') ? LINE_STYLES['d'].text : 'text-gray-900'}`} title={`Духовность (1-5-9): ${d1}`}>{d1}</span>
+                            <span className="text-gray-300">/</span>
+                            <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${hoveredLines.includes('d2') ? LINE_STYLES['d'].text : 'text-[var(--color-gold)]'}`} title={`Темперамент (3-5-7): ${d2}`}>{d2}</span>
                           </div>
                           <span className={`text-[0.4rem] sm:text-[0.45rem] tracking-widest uppercase mt-1 text-center leading-[1.2] transition-colors duration-300 ${hoveredLines.includes('d1') || hoveredLines.includes('d2') ? LINE_STYLES['d'].text : 'text-gray-400'}`}>ДУХ.<br/>ТЕМП.</span>
                         </motion.div>
@@ -455,13 +502,95 @@ export default function CodeArchitecture() {
                 </motion.div>
               ) : null}
               
-              <button className="mt-4 px-8 py-4 bg-gray-900 text-white font-sans text-xs tracking-widest uppercase hover:bg-gray-800 transition-colors">
+              <button 
+                onClick={() => setShowLeadForm(true)}
+                className="mt-4 px-8 py-4 bg-gray-900 text-white font-sans text-xs tracking-widest uppercase hover:bg-gray-800 transition-colors"
+              >
                 Получить Большое исследование
               </button>
               <p className="text-[10px] text-gray-400 font-sans tracking-wide uppercase mt-4 max-w-xs">
                 Расширенный разбор, PDF и личный маршрут. Не предсказание. Не диагноз.
               </p>
             </div>
+            
+            {/* Lead Form Modal */}
+            <AnimatePresence>
+              {showLeadForm && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                >
+                  <motion.div
+                    initial={{ scale: 0.95, y: 20 }}
+                    animate={{ scale: 1, y: 0 }}
+                    exit={{ scale: 0.95, y: 20 }}
+                    className="bg-white p-8 max-w-md w-full relative shadow-xl"
+                  >
+                    <button 
+                      onClick={() => setShowLeadForm(false)}
+                      className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      ✕
+                    </button>
+                    
+                    <h3 className="font-serif text-2xl text-gray-900 mb-2">Большое исследование</h3>
+                    <p className="font-sans text-sm text-gray-500 mb-6">Оставьте заявку, и я свяжусь с вами, чтобы обсудить детали и начать работу над вашим персональным разбором.</p>
+                    
+                    {leadStatus === 'success' ? (
+                      <div className="bg-green-50 text-green-800 p-6 text-center font-sans">
+                        <p>{leadMessage}</p>
+                        <button 
+                          onClick={() => setShowLeadForm(false)}
+                          className="mt-6 px-6 py-2 border border-green-800 text-green-800 hover:bg-green-800 hover:text-white transition-colors text-xs tracking-widest uppercase"
+                        >
+                          Закрыть
+                        </button>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleLeadSubmit} className="flex flex-col gap-4">
+                        <input 
+                          type="text" 
+                          placeholder="Ваше имя" 
+                          required
+                          value={leadForm.name}
+                          onChange={e => setLeadForm({...leadForm, name: e.target.value})}
+                          className="w-full bg-gray-50 border border-gray-200 p-3 font-sans text-sm outline-none focus:border-[var(--color-gold)]"
+                        />
+                        <input 
+                          type="text" 
+                          placeholder="Ваш контакт (Telegram, Email...)" 
+                          required
+                          value={leadForm.contact}
+                          onChange={e => setLeadForm({...leadForm, contact: e.target.value})}
+                          className="w-full bg-gray-50 border border-gray-200 p-3 font-sans text-sm outline-none focus:border-[var(--color-gold)]"
+                        />
+                        <textarea 
+                          placeholder="Какой у вас сейчас главный запрос? (необязательно)" 
+                          rows={3}
+                          value={leadForm.request}
+                          onChange={e => setLeadForm({...leadForm, request: e.target.value})}
+                          className="w-full bg-gray-50 border border-gray-200 p-3 font-sans text-sm outline-none focus:border-[var(--color-gold)] resize-none"
+                        ></textarea>
+                        
+                        {leadStatus === 'error' && (
+                          <div className="text-red-600 text-xs font-sans mt-1">{leadMessage}</div>
+                        )}
+                        
+                        <button 
+                          type="submit" 
+                          disabled={leadStatus === 'submitting'}
+                          className="mt-2 w-full py-4 bg-[var(--color-gold)] text-white font-sans text-xs tracking-widest uppercase hover:bg-[#a67c00] transition-colors disabled:opacity-50 flex justify-center items-center"
+                        >
+                          {leadStatus === 'submitting' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Отправить заявку'}
+                        </button>
+                      </form>
+                    )}
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
           </motion.div>
         )}

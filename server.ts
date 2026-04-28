@@ -4,12 +4,70 @@ import path from "path";
 import fs from "fs/promises";
 import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
+import { generateFullInterpretationPayload } from "./src/services/interpretation";
 
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
+
+  app.post("/api/lead", async (req, res) => {
+    try {
+      const { name, birthDate, contact, request, source } = req.body;
+      
+      if (!name || !birthDate || !contact) {
+        return res.status(200).json({
+          status: "error",
+          ui: { safe_message: "Пожалуйста, заполните обязательные поля (Имя, Дата, Контакт)." }
+        });
+      }
+      
+      if (request && request.length > 1000) {
+        return res.status(200).json({
+          status: "error",
+          ui: { safe_message: "Длина запроса превышает 1000 символов." }
+        });
+      }
+
+      const lead = {
+        timestamp: new Date().toISOString(),
+        name,
+        birthDate,
+        contact,
+        request,
+        source
+      };
+
+      const leadsFilePath = path.join(process.cwd(), 'leads.json');
+      let leads = [];
+      try {
+        const fileContent = await fs.readFile(leadsFilePath, 'utf-8');
+        leads = JSON.parse(fileContent);
+      } catch (err) {
+        // File doesn't exist or is invalid JSON, start fresh
+      }
+      
+      leads.push(lead);
+      await fs.writeFile(leadsFilePath, JSON.stringify(leads, null, 2), 'utf-8');
+      
+      res.status(200).json({
+        status: "ok",
+        ui: {
+          safe_message: "Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования."
+        }
+      });
+    } catch (error) {
+      console.error("Developer Log: Failed to save lead:", error);
+      // Even if file writing fails, we acknowledge to the user successfully
+      res.status(200).json({
+        status: "ok",
+        ui: {
+          safe_message: "Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования."
+        }
+      });
+    }
+  });
 
   app.post("/api/generate", async (req, res) => {
     try {
@@ -23,7 +81,7 @@ async function startServer() {
         return res.status(200).json({ 
           mode,
           status: "demo",
-          ui: { safe_message: "Сейчас доступна демонстрационная версия истории. Полная персональная генерация будет доступна после подключения сервиса." }
+          ui: { safe_message: "Сейчас доступна демонстрационная версия." }
         });
       }
 
@@ -32,14 +90,17 @@ async function startServer() {
       // Read AGENTS.md
       const agentsPrompt = await fs.readFile(path.join(process.cwd(), 'AGENTS.md'), 'utf-8').catch(() => '');
       
-      const systemInstruction = `Ты — старший продукт-дизайнер и AI-стратег проекта «Зеркало». Отвечай строго в формате JSON без markdown-оборачивания, валидный JSON.\n\n${agentsPrompt}`;
+      const systemInstruction = `Ты — эксперт проекта «Цифровой Код». Отвечай строго в формате JSON без markdown-оборачивания, валидный JSON.\n\n${agentsPrompt}`;
       
       let prompt = "";
       if (mode === "code") {
+        const payloadStr = JSON.stringify(generateFullInterpretationPayload(calc), null, 2);
         prompt = `Пользователь запросил короткое зеркало для "Архитектуры Кода". Дата: ${date}.
-Рассчитанные данные: Душа ${calc.soul}, Путь ${calc.path}, Направление ${calc.direction}, Выражение ${calc.expression}, Результат ${calc.result}.
+Рассчитанные данные и структурированная смысловая база (СТРОГО используй эти значения):
+${payloadStr}
 
-Сгенерируй короткое "Первое зеркало" (3-5 предложений, не generic, без мистики, с опорой на числа, один практический вывод).
+Сгенерируй короткое "Первое зеркало" (3-5 предложений), опираясь ТОЛЬКО на предоставленную смысловую базу проекта.
+
 Верни JSON:
 {
   "mode": "code",
@@ -66,12 +127,10 @@ async function startServer() {
     "story": "полный текст сказки (с абзацами, используй \\n\\n)",
     "meaning": [
       "Что означает главный образ...",
-      "Что означает препятствие...",
-      "Что означает ресурс...",
-      "Где находится первый поворот..."
+      "Что означает препятствие..."
     ],
-    "one_step": "одно простое действие на сегодня",
-    "journal_question": "Какой момент в этой истории отозвался сильнее всего?"
+    "one_step": "одно простое действие",
+    "journal_question": "вопрос"
   }
 }`;
       }
@@ -110,7 +169,7 @@ async function startServer() {
         return res.status(200).json({ 
           mode: req.body.mode,
           status: "demo",
-          ui: { safe_message: "Сейчас доступна демонстрационная версия истории. Полная персональная генерация будет доступна после подключения сервиса." }
+          ui: { safe_message: "Сейчас доступна демонстрационная версия." }
         });
       } else {
         console.error("Developer Log: AI Generation Error:", error);
