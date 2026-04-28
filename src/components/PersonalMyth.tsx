@@ -1,12 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, BookOpen, Sparkles, Feather, Archive, X } from 'lucide-react';
-import DatePicker, { registerLocale } from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import { ru } from 'date-fns/locale';
 import { ApiResponse, StoryInputs } from '../types';
-
-registerLocale('ru', ru);
+import { LeadModal } from './LeadModal';
 
 export default function PersonalMyth() {
   const [step, setStep] = useState(0); // 0 = Intro, 1-4 = questions, 5 = generating, 6 = result
@@ -15,11 +11,6 @@ export default function PersonalMyth() {
   const [errorText, setErrorText] = useState('');
   const [safeMessage, setSafeMessage] = useState('');
   const [showLeadForm, setShowLeadForm] = useState(false);
-  const [leadForm, setLeadForm] = useState({ name: '', birthDate: '', contact: '', request: '' });
-  const [leadStatus, setLeadStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
-  const [leadMessage, setLeadMessage] = useState('');
-  const [date, setDate] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
 
@@ -30,37 +21,6 @@ export default function PersonalMyth() {
     { color: '#B59E74', shadow: 'rgba(181, 158, 116, 0.2)', name: 'Живость' }, // Шаг 3: Живость (старое золото)
     { color: '#6B7A87', shadow: 'rgba(107, 122, 135, 0.2)', name: 'Потребность' }  // Шаг 4: Потребность (сумеречно-сизый)
   ];
-
-  const handleLeadSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLeadStatus('submitting');
-    setLeadMessage('');
-
-    try {
-      const res = await fetch('/api/lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...leadForm,
-          source: 'personal_myth_big_research'
-        })
-      });
-
-      const data = await res.json();
-
-      if (data.status === 'ok') {
-        setLeadStatus('success');
-        setLeadMessage(data.ui?.safe_message || 'Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования.');
-        setLeadForm({ name: '', birthDate: '', contact: '', request: '' });
-      } else {
-        setLeadStatus('error');
-        setLeadMessage(data.ui?.safe_message || 'Пожалуйста, проверьте данные и попробуйте ещё раз.');
-      }
-    } catch (err) {
-      setLeadStatus('error');
-      setLeadMessage('Произошла ошибка при отправке. Пожалуйста, проверьте данные и попробуйте ещё раз.');
-    }
-  };
 
   const steps = [
       {
@@ -397,92 +357,12 @@ export default function PersonalMyth() {
       </div>
 
       {/* Lead Form Modal */}
-      <AnimatePresence>
-        {showLeadForm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F1412]/90 p-4 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-[#111A16] p-8 md:p-12 max-w-md w-full relative shadow-2xl border border-[#2A3B33]"
-            >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#A3B8AD] to-transparent opacity-20"></div>
-              <button 
-                onClick={() => setShowLeadForm(false)}
-                className="absolute top-6 right-6 text-gray-500 hover:text-[#A3B8AD] transition-colors"
-              >
-                <X className="w-6 h-6" strokeWidth={1} />
-              </button>
-              
-              <h3 className="font-serif text-3xl text-[#EAEAEA] mb-4">Большое исследование</h3>
-              <p className="font-sans text-[0.95rem] text-gray-400 mb-8 leading-relaxed">Оставьте заявку, и я свяжусь с вами, чтобы обсудить детали и начать работу над вашим персональным разбором.</p>
-              
-              {leadStatus === 'success' ? (
-                <div className="bg-[#1A2621]/30 border border-[#2A3B33] p-8 text-center font-serif text-[1.1rem]">
-                  <p className="text-[#A3B8AD]">{leadMessage}</p>
-                  <button 
-                    onClick={() => setShowLeadForm(false)}
-                    className="mt-8 px-8 py-3 bg-[#A3B8AD] text-[#0F1412] font-sans text-xs tracking-[0.15em] uppercase hover:bg-[#8CA296] transition-colors"
-                  >
-                    Закрыть
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleLeadSubmit} className="flex flex-col gap-5">
-                  <input 
-                    type="text" 
-                    placeholder="Ваше имя" 
-                    required
-                    value={leadForm.name}
-                    onChange={e => setLeadForm({...leadForm, name: e.target.value})}
-                    className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors"
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="Ваш контакт (Telegram, Email...)" 
-                    required
-                    value={leadForm.contact}
-                    onChange={e => setLeadForm({...leadForm, contact: e.target.value})}
-                    className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors"
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="Дата рождения для полного исследования" 
-                    required
-                    value={leadForm.birthDate}
-                    onChange={e => setLeadForm({...leadForm, birthDate: e.target.value})}
-                    className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors"
-                  />
-                  <textarea 
-                    placeholder="Короткий запрос (необязательно)" 
-                    rows={3}
-                    value={leadForm.request}
-                    onChange={e => setLeadForm({...leadForm, request: e.target.value})}
-                    className="w-full bg-transparent border-b border-[#2A3B33] p-4 font-serif text-lg outline-none focus:border-[#A3B8AD] text-[#EAEAEA] placeholder:text-[#3A4B43] transition-colors resize-none mt-2"
-                  ></textarea>
-                  
-                  {leadStatus === 'error' && (
-                    <div className="text-red-400 bg-red-900/20 p-3 text-sm font-sans mt-2 border border-red-900/50">{leadMessage}</div>
-                  )}
-                  
-                  <button 
-                    type="submit" 
-                    disabled={leadStatus === 'submitting'}
-                    className="mt-6 w-full py-5 bg-[#A3B8AD] text-[#0F1412] font-sans text-xs tracking-[0.15em] uppercase hover:bg-[#8CA296] transition-colors disabled:opacity-50 flex justify-center items-center"
-                  >
-                    {leadStatus === 'submitting' ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Отправить заявку'}
-                  </button>
-                </form>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <LeadModal 
+        isOpen={showLeadForm} 
+        onClose={() => setShowLeadForm(false)} 
+        source="personal_myth_big_research" 
+        theme="dark" 
+      />
     </div>
   );
 }

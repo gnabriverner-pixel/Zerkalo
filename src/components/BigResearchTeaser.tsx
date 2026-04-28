@@ -18,7 +18,7 @@ export const BigResearchTeaser: React.FC<Props> = ({ onCtaClick }) => {
       animate={{ opacity: 1, y: 0 }}
       className="w-full max-w-4xl mx-auto my-16 bg-[var(--color-ink)] text-[var(--color-ivory)] relative overflow-hidden shadow-2xl"
     >
-      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/white-diamond-dark.png")' }}></div>
+      <div className="absolute inset-0 opacity-20" style={{ background: 'radial-gradient(circle at center, rgba(163, 184, 173, 0.15) 0%, transparent 70%), linear-gradient(135deg, rgba(16, 26, 22, 0.8) 0%, rgba(20, 25, 22, 0.9) 100%)' }}></div>
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-50"></div>
       
       <div className="p-12 md:p-20 relative z-10 flex flex-col items-center border border-[var(--border-soft)] border-opacity-20">
@@ -67,7 +67,7 @@ export const BigResearchTeaser: React.FC<Props> = ({ onCtaClick }) => {
           Запросить разбор
         </button>
         <p className="text-[0.65rem] text-gray-500 font-sans tracking-[0.2em] uppercase mt-6 opacity-80">
-          Живое слово. Без алгоритмов.
+          Расчёт, собранный в живое слово.
         </p>
       </div>
     </motion.div>

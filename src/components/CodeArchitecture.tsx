@@ -13,6 +13,7 @@ import { numberKnowledge } from '../data/numberKnowledge';
 import { FirstMirrorPanel } from './FirstMirrorPanel';
 import { BigResearchTeaser } from './BigResearchTeaser';
 import { CompatibilityPanel } from './CompatibilityPanel';
+import { LeadModal } from './LeadModal';
 
 const NUM_LINES: Record<string, string[]> = {
   '1': ['r1', 'c1', 'd1'], '4': ['r1', 'c2'], '7': ['r1', 'c3', 'd2'],
@@ -67,9 +68,7 @@ export default function CodeArchitecture() {
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
   const [selectedMainNumber, setSelectedMainNumber] = useState<{title: string, value: number, pos: string} | null>(null);
   
-  const [showPdfModal, setShowPdfModal] = useState(false);
-  const [pdfStatus, setPdfStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
-  const [pdfMessage, setPdfMessage] = useState('');
+  const [showLeadModal, setShowLeadModal] = useState(false);
   const [demoNotice, setDemoNotice] = useState('');
   const [consentChecked, setConsentChecked] = useState(false);
 
@@ -143,30 +142,7 @@ export default function CodeArchitecture() {
   };
 
   const handlePdfRequest = async () => {
-    setPdfStatus('submitting');
-    setPdfMessage('Отправка запроса...');
-
-    try {
-      const res = await fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          birthDate: date,
-        })
-      });
-
-      const data = await res.json();
-      if (data.status === 'ok') {
-        setPdfStatus('success');
-        setPdfMessage(data.ui?.safe_message || "Ожидайте загрузку Большого исследования...");
-      } else {
-        setPdfStatus('success'); // Even if error, show as a simple success message for now
-        setPdfMessage("Функционал генерации Большого исследования находится в разработке. Скоро эта возможность станет доступной.");
-      }
-    } catch (err) {
-      setPdfStatus('error');
-      setPdfMessage("Ошибка при составлении запроса. Пожалуйста, попробуйте позже.");
-    }
+    setShowLeadModal(true);
   };
 
       const NumberCard = ({ title, pos, value, composite, delay }: { title: string, pos: string, value: number, composite: string, delay: number }) => {
@@ -181,7 +157,7 @@ export default function CodeArchitecture() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0, scale: isSelected ? 1.02 : 1 }}
         transition={{ duration: 0.8, delay: (isSelected) ? 0 : delay, ease: [0.16, 1, 0.3, 1] }}
-        className={`flex flex-col items-center p-8 md:p-10 bg-[var(--color-surface)] bg-marble ${isSelected ? 'bg-[var(--color-ivory)] z-10 shadow-[var(--shadow-luxury)]' : 'hover:bg-[var(--color-ivory)] hover:z-10 hover:shadow-2xl'} relative overflow-visible group transition-all duration-700 w-full outline-none border hover:border-[var(--color-antique-gold)] hover:border-opacity-30 ${isSelected ? 'border-[var(--color-antique-gold)] border-opacity-50' : 'border-transparent'}`}
+        className={`flex flex-col items-center p-8 md:p-10 bg-[var(--color-surface)] bg-marble ${isSelected ? 'bg-gradient-to-br from-[var(--color-ivory)] to-[#f2eee3] z-10 shadow-[0_40px_100px_rgba(30,25,18,0.18)]' : 'hover:bg-[var(--color-ivory)] hover:z-10 hover:shadow-2xl'} relative overflow-visible group transition-all duration-700 w-full outline-none border hover:border-[var(--color-antique-gold)] hover:border-opacity-30 ${isSelected ? 'border-[var(--color-antique-gold)] border-opacity-50' : 'border-transparent'}`}
       >
         <div className={`absolute top-4 left-4 w-4 h-4 border-t border-l border-[var(--color-antique-gold)] transition-opacity duration-700 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
         <div className={`absolute top-4 right-4 w-4 h-4 border-t border-r border-[var(--color-antique-gold)] transition-opacity duration-700 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
@@ -310,7 +286,7 @@ export default function CodeArchitecture() {
               className="w-4 h-4 accent-[var(--color-antique-gold)] cursor-pointer"
             />
             <label htmlFor="consent" className="text-xs text-[var(--color-muted)] cursor-pointer select-none">
-              Я согласен с условиями обработки персональных данных
+              Я согласен с <a href="/privacy.html" target="_blank" className="underline hover:text-[var(--color-antique-gold)]">Политикой обработки персональных данных</a>
             </label>
           </div>
         </div>
@@ -648,62 +624,25 @@ export default function CodeArchitecture() {
             <div className="w-full flex flex-col items-center mb-12">
               {reading ? (
                 <>
-                  <FirstMirrorPanel data={reading} onCtaClick={() => { setShowPdfModal(true); handlePdfRequest(); }} />
+                  <FirstMirrorPanel data={reading} onCtaClick={handlePdfRequest} />
                   {demoNotice && (
                     <p className="text-center font-sans text-[0.7rem] tracking-[0.1em] text-[var(--color-muted)] uppercase mb-12 opacity-80">
                       {demoNotice}
                     </p>
                   )}
-                  <BigResearchTeaser onCtaClick={() => { setShowPdfModal(true); handlePdfRequest(); }} />
+                  <BigResearchTeaser onCtaClick={handlePdfRequest} />
                 </>
               ) : null}
             </div>
 
-            {/* Pdf Form Modal */}
-            <AnimatePresence>
-              {showPdfModal && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-ink)]/80 p-4 backdrop-blur-sm"
-                >
-                  <motion.div
-                    initial={{ scale: 0.95, y: 20 }}
-                    animate={{ scale: 1, y: 0 }}
-                    exit={{ scale: 0.95, y: 20 }}
-                    className="bg-[var(--color-marble)] p-8 md:p-12 max-w-md w-full relative shadow-2xl border border-[var(--border-soft)]"
-                  >
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-30"></div>
-                    <button 
-                      onClick={() => setShowPdfModal(false)}
-                      className="absolute top-6 right-6 text-[var(--color-muted)] hover:text-[var(--color-antique-gold)] transition-colors"
-                    >
-                      <X className="w-6 h-6" strokeWidth={1} />
-                    </button>
-                    
-                    <h3 className="font-serif text-3xl text-[var(--color-ink)] mb-4">Большое исследование</h3>
-                    
-                    {pdfStatus === 'submitting' ? (
-                      <div className="flex flex-col items-center py-12">
-                        <Loader2 className="w-8 h-8 animate-spin text-[var(--color-antique-gold)] mb-6" />
-                        <p className="text-sm font-sans text-[var(--color-muted)]">{pdfMessage}</p>
-                      </div>
-                    ) : (
-                      <div className="bg-[var(--color-ivory)] border border-[var(--border-soft)] p-8 text-center font-serif text-[1.1rem]">
-                        <p className="text-[var(--color-ink)]">{pdfMessage}</p>
-                        <button 
-                          onClick={() => setShowPdfModal(false)}
-                          className="mt-8 px-8 py-3 bg-[var(--color-ink)] text-[var(--color-ivory)] font-sans text-xs tracking-[0.15em] uppercase hover:bg-black transition-colors"
-                        >
-                          Закрыть
-                        </button>
-                      </div>
-                    )}
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Lead Form Modal */}
+            <LeadModal 
+              isOpen={showLeadModal} 
+              onClose={() => setShowLeadModal(false)} 
+              source="code_big_research" 
+              defaultBirthDate={date} 
+              theme="light" 
+            />
           </motion.div>
         )}
       </AnimatePresence>

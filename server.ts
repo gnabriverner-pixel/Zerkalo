@@ -12,6 +12,14 @@ async function startServer() {
 
   app.use(express.json());
 
+  app.get("/health", (req, res) => {
+    res.json({
+      status: "ok",
+      service: "zerkalo",
+      version: "0.1.0"
+    });
+  });
+
   app.post("/api/lead", async (req, res) => {
     try {
       const { name, birthDate, contact, request, source } = req.body;

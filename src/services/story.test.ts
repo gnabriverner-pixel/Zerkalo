@@ -62,17 +62,19 @@ describe('Story Module constraints', () => {
     }
   });
 
-  it('PersonalMyth.tsx содержит birthDate в leadForm и отправляет в /api/lead', () => {
-    const fileContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
-    expect(fileContent).toMatch(/setLeadForm\(\{.*birthDate:/);
-    expect(fileContent).toMatch(/\.\.\.leadForm/);
+  it('LeadModal.tsx содержит birthDate в leadForm и отправляет в /api/lead', () => {
+    const fileContent = fs.readFileSync(path.join(__dirname, '../components/LeadModal.tsx'), 'utf-8');
+    expect(fileContent).toMatch(/birthDate:/);
+    expect(fileContent).toMatch(/\/api\/lead/);
   });
 
-  it('PersonalMyth.tsx проверяет data.status и закрывает опасные баги', () => {
-    const fileContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
-    expect(fileContent).toMatch(/data\.status === 'ok'/);
-    expect(fileContent).toMatch(/data\.status === 'demo'/);
-    expect(fileContent).toMatch(/applyFallback\(\)/);
-    expect(fileContent).not.toMatch(/dangerouslySetInnerHTML/);
+  it('LeadModal.tsx и PersonalMyth.tsx проверяет data.status', () => {
+    const leadContent = fs.readFileSync(path.join(__dirname, '../components/LeadModal.tsx'), 'utf-8');
+    expect(leadContent).toMatch(/data\.status === 'ok'/);
+    
+    const pmContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
+    expect(pmContent).toMatch(/data\.status === 'demo'/);
+    expect(pmContent).toMatch(/applyFallback\(\)/);
+    expect(pmContent).not.toMatch(/dangerouslySetInnerHTML/);
   });
 });
