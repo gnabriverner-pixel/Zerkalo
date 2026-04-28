@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { numberKnowledge } from '../data/numberKnowledge';
 import { compoundKnowledge } from '../data/compoundKnowledge';
+import fs from 'fs';
+import path from 'path';
+
+describe('Project setup', () => {
+  it('should have leads.json in .gitignore', () => {
+    const gitignorePath = path.resolve(__dirname, '../../.gitignore');
+    const content = fs.readFileSync(gitignorePath, 'utf8');
+    expect(content).toContain('leads.json');
+  });
+});
 
 describe('numberKnowledge', () => {
   it('contains mandatory numbers 1-9 and 11', () => {
@@ -19,7 +29,6 @@ describe('numberKnowledge', () => {
     expect(jsonStr).not.toContain('исцеление');
     expect(jsonStr).not.toContain('вампир');
     expect(jsonStr).not.toContain('гарантированно');
-    // We already scrubbed "судьба" out partially, maybe allow non-fatalistic usages but we can check
   });
 });
 
@@ -29,6 +38,21 @@ describe('compoundKnowledge', () => {
     required.forEach(num => {
       const entry = Object.values(compoundKnowledge).find(c => c.value === num);
       expect(entry).toBeDefined();
+    });
+  });
+
+  it('does not contain generic boilerplate strings', () => {
+    const jsonStr = JSON.stringify(compoundKnowledge);
+    expect(jsonStr).not.toContain('и  ');
+    expect(jsonStr).not.toContain('Балансировать проявление составных частей');
+    expect(jsonStr).not.toContain('Дисбаланс между');
+  });
+
+  it('has sufficient length for accent, risk, and recommendation', () => {
+    Object.values(compoundKnowledge).forEach(entry => {
+      expect(entry.accent.length).toBeGreaterThanOrEqual(80);
+      expect(entry.risk.length).toBeGreaterThanOrEqual(80);
+      expect(entry.recommendation.length).toBeGreaterThanOrEqual(80);
     });
   });
 });

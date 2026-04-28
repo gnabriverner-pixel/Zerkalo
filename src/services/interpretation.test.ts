@@ -9,12 +9,27 @@ describe('interpretation', () => {
     
     expect(mirror.title).toBeDefined();
     expect(mirror.blocks.length).toBe(4);
-    expect(mirror.formula.numbers).toContain('6');
-    expect(mirror.formula.numbers).toContain('8');
     
-    const textStr = JSON.stringify(mirror.blocks);
-    expect(textStr).not.toMatch(/диагноз/i);
-    expect(textStr).not.toMatch(/исцеление/i);
-    expect(textStr).not.toMatch(/100%/i);
+    const textStr = JSON.stringify(mirror);
+    expect(textStr).toContain('6');
+    expect(textStr).toContain('8');
+    expect(textStr).toContain('11');
+    expect(textStr).toContain('5');
+    expect(textStr).toContain('1');
+
+    expect(mirror.cta).toBeDefined();
+    expect(mirror.disclaimer).toBeDefined();
+
+    const lowerStr = textStr.toLowerCase();
+    expect(lowerStr).not.toMatch(/диагноз/i);
+    expect(lowerStr).not.toMatch(/исцеление/i);
+    expect(lowerStr).not.toMatch(/100%/i);
+    expect(lowerStr).not.toMatch(/магия/i);
+    expect(lowerStr).not.toMatch(/предсказание/i);
+    expect(lowerStr).not.toMatch(/гарантированно/i);
+    expect(lowerStr).not.toMatch(/обреч/i);
+    expect(lowerStr).not.toMatch(/исцел/i);
+    expect(lowerStr).not.toMatch(/судьба неизбежна/i);
+    expect(lowerStr).not.toMatch(/вы точно/i);
   });
 });

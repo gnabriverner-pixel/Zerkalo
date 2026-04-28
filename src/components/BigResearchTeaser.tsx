@@ -16,44 +16,44 @@ export const BigResearchTeaser: React.FC<Props> = ({ onCtaClick }) => {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-4xl mx-auto my-16 bg-[var(--color-ink)] text-[var(--color-ivory)] relative overflow-hidden"
+      className="w-full max-w-4xl mx-auto my-16 bg-[var(--color-ink)] text-[var(--color-ivory)] relative overflow-hidden shadow-2xl"
     >
       <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/white-diamond-dark.png")' }}></div>
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-50"></div>
       
       <div className="p-12 md:p-20 relative z-10 flex flex-col items-center border border-[var(--border-soft)] border-opacity-20">
         <h2 className="font-serif text-4xl md:text-5xl mb-4 text-center tracking-wide">Большое исследование</h2>
-        <p className="font-sans text-xs tracking-[0.25em] uppercase text-[var(--color-antique-gold)] mb-8 text-center bg-[var(--color-ink)] px-4">
+        <p className="font-sans text-[0.65rem] tracking-[0.3em] uppercase text-[var(--color-antique-gold)] mb-8 text-center bg-[var(--color-ink)] px-4">
           ПОЛНЫЙ ПЕРСОНАЛЬНЫЙ ДОКУМЕНТ
         </p>
         
-        <p className="font-serif text-[1.1rem] md:text-xl text-center leading-relaxed text-[var(--color-muted)] max-w-2xl mb-12 italic">
-          Глубокий разбор вашей матрицы. Мы описываем не только отдельные числа, но и связи между ними: внутренние опоры, спрятанные конфликты, денежный и творческий потенциал.
+        <p className="font-serif text-[1.15rem] md:text-xl text-center leading-relaxed text-[var(--color-muted)] max-w-2xl mb-16 italic">
+          Глубокий разбор формулы личности. Мы описываем не только базовые числа, но и сложную архитектуру матрицы: внутренние опоры, точки напряжения, деньги и реализацию.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl mb-16 text-left">
-          <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-3xl mb-16 text-left">
+          <div className="space-y-8">
             <div>
-              <h4 className="font-sans text-[0.7rem] tracking-widest uppercase text-[var(--color-antique-gold)] mb-2">Глава I</h4>
-              <h3 className="font-serif text-xl border-b border-gray-700 pb-2">Ядро и Сила</h3>
-              <p className="font-sans text-sm text-gray-400 mt-2">Детальный анализ чисел Души, Пути, Направления, Выражения и Результата. Сложные составные энергии и ключи к ним.</p>
+              <h4 className="font-sans text-[0.65rem] tracking-[0.2em] uppercase text-[var(--color-antique-gold)] mb-3">Глава I</h4>
+              <h3 className="font-serif text-2xl border-b border-gray-700 pb-3 mb-3 text-[var(--color-ivory)]">Ядро и Сила</h3>
+              <p className="font-sans text-sm text-gray-400 leading-relaxed">Детальный анализ чисел Души, Пути, Направления, Выражения и Результата. Сильные стороны, составные числа и ключи к ним.</p>
             </div>
             <div>
-              <h4 className="font-sans text-[0.7rem] tracking-widest uppercase text-[var(--color-antique-gold)] mb-2">Глава II</h4>
-              <h3 className="font-serif text-xl border-b border-gray-700 pb-2">Матрица в деталях</h3>
-              <p className="font-sans text-sm text-gray-400 mt-2">Линии, диагонали, нули и перегрузы. Как балансировать дефицит энергии и не сгореть от ее избытка.</p>
+              <h4 className="font-sans text-[0.65rem] tracking-[0.2em] uppercase text-[var(--color-antique-gold)] mb-3">Глава II</h4>
+              <h3 className="font-serif text-2xl border-b border-gray-700 pb-3 mb-3 text-[var(--color-ivory)]">Матрица архитектуры</h3>
+              <p className="font-sans text-sm text-gray-400 leading-relaxed">Матрица ресурсов и задач. Линии, диагонали, нули и перегрузы. Как балансировать дефицит опоры и управлять избытком силы.</p>
             </div>
           </div>
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div>
-              <h4 className="font-sans text-[0.7rem] tracking-widest uppercase text-[var(--color-antique-gold)] mb-2">Глава III</h4>
-              <h3 className="font-serif text-xl border-b border-gray-700 pb-2">Деньги и Циклы</h3>
-              <p className="font-sans text-sm text-gray-400 mt-2">Анализ денежного кода и определение вашего текущего Личного Года. Стратегия действий на текущий цикл.</p>
+              <h4 className="font-sans text-[0.65rem] tracking-[0.2em] uppercase text-[var(--color-antique-gold)] mb-3">Глава III</h4>
+              <h3 className="font-serif text-2xl border-b border-gray-700 pb-3 mb-3 text-[var(--color-ivory)]">Циклы и Реализация</h3>
+              <p className="font-sans text-sm text-gray-400 leading-relaxed">Деньги и реализация, ваш Личный год и отношения. Стратегия действий, опирающаяся на текущий временной цикл.</p>
             </div>
             <div>
-              <h4 className="font-sans text-[0.7rem] tracking-widest uppercase text-[var(--color-antique-gold)] mb-2">Глава IV</h4>
-              <h3 className="font-serif text-xl border-b border-gray-700 pb-2">Синтез</h3>
-              <p className="font-sans text-sm text-gray-400 mt-2">Как все элементы работают вместе. Главные точки напряжения и практические шаги для гармонизации.</p>
+              <h4 className="font-sans text-[0.65rem] tracking-[0.2em] uppercase text-[var(--color-antique-gold)] mb-3">Глава IV</h4>
+              <h3 className="font-serif text-2xl border-b border-gray-700 pb-3 mb-3 text-[var(--color-ivory)]">Синтез</h3>
+              <p className="font-sans text-sm text-gray-400 leading-relaxed">Как все элементы работают вместе. Главные точки напряжения и практический маршрут для движения вперёд.</p>
             </div>
           </div>
         </div>
@@ -62,12 +62,12 @@ export const BigResearchTeaser: React.FC<Props> = ({ onCtaClick }) => {
 
         <button 
           onClick={onCtaClick}
-          className="mt-8 px-10 py-5 bg-[var(--color-antique-gold)] text-[var(--color-ivory)] hover:bg-[#8A6327] transition-colors font-sans text-xs tracking-widest uppercase shadow-lg shadow-black/20"
+          className="mt-6 px-12 py-5 bg-[var(--color-antique-gold)] text-[var(--color-ink)] hover:bg-[#b08833] transition-all font-sans text-[0.65rem] tracking-[0.25em] uppercase shadow-lg hover:shadow-xl hover:-translate-y-px"
         >
-          Получить Большое исследование
+          Запросить разбор
         </button>
-        <p className="text-[10px] text-gray-500 font-sans tracking-widest uppercase mt-6">
-          Закрытый премиальный продукт
+        <p className="text-[0.65rem] text-gray-500 font-sans tracking-[0.2em] uppercase mt-6 opacity-80">
+          Живое слово. Без алгоритмов.
         </p>
       </div>
     </motion.div>

@@ -17,13 +17,17 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
     ? getCompoundKnowledge(calc.pathComposite.split('/')[0])
     : null;
 
-  const resultCompoundInfo = calc.resultComposite && calc.resultComposite.includes('/') 
+  const compoundDir = calc.directionComposite && calc.directionComposite.includes('/')
+    ? getCompoundKnowledge(calc.directionComposite.split('/')[0])
+    : null;
+
+  const compoundRes = calc.resultComposite && calc.resultComposite.includes('/')
     ? getCompoundKnowledge(calc.resultComposite.split('/')[0])
     : null;
 
   return {
     title: "Ваш цифровой код собран",
-    subtitle: "Это первое зеркало: короткий разбор формулы, сильных сторон, напряжений и направления развития.",
+    subtitle: "Архитектура Силы: короткий срез",
     formula: {
       numbers: `${calc.soul} · ${calc.path} · ${calc.expression} · ${calc.direction} · ${calc.result}`,
       planets: `${soul.planet} · ${path.planet} · ${expression.planet} · ${direction.planet} · ${result.planet}`,
@@ -34,33 +38,33 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
       {
         id: "main_pattern",
         title: "Главный узор",
-        text: `В этой формуле первым виден не столько характер, сколько способ сборки внутренней силы. Ядро вашей матрицы опирается на энергию ${soul.number} (${soul.planet}). ${soul.positions.soul.essence} Внешний мир при этом открывает для вас двери через ваши стратегические действия по вектору ${path.number}: ${path.positions.path.essence}`
+        text: `Ядро вашей матрицы опирается на энергию ${soul.number} (${soul.planet}). ${soul.positions.soul.essence} Внешний мир при этом открывается через ваши стратегические действия по линии Пути (${path.number}): ${path.positions.path.essence.toLowerCase()} Этот способ двигаться неизбежно ведёт вас к финальной сборке — энергии ${result.number}. Ваша главная задача — прийти к состоянию, в котором ${result.positions.result.essence.toLowerCase()}`
       },
       {
         id: "strength",
         title: "Что уже является силой",
-        text: `Ваша главная опора кроется в вашей сути: ${soul.positions.soul.strength.toLowerCase()} Эта базовая сборка усиливается способностью действовать в своей среде: ${path.positions.path.strength.toLowerCase()}`
+        text: `Ваша главная опора кроется в вашей сути: ${soul.positions.soul.strength.toLowerCase()} Этот глубокий внутренний ресурс транслируется вовне через ваш образ и манеру контакта с миром — энергию Выражения (${expression.number}). Окружающие считывают вас как человека, чья сила в том, чтобы ${expression.positions.expression.strength.toLowerCase()} Это сочетание позволяет вам открывать нужные двери, просто оставаясь собой.`
       },
       {
         id: "tension",
         title: "Где возникает напряжение",
-        text: `Однако сильная архитектура всегда требует выдерживания точек давления. Вы можете сталкиваться с тем, что ${soul.positions.soul.tension.toLowerCase()} Это сопротивление часто усугубляется вызовом на уровне пути: ${path.positions.path.tension.toLowerCase()}`
+        text: `Сильная архитектура выявляет зоны трения при столкновении с реальностью. Ваш Путь (${path.number}) сталкивается с Направлением (${direction.number}). Вы можете чувствовать сопротивление, когда вам нужно ${direction.positions.direction.tension.toLowerCase()}, в то время как ваш привычный метод требует ${path.positions.path.tension.toLowerCase()} ${compoundPath ? `Сценарий перехода ${calc.pathComposite} добавляет скрытый риск: ${compoundPath.risk.toLowerCase()} ` : ''} ${compoundDir ? `А вектор ${calc.directionComposite} предупреждает: ${compoundDir.risk.toLowerCase()}` : ''}`
       },
       {
         id: "step",
         title: "Первый практический шаг",
-        text: `В качестве первого практического шага на ближайший период вам может быть полезно ${soul.positions.soul.recommendation.toLowerCase()} Энергия вашего числа пути дополняет это правило: ${path.positions.path.recommendation.toLowerCase()} ${compoundPath ? `Дополнительно стоит отметить сценарий ${compoundPath.value}: ${compoundPath.recommendation}` : ''}`
+        text: `Чтобы вектор развития не замирал, начните с осознанного применения вашей энергии Направления (${direction.number}): ${direction.positions.direction.recommendation.toLowerCase()} Это не просто действие, это способ проложить дорогу к вашему итоговому смыслу — Результату (${result.number}). Зрелость вашей матрицы наступит тогда, когда вы сможете ${result.positions.result.recommendation.toLowerCase()} ${compoundRes ? compoundRes.recommendation : ''}`
       }
     ],
-    strengthTags: [soul.gift.split(',')[0], path.gift.split(',')[0], soul.keywords[0], path.keywords[1]],
-    tensionTags: [soul.shadow.split(',')[0], path.shadow.split(',')[0]],
-    practicalStep: soul.practicalKey,
+    strengthTags: [soul.gift.split(',')[0], path.gift.split(',')[0], expression.keywords[0], direction.keywords[1]],
+    tensionTags: [soul.shadow.split(',')[0], path.shadow.split(',')[0], direction.shadow.split(',')[0]],
+    practicalStep: direction.practicalKey || soul.practicalKey,
     cta: {
       title: "Хотите увидеть полную карту?",
-      text: "Большое исследование раскрывает не только числа, но и связи между ними: внутренние опоры, напряжения, сценарии выбора, матрицу, отношения, деньги и личный маршрут.",
+      text: "Большое исследование раскрывает не только эти пять чисел, но и матрицу, скрытые конфликты, денежный вектор и ваш персональный временной цикл.",
       button: "Получить Большое исследование"
     },
-    disclaimer: "Информационно-аналитический формат. Не диагноз и не предсказание. Цифровой Код — это инструмент самопознания и рефлексии."
+    disclaimer: "Информационно-аналитический формат. Не является вердиктом или гаданием. Цифровой Код — это инструмент самопознания и рефлексии."
   };
 }
 
