@@ -1,20 +1,39 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Zerkalo
 
-# Run and deploy your AI Studio app
+## Что это
+Кратко: web-прототип проекта «Зеркало / Цифровой Код» с двумя режимами:
+- Архитектура Кода
+- Личный Миф
 
-This contains everything you need to run your app locally.
+## Запуск локально
 
-View your app in AI Studio: https://ai.studio/apps/c25f0dce-bdee-4a58-b211-64bf597007e2
+```bash
+npm install
+cp .env.example .env
+npm run dev
+```
 
-## Run Locally
+## Переменные окружения
 
-**Prerequisites:**  Node.js
+GEMINI_API_KEY — ключ Gemini, используется только на backend.
 
+## Что уже работает
+- ввод даты
+- расчёт 5 главных чисел
+- базовая и детальная матрица
+- генерация Первого зеркала через backend
+- режим Личный Миф
+- demo fallback при отсутствии ключа
+- безопасный ответ при ошибке API
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Что пока mock/demo
+- оплата
+- PDF
+- дневник
+- личный кабинет
+- Telegram Mini App
+
+## Security
+- не хранить секреты во frontend
+- не коммитить .env
+- использовать только .env.example
