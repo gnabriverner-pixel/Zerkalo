@@ -25,6 +25,29 @@ const LINE_STYLES: Record<string, { bg: string, bgEmpty: string, text: string }>
   'd': { bg: 'bg-[var(--color-ivory)]', bgEmpty: 'bg-[var(--color-ivory)]', text: 'text-[var(--color-antique-gold)]' }
 };
 
+const MATRIX_CELL_MEANS: Record<string, string> = {
+  '1': 'Характер, воля',
+  '2': 'Энергия, действия',
+  '3': 'Интерес, познание',
+  '4': 'Здоровье, тело',
+  '5': 'Логика, интуиция',
+  '6': 'Труд, мастерство',
+  '7': 'Везение, удача',
+  '8': 'Долг, терпимость',
+  '9': 'Память, ум'
+};
+
+const MATRIX_LINE_MEANS: Record<string, string> = {
+  'r1': 'Целеустремленность (1-4-7)',
+  'r2': 'Семейственность (2-5-8)',
+  'r3': 'Стабильность (3-6-9)',
+  'c1': 'Самооценка (1-2-3)',
+  'c2': 'Материальное (4-5-6)',
+  'c3': 'Талант (7-8-9)',
+  'd1': 'Внутренний компас (1-5-9)',
+  'd2': 'Темперамент (3-5-7)'
+};
+
 const MeanderDivider = () => (
   <svg width="120" height="12" viewBox="0 0 120 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto my-8 opacity-40">
     <path d="M0 6H10V1H20V11H30V6H40V1H50V11H60V6H70V1H80V11H90V6H100V1H110V11H120" stroke="var(--color-antique-gold)" strokeWidth="0.5" strokeMiterlimit="10"/>
@@ -43,10 +66,9 @@ export default function CodeArchitecture() {
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
   const [selectedMainNumber, setSelectedMainNumber] = useState<{title: string, value: number, pos: string} | null>(null);
   
-  const [showLeadForm, setShowLeadForm] = useState(false);
-  const [leadForm, setLeadForm] = useState({ name: '', contact: '', request: '' });
-  const [leadStatus, setLeadStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
-  const [leadMessage, setLeadMessage] = useState('');
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfStatus, setPdfStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [pdfMessage, setPdfMessage] = useState('');
   const [demoNotice, setDemoNotice] = useState('');
 
   const matrixRef = useRef<HTMLDivElement>(null);
@@ -116,33 +138,30 @@ export default function CodeArchitecture() {
     }
   };
 
-  const handleLeadSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLeadStatus('submitting');
-    setLeadMessage('');
+  const handlePdfRequest = async () => {
+    setPdfStatus('submitting');
+    setPdfMessage('Отправка запроса...');
 
     try {
-      const res = await fetch('/api/lead', {
+      const res = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...leadForm,
           birthDate: date,
-          source: 'big_research'
         })
       });
 
       const data = await res.json();
       if (data.status === 'ok') {
-        setLeadStatus('success');
-        setLeadMessage(data.ui?.safe_message || "Заявка успешно отправлена.");
+        setPdfStatus('success');
+        setPdfMessage(data.ui?.safe_message || "Ожидайте загрузку Большого исследования...");
       } else {
-        setLeadStatus('error');
-        setLeadMessage(data.ui?.safe_message || "Произошла ошибка при отправке.");
+        setPdfStatus('success'); // Even if error, show as a simple success message for now
+        setPdfMessage("Функционал генерации Большого исследования находится в разработке. Скоро эта возможность станет доступной.");
       }
     } catch (err) {
-      setLeadStatus('error');
-      setLeadMessage("Ошибка сети. Пожалуйста, попробуйте позже.");
+      setPdfStatus('error');
+      setPdfMessage("Ошибка при составлении запроса. Пожалуйста, попробуйте позже.");
     }
   };
 
@@ -156,9 +175,11 @@ export default function CodeArchitecture() {
         type="button"
         onClick={() => setSelectedMainNumber(isSelected ? null : {title, value, pos})}
         initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] }}
-        className={`flex flex-col items-center p-8 bg-[var(--color-surface)] bg-marble ${isSelected ? 'bg-[var(--color-ivory)]' : 'hover:bg-[var(--color-ivory)]'} relative overflow-hidden group transition-all duration-500 w-full outline-none border hover:border-[var(--color-antique-gold)] hover:border-opacity-30 ${isSelected ? 'border-[var(--color-antique-gold)] border-opacity-50' : 'border-transparent'}`}
+        animate={{ opacity: 1, y: 0, scale: isSelected ? 1.05 : 1 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ duration: 0.3, delay: (isSelected) ? 0 : delay, ease: [0.16, 1, 0.3, 1] }}
+        className={`flex flex-col items-center p-8 bg-[var(--color-surface)] bg-marble ${isSelected ? 'bg-[var(--color-ivory)] z-10 shadow-lg' : 'hover:bg-[var(--color-ivory)] hover:z-10 hover:shadow-lg'} relative overflow-hidden group transition-all duration-500 w-full outline-none border hover:border-[var(--color-antique-gold)] hover:border-opacity-30 ${isSelected ? 'border-[var(--color-antique-gold)] border-opacity-50' : 'border-transparent'}`}
       >
         <div className={`absolute top-3 left-3 w-3 h-3 border-t border-l border-[var(--color-antique-gold)] transition-opacity duration-500 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`}></div>
         <div className={`absolute top-3 right-3 w-3 h-3 border-t border-r border-[var(--color-antique-gold)] transition-opacity duration-500 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`}></div>
@@ -410,6 +431,7 @@ export default function CodeArchitecture() {
                       const hoverLine = hoveredLines.find(line => NUM_LINES[num].includes(line));
                       const isHovered = !!hoverLine;
                       const isSelected = selectedCell === num;
+                      const cellMeaning = MATRIX_CELL_MEANS[num] || `Качество ${num}`;
                       
                       let bgColor = "bg-[var(--color-surface)] bg-marble";
                       let textColor = "text-[var(--color-ink)]";
@@ -433,13 +455,16 @@ export default function CodeArchitecture() {
                       return (
                         <motion.button
                           key={`${matrixType}-${num}`}
+                          title={`${cellMeaning}: ${count} цифр`}
                           onClick={() => setSelectedCell(selectedCell === num ? null : num)}
                           onMouseEnter={() => setHoveredLines(NUM_LINES[num])}
                           onMouseLeave={() => setHoveredLines([])}
                           initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.3, delay: index * 0.04 }}
-                          className={`w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center outline-none transition-colors duration-300 cursor-pointer ${bgColor} ${textColor}`}
+                          animate={{ opacity: 1, scale: isSelected ? 1.08 : 1 }}
+                          whileHover={{ scale: isSelected ? 1.08 : 1.08 }}
+                          whileTap={{ scale: 0.95 }}
+                          transition={{ duration: 0.2, delay: (isSelected || isHovered) ? 0 : index * 0.04 }}
+                          className={`w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center outline-none transition-colors duration-300 cursor-pointer ${bgColor} ${textColor} ${isSelected ? 'z-10 shadow-md ring-1 ring-[var(--color-antique-gold)]' : 'shadow-sm hover:z-10 hover:shadow-md'}`}
                         >
                           {content}
                         </motion.button>
@@ -447,23 +472,30 @@ export default function CodeArchitecture() {
                     };
 
                     const LineSum = ({ label, value, index, lineId }: { label: string, value: number, index: number, lineId: string }) => {
-                      const isHovered = hoveredLines.includes(lineId);
+                      const isHovered = hoveredLines.includes(lineId) || (!!selectedCell && NUM_LINES[selectedCell]?.includes(lineId));
+                      const lineMeaning = MATRIX_LINE_MEANS[lineId] || label;
                       
                       return (
                         <motion.div
                           key={`${matrixType}-${label}`}
+                          title={`Линия «${lineMeaning}»: сумма ${value} цифр`}
                           onMouseEnter={() => setHoveredLines([lineId])}
                           onMouseLeave={() => setHoveredLines([])}
                           initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.3, delay: index * 0.04 }}
-                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-300 cursor-default ${isHovered ? LINE_STYLES['r'].bg : 'bg-[var(--color-surface)] bg-marble'}`}
+                          animate={{ opacity: 1, scale: isHovered ? 1.05 : 1 }}
+                          whileHover={{ scale: 1.05 }}
+                          transition={{ duration: 0.2, delay: isHovered ? 0 : index * 0.04 }}
+                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-300 cursor-default ${isHovered ? LINE_STYLES['r'].bg + ' z-10 shadow-sm ring-1 ring-[var(--color-antique-gold)]/50' : 'bg-[var(--color-surface)] bg-marble'}`}
                         >
                           <span className={`font-serif text-lg transition-colors duration-300 ${(isHovered) ? LINE_STYLES['r'].text : (value >= 5 ? 'text-[var(--color-antique-gold)]' : 'text-[var(--color-muted)]')}`}>{value}</span>
                           <span className={`text-[0.45rem] sm:text-[0.55rem] tracking-widest uppercase mt-1 transition-colors duration-300 ${isHovered ? LINE_STYLES['r'].text : 'text-[var(--color-muted)] opacity-60'}`}>{label}</span>
                         </motion.div>
                       );
                     };
+
+                    const isD1Active = hoveredLines.includes('d1') || (!!selectedCell && NUM_LINES[selectedCell]?.includes('d1'));
+                    const isD2Active = hoveredLines.includes('d2') || (!!selectedCell && NUM_LINES[selectedCell]?.includes('d2'));
+                    const isAnyDActive = isD1Active || isD2Active;
 
                     return (
                       <>
@@ -496,16 +528,17 @@ export default function CodeArchitecture() {
                           onMouseEnter={() => setHoveredLines(['d1', 'd2'])}
                           onMouseLeave={() => setHoveredLines([])}
                           initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.3, delay: 15 * 0.04 }}
-                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-300 cursor-default ${(hoveredLines.includes('d1') || hoveredLines.includes('d2')) ? LINE_STYLES['d'].bg : 'bg-[var(--color-surface)] bg-marble'}`}
+                          animate={{ opacity: 1, scale: isAnyDActive ? 1.05 : 1 }}
+                          whileHover={{ scale: 1.05 }}
+                          transition={{ duration: 0.2, delay: isAnyDActive ? 0 : 15 * 0.04 }}
+                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-300 cursor-default ${isAnyDActive ? LINE_STYLES['d'].bg + ' z-10 shadow-sm ring-1 ring-[var(--color-antique-gold)]/50' : 'bg-[var(--color-surface)] bg-marble'}`}
                         >
                           <div className="flex gap-2 sm:gap-3 mb-1">
-                            <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${hoveredLines.includes('d1') ? LINE_STYLES['d'].text : 'text-[var(--color-ink)]'}`} title={`Внутренний компас (1-5-9): ${d1}`}>{d1}</span>
+                            <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${isD1Active ? LINE_STYLES['d'].text : 'text-[var(--color-ink)]'}`} title={`Внутренний компас (1-5-9): ${d1}`}>{d1}</span>
                             <span className="text-[var(--color-border)]">/</span>
-                            <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${hoveredLines.includes('d2') ? LINE_STYLES['d'].text : 'text-[var(--color-antique-gold)]'}`} title={`Темперамент (3-5-7): ${d2}`}>{d2}</span>
+                            <span className={`text-xs sm:text-sm font-serif transition-colors duration-300 ${isD2Active ? LINE_STYLES['d'].text : 'text-[var(--color-antique-gold)]'}`} title={`Темперамент (3-5-7): ${d2}`}>{d2}</span>
                           </div>
-                          <span className={`text-[0.4rem] sm:text-[0.45rem] tracking-widest uppercase mt-1 text-center leading-[1.2] transition-colors duration-300 ${hoveredLines.includes('d1') || hoveredLines.includes('d2') ? LINE_STYLES['d'].text : 'text-[var(--color-muted)] opacity-60'}`}>ВНУТР.<br/>ТЕМП.</span>
+                          <span className={`text-[0.4rem] sm:text-[0.45rem] tracking-widest uppercase mt-1 text-center leading-[1.2] transition-colors duration-300 ${isAnyDActive ? LINE_STYLES['d'].text : 'text-[var(--color-muted)] opacity-60'}`}>ВНУТР.<br/>ТЕМП.</span>
                         </motion.div>
                       </>
                     );
@@ -523,20 +556,20 @@ export default function CodeArchitecture() {
                 </div>
               ) : reading ? (
                 <>
-                  <FirstMirrorPanel data={reading} onCtaClick={() => setShowLeadForm(true)} />
+                  <FirstMirrorPanel data={reading} onCtaClick={() => { setShowPdfModal(true); handlePdfRequest(); }} />
                   {demoNotice && (
                     <p className="text-center font-sans text-[0.7rem] tracking-[0.1em] text-[var(--color-muted)] uppercase mb-12 opacity-80">
                       {demoNotice}
                     </p>
                   )}
-                  <BigResearchTeaser onCtaClick={() => setShowLeadForm(true)} />
+                  <BigResearchTeaser onCtaClick={() => { setShowPdfModal(true); handlePdfRequest(); }} />
                 </>
               ) : null}
             </div>
 
-            {/* Lead Form Modal */}
+            {/* Pdf Form Modal */}
             <AnimatePresence>
-              {showLeadForm && (
+              {showPdfModal && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -551,63 +584,29 @@ export default function CodeArchitecture() {
                   >
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-30"></div>
                     <button 
-                      onClick={() => setShowLeadForm(false)}
+                      onClick={() => setShowPdfModal(false)}
                       className="absolute top-6 right-6 text-[var(--color-muted)] hover:text-[var(--color-antique-gold)] transition-colors"
                     >
                       <X className="w-6 h-6" strokeWidth={1} />
                     </button>
                     
                     <h3 className="font-serif text-3xl text-[var(--color-ink)] mb-4">Большое исследование</h3>
-                    <p className="font-sans text-[0.95rem] text-[var(--color-muted)] mb-8 leading-relaxed">Оставьте заявку, и я свяжусь с вами, чтобы обсудить детали и начать работу над вашим персональным разбором.</p>
                     
-                    {leadStatus === 'success' ? (
+                    {pdfStatus === 'submitting' ? (
+                      <div className="flex flex-col items-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-[var(--color-antique-gold)] mb-6" />
+                        <p className="text-sm font-sans text-[var(--color-muted)]">{pdfMessage}</p>
+                      </div>
+                    ) : (
                       <div className="bg-[var(--color-ivory)] border border-[var(--border-soft)] p-8 text-center font-serif text-[1.1rem]">
-                        <p className="text-[var(--color-ink)]">{leadMessage}</p>
+                        <p className="text-[var(--color-ink)]">{pdfMessage}</p>
                         <button 
-                          onClick={() => setShowLeadForm(false)}
+                          onClick={() => setShowPdfModal(false)}
                           className="mt-8 px-8 py-3 bg-[var(--color-ink)] text-[var(--color-ivory)] font-sans text-xs tracking-[0.15em] uppercase hover:bg-black transition-colors"
                         >
                           Закрыть
                         </button>
                       </div>
-                    ) : (
-                      <form onSubmit={handleLeadSubmit} className="flex flex-col gap-5">
-                        <input 
-                          type="text" 
-                          placeholder="Ваше имя" 
-                          required
-                          value={leadForm.name}
-                          onChange={e => setLeadForm({...leadForm, name: e.target.value})}
-                          className="w-full bg-[var(--color-ivory)] border-b border-[var(--border-soft)] p-4 font-serif text-lg outline-none focus:border-[var(--color-antique-gold)] text-[var(--color-ink)] placeholder:text-[var(--color-muted)] placeholder:opacity-60 transition-colors"
-                        />
-                        <input 
-                          type="text" 
-                          placeholder="Ваш контакт (Telegram, Email...)" 
-                          required
-                          value={leadForm.contact}
-                          onChange={e => setLeadForm({...leadForm, contact: e.target.value})}
-                          className="w-full bg-[var(--color-ivory)] border-b border-[var(--border-soft)] p-4 font-serif text-lg outline-none focus:border-[var(--color-antique-gold)] text-[var(--color-ink)] placeholder:text-[var(--color-muted)] placeholder:opacity-60 transition-colors"
-                        />
-                        <textarea 
-                          placeholder="Какой у вас сейчас главный запрос? (необязательно)" 
-                          rows={3}
-                          value={leadForm.request}
-                          onChange={e => setLeadForm({...leadForm, request: e.target.value})}
-                          className="w-full bg-[var(--color-ivory)] border-b border-[var(--border-soft)] p-4 font-serif text-lg outline-none focus:border-[var(--color-antique-gold)] text-[var(--color-ink)] placeholder:text-[var(--color-muted)] placeholder:opacity-60 transition-colors resize-none mt-2"
-                        ></textarea>
-                        
-                        {leadStatus === 'error' && (
-                          <div className="text-red-800 bg-red-50 p-3 text-sm font-sans mt-2 border border-red-100">{leadMessage}</div>
-                        )}
-                        
-                        <button 
-                          type="submit" 
-                          disabled={leadStatus === 'submitting'}
-                          className="mt-6 w-full py-5 bg-[var(--color-ink)] text-[var(--color-ivory)] font-sans text-xs tracking-[0.15em] uppercase hover:bg-black transition-colors disabled:opacity-50 flex justify-center items-center shadow-sm"
-                        >
-                          {leadStatus === 'submitting' ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Отправить заявку'}
-                        </button>
-                      </form>
                     )}
                   </motion.div>
                 </motion.div>

@@ -69,6 +69,34 @@ async function startServer() {
     }
   });
 
+  app.post("/api/generate-pdf", async (req, res) => {
+    try {
+      const { birthDate } = req.body;
+      
+      if (!birthDate) {
+         return res.status(200).json({
+          status: "error",
+          ui: { safe_message: "Дата рождения обязательна." }
+        });
+      }
+
+      console.log(`SERVER LOG: PDF Generation requested for date: ${birthDate}`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      res.status(200).json({
+        status: "ok",
+        ui: { safe_message: "Функционал генерации Большого исследования находится в разработке. Скоро эта возможность станет доступной." }
+      });
+
+    } catch (err) {
+      console.error("PDF generation request error:", err);
+      res.status(200).json({
+        status: "error",
+        ui: { safe_message: "Произошла ошибка при отправке запроса. Пожалуйста, попробуйте позже." }
+      });
+    }
+  });
+
   app.post("/api/generate", async (req, res) => {
     try {
       const { mode, date, calc, storyInputs } = req.body;
