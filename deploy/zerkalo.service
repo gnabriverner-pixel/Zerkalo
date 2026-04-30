@@ -1,0 +1,21 @@
+[Unit]
+Description=Zerkalo Digital Code Web App
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/zerkalo
+ExecStart=/usr/bin/node --import tsx server.ts
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/zerkalo/.env
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/zerkalo
+
+[Install]
+WantedBy=multi-user.target
