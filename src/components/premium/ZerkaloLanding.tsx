@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { zerkaloContent } from '../../content/zerkaloLandingContent';
 
 export function PremiumHero() {
@@ -25,8 +26,6 @@ export function PremiumHero() {
 export function GoldLine() {
   return <div className="w-px h-10 bg-gradient-to-b from-transparent via-[var(--color-antique-gold)] to-transparent mx-auto opacity-50" />;
 }
-
-import { useState } from 'react';
 
 export function HowItWorksSection() {
   const c = zerkaloContent.howItWorks;
@@ -166,31 +165,80 @@ export function TrustSection() {
 
 export function LeadFormSection() {
   const c = zerkaloContent.request;
+  const [form, setForm] = useState({ name: '', birthDate: '', contact: '' });
   const [consent, setConsent] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !form.birthDate || !form.contact || !consent) return;
+    setStatus('submitting');
+    try {
+      const res = await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.name, birthDate: form.birthDate, contact: form.contact, source: 'premium-landing' })
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        setStatus('success');
+      } else {
+        setStatus('error');
+        setMessage(data.ui?.safe_message || 'Что-то пошло не так. Попробуйте позже.');
+      }
+    } catch {
+      setStatus('error');
+      setMessage('Не удалось отправить заявку. Проверьте соединение.');
+    }
+  };
+
+  if (status === 'success') {
+    return (
+      <section id="request" className="py-[clamp(3rem,10vw,7rem)]">
+        <div className="max-w-[480px] mx-auto px-[clamp(1.25rem,5vw,2rem)]">
+          <div className="bg-[var(--color-warm-paper)] border border-white/5 rounded-xl p-10 text-center">
+            <div className="text-4xl mb-5 opacity-60">◆</div>
+            <h3 className="font-serif font-semibold text-[clamp(1.2rem,3vw,1.5rem)] mb-4">Заявка принята</h3>
+            <p className="text-[var(--color-graphite)]">Разбор придёт в Telegram в течение 24 часов.</p>
+            <p className="text-[var(--color-muted)] text-sm mt-3">Зеркало уже начало работать.</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section id="request" className="py-[clamp(3rem,10vw,7rem)]">
       <div className="max-w-[480px] mx-auto px-[clamp(1.25rem,5vw,2rem)]">
         <h2 className="font-serif font-semibold text-[clamp(1.75rem,4.5vw,2.5rem)] text-center mb-4">{c.title}</h2>
         <p className="text-[var(--color-muted)] text-center mb-8">{c.subtitle}</p>
-        <div className="max-w-[360px] mx-auto">
+        <form onSubmit={handleSubmit} className="max-w-[360px] mx-auto">
           <div className="mb-4">
             <label className="block text-[0.7rem] text-[var(--color-muted)] uppercase tracking-[0.15em] mb-1.5">Имя</label>
-            <input type="text" placeholder="Ваше имя" className="w-full px-4 py-[13px] bg-[var(--color-warm-paper)] border border-[var(--color-bronze)] rounded-lg text-[var(--color-ivory)] text-[0.95rem] min-h-[50px] focus:outline-none focus:border-[var(--color-antique-gold)] transition-colors" />
+            <input type="text" required placeholder="Ваше имя" value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))}
+              className="w-full px-4 py-[13px] bg-[var(--color-warm-paper)] border border-[var(--color-bronze)] rounded-lg text-[var(--color-ivory)] text-[0.95rem] min-h-[50px] focus:outline-none focus:border-[var(--color-antique-gold)] transition-colors" />
           </div>
           <div className="mb-4">
             <label className="block text-[0.7rem] text-[var(--color-muted)] uppercase tracking-[0.15em] mb-1.5">Дата рождения</label>
-            <input type="date" className="w-full px-4 py-[13px] bg-[var(--color-warm-paper)] border border-[var(--color-bronze)] rounded-lg text-[var(--color-ivory)] text-[0.95rem] min-h-[50px] focus:outline-none focus:border-[var(--color-antique-gold)] transition-colors" />
+            <input type="date" required value={form.birthDate} onChange={e => setForm(p => ({...p, birthDate: e.target.value}))}
+              className="w-full px-4 py-[13px] bg-[var(--color-warm-paper)] border border-[var(--color-bronze)] rounded-lg text-[var(--color-ivory)] text-[0.95rem] min-h-[50px] focus:outline-none focus:border-[var(--color-antique-gold)] transition-colors" />
           </div>
           <div className="mb-4">
             <label className="block text-[0.7rem] text-[var(--color-muted)] uppercase tracking-[0.15em] mb-1.5">Контакт</label>
-            <input type="text" placeholder="Telegram или телефон" className="w-full px-4 py-[13px] bg-[var(--color-warm-paper)] border border-[var(--color-bronze)] rounded-lg text-[var(--color-ivory)] text-[0.95rem] min-h-[50px] focus:outline-none focus:border-[var(--color-antique-gold)] transition-colors" />
+            <input type="text" required placeholder="Telegram или телефон" value={form.contact} onChange={e => setForm(p => ({...p, contact: e.target.value}))}
+              className="w-full px-4 py-[13px] bg-[var(--color-warm-paper)] border border-[var(--color-bronze)] rounded-lg text-[var(--color-ivory)] text-[0.95rem] min-h-[50px] focus:outline-none focus:border-[var(--color-antique-gold)] transition-colors" />
           </div>
           <div className="flex items-start gap-2 text-[0.7rem] text-[var(--color-muted)] my-5 leading-relaxed">
-            <input type="checkbox" id="consent" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 accent-[var(--color-antique-gold)]" />
-            <label htmlFor="consent">{c.consent}</label>
+            <input type="checkbox" id="consent" required checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-0.5 accent-[var(--color-antique-gold)]" />
+            <label htmlFor="consent">Я согласен с <a href="/privacy.html" target="_blank" className="underline hover:text-[var(--color-antique-gold)]">Политикой обработки персональных данных</a></label>
           </div>
-          <a href="#delivery" className="flex items-center justify-center w-full px-9 py-[15px] bg-[var(--color-antique-gold)] text-[#0a0a0f] rounded-lg font-medium no-underline min-h-[50px]">{c.cta}</a>
-        </div>
+          {status === 'error' && <p className="text-red-400 text-xs text-center mb-4">{message}</p>}
+          <button type="submit" disabled={status === 'submitting'}
+            className="flex items-center justify-center w-full px-9 py-[15px] bg-[var(--color-antique-gold)] text-[#0a0a0f] rounded-lg font-medium no-underline min-h-[50px] disabled:opacity-50 transition-all">
+            {status === 'submitting' ? 'Отправка...' : c.cta}
+          </button>
+        </form>
       </div>
     </section>
   );
