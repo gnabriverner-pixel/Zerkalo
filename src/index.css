@@ -64,6 +64,40 @@
   }
 }
 
+/* === ZERKALO PREMIUM DARK THEME === */
+.dark-mirror {
+  --color-marble: #08080d;
+  --color-ivory: #f0ede8;
+  --color-warm-paper: #10101a;
+  --color-ink: #f0ede8;
+  --color-graphite: #a09890;
+  --color-muted: #6b6560;
+  --color-antique-gold: #c9a96e;
+  --color-deep-gold: #d4b87a;
+  --color-bronze: #23201c;
+  --border-soft: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mirror body,
+.dark-mirror {
+  background-color: #08080d;
+  color: #f0ede8;
+}
+
+.dark-mirror h1,
+.dark-mirror h2,
+.dark-mirror h3,
+.dark-mirror h4,
+.dark-mirror h5,
+.dark-mirror h6 {
+  color: #f0ede8;
+}
+
+@keyframes mirrorPulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.03); }
+}
+
 /* DatePicker Customs */
 .react-datepicker-wrapper {
   width: 100%;
