@@ -67,30 +67,30 @@ export default function CodeArchitecture() {
   const [hoveredLines, setHoveredLines] = useState<string[]>([]);
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
   const [selectedMainNumber, setSelectedMainNumber] = useState<{title: string, value: number, pos: string} | null>(null);
-  
+
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [demoNotice, setDemoNotice] = useState('');
   const [consentChecked, setConsentChecked] = useState(false);
 
   const matrixRef = useRef<HTMLDivElement>(null);
-  
+
   const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consentChecked) return;
     setErrorInfo(null);
     setSelectedCell(null);
     setHoveredLines([]);
-    
+
     const regex = /^(\d{2})\.(\d{2})\.(\d{4})$/;
     const match1 = date.match(regex);
-    
+
     if (match1) {
       const day1 = parseInt(match1[1], 10);
       const month1 = parseInt(match1[2], 10);
-      
+
       if (day1 > 0 && day1 <= 31 && month1 > 0 && month1 <= 12) {
         const calc = calculateDigitalCode(date);
-        
+
         setResult(calc);
         setReading(null);
         setDemoNotice('');
@@ -102,7 +102,7 @@ export default function CodeArchitecture() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'code', date, calc })
           });
-          
+
           const data: ApiResponse = await res.json();
           if (data.status === 'ok' && data.code_result?.first_mirror) {
             setReading(data.code_result.first_mirror);
@@ -149,11 +149,11 @@ export default function CodeArchitecture() {
     const isSelected = selectedMainNumber?.title === title;
     const numKey = value === 11 ? 11 : (value > 9 ? value % 9 || 9 : value); // handle higher numbers if happen
     const numInfo = numberKnowledge[numKey] || numberKnowledge[1];
-    
+
     const [showTooltip, setShowTooltip] = useState(false);
 
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0, scale: isSelected ? 1.02 : 1 }}
         transition={{ duration: 0.8, delay: (isSelected) ? 0 : delay, ease: [0.16, 1, 0.3, 1] }}
@@ -163,9 +163,9 @@ export default function CodeArchitecture() {
         <div className={`absolute top-4 right-4 w-4 h-4 border-t border-r border-[var(--color-antique-gold)] transition-opacity duration-700 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
         <div className={`absolute bottom-4 left-4 w-4 h-4 border-b border-l border-[var(--color-antique-gold)] transition-opacity duration-700 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
         <div className={`absolute bottom-4 right-4 w-4 h-4 border-b border-r border-[var(--color-antique-gold)] transition-opacity duration-700 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
-        
+
         {/* Helper Tooltip Icon */}
-        <div 
+        <div
           className="absolute top-5 right-5 z-20"
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
@@ -173,7 +173,7 @@ export default function CodeArchitecture() {
           <Info className="w-4 h-4 text-[var(--color-muted)] opacity-50 relative top-2 right-2 hover:opacity-100 hover:text-[var(--color-antique-gold)] cursor-help transition-colors" />
           <AnimatePresence>
             {showTooltip && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 5 }}
@@ -185,7 +185,7 @@ export default function CodeArchitecture() {
             )}
           </AnimatePresence>
         </div>
-        
+
         <span className={`font-serif text-[1.1rem] tracking-[0.15em] mb-6 z-10 transition-colors duration-500 uppercase text-[var(--color-muted)]`}>
           {title}
         </span>
@@ -209,35 +209,42 @@ export default function CodeArchitecture() {
 
   return (
     <div className="flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 bg-[var(--color-ivory)] bg-marble min-h-screen text-[var(--color-ink)] font-sans">
-      
+
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         className="text-center mb-16 pt-10"
       >
         <h1 className="font-serif text-5xl md:text-7xl tracking-widest uppercase mb-6 text-[var(--color-ink)] drop-shadow-sm">
-          Архитектура<br className="md:hidden" /> Кода
+          Зеркало<br className="md:hidden" /> себя
         </h1>
         <p className="font-sans text-xs md:text-sm tracking-[0.4em] uppercase text-[var(--color-antique-gold)] opacity-90 mb-4">
-          Познай самого себя
+          Цифровой Код
         </p>
         <MeanderDivider />
         <div className="relative inline-block mt-4">
           <div className="absolute -left-8 -top-8 w-16 h-16 bg-[var(--color-antique-gold)] opacity-5 blur-2xl rounded-full"></div>
-          <p className="font-serif text-[1.1rem] md:text-xl text-[var(--color-muted)] max-w-md mx-auto italic leading-relaxed relative z-10">
-            Введите дату рождения — система покажет первый слой вашей внутренней архитектуры.
+          <p className="font-serif text-[1.1rem] md:text-xl text-[var(--color-muted)] max-w-xl mx-auto italic leading-relaxed relative z-10">
+            Зеркало себя показывает не «судьбу», а вашу устойчивую архитектуру: как вы выбираете, действуете, держите нагрузку и где теряете опору.<br/>
+            Не гороскоп. Не гадание. Не обещание судьбы.
+          </p>
+        </div>
+        <div className="mt-8 mb-2">
+          <p className="font-sans text-[0.7rem] text-[var(--color-muted)] max-w-lg mx-auto leading-relaxed opacity-70">
+            Система использует дату рождения только для расчёта чисел.
+            Не вводите паспортные данные, адрес, банковские реквизиты или медицинские диагнозы.
           </p>
         </div>
       </motion.div>
 
       {/* Input Form */}
-      <motion.form 
+      <motion.form
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1, delay: 0.3 }}
-        onSubmit={handleCalculate} 
+        onSubmit={handleCalculate}
         className="w-full max-w-lg flex flex-col items-center mb-16"
       >
         <div className="w-full space-y-4">
@@ -264,8 +271,8 @@ export default function CodeArchitecture() {
               className="w-full bg-transparent text-center font-serif text-2xl md:text-3xl py-6 outline-none transition-colors placeholder:text-[var(--color-muted)]/50 text-[var(--color-ink)] px-16"
               wrapperClassName="w-full"
             />
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isGenerating || date.length !== 10 || !consentChecked}
               className="absolute right-3 p-4 bg-transparent text-[var(--color-ink)]/70 hover:text-[var(--color-antique-gold)] transition-all disabled:opacity-30 disabled:hover:text-[var(--color-ink)]/70"
             >
@@ -276,11 +283,11 @@ export default function CodeArchitecture() {
               )}
             </button>
           </div>
-          
+
           <div className="pt-2 flex items-center justify-center gap-3 w-full">
-            <input 
-              type="checkbox" 
-              id="consent" 
+            <input
+              type="checkbox"
+              id="consent"
               checked={consentChecked}
               onChange={(e) => setConsentChecked(e.target.checked)}
               className="w-4 h-4 accent-[var(--color-antique-gold)] cursor-pointer"
@@ -295,7 +302,7 @@ export default function CodeArchitecture() {
       {/* Error Display */}
       <AnimatePresence mode="wait">
         {errorInfo && (
-           <motion.div 
+           <motion.div
              initial={{ opacity: 0, y: -10 }}
              animate={{ opacity: 1, y: 0 }}
              exit={{ opacity: 0, y: -10 }}
@@ -309,7 +316,7 @@ export default function CodeArchitecture() {
       {/* Results */}
       <AnimatePresence mode="wait">
         {isGenerating ? (
-          <motion.div 
+          <motion.div
             key="skeleton"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -354,7 +361,7 @@ export default function CodeArchitecture() {
                   <div className="h-4 w-full bg-[var(--color-marble)] mb-4"></div>
                   <div className="h-4 w-5/6 bg-[var(--color-marble)] mb-4"></div>
                   <div className="h-4 w-4/6 bg-[var(--color-marble)] mb-8"></div>
-                  
+
                   <div className="grid grid-cols-2 gap-8 pt-8">
                      <div className="h-24 w-full bg-[var(--color-marble)]"></div>
                      <div className="h-24 w-full bg-[var(--color-marble)]"></div>
@@ -363,7 +370,7 @@ export default function CodeArchitecture() {
             </div>
           </motion.div>
         ) : result && (
-          <motion.div 
+          <motion.div
             key="results"
             layout
             initial={{ opacity: 0 }}
@@ -395,7 +402,7 @@ export default function CodeArchitecture() {
                 const knowledge = numberKnowledge[numKey] || numberKnowledge[1];
                 const pt = selectedMainNumber.pos as keyof typeof knowledge.positions;
                 const posData = knowledge.positions[pt] || { title: "", essence: "", strength: "", tension: "", recommendation: "" };
-                
+
                 return (
                   <motion.div
                     initial={{ opacity: 0, height: 0, y: -10 }}
@@ -411,14 +418,14 @@ export default function CodeArchitecture() {
                            <h3 className="font-serif text-4xl md:text-5xl text-[var(--color-ink)] tracking-wide">{posData.title}</h3>
                            <p className="font-sans text-[0.7rem] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] mt-3 font-medium">{knowledge.archetypeName}</p>
                         </div>
-                        <button 
+                        <button
                           onClick={() => setSelectedMainNumber(null)}
                           className="text-[var(--color-muted)] hover:text-[var(--color-ink)] bg-white/50 hover:bg-white rounded-full transition-all p-3 shadow-sm border border-transparent hover:border-[var(--border-soft)]"
                         >
                           <X className="w-6 h-6" strokeWidth={1} />
                         </button>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                          <div className="md:col-span-2 space-y-6">
                             <div>
@@ -459,7 +466,7 @@ export default function CodeArchitecture() {
             </AnimatePresence>
 
             {/* Matrix Section */}
-            <motion.div 
+            <motion.div
               layout
               ref={matrixRef}
               initial={{ opacity: 0, y: 20 }}
@@ -469,14 +476,14 @@ export default function CodeArchitecture() {
             >
               <div className="flex flex-col items-center">
                 <div className="flex gap-8 mb-10">
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setMatrixType('base')}
                     className={`font-sans text-xs tracking-[0.2em] uppercase transition-all duration-300 pb-2 outline-none ${matrixType === 'base' ? 'text-[var(--color-ink)] border-b border-[var(--color-antique-gold)] opacity-100' : 'text-[var(--color-muted)] border-b border-transparent opacity-60 hover:opacity-100'}`}
                   >
                     Базовая
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setMatrixType('detailed')}
                     className={`font-sans text-xs tracking-[0.2em] uppercase transition-all duration-300 pb-2 outline-none ${matrixType === 'detailed' ? 'text-[var(--color-ink)] border-b border-[var(--color-antique-gold)] opacity-100' : 'text-[var(--color-muted)] border-b border-transparent opacity-60 hover:opacity-100'}`}
@@ -484,11 +491,11 @@ export default function CodeArchitecture() {
                     Детальная
                   </button>
                 </div>
-                
+
                 <div className="grid grid-cols-4 gap-px bg-[var(--border-soft)] border border-[var(--border-soft)] shadow-sm bg-[var(--color-surface)]">
                   {(() => {
                     const activeMatrix = matrixType === 'base' ? result.baseMatrix : result.detailedMatrix;
-                    
+
                     const getCount = (digits: string) => digits.split('').reduce((acc, d) => acc + (activeMatrix[d] || 0), 0);
                     const r1 = getCount('147');
                     const r2 = getCount('258');
@@ -505,7 +512,7 @@ export default function CodeArchitecture() {
                       const isHovered = !!hoverLine;
                       const isSelected = selectedCell === num;
                       const cellMeaning = MATRIX_CELL_MEANS[num] || `Качество ${num}`;
-                      
+
                       let bgColor = "bg-[var(--color-surface)] bg-marble";
                       let textColor = "text-[var(--color-ink)]";
                       let content = <span className="font-sans text-sm text-[var(--color-border)] opacity-60">—</span>;
@@ -547,7 +554,7 @@ export default function CodeArchitecture() {
                     const LineSum = ({ label, value, index, lineId }: { label: string, value: number, index: number, lineId: string }) => {
                       const isHovered = hoveredLines.includes(lineId) || (!!selectedCell && NUM_LINES[selectedCell]?.includes(lineId));
                       const lineMeaning = MATRIX_LINE_MEANS[lineId] || label;
-                      
+
                       return (
                         <motion.div
                           key={`${matrixType}-${label}`}
@@ -594,9 +601,9 @@ export default function CodeArchitecture() {
                         <LineSum label="Я" value={c1} index={12} lineId="c1" />
                         <LineSum label="Вектор" value={c2} index={13} lineId="c2" />
                         <LineSum label="Талант" value={c3} index={14} lineId="c3" />
-                        
+
                         {/* DIAGONALS */}
-                        <motion.div 
+                        <motion.div
                           key={`${matrixType}-diagonals`}
                           onMouseEnter={() => setHoveredLines(['d1', 'd2'])}
                           onMouseLeave={() => setHoveredLines([])}
@@ -631,17 +638,40 @@ export default function CodeArchitecture() {
                     </p>
                   )}
                   <BigResearchTeaser onCtaClick={handlePdfRequest} />
+
+                  {/* Telegram CTA */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="w-full max-w-4xl mx-auto mb-8 p-8 md:p-10 bg-[var(--color-ivory)] border border-[var(--border-soft)] text-center"
+                  >
+                    <p className="font-serif text-xl md:text-2xl text-[var(--color-ink)] mb-4">
+                      Это первый фрагмент разбора.
+                    </p>
+                    <p className="font-sans text-sm text-[var(--color-muted)] max-w-md mx-auto mb-6 leading-relaxed">
+                      Полный сценарий — с выбором формата, глубоким разбором и возможностью задать вопрос — доступен в Telegram.
+                    </p>
+                    <a
+                      href="https://t.me/digitalcodesystem_bot"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block px-10 py-4 bg-[var(--color-ink)] text-[var(--color-ivory)] font-sans text-xs tracking-[0.2em] uppercase hover:bg-black transition-colors"
+                    >
+                      Получить полный разбор в Telegram
+                    </a>
+                  </motion.div>
                 </>
               ) : null}
             </div>
 
             {/* Lead Form Modal */}
-            <LeadModal 
-              isOpen={showLeadModal} 
-              onClose={() => setShowLeadModal(false)} 
-              source="code_big_research" 
-              defaultBirthDate={date} 
-              theme="light" 
+            <LeadModal
+              isOpen={showLeadModal}
+              onClose={() => setShowLeadModal(false)}
+              source="code_big_research"
+              defaultBirthDate={date}
+              theme="light"
             />
           </motion.div>
         )}
