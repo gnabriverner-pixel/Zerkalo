@@ -2,60 +2,9 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
-import https from "https";
 import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
 import { generateFullInterpretationPayload, generateFirstMirror } from "./src/services/interpretation";
-
-/**
- * Send a Telegram notification to the admin about a new lead.
- * Non-blocking: failures are logged but never affect the user response.
- * Requires TELEGRAM_BOT_TOKEN and TELEGRAM_ADMIN_CHAT_ID in .env.
- */
-async function notifyAdminTelegram(lead: { name: string; birthDate: string; contact: string; request?: string; source?: string }) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
-
-  if (!token || !chatId) return; // graceful skip if not configured
-
-  const text = [
-    `🔔 Новая заявка на Большое исследование`,
-    ``,
-    `👤 Имя: ${lead.name}`,
-    `📅 Дата рождения: ${lead.birthDate}`,
-    `📱 Контакт: ${lead.contact}`,
-    lead.request ? `💬 Запрос: ${lead.request}` : null,
-    lead.source ? `📍 Источник: ${lead.source}` : null,
-    ``,
-    `🕐 ${new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}`,
-  ].filter(Boolean).join("\n");
-
-  const payload = JSON.stringify({
-    chat_id: chatId,
-    text,
-    parse_mode: "HTML",
-  });
-
-  return new Promise<void>((resolve) => {
-    const req = https.request(
-      `https://api.telegram.org/bot${token}/sendMessage`,
-      { method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } },
-      (res) => {
-        res.resume(); // drain
-        if (res.statusCode !== 200) {
-          console.error(`Developer Log: Telegram notification failed with status ${res.statusCode}`);
-        }
-        resolve();
-      }
-    );
-    req.on("error", (err) => {
-      console.error("Developer Log: Telegram notification error:", err.message);
-      resolve(); // never throw
-    });
-    req.write(payload);
-    req.end();
-  });
-}
 
 async function startServer() {
   const app = express();
@@ -109,10 +58,7 @@ async function startServer() {
       
       leads.push(lead);
       await fs.writeFile(leadsFilePath, JSON.stringify(leads, null, 2), 'utf-8');
-
-      // Non-blocking Telegram notification to admin
-      notifyAdminTelegram(lead).catch(() => {});
-
+      
       res.status(200).json({
         status: "ok",
         ui: {

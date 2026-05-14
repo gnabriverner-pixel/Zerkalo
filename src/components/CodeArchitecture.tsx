@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Info, ArrowRight, Loader2, X } from 'lucide-react';
+import { Info, ArrowRight, Loader2, X, BookOpen } from 'lucide-react';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ru } from 'date-fns/locale';
@@ -14,6 +14,34 @@ import { FirstMirrorPanel } from './FirstMirrorPanel';
 import { BigResearchTeaser } from './BigResearchTeaser';
 import { CompatibilityPanel } from './CompatibilityPanel';
 import { LeadModal } from './LeadModal';
+
+const playMagicalChime = () => {
+    try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const playTone = (freq: number, startTime: number, duration: number, vol: number = 0.1) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, startTime);
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(vol, startTime + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        };
+        const now = ctx.currentTime;
+        playTone(587.33, now, 2, 0.1);      // D5
+        playTone(739.99, now + 0.15, 2, 0.1); // F#5
+        playTone(880.00, now + 0.3, 3, 0.1);  // A5
+        playTone(1174.66, now + 0.45, 4, 0.1); // D6
+    } catch (e) {
+        // ignore audio errors
+    }
+};
 
 const NUM_LINES: Record<string, string[]> = {
   '1': ['r1', 'c1', 'd1'], '4': ['r1', 'c2'], '7': ['r1', 'c3', 'd2'],
@@ -67,34 +95,37 @@ export default function CodeArchitecture() {
   const [hoveredLines, setHoveredLines] = useState<string[]>([]);
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
   const [selectedMainNumber, setSelectedMainNumber] = useState<{title: string, value: number, pos: string} | null>(null);
-
+  const [taleModal, setTaleModal] = useState<{title: string, text: string} | null>(null);
+  
   const [showLeadModal, setShowLeadModal] = useState(false);
+  const [leadSource, setLeadSource] = useState('code_big_research');
   const [demoNotice, setDemoNotice] = useState('');
   const [consentChecked, setConsentChecked] = useState(false);
 
   const matrixRef = useRef<HTMLDivElement>(null);
-
+  
   const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consentChecked) return;
     setErrorInfo(null);
     setSelectedCell(null);
     setHoveredLines([]);
-
+    
     const regex = /^(\d{2})\.(\d{2})\.(\d{4})$/;
     const match1 = date.match(regex);
-
+    
     if (match1) {
       const day1 = parseInt(match1[1], 10);
       const month1 = parseInt(match1[2], 10);
-
+      
       if (day1 > 0 && day1 <= 31 && month1 > 0 && month1 <= 12) {
         const calc = calculateDigitalCode(date);
-
+        
         setResult(calc);
         setReading(null);
         setDemoNotice('');
         setIsGenerating(true);
+        playMagicalChime();
 
         try {
           const res = await fetch('/api/generate', {
@@ -102,7 +133,7 @@ export default function CodeArchitecture() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode: 'code', date, calc })
           });
-
+          
           const data: ApiResponse = await res.json();
           if (data.status === 'ok' && data.code_result?.first_mirror) {
             setReading(data.code_result.first_mirror);
@@ -141,7 +172,8 @@ export default function CodeArchitecture() {
     }
   };
 
-  const handlePdfRequest = async () => {
+  const handlePdfRequest = async (sourceUrl?: string) => {
+    setLeadSource(sourceUrl || 'code_big_research');
     setShowLeadModal(true);
   };
 
@@ -149,47 +181,29 @@ export default function CodeArchitecture() {
     const isSelected = selectedMainNumber?.title === title;
     const numKey = value === 11 ? 11 : (value > 9 ? value % 9 || 9 : value); // handle higher numbers if happen
     const numInfo = numberKnowledge[numKey] || numberKnowledge[1];
-
+    
     const [showTooltip, setShowTooltip] = useState(false);
 
     return (
-      <motion.div
+      <motion.div 
+        role="button"
+        tabIndex={0}
+        onClick={() => setSelectedMainNumber(isSelected ? null : {title, value, pos})}
+        onKeyDown={(e) => e.key === 'Enter' && setSelectedMainNumber(isSelected ? null : {title, value, pos})}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0, scale: isSelected ? 1.02 : 1 }}
         transition={{ duration: 0.8, delay: (isSelected) ? 0 : delay, ease: [0.16, 1, 0.3, 1] }}
-        className={`flex flex-col items-center p-8 md:p-10 bg-[var(--color-surface)] bg-marble ${isSelected ? 'bg-gradient-to-br from-[var(--color-ivory)] to-[#f2eee3] z-10 shadow-[0_40px_100px_rgba(30,25,18,0.18)]' : 'hover:bg-[var(--color-ivory)] hover:z-10 hover:shadow-2xl'} relative overflow-visible group transition-all duration-700 w-full outline-none border hover:border-[var(--color-antique-gold)] hover:border-opacity-30 ${isSelected ? 'border-[var(--color-antique-gold)] border-opacity-50' : 'border-transparent'}`}
+        className={`flex flex-col items-center p-8 md:p-10 bg-[var(--color-surface)] bg-marble cursor-pointer ${isSelected ? 'bg-gradient-to-br from-[var(--color-ivory)] to-[#f2eee3] z-10 shadow-[0_40px_100px_rgba(30,25,18,0.18)]' : 'hover:bg-[var(--color-ivory)] hover:z-10 hover:shadow-2xl'} relative overflow-visible group transition-all duration-700 w-full outline-none border hover:border-[var(--color-antique-gold)] hover:border-opacity-30 ${isSelected ? 'border-[var(--color-antique-gold)] border-opacity-50' : 'border-transparent'}`}
       >
         <div className={`absolute top-4 left-4 w-4 h-4 border-t border-l border-[var(--color-antique-gold)] transition-opacity duration-700 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
         <div className={`absolute top-4 right-4 w-4 h-4 border-t border-r border-[var(--color-antique-gold)] transition-opacity duration-700 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
         <div className={`absolute bottom-4 left-4 w-4 h-4 border-b border-l border-[var(--color-antique-gold)] transition-opacity duration-700 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
         <div className={`absolute bottom-4 right-4 w-4 h-4 border-b border-r border-[var(--color-antique-gold)] transition-opacity duration-700 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
-
-        {/* Helper Tooltip Icon */}
-        <div
-          className="absolute top-5 right-5 z-20"
-          onMouseEnter={() => setShowTooltip(true)}
-          onMouseLeave={() => setShowTooltip(false)}
-        >
-          <Info className="w-4 h-4 text-[var(--color-muted)] opacity-50 relative top-2 right-2 hover:opacity-100 hover:text-[var(--color-antique-gold)] cursor-help transition-colors" />
-          <AnimatePresence>
-            {showTooltip && (
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 5 }}
-                className="absolute right-0 top-6 w-56 bg-white/95 backdrop-blur-md text-[var(--color-ink)] p-4 shadow-2xl z-50 pointer-events-none rounded-sm border border-[var(--border-soft)]"
-              >
-                <p className="font-serif italic text-sm text-[var(--color-antique-gold)] mb-2 tracking-wide">{numInfo?.luxuryName}</p>
-                <p className="font-sans text-xs leading-relaxed text-[var(--color-graphite)] shadow-sm">{numInfo?.core}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
+        
         <span className={`font-serif text-[1.1rem] tracking-[0.15em] mb-6 z-10 transition-colors duration-500 uppercase text-[var(--color-muted)]`}>
           {title}
         </span>
-        <button type="button" onClick={() => setSelectedMainNumber(isSelected ? null : {title, value, pos})} className="flex flex-col items-center z-10 mb-4 cursor-pointer outline-none">
+        <div className="flex flex-col items-center z-10 mb-4 outline-none">
           <span className={`font-serif text-6xl md:text-7xl leading-none transition-colors duration-700 ${isSelected ? 'text-[var(--color-antique-gold)] drop-shadow-sm' : 'text-[var(--color-ink)]'}`}>
             {value}
           </span>
@@ -200,57 +214,71 @@ export default function CodeArchitecture() {
           ) : (
             <span className="font-sans text-[0.65rem] mt-4 opacity-0 select-none tracking-[0.2em] uppercase">—</span>
           )}
-        </button>
+        </div>
         <span className="font-sans text-[10px] tracking-[0.2em] uppercase text-[var(--color-muted)] mb-2 opacity-80">{numInfo?.planet || 'Нет планеты'}</span>
-        <span className="font-serif text-sm italic text-[var(--color-graphite)] line-clamp-1">{numInfo?.luxuryName || ''}</span>
+        <span className="font-serif text-sm italic text-[var(--color-graphite)] line-clamp-1 mb-4">{numInfo?.luxuryName || ''}</span>
+        <p className="font-sans text-[10px] md:text-[11px] text-center leading-relaxed text-[var(--color-muted)] max-w-[200px] mt-auto opacity-70">
+          {numInfo?.core}
+        </p>
       </motion.div>
     );
   };
 
   return (
     <div className="flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 bg-[var(--color-ivory)] bg-marble min-h-screen text-[var(--color-ink)] font-sans">
-
+      
       {/* Header */}
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         className="text-center mb-16 pt-10"
       >
         <h1 className="font-serif text-5xl md:text-7xl tracking-widest uppercase mb-6 text-[var(--color-ink)] drop-shadow-sm">
-          Зеркало<br className="md:hidden" /> себя
+          Архитектура<br className="md:hidden" /> Кода
         </h1>
         <p className="font-sans text-xs md:text-sm tracking-[0.4em] uppercase text-[var(--color-antique-gold)] opacity-90 mb-4">
-          Цифровой Код
+          Познай самого себя
         </p>
         <MeanderDivider />
         <div className="relative inline-block mt-4">
           <div className="absolute -left-8 -top-8 w-16 h-16 bg-[var(--color-antique-gold)] opacity-5 blur-2xl rounded-full"></div>
-          <p className="font-serif text-[1.1rem] md:text-xl text-[var(--color-muted)] max-w-xl mx-auto italic leading-relaxed relative z-10">
-            Зеркало себя показывает не «судьбу», а вашу устойчивую архитектуру: как вы выбираете, действуете, держите нагрузку и где теряете опору.<br/>
-            Не гороскоп. Не гадание. Не обещание судьбы.
-          </p>
-        </div>
-        <div className="mt-8 mb-2">
-          <p className="font-sans text-[0.7rem] text-[var(--color-muted)] max-w-lg mx-auto leading-relaxed opacity-70">
-            Система использует дату рождения только для расчёта чисел.
-            Не вводите паспортные данные, адрес, банковские реквизиты или медицинские диагнозы.
+          <p className="font-serif text-[1.1rem] md:text-xl text-[var(--color-muted)] max-w-md mx-auto italic leading-relaxed relative z-0">
+            Введите дату рождения — система покажет первый слой вашей внутренней архитектуры.
           </p>
         </div>
       </motion.div>
 
       {/* Input Form */}
-      <motion.form
+      <motion.form 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1, delay: 0.3 }}
-        onSubmit={handleCalculate}
+        onSubmit={handleCalculate} 
         className="w-full max-w-lg flex flex-col items-center mb-16"
       >
         <div className="w-full space-y-4">
           <div className="relative w-full flex items-center group bg-white/40 backdrop-blur-md rounded-lg shadow-sm border border-[var(--border-soft)] hover:shadow-md transition-shadow">
             <DatePicker
               selected={selectedDate}
+              onChangeRaw={(e) => {
+                const target = e.target as HTMLInputElement;
+                if (!target) return;
+                const prev = target.value;
+                let val = prev.replace(/[^\d]/g, '');
+                if (val.length > 2) val = val.substring(0, 2) + '.' + val.substring(2);
+                if (val.length > 5) val = val.substring(0, 5) + '.' + val.substring(5, 9);
+                if (val !== prev) {
+                   const selStart = target.selectionStart;
+                   target.value = val;
+                   setDate(val);
+                   if (selStart && selStart <= val.length) {
+                       target.setSelectionRange(selStart + (val.length > prev.length && (val.endsWith('.') || val.charAt(selStart - 1) === '.') ? 1 : 0), selStart + (val.length > prev.length && (val.endsWith('.') || val.charAt(selStart - 1) === '.') ? 1 : 0));
+                   }
+                } else {
+                   setDate(val);
+                }
+              }}
               onChange={(d: Date | null) => {
                 setSelectedDate(d);
                 if (d) {
@@ -271,8 +299,27 @@ export default function CodeArchitecture() {
               className="w-full bg-transparent text-center font-serif text-2xl md:text-3xl py-6 outline-none transition-colors placeholder:text-[var(--color-muted)]/50 text-[var(--color-ink)] px-16"
               wrapperClassName="w-full"
             />
-            <button
-              type="submit"
+            <AnimatePresence>
+              {(date.length > 0 || selectedDate) && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.2 }}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate(null);
+                    setDate('');
+                  }}
+                  className="absolute left-4 p-2 text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors opacity-60 hover:opacity-100 focus:outline-none"
+                  title="Очистить"
+                >
+                  <X className="w-5 h-5" />
+                </motion.button>
+              )}
+            </AnimatePresence>
+            <button 
+              type="submit" 
               disabled={isGenerating || date.length !== 10 || !consentChecked}
               className="absolute right-3 p-4 bg-transparent text-[var(--color-ink)]/70 hover:text-[var(--color-antique-gold)] transition-all disabled:opacity-30 disabled:hover:text-[var(--color-ink)]/70"
             >
@@ -283,11 +330,11 @@ export default function CodeArchitecture() {
               )}
             </button>
           </div>
-
+          
           <div className="pt-2 flex items-center justify-center gap-3 w-full">
-            <input
-              type="checkbox"
-              id="consent"
+            <input 
+              type="checkbox" 
+              id="consent" 
               checked={consentChecked}
               onChange={(e) => setConsentChecked(e.target.checked)}
               className="w-4 h-4 accent-[var(--color-antique-gold)] cursor-pointer"
@@ -302,7 +349,7 @@ export default function CodeArchitecture() {
       {/* Error Display */}
       <AnimatePresence mode="wait">
         {errorInfo && (
-           <motion.div
+           <motion.div 
              initial={{ opacity: 0, y: -10 }}
              animate={{ opacity: 1, y: 0 }}
              exit={{ opacity: 0, y: -10 }}
@@ -316,61 +363,43 @@ export default function CodeArchitecture() {
       {/* Results */}
       <AnimatePresence mode="wait">
         {isGenerating ? (
-          <motion.div
-            key="skeleton"
+          <motion.div 
+            key="spinner"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full max-w-4xl flex flex-col items-center"
+            className="w-full max-w-lg flex flex-col items-center justify-center py-32 mx-auto"
           >
-            <div className="flex flex-col items-center gap-3 mb-10 w-full text-center">
-              <div className="h-10 w-64 bg-[var(--color-marble)] animate-pulse rounded-full mb-1"></div>
-              <MeanderDivider />
+            <div className="relative w-48 h-48 flex items-center justify-center mb-10">
+               {/* Outer Ring */}
+               <motion.div 
+                 animate={{ rotate: 360 }}
+                 transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                 className="absolute inset-0 border-[1px] border-[var(--color-antique-gold)] rounded-full border-dashed opacity-50"
+               />
+               {/* Middle Ring */}
+               <motion.div 
+                 animate={{ rotate: -360 }}
+                 transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                 className="absolute inset-4 border-[1px] border-[var(--color-ink)] rounded-full opacity-20"
+               />
+               {/* Inner Geometry */}
+               <motion.div 
+                 animate={{ rotate: 360 }}
+                 transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                 className="absolute inset-10 flex items-center justify-center p-2"
+               >
+                  <div className="w-full h-full border-[1px] border-[var(--color-antique-gold)] rounded-sm rotate-45 opacity-70"></div>
+                  <div className="absolute w-full h-full border-[1px] border-[var(--color-antique-gold)] rounded-sm opacity-70"></div>
+               </motion.div>
+               {/* Center Dot */}
+               <div className="w-3 h-3 bg-[var(--color-antique-gold)] rounded-full animate-pulse shadow-[0_0_15px_var(--color-antique-gold)]"></div>
             </div>
-
-            {/* Skeleton Grid */}
-            <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-px bg-[var(--border-soft)] border border-[var(--border-soft)] w-full mb-16 shadow-lg`}>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className={`flex flex-col items-center p-8 bg-[var(--color-surface)] ${i === 5 ? 'sm:col-span-2 md:col-span-1' : ''} bg-marble relative overflow-hidden`}>
-                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[var(--color-ivory)] to-transparent opacity-30 animate-pulse"></div>
-                  <div className="h-3 w-16 bg-[var(--color-antique-gold)]/20 rounded-full animate-pulse mb-6"></div>
-                  <div className="h-14 w-12 bg-[var(--color-ink)]/10 rounded-md animate-pulse mb-4"></div>
-                  <div className="h-2 w-10 bg-[var(--color-muted)]/20 rounded-full animate-pulse mb-8"></div>
-                  <div className="h-[2px] w-20 bg-[var(--color-border)]/20 animate-pulse"></div>
-                </div>
-              ))}
-            </div>
-
-            {/* Skeleton Matrix */}
-            <div className="w-full flex flex-col items-center mb-16">
-               <div className="h-6 w-48 bg-[var(--color-marble)] animate-pulse mb-10"></div>
-               <div className="grid grid-cols-4 gap-px bg-[var(--border-soft)] border border-[var(--border-soft)] shadow-sm">
-                 {Array.from({ length: 16 }).map((_, i) => (
-                   <div key={i} className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-surface)] animate-pulse"></div>
-                 ))}
-               </div>
-            </div>
-
-            {/* Skeleton First Mirror Panel */}
-            <div className="w-full flex flex-col items-center mb-12">
-               <div className="w-full h-96 bg-[var(--color-surface)] border border-[var(--border-soft)] p-8 animate-pulse">
-                  <div className="flex justify-between w-full h-12 mb-8">
-                     <div className="h-8 w-48 bg-[var(--color-marble)]"></div>
-                     <div className="h-6 w-32 bg-[var(--color-marble)]"></div>
-                  </div>
-                  <div className="h-4 w-full bg-[var(--color-marble)] mb-4"></div>
-                  <div className="h-4 w-5/6 bg-[var(--color-marble)] mb-4"></div>
-                  <div className="h-4 w-4/6 bg-[var(--color-marble)] mb-8"></div>
-
-                  <div className="grid grid-cols-2 gap-8 pt-8">
-                     <div className="h-24 w-full bg-[var(--color-marble)]"></div>
-                     <div className="h-24 w-full bg-[var(--color-marble)]"></div>
-                  </div>
-               </div>
-            </div>
+            <p className="font-serif italic text-xl text-[var(--color-ink)] tracking-wide mb-2 animate-pulse">Считываем архитектуру...</p>
+            <p className="font-sans text-xs uppercase tracking-[0.2em] text-[var(--color-muted)] opacity-60">Подготовка зеркал</p>
           </motion.div>
         ) : result && (
-          <motion.div
+          <motion.div 
             key="results"
             layout
             initial={{ opacity: 0 }}
@@ -402,7 +431,7 @@ export default function CodeArchitecture() {
                 const knowledge = numberKnowledge[numKey] || numberKnowledge[1];
                 const pt = selectedMainNumber.pos as keyof typeof knowledge.positions;
                 const posData = knowledge.positions[pt] || { title: "", essence: "", strength: "", tension: "", recommendation: "" };
-
+                
                 return (
                   <motion.div
                     initial={{ opacity: 0, height: 0, y: -10 }}
@@ -413,51 +442,103 @@ export default function CodeArchitecture() {
                     <div className="p-8 md:p-12 bg-white/60 backdrop-blur-sm border border-[var(--border-soft)] shadow-[var(--shadow-luxury)] relative overflow-hidden rounded-sm">
                       <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-60"></div>
                       <div className="absolute -left-20 -top-20 w-64 h-64 bg-[var(--color-antique-gold)] opacity-5 blur-[100px] pointer-events-none"></div>
-                      <div className="flex justify-between items-start mb-10">
+                      <div className="flex justify-between items-start mb-10 relative z-10">
                         <div>
                            <h3 className="font-serif text-4xl md:text-5xl text-[var(--color-ink)] tracking-wide">{posData.title}</h3>
-                           <p className="font-sans text-[0.7rem] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] mt-3 font-medium">{knowledge.archetypeName}</p>
+                           <p className="font-sans text-[0.7rem] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] mt-3 font-medium">
+                             {knowledge.archetypeName} <span className="mx-2 opacity-50">•</span> Планета: {knowledge.planet}
+                           </p>
+                           {knowledge.tale && (
+                             <button
+                               onClick={() => setTaleModal(knowledge.tale!)}
+                               className="mt-6 font-sans text-[0.65rem] uppercase tracking-widest text-[var(--color-antique-gold)] flex items-center justify-center gap-2 px-4 py-2 border border-[var(--color-antique-gold)] hover:bg-[var(--color-antique-gold)] hover:text-[var(--color-ivory)] transition-colors rounded-sm"
+                             >
+                               <BookOpen className="w-4 h-4" />
+                               Открыть сказку числа
+                             </button>
+                           )}
                         </div>
-                        <button
+                        <button 
                           onClick={() => setSelectedMainNumber(null)}
                           className="text-[var(--color-muted)] hover:text-[var(--color-ink)] bg-white/50 hover:bg-white rounded-full transition-all p-3 shadow-sm border border-transparent hover:border-[var(--border-soft)]"
                         >
                           <X className="w-6 h-6" strokeWidth={1} />
                         </button>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                         <div className="md:col-span-2 space-y-6">
-                            <div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+                         <div className="md:col-span-2 space-y-8">
+                            <motion.div 
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.5, delay: 0.1 }}
+                            >
                                <p className="font-serif text-[1.15rem] leading-relaxed text-[var(--color-graphite)] italic border-l-2 border-[var(--color-antique-gold)] pl-4">
                                  "{posData.essence}"
                                </p>
-                            </div>
-                            <div>
-                               <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-2">Сила</h4>
-                               <p className="font-serif text-lg leading-relaxed text-[var(--color-ink)]">{posData.strength}</p>
-                            </div>
-                            <div>
-                               <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-2">Напряжение</h4>
-                               <p className="font-serif text-lg leading-relaxed text-[var(--color-ink)]">{posData.tension}</p>
-                            </div>
-                            {posData.recommendation && (
-                              <div className="bg-[var(--color-ivory)] p-4 border border-[var(--border-soft)]">
-                                 <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-2">Наблюдение</h4>
-                                 <p className="font-serif text-[1.05rem] leading-relaxed text-[var(--color-graphite)]">{posData.recommendation}</p>
+                            </motion.div>
+
+                            <motion.div 
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.5, delay: 0.2 }}
+                              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                            >
+                              <div className="bg-white/50 p-6 border border-white/60 shadow-sm rounded-sm">
+                                 <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-antique-gold)] mb-3">Дар</h4>
+                                 <p className="font-serif text-[0.95rem] leading-relaxed text-[var(--color-ink)]">{knowledge.gift}</p>
                               </div>
-                            )}
+                              <div className="bg-white/50 p-6 border border-white/60 shadow-sm rounded-sm">
+                                 <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-3">Тень</h4>
+                                 <p className="font-serif text-[0.95rem] leading-relaxed text-[var(--color-ink)]">{knowledge.shadow}</p>
+                              </div>
+                            </motion.div>
+
+                            <motion.div 
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.5, delay: 0.3 }}
+                              className="space-y-6"
+                            >
+                              <div>
+                                 <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-2">Главная задача</h4>
+                                 <p className="font-serif text-[1.05rem] leading-relaxed text-[var(--color-graphite)]">{knowledge.task}</p>
+                              </div>
+
+                              <div className="bg-[var(--color-ivory)] p-6 border border-[var(--border-soft)] rounded-sm">
+                                 <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-3">Практический ключ</h4>
+                                 <p className="font-serif text-[1.05rem] leading-relaxed text-[var(--color-ink)]">{knowledge.practicalKey}</p>
+                              </div>
+                            </motion.div>
                          </div>
-                         <div className="bg-[var(--color-marble)] p-6 border border-[var(--border-soft)]">
+                         
+                         <motion.div 
+                           initial={{ opacity: 0, x: 10 }}
+                           animate={{ opacity: 1, x: 0 }}
+                           transition={{ duration: 0.5, delay: 0.4 }}
+                           className="bg-[var(--color-marble)] p-8 border border-[var(--border-soft)] flex flex-col h-full rounded-sm"
+                         >
                             <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-4">Ядро энергии</h4>
-                            <p className="font-serif text-[1.05rem] leading-relaxed text-[var(--color-graphite)] mb-6">{knowledge.core}</p>
-                            <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-4">Теги</h4>
-                            <div className="flex flex-col gap-2">
-                              {knowledge.keywords.slice(0, 4).map(kw => (
-                                <span key={kw} className="font-serif text-sm text-[var(--color-ink)] py-1 border-b border-[var(--border-soft)]">{kw}</span>
-                              ))}
+                            <p className="font-serif text-[1.05rem] leading-relaxed text-[var(--color-graphite)] mb-8">{knowledge.core}</p>
+                            
+                            <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-4">Детали позиции</h4>
+                            <div className="space-y-5 flex-1">
+                               <div>
+                                  <h5 className="font-sans text-[0.6rem] tracking-[0.1em] uppercase text-[var(--color-muted)] mb-2">Сила</h5>
+                                  <p className="font-serif text-[0.95rem] leading-relaxed text-[var(--color-ink)]">{posData.strength}</p>
+                               </div>
+                               <div>
+                                  <h5 className="font-sans text-[0.6rem] tracking-[0.1em] uppercase text-[var(--color-muted)] mb-2">Напряжение</h5>
+                                  <p className="font-serif text-[0.95rem] leading-relaxed text-[var(--color-ink)]">{posData.tension}</p>
+                               </div>
+                               {posData.recommendation && (
+                                 <div>
+                                    <h5 className="font-sans text-[0.6rem] tracking-[0.1em] uppercase text-[var(--color-antique-gold)] mb-2">Наблюдение</h5>
+                                    <p className="font-serif text-[0.95rem] leading-relaxed text-[var(--color-ink)] italic">{posData.recommendation}</p>
+                                 </div>
+                               )}
                             </div>
-                         </div>
+                         </motion.div>
                       </div>
                     </div>
                   </motion.div>
@@ -466,7 +547,7 @@ export default function CodeArchitecture() {
             </AnimatePresence>
 
             {/* Matrix Section */}
-            <motion.div
+            <motion.div 
               layout
               ref={matrixRef}
               initial={{ opacity: 0, y: 20 }}
@@ -476,14 +557,14 @@ export default function CodeArchitecture() {
             >
               <div className="flex flex-col items-center">
                 <div className="flex gap-8 mb-10">
-                  <button
+                  <button 
                     type="button"
                     onClick={() => setMatrixType('base')}
                     className={`font-sans text-xs tracking-[0.2em] uppercase transition-all duration-300 pb-2 outline-none ${matrixType === 'base' ? 'text-[var(--color-ink)] border-b border-[var(--color-antique-gold)] opacity-100' : 'text-[var(--color-muted)] border-b border-transparent opacity-60 hover:opacity-100'}`}
                   >
                     Базовая
                   </button>
-                  <button
+                  <button 
                     type="button"
                     onClick={() => setMatrixType('detailed')}
                     className={`font-sans text-xs tracking-[0.2em] uppercase transition-all duration-300 pb-2 outline-none ${matrixType === 'detailed' ? 'text-[var(--color-ink)] border-b border-[var(--color-antique-gold)] opacity-100' : 'text-[var(--color-muted)] border-b border-transparent opacity-60 hover:opacity-100'}`}
@@ -491,11 +572,11 @@ export default function CodeArchitecture() {
                     Детальная
                   </button>
                 </div>
-
+                
                 <div className="grid grid-cols-4 gap-px bg-[var(--border-soft)] border border-[var(--border-soft)] shadow-sm bg-[var(--color-surface)]">
                   {(() => {
                     const activeMatrix = matrixType === 'base' ? result.baseMatrix : result.detailedMatrix;
-
+                    
                     const getCount = (digits: string) => digits.split('').reduce((acc, d) => acc + (activeMatrix[d] || 0), 0);
                     const r1 = getCount('147');
                     const r2 = getCount('258');
@@ -512,7 +593,7 @@ export default function CodeArchitecture() {
                       const isHovered = !!hoverLine;
                       const isSelected = selectedCell === num;
                       const cellMeaning = MATRIX_CELL_MEANS[num] || `Качество ${num}`;
-
+                      
                       let bgColor = "bg-[var(--color-surface)] bg-marble";
                       let textColor = "text-[var(--color-ink)]";
                       let content = <span className="font-sans text-sm text-[var(--color-border)] opacity-60">—</span>;
@@ -532,11 +613,22 @@ export default function CodeArchitecture() {
                         if (count >= 3) textColor = "text-[var(--color-antique-gold)] drop-shadow-sm";
                       }
 
-                      return (
-                        <motion.button
-                          key={`${matrixType}-${num}`}
-                          title={`${cellMeaning}: ${count} цифр`}
-                          onClick={() => setSelectedCell(selectedCell === num ? null : num)}
+                          const linesInfo = NUM_LINES[num]?.map(lineId => {
+                            const lineName = MATRIX_LINE_MEANS[lineId] || lineId;
+                            let lineSum = 0;
+                            if (lineId === 'r1') lineSum = r1; else if (lineId === 'r2') lineSum = r2; else if (lineId === 'r3') lineSum = r3;
+                            else if (lineId === 'c1') lineSum = c1; else if (lineId === 'c2') lineSum = c2; else if (lineId === 'c3') lineSum = c3;
+                            else if (lineId === 'd1') lineSum = d1; else if (lineId === 'd2') lineSum = d2;
+                            return `• Линия «${lineName}»: ${lineSum} цифр`;
+                          }).join('\n') || '';
+
+                          const cellTitle = `${cellMeaning}: ${count} цифр\n\nВходит в линии:\n${linesInfo}`;
+
+                          return (
+                            <motion.button
+                              key={`${matrixType}-${num}`}
+                              title={cellTitle}
+                              onClick={() => setSelectedCell(selectedCell === num ? null : num)}
                           onMouseEnter={() => setHoveredLines(NUM_LINES[num])}
                           onMouseLeave={() => setHoveredLines([])}
                           initial={{ opacity: 0, scale: 0.9 }}
@@ -554,7 +646,7 @@ export default function CodeArchitecture() {
                     const LineSum = ({ label, value, index, lineId }: { label: string, value: number, index: number, lineId: string }) => {
                       const isHovered = hoveredLines.includes(lineId) || (!!selectedCell && NUM_LINES[selectedCell]?.includes(lineId));
                       const lineMeaning = MATRIX_LINE_MEANS[lineId] || label;
-
+                      
                       return (
                         <motion.div
                           key={`${matrixType}-${label}`}
@@ -601,9 +693,9 @@ export default function CodeArchitecture() {
                         <LineSum label="Я" value={c1} index={12} lineId="c1" />
                         <LineSum label="Вектор" value={c2} index={13} lineId="c2" />
                         <LineSum label="Талант" value={c3} index={14} lineId="c3" />
-
+                        
                         {/* DIAGONALS */}
-                        <motion.div
+                        <motion.div 
                           key={`${matrixType}-diagonals`}
                           onMouseEnter={() => setHoveredLines(['d1', 'd2'])}
                           onMouseLeave={() => setHoveredLines([])}
@@ -624,6 +716,45 @@ export default function CodeArchitecture() {
                     );
                   })()}
                 </div>
+                
+                <AnimatePresence>
+                   {selectedCell && (
+                     <motion.div
+                       initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                       animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                       exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                       className="w-full bg-gradient-to-br from-[var(--color-ivory)] to-[#f2eee3] border border-[var(--color-antique-gold)] border-opacity-30 p-6 shadow-[0_10px_40px_rgba(30,25,18,0.08)] overflow-hidden rounded-sm"
+                     >
+                        <h4 className="font-serif text-xl tracking-wider uppercase text-[var(--color-ink)] mb-2">
+                          {MATRIX_CELL_MEANS[selectedCell]}
+                        </h4>
+                        <div className="h-px w-12 bg-[var(--color-antique-gold)] mb-4 opacity-50"></div>
+                        <div className="flex flex-col gap-3">
+                           {NUM_LINES[selectedCell]?.map(lineId => {
+                              const lineName = MATRIX_LINE_MEANS[lineId] || lineId;
+                              const activeMatrix = matrixType === 'base' ? result.baseMatrix : result.detailedMatrix;
+                              const getCount = (digits: string) => digits.split('').reduce((acc, d) => acc + (activeMatrix[d] || 0), 0);
+                              let lineSum = 0;
+                              if (lineId === 'r1') lineSum = getCount('147');
+                              else if (lineId === 'r2') lineSum = getCount('258');
+                              else if (lineId === 'r3') lineSum = getCount('369');
+                              else if (lineId === 'c1') lineSum = getCount('123');
+                              else if (lineId === 'c2') lineSum = getCount('456');
+                              else if (lineId === 'c3') lineSum = getCount('789');
+                              else if (lineId === 'd1') lineSum = getCount('159');
+                              else if (lineId === 'd2') lineSum = getCount('357');
+                              
+                              return (
+                                <div key={lineId} className="flex justify-between items-center text-sm font-sans border-b border-[var(--border-soft)] pb-2 last:border-0 last:pb-0">
+                                   <span className="text-[var(--color-muted)] uppercase tracking-widest text-[0.65rem] sm:text-xs">Линия «{lineName}»</span>
+                                   <span className="font-serif text-[var(--color-antique-gold)] text-lg">{lineSum}</span>
+                                </div>
+                              );
+                           })}
+                        </div>
+                     </motion.div>
+                   )}
+                </AnimatePresence>
               </div>
             </motion.div>
 
@@ -631,47 +762,84 @@ export default function CodeArchitecture() {
             <div className="w-full flex flex-col items-center mb-12">
               {reading ? (
                 <>
-                  <FirstMirrorPanel data={reading} onCtaClick={handlePdfRequest} />
+                  <FirstMirrorPanel data={reading} onCtaClick={() => handlePdfRequest('code_first_mirror')} />
                   {demoNotice && (
                     <p className="text-center font-sans text-[0.7rem] tracking-[0.1em] text-[var(--color-muted)] uppercase mb-12 opacity-80">
                       {demoNotice}
                     </p>
                   )}
-                  <BigResearchTeaser onCtaClick={handlePdfRequest} />
-
-                  {/* Telegram CTA */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
+                  <BigResearchTeaser onCtaClick={() => handlePdfRequest('code_big_research')} />
+                  
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="w-full max-w-4xl mx-auto mb-8 p-8 md:p-10 bg-[var(--color-ivory)] border border-[var(--border-soft)] text-center"
+                    transition={{ delay: 0.8, duration: 0.8 }}
+                    className="mt-16 mb-8 w-full flex justify-center"
                   >
-                    <p className="font-serif text-xl md:text-2xl text-[var(--color-ink)] mb-4">
-                      Это первый фрагмент разбора.
-                    </p>
-                    <p className="font-sans text-sm text-[var(--color-muted)] max-w-md mx-auto mb-6 leading-relaxed">
-                      Полный сценарий — с выбором формата, глубоким разбором и возможностью задать вопрос — доступен в Telegram.
-                    </p>
-                    <a
-                      href="https://t.me/digitalcodesystem_bot"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block px-10 py-4 bg-[var(--color-ink)] text-[var(--color-ivory)] font-sans text-xs tracking-[0.2em] uppercase hover:bg-black transition-colors"
-                    >
-                      Получить полный разбор в Telegram
-                    </a>
+                     <button
+                        onClick={() => handlePdfRequest('code_full_research')}
+                        className="px-10 py-5 bg-[var(--color-ink)] text-[var(--color-ivory)] hover:bg-[var(--color-antique-gold)] hover:text-white transition-all duration-500 font-sans tracking-[0.2em] uppercase text-sm border border-transparent hover:shadow-[0_0_40px_rgba(212,175,55,0.4)]"
+                     >
+                       Получить полную версию
+                     </button>
                   </motion.div>
                 </>
               ) : null}
             </div>
 
-            {/* Lead Form Modal */}
-            <LeadModal
-              isOpen={showLeadModal}
-              onClose={() => setShowLeadModal(false)}
-              source="code_big_research"
-              defaultBirthDate={date}
-              theme="light"
+            {/* Content wrapper closes usually... wait, I need to place it before the final div closes. */}
+      {/* Tale Modal */}
+      <AnimatePresence>
+        {taleModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setTaleModal(null)}
+              className="absolute inset-0 bg-[var(--color-ink)]/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-[var(--color-ivory)] bg-marble p-8 md:p-12 max-w-2xl w-full shadow-2xl z-10 border border-[var(--color-antique-gold)]/20 rounded-sm"
+            >
+              <button
+                onClick={() => setTaleModal(null)}
+                className="absolute top-4 right-4 p-2 text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors"
+                title="Закрыть"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <div className="flex flex-col items-center mb-8">
+                <BookOpen className="w-8 h-8 text-[var(--color-antique-gold)] mb-6 opacity-80" />
+                <h2 className="font-serif text-3xl md:text-4xl text-center text-[var(--color-ink)]">{taleModal.title}</h2>
+              </div>
+              <div className="prose prose-stone max-w-none">
+                <p className="font-serif text-[1.15rem] leading-relaxed text-[var(--color-graphite)] whitespace-pre-wrap text-center md:text-left indent-0 md:indent-8">
+                  {taleModal.text}
+                </p>
+              </div>
+              <div className="mt-12 flex justify-center">
+                 <button
+                   onClick={() => setTaleModal(null)}
+                   className="px-8 py-3 bg-[var(--color-surface)] border border-[var(--border-soft)] hover:border-[var(--color-antique-gold)] text-[var(--color-ink)] transition-colors text-sm tracking-widest uppercase font-sans outline-none"
+                 >
+                   Вернуться
+                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <LeadModal 
+              isOpen={showLeadModal} 
+              onClose={() => setShowLeadModal(false)} 
+              source={leadSource} 
+              defaultBirthDate={date} 
+              theme="light" 
             />
           </motion.div>
         )}

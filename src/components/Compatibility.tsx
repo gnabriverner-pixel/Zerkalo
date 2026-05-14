@@ -10,6 +10,7 @@ registerLocale('ru', ru);
 import { calculateDigitalCode } from '../services/calculator';
 import { CompatibilityPanel } from './CompatibilityPanel';
 import { BigResearchTeaser } from './BigResearchTeaser';
+import { LeadModal } from './LeadModal';
 
 const MeanderDivider = () => (
   <svg width="120" height="12" viewBox="0 0 120 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto my-8 opacity-40">
@@ -26,9 +27,7 @@ export default function Compatibility() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorInfo, setErrorInfo] = useState<{ message: string, type: string } | null>(null);
   
-  const [showPdfModal, setShowPdfModal] = useState(false);
-  const [pdfStatus, setPdfStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
-  const [pdfMessage, setPdfMessage] = useState('');
+  const [showLeadModal, setShowLeadModal] = useState(false);
   const [demoNotice, setDemoNotice] = useState('');
   
   const [consentChecked, setConsentChecked] = useState(false);
@@ -85,33 +84,10 @@ export default function Compatibility() {
     }
   };
 
-  const handlePdfRequest = async () => {
-    setPdfStatus('submitting');
-    setPdfMessage('Отправка запроса...');
-
-    try {
-      const res = await fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          birthDate: date,
-          birthDate2: date2,
-        })
-      });
-
-      const data = await res.json();
-      if (data.status === 'ok') {
-        setPdfStatus('success');
-        setPdfMessage(data.ui?.safe_message || "Ожидайте загрузку Большого исследования...");
-      } else {
-        setPdfStatus('success');
-        setPdfMessage("Функционал генерации Большого исследования находится в разработке. Скоро эта возможность станет доступной.");
-      }
-    } catch (err) {
-      setPdfStatus('error');
-      setPdfMessage("Ошибка при составлении запроса. Пожалуйста, попробуйте позже.");
-    }
+  const handlePdfRequest = () => {
+    setShowLeadModal(true);
   };
+
 
   return (
     <div className="flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 bg-[var(--color-ivory)] bg-marble min-h-screen text-[var(--color-ink)] font-sans">
@@ -147,6 +123,24 @@ export default function Compatibility() {
           <div className="relative w-full flex items-center group overflow-hidden">
             <DatePicker
               selected={selectedDate}
+              onChangeRaw={(e) => {
+                const target = e.target as HTMLInputElement;
+                if (!target) return;
+                const prev = target.value;
+                let val = prev.replace(/[^\d]/g, '');
+                if (val.length > 2) val = val.substring(0, 2) + '.' + val.substring(2);
+                if (val.length > 5) val = val.substring(0, 5) + '.' + val.substring(5, 9);
+                if (val !== prev) {
+                   const selStart = target.selectionStart;
+                   target.value = val;
+                   setDate(val);
+                   if (selStart && selStart <= val.length) {
+                       target.setSelectionRange(selStart + (val.length > prev.length && (val.endsWith('.') || val.charAt(selStart - 1) === '.') ? 1 : 0), selStart + (val.length > prev.length && (val.endsWith('.') || val.charAt(selStart - 1) === '.') ? 1 : 0));
+                   }
+                } else {
+                   setDate(val);
+                }
+              }}
               onChange={(d: Date | null) => {
                 setSelectedDate(d);
                 if (d) {
@@ -164,9 +158,28 @@ export default function Compatibility() {
               showMonthDropdown
               dropdownMode="select"
               placeholderText="Первая дата"
-              className="w-full bg-transparent border-b border-[var(--color-border)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl md:text-3xl py-4 outline-none transition-colors placeholder:text-[var(--color-border)] text-[var(--color-ink)] pr-12"
+              className="w-full bg-transparent border-b border-[var(--color-border)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl md:text-3xl py-4 outline-none transition-colors placeholder:text-[var(--color-border)] text-[var(--color-ink)] px-12"
               wrapperClassName="w-full"
             />
+            <AnimatePresence>
+              {(date.length > 0 || selectedDate) && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.2 }}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate(null);
+                    setDate('');
+                  }}
+                  className="absolute left-0 p-4 text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors opacity-60 hover:opacity-100 focus:outline-none"
+                  title="Очистить"
+                >
+                  <X className="w-5 h-5" />
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
 
           <motion.div 
@@ -177,6 +190,24 @@ export default function Compatibility() {
           >
             <DatePicker
               selected={selectedDate2}
+              onChangeRaw={(e) => {
+                const target = e.target as HTMLInputElement;
+                if (!target) return;
+                const prev = target.value;
+                let val = prev.replace(/[^\d]/g, '');
+                if (val.length > 2) val = val.substring(0, 2) + '.' + val.substring(2);
+                if (val.length > 5) val = val.substring(0, 5) + '.' + val.substring(5, 9);
+                if (val !== prev) {
+                   const selStart = target.selectionStart;
+                   target.value = val;
+                   setDate2(val);
+                   if (selStart && selStart <= val.length) {
+                       target.setSelectionRange(selStart + (val.length > prev.length && (val.endsWith('.') || val.charAt(selStart - 1) === '.') ? 1 : 0), selStart + (val.length > prev.length && (val.endsWith('.') || val.charAt(selStart - 1) === '.') ? 1 : 0));
+                   }
+                } else {
+                   setDate2(val);
+                }
+              }}
               onChange={(d: Date | null) => {
                 setSelectedDate2(d);
                 if (d) {
@@ -194,9 +225,28 @@ export default function Compatibility() {
               showMonthDropdown
               dropdownMode="select"
               placeholderText="Вторая дата"
-              className="w-full bg-transparent border-b border-[var(--color-border)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl md:text-3xl py-4 outline-none transition-colors placeholder:text-[var(--color-border)] text-[var(--color-ink)] pr-16"
+              className="w-full bg-transparent border-b border-[var(--color-border)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl md:text-3xl py-4 outline-none transition-colors placeholder:text-[var(--color-border)] text-[var(--color-ink)] px-16"
               wrapperClassName="w-full"
             />
+            <AnimatePresence>
+              {(date2.length > 0 || selectedDate2) && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.2 }}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDate2(null);
+                    setDate2('');
+                  }}
+                  className="absolute left-0 p-4 text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors opacity-60 hover:opacity-100 focus:outline-none"
+                  title="Очистить"
+                >
+                  <X className="w-5 h-5" />
+                </motion.button>
+              )}
+            </AnimatePresence>
             <button 
               type="submit" 
               disabled={isGenerating || date.length !== 10 || date2.length !== 10 || !consentChecked}
@@ -279,57 +329,19 @@ export default function Compatibility() {
                   {demoNotice}
                 </p>
               )}
-              <BigResearchTeaser onCtaClick={() => { setShowPdfModal(true); handlePdfRequest(); }} />
+              <BigResearchTeaser onCtaClick={handlePdfRequest} />
             </>
           ) : null}
         </motion.div>
       </AnimatePresence>
 
-      {/* Pdf Form Modal */}
-      <AnimatePresence>
-        {showPdfModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-ink)]/80 p-4 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-[var(--color-marble)] p-8 md:p-12 max-w-md w-full relative shadow-2xl border border-[var(--border-soft)]"
-            >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-30"></div>
-              <button 
-                onClick={() => setShowPdfModal(false)}
-                className="absolute top-6 right-6 text-[var(--color-muted)] hover:text-[var(--color-antique-gold)] transition-colors"
-              >
-                <X className="w-6 h-6" strokeWidth={1} />
-              </button>
-              
-              <h3 className="font-serif text-3xl text-[var(--color-ink)] mb-4">Большое исследование</h3>
-              
-              {pdfStatus === 'submitting' ? (
-                <div className="flex flex-col items-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-[var(--color-antique-gold)] mb-6" />
-                  <p className="text-sm font-sans text-[var(--color-muted)]">{pdfMessage}</p>
-                </div>
-              ) : (
-                <div className="bg-[var(--color-ivory)] border border-[var(--border-soft)] p-8 text-center font-serif text-[1.1rem]">
-                  <p className="text-[var(--color-ink)]">{pdfMessage}</p>
-                  <button 
-                    onClick={() => setShowPdfModal(false)}
-                    className="mt-8 px-8 py-3 bg-[var(--color-ink)] text-[var(--color-ivory)] font-sans text-xs tracking-[0.15em] uppercase hover:bg-black transition-colors"
-                  >
-                    Закрыть
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <LeadModal 
+        isOpen={showLeadModal} 
+        onClose={() => setShowLeadModal(false)} 
+        source="compatibility_big_research" 
+        defaultBirthDate={`${date} & ${date2}`} 
+        theme="light" 
+      />
 
     </div>
   );
