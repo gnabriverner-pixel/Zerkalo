@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Info, ArrowRight, Loader2, X, BookOpen } from 'lucide-react';
+import { Info, ArrowRight, Loader2, X, BookOpen, Download } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -15,6 +15,9 @@ import { FirstMirrorPanel } from './FirstMirrorPanel';
 import { BigResearchTeaser } from './BigResearchTeaser';
 import { CompatibilityPanel } from './CompatibilityPanel';
 import { LeadModal } from './LeadModal';
+import { AssociativeCloud } from './AssociativeCloud';
+import { QuoteOfTheDay } from './QuoteOfTheDay';
+import { saveElementAsPdf } from '../lib/pdfUtils';
 
 const playMagicalChime = () => {
     try {
@@ -194,7 +197,7 @@ export default function CodeArchitecture() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0, scale: isSelected ? 1.02 : 1 }}
         transition={{ duration: 0.8, delay: (isSelected) ? 0 : delay, ease: [0.16, 1, 0.3, 1] }}
-        className={`flex flex-col items-center p-8 md:p-10 bg-[var(--color-surface)] bg-marble cursor-pointer ${isSelected ? 'bg-gradient-to-br from-[var(--color-ivory)] to-[#f2eee3] z-10 shadow-[0_40px_100px_rgba(30,25,18,0.18)]' : 'hover:bg-[var(--color-ivory)] hover:z-10 hover:shadow-2xl'} relative overflow-visible group transition-all duration-700 w-full outline-none border hover:border-[var(--color-antique-gold)] hover:border-opacity-30 ${isSelected ? 'border-[var(--color-antique-gold)] border-opacity-50' : 'border-transparent'}`}
+        className={`flex flex-col items-center p-8 md:p-10 bg-[var(--color-surface)] bg-marble cursor-pointer ${isSelected ? 'bg-kraft z-10 shadow-[0_40px_100px_rgba(30,25,18,0.18)]' : 'hover:bg-[var(--color-ivory)] hover:z-10 hover:shadow-2xl'} relative overflow-visible group transition-all duration-700 w-full outline-none border hover:border-[var(--color-antique-gold)] hover:border-opacity-30 ${isSelected ? 'border-[var(--color-antique-gold)] border-opacity-50' : 'border-transparent'}`}
       >
         <div className={`absolute top-4 left-4 w-4 h-4 border-t border-l border-[var(--color-antique-gold)] transition-opacity duration-700 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
         <div className={`absolute top-4 right-4 w-4 h-4 border-t border-r border-[var(--color-antique-gold)] transition-opacity duration-700 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}`}></div>
@@ -253,8 +256,10 @@ export default function CodeArchitecture() {
   };
 
   return (
-    <div className="flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 bg-[var(--color-ivory)] bg-marble min-h-screen text-[var(--color-ink)] font-sans">
+    <div className="flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 bg-[var(--color-ivory)] bg-marble min-h-screen text-[var(--color-ink)] font-sans overflow-x-hidden">
       
+      <QuoteOfTheDay />
+
       {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
@@ -430,6 +435,7 @@ export default function CodeArchitecture() {
           <motion.div 
             key="results"
             layout
+            id="code-architecture-results"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -537,6 +543,7 @@ export default function CodeArchitecture() {
                                  <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-3">Практический ключ</h4>
                                  <p className="font-serif text-[1.05rem] leading-relaxed text-[var(--color-ink)]">{knowledge.practicalKey}</p>
                               </div>
+                              <AssociativeCloud keywords={knowledge.keywords} />
                             </motion.div>
                          </div>
                          
@@ -809,7 +816,7 @@ export default function CodeArchitecture() {
                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
                        animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                       className="w-full bg-gradient-to-br from-[var(--color-ivory)] to-[#f2eee3] border border-[var(--color-antique-gold)] border-opacity-30 p-6 shadow-[0_10px_40px_rgba(30,25,18,0.08)] overflow-hidden rounded-sm"
+                       className="w-full bg-kraft border border-[var(--color-antique-gold)] border-opacity-30 p-6 shadow-[0_10px_40px_rgba(30,25,18,0.08)] overflow-hidden rounded-sm relative"
                      >
                         <h4 className="font-serif text-xl tracking-wider uppercase text-[var(--color-ink)] mb-2">
                           {MATRIX_CELL_MEANS[selectedCell]}
@@ -937,13 +944,21 @@ export default function CodeArchitecture() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8, duration: 0.8 }}
-                    className="mt-16 mb-8 w-full flex justify-center"
+                    className="mt-16 mb-8 w-full flex flex-col md:flex-row justify-center items-center gap-6"
                   >
                      <button
                         onClick={() => handlePdfRequest('code_full_research')}
                         className="px-10 py-5 bg-[var(--color-ink)] text-[var(--color-ivory)] hover:bg-[var(--color-antique-gold)] hover:text-white transition-all duration-500 font-sans tracking-[0.2em] uppercase text-sm border border-transparent hover:shadow-[0_0_40px_rgba(212,175,55,0.4)]"
                      >
                        Получить полную версию
+                     </button>
+                     
+                     <button
+                        onClick={() => saveElementAsPdf(document.getElementById('code-architecture-results'), 'DigitalCode_Architecture.pdf')}
+                        className="px-10 py-5 bg-transparent border border-[var(--color-antique-gold)] border-opacity-40 text-[var(--color-ink)] hover:bg-[var(--color-antique-gold)] hover:text-white transition-all duration-500 font-sans tracking-[0.2em] uppercase text-sm flex items-center justify-center gap-3 hover:shadow-[0_0_20px_rgba(212,175,55,0.3)]"
+                     >
+                       <Download className="w-4 h-4" />
+                       Сохранить разбор
                      </button>
                   </motion.div>
                 </>

@@ -18,17 +18,17 @@ export const FirstMirrorPanel: React.FC<Props> = ({ data, onCtaClick }) => {
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-[var(--color-ivory)] border-x border-y border-[var(--border-soft)] w-full max-w-4xl mx-auto my-12 relative"
-      style={{ boxShadow: '0 20px 40px rgba(0,0,0,0.03)' }}
+      className="bg-kraft border-x border-y border-[var(--border-soft)] w-full max-w-4xl mx-auto my-12 relative overflow-hidden"
+      style={{ boxShadow: '0 30px 80px rgba(30,25,18,0.06)' }}
     >
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-40"></div>
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-60"></div>
       
-      <div className="p-8 md:p-14 lg:p-20">
+      <div className="p-8 md:p-14 lg:p-20 relative z-10">
         <div className="text-center mb-14">
-          <p className="text-[0.65rem] tracking-[0.3em] uppercase text-[var(--color-antique-gold)] mb-6 font-sans">
+          <p className="text-[0.65rem] tracking-[0.3em] uppercase text-[var(--color-antique-gold)] mb-6 font-sans animate-ethereal">
             Первое Зеркало
           </p>
-          <h2 className="text-3xl md:text-5xl font-serif text-[var(--color-ink)] mb-10 tracking-tight">
+          <h2 className="text-3xl md:text-5xl font-serif text-[var(--color-ink)] mb-10 tracking-tight relative inline-block">
             {data.subtitle}
           </h2>
           
@@ -74,7 +74,7 @@ export const FirstMirrorPanel: React.FC<Props> = ({ data, onCtaClick }) => {
         <GreekDivider />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px mt-16 bg-[var(--border-soft)] border border-[var(--border-soft)]">
-          <div className="bg-[var(--color-surface)] p-8 md:p-10">
+          <div className="bg-marble p-8 md:p-10">
             <h4 className="text-[0.7rem] font-sans tracking-[0.2em] uppercase text-[var(--color-ink)] mb-6 border-b border-[var(--border-soft)] pb-4">Фундамент</h4>
             <div className="flex flex-col gap-3">
               {data.strengthTags.map((tag, i) => (
@@ -84,7 +84,7 @@ export const FirstMirrorPanel: React.FC<Props> = ({ data, onCtaClick }) => {
               ))}
             </div>
           </div>
-          <div className="bg-[var(--color-ivory)] p-8 md:p-10">
+          <div className="bg-kraft p-8 md:p-10">
             <h4 className="text-[0.7rem] font-sans tracking-[0.2em] uppercase text-[var(--color-ink)] mb-6 border-b border-[var(--border-soft)] pb-4">Точки давления</h4>
             <div className="flex flex-col gap-3">
               {data.tensionTags.map((tag, i) => (
