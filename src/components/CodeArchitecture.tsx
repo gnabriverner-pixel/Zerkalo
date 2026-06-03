@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Info, ArrowRight, Loader2, X, BookOpen } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ru } from 'date-fns/locale';
@@ -203,17 +204,44 @@ export default function CodeArchitecture() {
         <span className={`font-serif text-[1.1rem] tracking-[0.15em] mb-6 z-10 transition-colors duration-500 uppercase text-[var(--color-muted)]`}>
           {title}
         </span>
-        <div className="flex flex-col items-center z-10 mb-4 outline-none">
-          <span className={`font-serif text-6xl md:text-7xl leading-none transition-colors duration-700 ${isSelected ? 'text-[var(--color-antique-gold)] drop-shadow-sm' : 'text-[var(--color-ink)]'}`}>
-            {value}
-          </span>
-          {composite !== value.toString() ? (
-            <span className={`font-sans text-[0.65rem] mt-4 tracking-[0.25em] uppercase transition-colors duration-500 ${isSelected ? 'text-[var(--color-antique-gold)] opacity-80' : 'text-[var(--color-muted)]'}`}>
-              {composite}
-            </span>
-          ) : (
-            <span className="font-sans text-[0.65rem] mt-4 opacity-0 select-none tracking-[0.2em] uppercase">—</span>
-          )}
+        <div className="flex flex-col items-center z-10 mb-4 outline-none relative">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span 
+               key={value}
+               initial={{ opacity: 0, y: -20, filter: 'blur(4px)' }}
+               animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+               exit={{ opacity: 0, y: 20, filter: 'blur(4px)' }}
+               transition={{ duration: 0.5, type: 'spring', bounce: 0 }}
+               className={`font-serif text-6xl md:text-7xl leading-none transition-colors duration-700 ${isSelected ? 'text-[var(--color-antique-gold)] drop-shadow-sm' : 'text-[var(--color-ink)]'}`}
+             >
+               {value}
+            </motion.span>
+          </AnimatePresence>
+          <div className="h-6 mt-4 flex items-center justify-center">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {composite !== value.toString() ? (
+                <motion.span 
+                  key={composite}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className={`font-sans text-[0.65rem] tracking-[0.25em] uppercase transition-colors duration-500 ${isSelected ? 'text-[var(--color-antique-gold)] opacity-80' : 'text-[var(--color-muted)]'}`}
+                >
+                  {composite}
+                </motion.span>
+              ) : (
+                <motion.span 
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="font-sans text-[0.65rem] opacity-0 select-none tracking-[0.2em] uppercase"
+                >
+                  —
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
         <span className="font-sans text-[10px] tracking-[0.2em] uppercase text-[var(--color-muted)] mb-2 opacity-80">{numInfo?.planet || 'Нет планеты'}</span>
         <span className="font-serif text-sm italic text-[var(--color-graphite)] line-clamp-1 mb-4">{numInfo?.luxuryName || ''}</span>
@@ -596,10 +624,31 @@ export default function CodeArchitecture() {
                       
                       let bgColor = "bg-[var(--color-surface)] bg-marble";
                       let textColor = "text-[var(--color-ink)]";
-                      let content = <span className="font-sans text-sm text-[var(--color-border)] opacity-60">—</span>;
+                      let content = (
+                        <motion.span 
+                          key="empty" 
+                          initial={{ opacity: 0, scale: 0.5 }} 
+                          animate={{ opacity: 1, scale: 1 }} 
+                          exit={{ opacity: 0, scale: 0.5 }} 
+                          className="font-sans text-sm text-[var(--color-border)] opacity-60"
+                        >
+                          —
+                        </motion.span>
+                      );
 
                       if (count > 0) {
-                        content = <span className={`font-serif text-2xl sm:text-3xl ${count >= 3 ? 'font-medium' : ''}`}>{num.repeat(count)}</span>;
+                        content = (
+                          <motion.span 
+                            key={count} 
+                            initial={{ opacity: 0, scale: 0.5, filter: 'blur(4px)' }} 
+                            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} 
+                            exit={{ opacity: 0, scale: 1.5, filter: 'blur(4px)' }} 
+                            transition={{ duration: 0.4, type: 'spring', bounce: 0 }}
+                            className={`font-serif text-2xl sm:text-3xl ${count >= 3 ? 'font-medium' : ''}`}
+                          >
+                            {num.repeat(count)}
+                          </motion.span>
+                        );
                       }
 
                       if (isSelected) {
@@ -636,9 +685,11 @@ export default function CodeArchitecture() {
                           whileHover={{ scale: isSelected ? 1.05 : 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           transition={{ duration: 0.4, delay: (isSelected || isHovered) ? 0 : index * 0.02, ease: [0.16, 1, 0.3, 1] }}
-                          className={`w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center outline-none transition-colors duration-500 cursor-pointer ${bgColor} ${textColor} ${isSelected ? 'z-20' : 'hover:z-10 box-border'}`}
+                          className={`w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center outline-none transition-colors duration-500 cursor-pointer ${bgColor} ${textColor} ${isSelected ? 'z-20' : 'hover:z-10 box-border'} relative overflow-hidden`}
                         >
-                          {content}
+                          <AnimatePresence mode="popLayout" initial={false}>
+                            {content}
+                          </AnimatePresence>
                         </motion.button>
                       );
                     };
@@ -657,9 +708,20 @@ export default function CodeArchitecture() {
                           animate={{ opacity: 1, scale: isHovered ? 1.02 : 1 }}
                           whileHover={{ scale: 1.02 }}
                           transition={{ duration: 0.4, delay: isHovered ? 0 : index * 0.02, ease: [0.16, 1, 0.3, 1] }}
-                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-500 cursor-default ${isHovered ? LINE_STYLES['r'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'}`}
+                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-500 cursor-default ${isHovered ? LINE_STYLES['r'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'} relative overflow-hidden`}
                         >
-                          <span className={`font-serif text-lg transition-colors duration-300 ${(isHovered) ? LINE_STYLES['r'].text : (value >= 5 ? 'text-[var(--color-antique-gold)]' : 'text-[var(--color-muted)]')}`}>{value}</span>
+                          <AnimatePresence mode="popLayout" initial={false}>
+                            <motion.span 
+                              key={value}
+                              initial={{ opacity: 0, y: -10, filter: 'blur(2px)' }}
+                              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                              exit={{ opacity: 0, y: 10, filter: 'blur(2px)' }}
+                              transition={{ duration: 0.4 }}
+                              className={`font-serif text-lg transition-colors duration-300 ${(isHovered) ? LINE_STYLES['r'].text : (value >= 5 ? 'text-[var(--color-antique-gold)]' : 'text-[var(--color-muted)]')}`}
+                            >
+                              {value}
+                            </motion.span>
+                          </AnimatePresence>
                           <span className={`text-[0.45rem] sm:text-[0.55rem] tracking-widest uppercase mt-1 transition-colors duration-300 ${isHovered ? LINE_STYLES['r'].text : 'text-[var(--color-muted)] opacity-60'}`}>{label}</span>
                         </motion.div>
                       );
@@ -703,12 +765,36 @@ export default function CodeArchitecture() {
                           animate={{ opacity: 1, scale: isAnyDActive ? 1.02 : 1 }}
                           whileHover={{ scale: 1.02 }}
                           transition={{ duration: 0.4, delay: isAnyDActive ? 0 : 15 * 0.02, ease: [0.16, 1, 0.3, 1] }}
-                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-500 cursor-default ${isAnyDActive ? LINE_STYLES['d'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'}`}
+                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-500 cursor-default ${isAnyDActive ? LINE_STYLES['d'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'} relative overflow-hidden`}
                         >
-                          <div className="flex gap-2 sm:gap-3 mb-1">
-                            <span className={`text-xs sm:text-[0.95rem] font-serif transition-colors duration-500 ${isD1Active ? LINE_STYLES['d'].text : 'text-[var(--color-ink)]'}`} title={`Внутренний компас (1-5-9): ${d1}`}>{d1}</span>
+                          <div className="flex gap-2 sm:gap-3 mb-1 overflow-hidden">
+                            <AnimatePresence mode="popLayout" initial={false}>
+                              <motion.span 
+                                key={d1}
+                                initial={{ opacity: 0, y: -10, filter: 'blur(2px)' }}
+                                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                                exit={{ opacity: 0, y: 10, filter: 'blur(2px)' }}
+                                transition={{ duration: 0.4 }}
+                                className={`text-xs sm:text-[0.95rem] font-serif transition-colors duration-500 ${isD1Active ? LINE_STYLES['d'].text : 'text-[var(--color-ink)]'}`} 
+                                title={`Внутренний компас (1-5-9): ${d1}`}
+                              >
+                                {d1}
+                              </motion.span>
+                            </AnimatePresence>
                             <span className="text-[var(--border-soft)]">/</span>
-                            <span className={`text-xs sm:text-[0.95rem] font-serif transition-colors duration-500 ${isD2Active ? LINE_STYLES['d'].text : 'text-[var(--color-antique-gold)]'}`} title={`Темперамент (3-5-7): ${d2}`}>{d2}</span>
+                            <AnimatePresence mode="popLayout" initial={false}>
+                              <motion.span 
+                                key={d2}
+                                initial={{ opacity: 0, y: -10, filter: 'blur(2px)' }}
+                                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                                exit={{ opacity: 0, y: 10, filter: 'blur(2px)' }}
+                                transition={{ duration: 0.4 }}
+                                className={`text-xs sm:text-[0.95rem] font-serif transition-colors duration-500 ${isD2Active ? LINE_STYLES['d'].text : 'text-[var(--color-antique-gold)]'}`} 
+                                title={`Темперамент (3-5-7): ${d2}`}
+                              >
+                                {d2}
+                              </motion.span>
+                            </AnimatePresence>
                           </div>
                           <span className={`text-[0.4rem] sm:text-[0.45rem] tracking-widest uppercase mt-1 text-center leading-[1.3] transition-colors duration-500 ${isAnyDActive ? LINE_STYLES['d'].text : 'text-[var(--color-muted)] opacity-50'}`}>ВНУТР.<br/>ТЕМП.</span>
                         </motion.div>
@@ -751,10 +837,87 @@ export default function CodeArchitecture() {
                                 </div>
                               );
                            })}
-                        </div>
-                     </motion.div>
-                   )}
-                </AnimatePresence>
+                         </div>
+                      </motion.div>
+                    )}
+                 </AnimatePresence>
+
+                 {/* Distribution Chart */}
+                 <div className="w-full mt-24 flex flex-col items-center bg-[var(--color-surface)] bg-marble py-10 px-4 md:px-8 shadow-sm">
+                   <h3 className="font-serif text-lg tracking-[0.15em] uppercase text-[var(--color-ink)] mb-4 text-center">
+                     Распределение Элементов
+                   </h3>
+                   <div className="h-px w-12 bg-[var(--color-antique-gold)] mb-8 opacity-50"></div>
+                   <div className="w-full max-w-xs h-64 relative focus:outline-none">
+                     {(() => {
+                       const activeMatrixForPie = matrixType === 'base' ? result.baseMatrix : result.detailedMatrix;
+                       const pieData = Object.entries(activeMatrixForPie)
+                         .filter(([num, count]) => num !== '0' && count > 0)
+                         .map(([num, count]) => ({
+                           name: MATRIX_CELL_MEANS[num] || `Энергия ${num}`,
+                           value: count,
+                           num
+                         }))
+                         .sort((a, b) => b.value - a.value);
+
+                       const CHART_COLORS = [
+                         '#d4af37', // antique gold
+                         '#2a2a2a', // ink
+                         '#8c7d60', // dark gold
+                         '#6b6b6b', // graphite light
+                         '#b8a67c', // soft gold
+                         '#4a4a4a', // graphite
+                         '#e2d5ba', // ivory gold
+                         '#8b8476', // muted
+                         '#1a1918'  // deep dark
+                       ];
+
+                       if (pieData.length === 0) return null;
+
+                       return (
+                         <ResponsiveContainer width="100%" height="100%">
+                           <PieChart>
+                             <Pie
+                               data={pieData}
+                               cx="50%"
+                               cy="50%"
+                               innerRadius={65}
+                               outerRadius={95}
+                               paddingAngle={2}
+                               dataKey="value"
+                               stroke="var(--color-surface)"
+                               strokeWidth={2}
+                               animationDuration={1500}
+                               animationEasing="ease-out"
+                               style={{ outline: "none" }}
+                             >
+                               {pieData.map((entry, index) => (
+                                 <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} style={{ outline: "none" }} />
+                               ))}
+                             </Pie>
+                             <Tooltip 
+                               contentStyle={{ 
+                                 backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                                 border: '1px solid var(--color-antique-gold)',
+                                 borderRadius: '2px',
+                                 fontFamily: 'var(--font-sans)',
+                                 fontSize: '0.75rem',
+                                 textTransform: 'uppercase',
+                                 letterSpacing: '0.1em',
+                                 boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+                               }}
+                               itemStyle={{ color: 'var(--color-ink)', fontWeight: 500 }}
+                               formatter={(value: number) => [`${value} цифр`, 'Количество']}
+                             />
+                           </PieChart>
+                         </ResponsiveContainer>
+                       );
+                     })()}
+                   </div>
+                   <p className="font-sans text-[0.65rem] tracking-[0.1em] text-[var(--color-muted)] uppercase mt-6 opacity-70 text-center max-w-xs leading-relaxed">
+                     Соотношение энергий в {matrixType === 'base' ? 'базовой' : 'детальной'} матрице
+                   </p>
+                 </div>
               </div>
             </motion.div>
 
