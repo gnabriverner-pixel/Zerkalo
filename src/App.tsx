@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import CodeArchitecture from './components/CodeArchitecture';
 import PersonalMyth from './components/PersonalMyth';
+import HeroSection from './components/HeroSection';
 
 export default function App() {
   const [mode, setMode] = useState<'code' | 'myth'>('code');
@@ -31,6 +32,8 @@ export default function App() {
         </div>
       </div>
 
+      <HeroSection />
+
       <AnimatePresence mode="wait">
         {mode === 'code' && (
           <motion.div
@@ -40,6 +43,7 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
             className="w-full flex-grow flex flex-col pt-16"
+            id="calculator-start"
           >
             <CodeArchitecture />
           </motion.div>
