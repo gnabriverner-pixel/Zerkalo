@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
+import { safetyGate, qualityGate } from './story';
 
 describe('Story Module constraints', () => {
   it('PersonalMyth.tsx does not contain forbidden words', () => {
@@ -76,5 +77,36 @@ describe('Story Module constraints', () => {
     expect(pmContent).toMatch(/data\.status === 'demo'/);
     expect(pmContent).toMatch(/applyFallback\(\)/);
     expect(pmContent).not.toMatch(/dangerouslySetInnerHTML/);
+  });
+
+  it('story.ts safetyGate detects crisis markers', () => {
+    const inputs = {
+      q1: "мне очень тяжело, я хочу умереть и покончить с собой",
+      q2: "туман",
+      q3: "прогулка",
+      q4: "покой"
+    };
+    const safety = safetyGate(inputs);
+    expect(safety.isCrisis).toBe(true);
+    expect(safety.safe_message).toContain("живая поддержка");
+
+    const safeInputs = {
+      q1: "усталость на работе",
+      q2: "камень",
+      q3: "у костра",
+      q4: "понимание"
+    };
+    const safetyOk = safetyGate(safeInputs);
+    expect(safetyOk.isCrisis).toBe(false);
+  });
+
+  it('story.ts qualityGate validates tact count, forbidden words and length', () => {
+    const shortStory = "Короткий текст сказки.";
+    const checkShort = qualityGate(shortStory);
+    expect(checkShort.isValid).toBe(false);
+
+    const forbiddenStory = "<!-- такт 1 --><!-- такт 2 --><!-- такт 3 --><!-- такт 4 --><!-- такт 5 --><!-- такт 6 --><!-- такт 7 --><!-- такт 8 --> Терапия и Кету упоминаются в этом длинном тексте, который должен содержать более четырехсот слов, чтобы пройти проверку по длине. Но запрещенные слова мешают ему быть валидным. Поэтому гейт вернет ошибку.";
+    const checkForbidden = qualityGate(forbiddenStory);
+    expect(checkForbidden.isValid).toBe(false);
   });
 });
