@@ -156,3 +156,13 @@ textarea::-webkit-scrollbar-thumb:hover {
 .animate-sparkle {
   animation: sparkle 15s infinite ease-in-out;
 }
+
+@keyframes slow-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-slow-rotate {
+  transform-origin: center;
+  animation: slow-rotate 180s linear infinite;
+}

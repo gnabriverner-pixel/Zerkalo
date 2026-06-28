@@ -221,25 +221,55 @@ export default function CodeArchitecture() {
         className="text-center mb-16 pt-10 relative"
       >
         {/* Sacred Geometry Astronomical Dial Backing */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] md:w-[450px] md:h-[450px] pointer-events-none opacity-[0.22] select-none z-0">
-          <svg viewBox="0 0 200 200" className="w-full h-full stroke-[var(--color-antique-gold)]/50 fill-none stroke-[0.3]">
-            <circle cx="100" cy="100" r="95" stroke-dasharray="2,2"/>
-            <circle cx="100" cy="100" r="75"/>
-            <circle cx="100" cy="100" r="50" stroke-dasharray="4,1"/>
-            <circle cx="100" cy="100" r="25"/>
-            <circle cx="100" cy="100" r="8"/>
-            <line x1="100" y1="5" x2="100" y2="195" stroke-dasharray="1,3"/>
-            <line x1="5" y1="100" x2="195" y2="100" stroke-dasharray="1,3"/>
-            {/* Outer ticks */}
-            {Array.from({ length: 12 }).map((_, idx) => {
-              const angle = (idx * 30 * Math.PI) / 180;
-              const x1 = 100 + 90 * Math.cos(angle);
-              const y1 = 100 + 90 * Math.sin(angle);
-              const x2 = 100 + 95 * Math.cos(angle);
-              const y2 = 100 + 95 * Math.sin(angle);
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] md:w-[480px] md:h-[480px] pointer-events-none opacity-[0.24] select-none z-0">
+          <svg viewBox="0 0 200 200" className="w-full h-full stroke-[var(--color-antique-gold)]/60 fill-none stroke-[0.35] animate-slow-rotate">
+            {/* Concentric rings */}
+            <circle cx="100" cy="100" r="96" stroke-dasharray="3,1"/>
+            <circle cx="100" cy="100" r="88"/>
+            <circle cx="100" cy="100" r="68" stroke-dasharray="5,2"/>
+            <circle cx="100" cy="100" r="48"/>
+            <circle cx="100" cy="100" r="28" stroke-dasharray="2,2"/>
+            
+            {/* Greek Meander Dotted Compass Lines */}
+            <line x1="100" y1="4" x2="100" y2="196" stroke-dasharray="1,4"/>
+            <line x1="4" y1="100" x2="196" y2="100" stroke-dasharray="1,4"/>
+            <path d="M32,32 L168,168 M32,168 L168,32" stroke-dasharray="2,3"/>
+
+            {/* Surya (Vedic Sun wheel) spokes in the center */}
+            {Array.from({ length: 8 }).map((_, idx) => {
+              const angle = (idx * 45 * Math.PI) / 180;
+              const x1 = 100 + 8 * Math.cos(angle);
+              const y1 = 100 + 8 * Math.sin(angle);
+              const x2 = 100 + 26 * Math.cos(angle);
+              const y2 = 100 + 26 * Math.sin(angle);
               return <line key={idx} x1={x1} y1={y1} x2={x2} y2={y2} />;
             })}
-            <path d="M30,30 L170,170 M30,170 L170,30" stroke-dasharray="2,2"/>
+            
+            {/* Center Surya Circle */}
+            <circle cx="100" cy="100" r="8" fill="rgba(200, 164, 93, 0.05)" />
+
+            {/* Chandra (Vedic Lunar Crescent) */}
+            <path d="M 103,94 A 8,8 0 0,0 103,106 A 6,6 0 0,1 103,94" fill="rgba(200, 164, 93, 0.15)" stroke="none" />
+
+            {/* Greek Constellation Stars (Nakshatras) */}
+            <circle cx="100" cy="20" r="1.5" fill="var(--color-antique-gold)"/>
+            <circle cx="100" cy="180" r="1.5" fill="var(--color-antique-gold)"/>
+            <circle cx="20" cy="100" r="1.5" fill="var(--color-antique-gold)"/>
+            <circle cx="180" cy="100" r="1.5" fill="var(--color-antique-gold)"/>
+            <circle cx="44" cy="44" r="1" fill="var(--color-antique-gold)"/>
+            <circle cx="156" cy="156" r="1" fill="var(--color-antique-gold)"/>
+            <circle cx="44" cy="156" r="1" fill="var(--color-antique-gold)"/>
+            <circle cx="156" cy="44" r="1" fill="var(--color-antique-gold)"/>
+
+            {/* Outer coordinate divisions (Nakshatra zones) */}
+            {Array.from({ length: 24 }).map((_, idx) => {
+              const angle = (idx * 15 * Math.PI) / 180;
+              const x1 = 100 + 88 * Math.cos(angle);
+              const y1 = 100 + 88 * Math.sin(angle);
+              const x2 = 100 + 96 * Math.cos(angle);
+              const y2 = 100 + 96 * Math.sin(angle);
+              return <line key={idx} x1={x1} y1={y1} x2={x2} y2={y2} />;
+            })}
           </svg>
         </div>
         <h1 className="font-serif text-5xl md:text-7xl tracking-widest uppercase mb-6 text-[var(--color-ink)] drop-shadow-sm">

@@ -202,11 +202,19 @@ export default function PersonalMyth() {
                 boxShadow: `0 30px 80px rgba(0,0,0,0.5), 0 0 50px ${themeByStep[step]?.color}05`
               }}
             >
-              {/* Tarot-style Gold Corner Brackets */}
-              <div className="absolute top-4 left-4 w-4 h-4 border-t border-l pointer-events-none transition-colors duration-1000" style={{ borderColor: `${themeByStep[step]?.color}40` }} />
-              <div className="absolute top-4 right-4 w-4 h-4 border-t border-r pointer-events-none transition-colors duration-1000" style={{ borderColor: `${themeByStep[step]?.color}40` }} />
-              <div className="absolute bottom-4 left-4 w-4 h-4 border-b border-l pointer-events-none transition-colors duration-1000" style={{ borderColor: `${themeByStep[step]?.color}40` }} />
-              <div className="absolute bottom-4 right-4 w-4 h-4 border-b border-r pointer-events-none transition-colors duration-1000" style={{ borderColor: `${themeByStep[step]?.color}40` }} />
+              {/* Greek Meander Key Corners */}
+              <svg className="absolute top-4 left-4 w-5 h-5 pointer-events-none transition-colors duration-1000" style={{ stroke: `${themeByStep[step]?.color}50` }} viewBox="0 0 16 16" fill="none" strokeWidth="1">
+                <path d="M 2,14 L 2,2 L 14,2 L 14,8 L 8,8 L 8,5 L 5,5" />
+              </svg>
+              <svg className="absolute top-4 right-4 w-5 h-5 pointer-events-none transition-colors duration-1000" style={{ stroke: `${themeByStep[step]?.color}50` }} viewBox="0 0 16 16" fill="none" strokeWidth="1">
+                <path d="M 14,14 L 14,2 L 2,2 L 2,8 L 8,8 L 8,5 L 11,5" />
+              </svg>
+              <svg className="absolute bottom-4 left-4 w-5 h-5 pointer-events-none transition-colors duration-1000" style={{ stroke: `${themeByStep[step]?.color}50` }} viewBox="0 0 16 16" fill="none" strokeWidth="1">
+                <path d="M 2,2 L 2,14 L 14,14 L 14,8 L 8,8 L 8,11 L 5,11" />
+              </svg>
+              <svg className="absolute bottom-4 right-4 w-5 h-5 pointer-events-none transition-colors duration-1000" style={{ stroke: `${themeByStep[step]?.color}50` }} viewBox="0 0 16 16" fill="none" strokeWidth="1">
+                <path d="M 14,2 L 14,14 L 2,14 L 2,8 L 8,8 L 8,11 L 11,11" />
+              </svg>
 
               {/* Questionnaire progress & navigation header */}
               <div className="flex justify-between items-center mb-10 border-b border-white/5 pb-6">
@@ -340,11 +348,19 @@ export default function PersonalMyth() {
               <div className="w-full bg-white/[0.01] border rounded-3xl p-8 sm:p-12 relative"
                 style={{ borderColor: 'rgba(200, 164, 93, 0.15)', boxShadow: '0 30px 80px rgba(0,0,0,0.5), 0 0 60px rgba(200, 164, 93, 0.02)' }}
               >
-                {/* Gold corner brackets */}
-                <div className="absolute top-4 left-4 w-4 h-4 border-t border-l border-[#DCB059]/30 pointer-events-none" />
-                <div className="absolute top-4 right-4 w-4 h-4 border-t border-r border-[#DCB059]/30 pointer-events-none" />
-                <div className="absolute bottom-4 left-4 w-4 h-4 border-b border-l border-[#DCB059]/30 pointer-events-none" />
-                <div className="absolute bottom-4 right-4 w-4 h-4 border-b border-r border-[#DCB059]/30 pointer-events-none" />
+                {/* Greek Meander Key Corners */}
+                <svg className="absolute top-4 left-4 w-5 h-5 pointer-events-none stroke-[#DCB059]/40" viewBox="0 0 16 16" fill="none" strokeWidth="1">
+                  <path d="M 2,14 L 2,2 L 14,2 L 14,8 L 8,8 L 8,5 L 5,5" />
+                </svg>
+                <svg className="absolute top-4 right-4 w-5 h-5 pointer-events-none stroke-[#DCB059]/40" viewBox="0 0 16 16" fill="none" strokeWidth="1">
+                  <path d="M 14,14 L 14,2 L 2,2 L 2,8 L 8,8 L 8,5 L 11,5" />
+                </svg>
+                <svg className="absolute bottom-4 left-4 w-5 h-5 pointer-events-none stroke-[#DCB059]/40" viewBox="0 0 16 16" fill="none" strokeWidth="1">
+                  <path d="M 2,2 L 2,14 L 14,14 L 14,8 L 8,8 L 8,11 L 5,11" />
+                </svg>
+                <svg className="absolute bottom-4 right-4 w-5 h-5 pointer-events-none stroke-[#DCB059]/40" viewBox="0 0 16 16" fill="none" strokeWidth="1">
+                  <path d="M 14,2 L 14,14 L 2,14 L 2,8 L 8,8 L 8,11 L 11,11" />
+                </svg>
 
                 {/* Vintage gold top line decor */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-[#DCB059] to-transparent opacity-60" />
