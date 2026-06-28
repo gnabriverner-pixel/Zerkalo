@@ -111,3 +111,48 @@
   padding: 2px !important;
   outline: none !important;
 }
+
+/* Custom Scrollbar for Textareas */
+textarea::-webkit-scrollbar {
+  width: 6px;
+}
+textarea::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+textarea::-webkit-scrollbar-thumb {
+  background: rgba(220, 176, 89, 0.2);
+  border-radius: 3px;
+}
+textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(220, 176, 89, 0.4);
+}
+
+/* Typographic Drop Cap */
+.drop-cap {
+  float: left;
+  font-family: var(--font-serif);
+  font-size: 4.2rem;
+  line-height: 0.8;
+  padding-top: 6px;
+  padding-right: 12px;
+  padding-left: 2px;
+  color: var(--color-antique-gold);
+  font-weight: 600;
+  text-shadow: 0 0 10px rgba(220, 176, 89, 0.1);
+}
+
+/* Ethereal Sparkle/Drift Keyframes */
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0.15;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateY(-25px) scale(1.4);
+  }
+}
+
+.animate-sparkle {
+  animation: sparkle 15s infinite ease-in-out;
+}

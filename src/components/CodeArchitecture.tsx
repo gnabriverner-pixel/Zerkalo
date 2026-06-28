@@ -218,8 +218,30 @@ export default function CodeArchitecture() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-        className="text-center mb-16 pt-10"
+        className="text-center mb-16 pt-10 relative"
       >
+        {/* Sacred Geometry Astronomical Dial Backing */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] md:w-[450px] md:h-[450px] pointer-events-none opacity-[0.22] select-none z-0">
+          <svg viewBox="0 0 200 200" className="w-full h-full stroke-[var(--color-antique-gold)]/50 fill-none stroke-[0.3]">
+            <circle cx="100" cy="100" r="95" stroke-dasharray="2,2"/>
+            <circle cx="100" cy="100" r="75"/>
+            <circle cx="100" cy="100" r="50" stroke-dasharray="4,1"/>
+            <circle cx="100" cy="100" r="25"/>
+            <circle cx="100" cy="100" r="8"/>
+            <line x1="100" y1="5" x2="100" y2="195" stroke-dasharray="1,3"/>
+            <line x1="5" y1="100" x2="195" y2="100" stroke-dasharray="1,3"/>
+            {/* Outer ticks */}
+            {Array.from({ length: 12 }).map((_, idx) => {
+              const angle = (idx * 30 * Math.PI) / 180;
+              const x1 = 100 + 90 * Math.cos(angle);
+              const y1 = 100 + 90 * Math.sin(angle);
+              const x2 = 100 + 95 * Math.cos(angle);
+              const y2 = 100 + 95 * Math.sin(angle);
+              return <line key={idx} x1={x1} y1={y1} x2={x2} y2={y2} />;
+            })}
+            <path d="M30,30 L170,170 M30,170 L170,30" stroke-dasharray="2,2"/>
+          </svg>
+        </div>
         <h1 className="font-serif text-5xl md:text-7xl tracking-widest uppercase mb-6 text-[var(--color-ink)] drop-shadow-sm">
           Архитектура<br className="md:hidden" /> Кода
         </h1>

@@ -138,6 +138,15 @@ export default function PersonalMyth() {
       <div className="absolute top-12 left-12 w-96 h-96 bg-[#8A5A44]/5 blur-[140px] rounded-full pointer-events-none" />
       <div className="absolute bottom-24 right-12 w-96 h-96 bg-[#B59E74]/5 blur-[140px] rounded-full pointer-events-none" />
 
+      {/* Floating Constellation Stars */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
+        <div className="absolute top-[15%] left-[20%] w-1.5 h-1.5 bg-[#DCB059]/40 rounded-full animate-sparkle" />
+        <div className="absolute top-[25%] right-[25%] w-1 h-1 bg-[#DCB059]/30 rounded-full animate-sparkle" style={{ animationDelay: '3s', animationDuration: '18s' }} />
+        <div className="absolute top-[60%] left-[15%] w-2 h-2 bg-[#DCB059]/20 rounded-full animate-sparkle" style={{ animationDelay: '6s', animationDuration: '12s' }} />
+        <div className="absolute bottom-[20%] right-[30%] w-1.5 h-1.5 bg-[#DCB059]/30 rounded-full animate-sparkle" style={{ animationDelay: '2s', animationDuration: '20s' }} />
+        <div className="absolute top-[45%] right-[10%] w-1.5 h-1.5 bg-[#DCB059]/40 rounded-full animate-sparkle" style={{ animationDelay: '8s', animationDuration: '16s' }} />
+      </div>
+
       <div className="w-full max-w-2xl flex flex-col items-center relative z-10">
 
         <AnimatePresence mode="wait">
@@ -193,6 +202,12 @@ export default function PersonalMyth() {
                 boxShadow: `0 30px 80px rgba(0,0,0,0.5), 0 0 50px ${themeByStep[step]?.color}05`
               }}
             >
+              {/* Tarot-style Gold Corner Brackets */}
+              <div className="absolute top-4 left-4 w-4 h-4 border-t border-l pointer-events-none transition-colors duration-1000" style={{ borderColor: `${themeByStep[step]?.color}40` }} />
+              <div className="absolute top-4 right-4 w-4 h-4 border-t border-r pointer-events-none transition-colors duration-1000" style={{ borderColor: `${themeByStep[step]?.color}40` }} />
+              <div className="absolute bottom-4 left-4 w-4 h-4 border-b border-l pointer-events-none transition-colors duration-1000" style={{ borderColor: `${themeByStep[step]?.color}40` }} />
+              <div className="absolute bottom-4 right-4 w-4 h-4 border-b border-r pointer-events-none transition-colors duration-1000" style={{ borderColor: `${themeByStep[step]?.color}40` }} />
+
               {/* Questionnaire progress & navigation header */}
               <div className="flex justify-between items-center mb-10 border-b border-white/5 pb-6">
                 <div className="flex flex-col gap-1">
@@ -325,6 +340,12 @@ export default function PersonalMyth() {
               <div className="w-full bg-white/[0.01] border rounded-3xl p-8 sm:p-12 relative"
                 style={{ borderColor: 'rgba(200, 164, 93, 0.15)', boxShadow: '0 30px 80px rgba(0,0,0,0.5), 0 0 60px rgba(200, 164, 93, 0.02)' }}
               >
+                {/* Gold corner brackets */}
+                <div className="absolute top-4 left-4 w-4 h-4 border-t border-l border-[#DCB059]/30 pointer-events-none" />
+                <div className="absolute top-4 right-4 w-4 h-4 border-t border-r border-[#DCB059]/30 pointer-events-none" />
+                <div className="absolute bottom-4 left-4 w-4 h-4 border-b border-l border-[#DCB059]/30 pointer-events-none" />
+                <div className="absolute bottom-4 right-4 w-4 h-4 border-b border-r border-[#DCB059]/30 pointer-events-none" />
+
                 {/* Vintage gold top line decor */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-[#DCB059] to-transparent opacity-60" />
                 
@@ -333,10 +354,20 @@ export default function PersonalMyth() {
                   <h2 className="font-serif text-4xl sm:text-5xl text-white leading-tight">{result.title}</h2>
                 </div>
 
-                <div className="font-serif text-lg md:text-xl leading-relaxed text-gray-200 space-y-6 first-letter:text-5xl first-letter:font-serif first-letter:font-bold first-letter:text-[#DCB059] first-letter:mr-3 first-letter:float-left first-letter:leading-none">
-                  {result.story.split('\n\n').map((paragraph, i) => (
-                    <p key={i} className="text-justify">{paragraph}</p>
-                  ))}
+                <div className="font-serif text-lg md:text-xl leading-relaxed text-gray-200 space-y-6">
+                  {result.story.split('\n\n').map((paragraph, i) => {
+                    if (i === 0 && paragraph.length > 0) {
+                      const firstChar = paragraph.charAt(0);
+                      const rest = paragraph.slice(1);
+                      return (
+                        <p key={i} className="text-justify">
+                          <span className="drop-cap">{firstChar}</span>
+                          {rest}
+                        </p>
+                      );
+                    }
+                    return <p key={i} className="text-justify">{paragraph}</p>;
+                  })}
                 </div>
               </div>
 
