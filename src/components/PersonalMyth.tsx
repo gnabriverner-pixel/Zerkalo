@@ -371,16 +371,23 @@ export default function PersonalMyth() {
                 </div>
 
                 <div className="font-serif text-lg md:text-xl leading-relaxed text-gray-200 space-y-6">
-                  {result.story.split('\n\n').map((paragraph, i) => {
+                  {result.story.split('\n\n').filter(Boolean).map((paragraph, i) => {
                     if (i === 0 && paragraph.length > 0) {
-                      const firstChar = paragraph.charAt(0);
-                      const rest = paragraph.slice(1);
-                      return (
-                        <p key={i} className="text-justify">
-                          <span className="drop-cap">{firstChar}</span>
-                          {rest}
-                        </p>
-                      );
+                      // Find first Russian/English letter to apply drop-cap safely
+                      const match = paragraph.match(/[a-zA-Zа-яА-ЯёЁ]/);
+                      if (match && match.index !== undefined) {
+                        const letterIndex = match.index;
+                        const before = paragraph.slice(0, letterIndex);
+                        const firstChar = paragraph.charAt(letterIndex);
+                        const rest = paragraph.slice(letterIndex + 1);
+                        return (
+                          <p key={i} className="text-justify">
+                            {before}
+                            <span className="drop-cap">{firstChar}</span>
+                            {rest}
+                          </p>
+                        );
+                      }
                     }
                     return <p key={i} className="text-justify">{paragraph}</p>;
                   })}

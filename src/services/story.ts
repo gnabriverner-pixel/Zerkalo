@@ -72,8 +72,8 @@ export function qualityGate(storyText: string): { isValid: boolean; errors?: str
     errors.push(`Сказка слишком короткая: ${wordsCount} слов (ожидается минимум 400 слов)`);
   }
 
-  // 2. Check forbidden words in story text
-  const forbiddenInStory = /(терапи|психотерапи|гипноз|нлп|лечени|травма|исцелени|диагноз|предсказани|маги|архетип|кету|раху|сурья|чандра|накшатр|планет|число|энерги)/i;
+  // 2. Check forbidden words in story text (safely matched as whole words or specific forms to prevent false positives like "увлечение", "развлечение", "облегчение")
+  const forbiddenInStory = /(?:\s|^|[,.!?—])(терапи[яиею]|психотерапи[яиею]|гипноз[а-я]*|нлп|лечени[яеию]|травм[аыеуои]|исцелени[яеию]|диагноз[а-я]*|предсказани[а-я]*|маги[яиею]|архетип[а-я]*|кету|раху|сурья|чандра|накшатр[а-я]*|планет[а-я]*|числа?|энерги[яиею])(?:\s|$|[,.!?—])/i;
   if (forbiddenInStory.test(storyText)) {
     errors.push("Сказка содержит запрещенные термины из бан-листа (психотерапия, Кету, планета, число, и т.д.)");
   }

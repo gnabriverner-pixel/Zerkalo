@@ -482,10 +482,11 @@ ${payload2}
         break;
       }
 
-      // Strip tact comments before sending back
+      // Strip tact comments and text headers before sending back
       if (mode === "story" && resultJson?.story_result?.story) {
         resultJson.story_result.story = resultJson.story_result.story
-          .replace(/<!-- такт \d+ -->/g, "")
+          .replace(/<!--\s*такт\s*\d+\s*-->/gi, "")
+          .replace(/(такт\s*\d+[:.\s-]*)/gi, "")
           .trim();
       }
 
