@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Info, ArrowRight, Loader2, X } from 'lucide-react';
+import { Info, ArrowRight, Loader2, X, Calendar, Sun } from 'lucide-react';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ru } from 'date-fns/locale';
@@ -102,6 +102,267 @@ const VEDIC_PLANET_MYTHS: Record<number, { name: string; myth: string }> = {
   }
 };
 
+const MATRIX_CELL_DETAILS: Record<string, { title: string; essence: string; meanings: Record<number, string> }> = {
+  '1': {
+    title: "1: Характер, воля и эго",
+    essence: "Сила личности, лидерский потенциал, независимость суждений и способность проявлять личную волю.",
+    meanings: {
+      0: "Характер ведомый, мягкий. Человеку трудно отстаивать свои границы, склонность соглашаться ради мира в окружении.",
+      1: "Эгоцентризм отсутствует, дипломатичность. Комфортно работать в партнерстве, но требуется развивать уверенность.",
+      2: "Гармоничный волевой стержень. Способность слушать других и при этом удерживать свои цели.",
+      3: "Сильный, целеустремленный лидер. Способность вести за собой, упорство в отстаивании принципов.",
+      4: "Жесткий волевой характер. Человек требует подчинения, сложно идет на компромиссы.",
+      5: "Максимальная концентрация воли. Властный характер, требующий реализации в крупном бизнесе или масштабных проектах."
+    }
+  },
+  '2': {
+    title: "2: Энергия действия и тонус",
+    essence: "Количество физической и биоэнергетической силы, работоспособность, тонус тела и готовность действовать.",
+    meanings: {
+      0: "Дефицит собственной энергии. Быстрая утомляемость, потребность в пассивном отдыхе, прогулках и сне для подзарядки.",
+      1: "Дефицитная норма. Силы есть на повседневные дела, но избыточные перегрузки быстро истощают ресурс.",
+      2: "Гармоничный тонус. Достаточно сил для работы, хобби и общения без эмоционального выгорания.",
+      3: "Экстрасенсорный потенциал, высокая плотность поля. Человек активен, легко восстанавливается.",
+      4: "Огромный запас сил. Физическая мощь, потребность в спорте или физическом труде для сброса избытка энергии.",
+      5: "Сверхплотное биополе. Способность заряжать других своим присутствием, склонность к суете при застое сил."
+    }
+  },
+  '3': {
+    title: "3: Интерес и познание",
+    essence: "Интеллектуальная любознательность, аналитический склад ума, тяга к науке, технологиям и деталям.",
+    meanings: {
+      0: "Творческий, интуитивный склад ума. Интерес к гуманитарным сферам, нелюбовь к техническим инструкциям и деталям.",
+      1: "Здоровое любопытство. Быстрая обучаемость, интерес к разным сферам жизни.",
+      2: "Аналитические способности. Хорошая логика, интерес к точным наукам и детальному анализу.",
+      3: "Глубокий педантизм, исследовательский ум. Любовь к схемам, чертежам, инструкциям и копанию до самой сути.",
+      4: "Максимальный аналитический фокус. Энциклопедический ум, склонность систематизировать всё вокруг."
+    }
+  },
+  '4': {
+    title: "4: Здоровье, тело и границы",
+    essence: "Физическая выносливость, сила иммунитета, плотность тела и умение выстраивать материальные границы.",
+    meanings: {
+      0: "Здоровье требует бережного внимания. Слабый врожденный иммунитет, необходимость следить за питанием и режимом сна.",
+      1: "Нормальное здоровье. Тело отзывчиво к спорту и заботе, выносливость средняя.",
+      2: "Крепкий иммунитет. Хорошая физическая сопротивляемость болезням, выносливость выше средней.",
+      3: "Выдающееся физическое здоровье. Крепкое телосложение, высокая выносливость к нагрузкам.",
+      4: "Богатырская сила. Огромная плотность физического тела, устойчивость к суровым внешним условиям."
+    }
+  },
+  '5': {
+    title: "5: Логика и интуиция",
+    essence: "Способность планировать, просчитывать варианты, стратегическое мышление и глубинное интуитивное предвидение.",
+    meanings: {
+      0: "Чувственное восприятие мира. Доверие первому импульсу, логический анализ включается только при необходимости.",
+      1: "Развитая логика. Умение планировать шаги, здоровый прагматизм в решениях.",
+      2: "Сильная интуиция. Способность видеть скрытые связи, предчувствовать исход событий.",
+      3: "Дар визионерства. Глубокое понимание структуры любых процессов, способность делать точные долгосрочные прогнозы.",
+      4: "Сверхлогический ум. Способность просчитывать сотни комбинаций, сильная интуитивная связь с инфополем."
+    }
+  },
+  '6': {
+    title: "6: Труд, мастерство и заземление",
+    essence: "Профессионализм, склонность к ручному или материальному труду, практичность и связь с земными делами.",
+    meanings: {
+      0: "Творческая или ментальная направленность. Нежелание заниматься монотонной рутиной и физическим трудом.",
+      1: "Умение работать руками. Практичность, готовность обустраивать быт собственными силами.",
+      2: "Мастер на все руки. Профессионализм в выбранной сфере, глубокое понимание физических процессов.",
+      3: "Выдающееся мастерство. Способность создавать материальные шедевры, сильное заземление.",
+      4: "Максимальный практицизм. Способность монетизировать любое мастерство, абсолютный контроль над материей."
+    }
+  },
+  '7': {
+    title: "7: Удача и интуитивное везение",
+    essence: "Степень поддержки пространства, интуитивное везение, контакт с ангелом-хранителем и раскрытие талантов.",
+    meanings: {
+      0: "Путь самостоятельных усилий. Человек всего добивается сам, без случайных подарков судьбы, что закаляет дух.",
+      1: "Интуитивное везение. Поддержка в критические моменты жизни, верные подсказки в трудных ситуациях.",
+      2: "Сильное покровительство. Жизнь ведет человека, предоставляя нужные возможности и людей в нужный момент.",
+      3: "Особая жизненная миссия. Сильный поток удачи, требующий от человека следования духовному долгу.",
+      4: "Абсолютная защита пространства. Человек находится под мощным куполом интуитивного ведения."
+    }
+  },
+  '8': {
+    title: "8: Долг, ответственность и карма",
+    essence: "Врожденное чувство ответственности, долга перед семьей и социумом, понимание причинно-следственных законов.",
+    meanings: {
+      0: "Свобода от навязанных обязательств. Легкое отношение к долгу, ориентир на личные интересы.",
+      1: "Здоровая ответственность. Забота о близких, честность в делах и обещаниях.",
+      2: "Врожденное благородство. Сильное чувство долга, забота о справедливости и порядке в обществе.",
+      3: "Гиперответственность. Человек склонен взваливать на себя проблемы всего мира, кармический долг служения.",
+      4: "Абсолютное служение. Готовность жертвовать личным ради блага общества, глубочайшее понимание кармы."
+    }
+  },
+  '9': {
+    title: "9: Память, интеллект и глубина",
+    essence: "Объем интеллектуальной памяти, скорость обработки информации, глубина мышления и способность удерживать знания.",
+    meanings: {
+      0: "Память требует тренировки. Человек быстро забывает ненужные детали, ориентируясь на ощущения.",
+      1: "Хороший умственный потенциал. Быстрое усвоение информации, ясная память.",
+      2: "Выдающийся интеллект. Отличная память, способность легко сопоставлять факты и учиться новому.",
+      3: "Энциклопедический ум. Глубокое понимание сложных взаимосвязей, способность хранить колоссальные объемы данных.",
+      4: "Сверхразум. Уникальные интеллектуальные способности, глубинная связь со знаниями прошлых поколений."
+    }
+  }
+};
+
+const MATRIX_LINE_DETAILS: Record<string, { title: string; essence: string; meanings: Record<string, string> }> = {
+  r1: {
+    title: "Линия Целеустремленности (1-4-7)",
+    essence: "Отражает способность ставить цели, удерживать на них фокус внимания и доводить начатое до конца.",
+    meanings: {
+      low: "Цели размыты, человеку трудно сосредоточиться на одном деле, частая смена приоритетов.",
+      medium: "Стабильное движение. Человек умеет планировать и доводить до результата ключевые жизненные задачи.",
+      high: "Сверхактивность в достижении целей. Склонность идти напролом, не замечая усталости тела."
+    }
+  },
+  r2: {
+    title: "Линия Семейственности (2-5-8)",
+    essence: "Показывает готовность к созданию союза, глубину привязанности к семье и стремление заботиться о близких.",
+    meanings: {
+      low: "Индивидуалистичный подход. Человеку комфортно одному, создание семьи не является главным приоритетом.",
+      medium: "Сбалансированное партнерство. Умение слушать близких, создавать уют и сохранять семейные ценности.",
+      high: "Гиперопека. Человек склонен растворяться в проблемах семьи, забывая о собственной личности."
+    }
+  },
+  r3: {
+    title: "Линия Стабильности (3-6-9)",
+    essence: "Отражает потребность в предсказуемости, материальном фундаменте, привязанность к привычкам и быту.",
+    meanings: {
+      low: "Легкость на подъем, любовь к переменам и путешествиям, нежелание привязываться к вещам.",
+      medium: "Здоровый баланс. Умение поддерживать бытовой комфорт и при этом адаптироваться к изменениям.",
+      high: "Страх перемен. Человек тяжело меняет привычки, склонен копить вещи и держаться за старый порядок."
+    }
+  },
+  c1: {
+    title: "Линия Личности / Самооценки (1-2-3)",
+    essence: "Отражает внутреннюю опору, понимание своей ценности и способность проявлять индивидуальность.",
+    meanings: {
+      low: "Зависимость от мнения окружающих, потребность в постоянном одобрении извне.",
+      medium: "Уверенность в своих силах, понимание своих сильных и слабых сторон.",
+      high: "Ярко выраженное эго. Стремление доминировать в любом общении, потребность быть признанным лидером."
+    }
+  },
+  c2: {
+    title: "Линия Материального (4-5-6)",
+    essence: "Показывает способность обеспечивать себя, практичность ума, умение работать с деньгами и материей.",
+    meanings: {
+      low: "Оторванность от быта, витание в облаках. Трудности в финансовом планировании.",
+      medium: "Хороший уровень практичности. Человек твердо стоит на ногах, умеет зарабатывать и обустраивать быт.",
+      high: "Чрезмерная концентрация на материальном успехе, страх бедности, мешающий духовному росту."
+    }
+  },
+  c3: {
+    title: "Линия Таланта / Духовного (7-8-9)",
+    essence: "Связь с творчеством, интуицией, высшими смыслами, законами вселенной и искусством.",
+    meanings: {
+      low: "Прагматичный склад ума, скептицизм по отношению к интуиции и духовным поискам.",
+      medium: "Хорошая творческая и интуитивная связь. Интерес к искусству, психологии и саморазвитию.",
+      high: "Глубокая мистическая связь, выраженный творческий дар, сильное интуитивное ведение."
+    }
+  },
+  d1: {
+    title: "Линия Внутреннего Компаса (1-5-9)",
+    essence: "Сила духа, следование своей дхарме (жизненному пути) и верность внутренним ориентирам.",
+    meanings: {
+      low: "Человек часто сбивается с пути, поддаваясь внешним влияниям или сиюминутным порывам.",
+      medium: "Уверенное следование своему призванию, верность своим идеалам и принципам.",
+      high: "Бескомпромиссная верность идее. Склонность к фанатизму, неумение вовремя перестроиться."
+    }
+  },
+  d2: {
+    title: "Линия Темперамента (3-5-7)",
+    essence: "Уровень внутренней страстности, сексуальности, харизмы и яркости эмоционального проявления.",
+    meanings: {
+      low: "Сдержанность в чувствах, холодноватый темперамент, акцент на логику и разум.",
+      medium: "Гармоничная чувственность. Способность любить, сопереживать и радоваться жизни.",
+      high: "Взрывной темперамент. Высокая страстность, магнетизм, склонность к эмоциональным качелям."
+    }
+  }
+};
+
+export function getDayEnergy(dateObj = new Date()) {
+  const day = dateObj.getDate();
+  const month = dateObj.getMonth() + 1;
+  const year = dateObj.getFullYear();
+  
+  const sumDigits = (num) => num.toString().split('').reduce((acc, d) => acc + parseInt(d, 10), 0);
+  
+  const daySum = sumDigits(day);
+  const monthSum = sumDigits(month);
+  const yearSum = sumDigits(year);
+  
+  let total = daySum + monthSum + yearSum;
+  while (total > 9) {
+    total = sumDigits(total);
+  }
+  
+  const energies = {
+    1: {
+      title: "Начало и Воля",
+      planet: "Сурья (Солнце)",
+      essence: "День мощного старта, проявления лидерства и ясности ума. Время заявлять о себе и начинать новые проекты.",
+      recommendation: "Сделайте первый шаг в давно откладываемом деле. Позвольте себе быть в центре внимания."
+    },
+    2: {
+      title: "Гармония и Связи",
+      planet: "Чандра (Луна)",
+      essence: "Время для партнерства, выстраивания глубоких связей, эмпатии и заботы о близких. День мягкой силы.",
+      recommendation: "Проведите вечер с близкими, выслушайте друга, уделите время восстановлению душевного равновесия."
+    },
+    3: {
+      title: "Мудрость и Знание",
+      planet: "Гуру (Юпитер)",
+      essence: "День обучения, поиска смыслов, планирования и принятия важных решений. Энергия Юпитера несет удачу.",
+      recommendation: "Почитайте развивающую книгу, составьте план на месяц, обратитесь за советом к наставнику."
+    },
+    4: {
+      title: "Прорыв и Новаторство",
+      planet: "Раху",
+      essence: "День нестандартных решений, креатива и выхода за рамки привычного. Благоприятно для IT и технологий.",
+      recommendation: "Попробуйте сделать привычное дело совершенно новым способом. Доверьтесь смелым идеям."
+    },
+    5: {
+      title: "Движение и Связь",
+      planet: "Буддха (Меркурий)",
+      essence: "Идеальный день для переговоров, торговли, поездок, учебы и общения. Время быстрых мыслей и гибких решений.",
+      recommendation: "Напишите важное письмо, проведите встречу, обменяйтесь идеями с коллегами."
+    },
+    6: {
+      title: "Красота и Тепло",
+      planet: "Шукра (Венера)",
+      essence: "День любви, эстетики, искусства и заботы о себе. Время наполняться радостью и созерцать прекрасное.",
+      recommendation: "Окружите себя красотой, сходите на выставку, побалуйте себя вкусным ужином или покупкой."
+    },
+    7: {
+      title: "Интуиция и Тишина",
+      planet: "Кету",
+      essence: "Время для духовных практик, самоанализа, уединения и медитации. День тишины и калибровки компаса души.",
+      recommendation: "Проведите хотя бы час наедине с собой без гаджетов, побудьте на природе, прислушайтесь к интуиции."
+    },
+    8: {
+      title: "Справедливость и Порядок",
+      planet: "Шани (Сатурн)",
+      essence: "День дисциплины, завершения старых дел, наведения порядка и выполнения обязательств перед близкими.",
+      recommendation: "Уберитесь дома или на рабочем столе, закройте долги, проявите терпение в сложных разговорах."
+    },
+    9: {
+      title: "Действие и Сила",
+      planet: "Мангала (Марс)",
+      essence: "День решительных действий, спорта, защиты справедливости и преодоления препятствий. Энергия победы.",
+      recommendation: "Займитесь спортом, решительно завершите сложную задачу, проявите смелость и твердость характера."
+    }
+  };
+  
+  return {
+    number: total,
+    day,
+    month,
+    year,
+    ...energies[total]
+  };
+}
+
 const MATRIX_LINE_MEANS: Record<string, string> = {
   'r1': 'Целеустремленность (1-4-7)',
   'r2': 'Семейственность (2-5-8)',
@@ -129,6 +390,7 @@ export default function CodeArchitecture() {
   const [matrixType, setMatrixType] = useState<'base' | 'detailed'>('detailed');
   const [hoveredLines, setHoveredLines] = useState<string[]>([]);
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
+  const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const [selectedMainNumber, setSelectedMainNumber] = useState<{title: string, value: number, pos: string} | null>(null);
   
   const [showLeadModal, setShowLeadModal] = useState(false);
@@ -142,6 +404,7 @@ export default function CodeArchitecture() {
     if (!consentChecked) return;
     setErrorInfo(null);
     setSelectedCell(null);
+    setSelectedLine(null);
     setHoveredLines([]);
     
     const regex = /^(\d{2})\.(\d{2})\.(\d{4})$/;
@@ -254,7 +517,7 @@ export default function CodeArchitecture() {
         <span className={`font-serif text-[1.1rem] tracking-[0.15em] mb-6 z-10 transition-colors duration-500 uppercase text-[var(--color-muted)]`}>
           {title}
         </span>
-        <button type="button" onClick={() => setSelectedMainNumber(isSelected ? null : {title, value, pos})} className="flex flex-col items-center z-10 mb-4 cursor-pointer outline-none">
+        <button type="button" onClick={() => { setSelectedMainNumber(isSelected ? null : {title, value, pos}); setSelectedCell(null); setSelectedLine(null); }} className="flex flex-col items-center z-10 mb-4 cursor-pointer outline-none">
           <span className={`font-serif text-6xl md:text-7xl leading-none transition-colors duration-700 ${isSelected ? 'text-[var(--color-antique-gold)] drop-shadow-sm' : 'text-[var(--color-ink)]'}`}>
             {value}
           </span>
@@ -341,6 +604,36 @@ export default function CodeArchitecture() {
           Познай самого себя
         </p>
         <MeanderDivider />
+        
+        {/* Vedic Day Energy Widget */}
+        {(() => {
+          const dayEnergy = getDayEnergy();
+          return (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1 }}
+              className="max-w-md mx-auto mb-10 p-5 bg-white/40 backdrop-blur-md border border-[var(--border-soft)] rounded-2xl shadow-sm relative overflow-hidden flex flex-col items-center text-center"
+            >
+              <div className="flex items-center gap-2 mb-2 text-[var(--color-antique-gold)]">
+                <Sun className="w-4 h-4 animate-spin-slow" />
+                <span className="text-[10px] tracking-[0.2em] uppercase font-semibold">Энергия дня • {dayEnergy.day}.{String(dayEnergy.month).padStart(2, '0')}.{dayEnergy.year}</span>
+              </div>
+              <h4 className="font-serif text-2xl text-[var(--color-ink)] mb-1">
+                Число дня: <span className="font-semibold text-[var(--color-antique-gold)]">{dayEnergy.number}</span> — {dayEnergy.title}
+              </h4>
+              <p className="font-sans text-[10px] tracking-widest uppercase text-[var(--color-muted)] mb-3">{dayEnergy.planet}</p>
+              <p className="font-serif text-sm italic text-[var(--color-graphite)] leading-relaxed px-4 mb-4">
+                "{dayEnergy.essence}"
+              </p>
+              <div className="text-left bg-[var(--color-ivory)]/70 p-3 border-l-2 border-[var(--color-antique-gold)] w-full rounded-sm">
+                <span className="font-sans text-[8px] tracking-[0.15em] uppercase text-[var(--color-muted)] block mb-1 font-semibold">Рекомендация на сегодня</span>
+                <p className="font-serif text-xs text-[var(--color-graphite)]">{dayEnergy.recommendation}</p>
+              </div>
+            </motion.div>
+          );
+        })()}
+
         <div className="relative inline-block mt-4">
           <div className="absolute -left-8 -top-8 w-16 h-16 bg-[var(--color-antique-gold)] opacity-5 blur-2xl rounded-full"></div>
           <p className="font-serif text-[1.1rem] md:text-xl text-[var(--color-muted)] max-w-md mx-auto italic leading-relaxed relative z-10">
@@ -682,7 +975,7 @@ export default function CodeArchitecture() {
                         <motion.button
                           key={`${matrixType}-${num}`}
                           title={`${cellMeaning}: ${count} цифр`}
-                          onClick={() => setSelectedCell(selectedCell === num ? null : num)}
+                          onClick={() => { setSelectedCell(selectedCell === num ? null : num); setSelectedLine(null); setSelectedMainNumber(null); }}
                           onMouseEnter={() => setHoveredLines(NUM_LINES[num])}
                           onMouseLeave={() => setHoveredLines([])}
                           initial={{ opacity: 0, scale: 0.9 }}
@@ -698,24 +991,28 @@ export default function CodeArchitecture() {
                     };
 
                     const LineSum = ({ label, value, index, lineId }: { label: string, value: number, index: number, lineId: string }) => {
-                      const isHovered = hoveredLines.includes(lineId) || (!!selectedCell && NUM_LINES[selectedCell]?.includes(lineId));
+                      const isHovered = hoveredLines.includes(lineId) || (!!selectedCell && NUM_LINES[selectedCell]?.includes(lineId)) || selectedLine === lineId;
+                      const isSelected = selectedLine === lineId;
                       const lineMeaning = MATRIX_LINE_MEANS[lineId] || label;
                       
                       return (
-                        <motion.div
+                        <motion.button
+                          type="button"
                           key={`${matrixType}-${label}`}
                           title={`Линия «${lineMeaning}»: сумма ${value} цифр`}
+                          onClick={() => { setSelectedLine(isSelected ? null : lineId); setSelectedCell(null); setSelectedMainNumber(null); }}
                           onMouseEnter={() => setHoveredLines([lineId])}
                           onMouseLeave={() => setHoveredLines([])}
                           initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: isHovered ? 1.02 : 1 }}
-                          whileHover={{ scale: 1.02 }}
+                          animate={{ opacity: 1, scale: isSelected ? 1.05 : isHovered ? 1.02 : 1 }}
+                          whileHover={{ scale: isSelected ? 1.05 : 1.02 }}
+                          whileTap={{ scale: 0.98 }}
                           transition={{ duration: 0.4, delay: isHovered ? 0 : index * 0.02, ease: [0.16, 1, 0.3, 1] }}
-                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-500 cursor-default ${isHovered ? LINE_STYLES['r'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'}`}
+                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center outline-none transition-colors duration-500 cursor-pointer ${isSelected ? 'bg-[var(--color-ivory)] bg-marble z-20 relative opacity-100 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]' : isHovered ? LINE_STYLES['r'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'}`}
                         >
-                          <span className={`font-serif text-lg transition-colors duration-300 ${(isHovered) ? LINE_STYLES['r'].text : (value >= 5 ? 'text-[var(--color-antique-gold)]' : 'text-[var(--color-muted)]')}`}>{value}</span>
-                          <span className={`text-[0.45rem] sm:text-[0.55rem] tracking-widest uppercase mt-1 transition-colors duration-300 ${isHovered ? LINE_STYLES['r'].text : 'text-[var(--color-muted)] opacity-60'}`}>{label}</span>
-                        </motion.div>
+                          <span className={`font-serif text-lg transition-colors duration-300 ${isSelected || isHovered ? LINE_STYLES['r'].text : (value >= 5 ? 'text-[var(--color-antique-gold)]' : 'text-[var(--color-muted)]')}`}>{value}</span>
+                          <span className={`text-[0.45rem] sm:text-[0.55rem] tracking-widest uppercase mt-1 transition-colors duration-300 ${isSelected || isHovered ? LINE_STYLES['r'].text : 'text-[var(--color-muted)] opacity-60'}`}>{label}</span>
+                        </motion.button>
                       );
                     };
 
@@ -749,23 +1046,33 @@ export default function CodeArchitecture() {
                         <LineSum label="Талант" value={c3} index={14} lineId="c3" />
                         
                         {/* DIAGONALS */}
-                        <motion.div 
+                        <motion.button 
+                          type="button"
                           key={`${matrixType}-diagonals`}
+                          onClick={() => {
+                            // Cycle through diagonals on click or clear
+                            if (selectedLine === 'd1') setSelectedLine('d2');
+                            else if (selectedLine === 'd2') setSelectedLine(null);
+                            else setSelectedLine('d1');
+                            setSelectedCell(null);
+                            setSelectedMainNumber(null);
+                          }}
                           onMouseEnter={() => setHoveredLines(['d1', 'd2'])}
                           onMouseLeave={() => setHoveredLines([])}
                           initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: isAnyDActive ? 1.02 : 1 }}
+                          animate={{ opacity: 1, scale: isAnyDActive || selectedLine === 'd1' || selectedLine === 'd2' ? 1.02 : 1 }}
                           whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
                           transition={{ duration: 0.4, delay: isAnyDActive ? 0 : 15 * 0.02, ease: [0.16, 1, 0.3, 1] }}
-                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center transition-colors duration-500 cursor-default ${isAnyDActive ? LINE_STYLES['d'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'}`}
+                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center outline-none transition-colors duration-500 cursor-pointer ${selectedLine === 'd1' || selectedLine === 'd2' ? 'bg-[var(--color-ivory)] bg-marble z-20 relative opacity-100 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]' : isAnyDActive ? LINE_STYLES['d'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'}`}
                         >
                           <div className="flex gap-2 sm:gap-3 mb-1">
-                            <span className={`text-xs sm:text-[0.95rem] font-serif transition-colors duration-500 ${isD1Active ? LINE_STYLES['d'].text : 'text-[var(--color-ink)]'}`} title={`Внутренний компас (1-5-9): ${d1}`}>{d1}</span>
+                            <span className={`text-xs sm:text-[0.95rem] font-serif transition-colors duration-500 ${isD1Active || selectedLine === 'd1' ? LINE_STYLES['d'].text : 'text-[var(--color-ink)]'}`} title={`Внутренний компас (1-5-9): ${d1}`}>{d1}</span>
                             <span className="text-[var(--border-soft)]">/</span>
-                            <span className={`text-xs sm:text-[0.95rem] font-serif transition-colors duration-500 ${isD2Active ? LINE_STYLES['d'].text : 'text-[var(--color-antique-gold)]'}`} title={`Темперамент (3-5-7): ${d2}`}>{d2}</span>
+                            <span className={`text-xs sm:text-[0.95rem] font-serif transition-colors duration-500 ${isD2Active || selectedLine === 'd2' ? LINE_STYLES['d'].text : 'text-[var(--color-antique-gold)]'}`} title={`Темперамент (3-5-7): ${d2}`}>{d2}</span>
                           </div>
-                          <span className={`text-[0.4rem] sm:text-[0.45rem] tracking-widest uppercase mt-1 text-center leading-[1.3] transition-colors duration-500 ${isAnyDActive ? LINE_STYLES['d'].text : 'text-[var(--color-muted)] opacity-50'}`}>ВНУТР.<br/>ТЕМП.</span>
-                        </motion.div>
+                          <span className={`text-[0.4rem] sm:text-[0.45rem] tracking-widest uppercase mt-1 text-center leading-[1.3] transition-colors duration-500 ${isAnyDActive || selectedLine === 'd1' || selectedLine === 'd2' ? LINE_STYLES['d'].text : 'text-[var(--color-muted)] opacity-50'}`}>ВНУТР.<br/>ТЕМП.</span>
+                        </motion.button>
                       </>
                     );
                   })()}
@@ -773,7 +1080,122 @@ export default function CodeArchitecture() {
               </div>
             </motion.div>
 
-            {/* First Mirror */}
+            {/* Matrix Cell / Line Detail Section */}
+            <AnimatePresence>
+              {selectedCell && (() => {
+                const count = activeMatrix[selectedCell] || 0;
+                const cellData = MATRIX_CELL_DETAILS[selectedCell];
+                if (!cellData) return null;
+                const valDesc = cellData.meanings[count] || cellData.meanings[0];
+
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, y: -10 }}
+                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: -10 }}
+                    className="w-full overflow-hidden mb-16"
+                  >
+                    <div className="p-8 md:p-12 bg-white/60 backdrop-blur-sm border border-[var(--border-soft)] shadow-[var(--shadow-luxury)] relative overflow-hidden rounded-sm">
+                      <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-60"></div>
+                      <div className="absolute -left-20 -top-20 w-64 h-64 bg-[var(--color-antique-gold)] opacity-5 blur-[100px] pointer-events-none"></div>
+                      
+                      <div className="flex justify-between items-start mb-6 pb-4 border-b border-[var(--border-soft)]">
+                        <div>
+                          <h3 className="font-serif text-2xl md:text-3xl text-[var(--color-ink)] tracking-wide">{cellData.title}</h3>
+                          <p className="font-sans text-[0.65rem] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] mt-2 font-semibold">Ячейка матрицы • {count} {count === 1 ? 'цифра' : count >= 2 && count <= 4 ? 'цифры' : 'цифр'}</p>
+                        </div>
+                        <button 
+                          onClick={() => setSelectedCell(null)}
+                          className="text-[var(--color-muted)] hover:text-[var(--color-ink)] bg-white/50 hover:bg-white rounded-full transition-all p-2 shadow-sm border border-transparent hover:border-[var(--border-soft)] cursor-pointer"
+                        >
+                          <X className="w-5 h-5" strokeWidth={1} />
+                        </button>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div>
+                          <span className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] block mb-1 font-medium">Суть качества</span>
+                          <p className="font-serif text-lg leading-relaxed text-[var(--color-graphite)]">{cellData.essence}</p>
+                        </div>
+                        
+                        <div className="bg-[var(--color-ivory)] p-5 border-l-2 border-[var(--color-antique-gold)]">
+                          <span className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-antique-gold)] block mb-2 font-semibold">Ваш уровень проявления</span>
+                          <p className="font-serif text-xl leading-relaxed text-[var(--color-ink)] font-medium">
+                            {count > 0 ? `Ценность ${selectedCell.repeat(count)}: ` : 'Отсутствие цифры: '}
+                            <span className="font-normal text-[var(--color-graphite)]">{valDesc}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })()}
+
+              {selectedLine && (() => {
+                const lineData = MATRIX_LINE_DETAILS[selectedLine];
+                if (!lineData) return null;
+                
+                // Determine strength of the line based on cell counts in that line
+                let lineCount = 0;
+                if (selectedLine === 'r1') lineCount = getCount('147');
+                else if (selectedLine === 'r2') lineCount = getCount('258');
+                else if (selectedLine === 'r3') lineCount = getCount('369');
+                else if (selectedLine === 'c1') lineCount = getCount('123');
+                else if (selectedLine === 'c2') lineCount = getCount('456');
+                else if (selectedLine === 'c3') lineCount = getCount('789');
+                else if (selectedLine === 'd1') lineCount = getCount('159');
+                else if (selectedLine === 'd2') lineCount = getCount('357');
+
+                const strengthKey = lineCount < 3 ? 'low' : lineCount <= 5 ? 'medium' : 'high';
+                const strengthDesc = lineData.meanings[strengthKey];
+
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, y: -10 }}
+                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: -10 }}
+                    className="w-full overflow-hidden mb-16"
+                  >
+                    <div className="p-8 md:p-12 bg-white/60 backdrop-blur-sm border border-[var(--border-soft)] shadow-[var(--shadow-luxury)] relative overflow-hidden rounded-sm">
+                      <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-60"></div>
+                      <div className="absolute -left-20 -top-20 w-64 h-64 bg-[var(--color-antique-gold)] opacity-5 blur-[100px] pointer-events-none"></div>
+                      
+                      <div className="flex justify-between items-start mb-6 pb-4 border-b border-[var(--border-soft)]">
+                        <div>
+                          <h3 className="font-serif text-2xl md:text-3xl text-[var(--color-ink)] tracking-wide">{lineData.title}</h3>
+                          <p className="font-sans text-[0.65rem] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] mt-2 font-semibold">Линия узора • Сила {lineCount} {lineCount === 1 ? 'коэффициент' : lineCount >= 2 && lineCount <= 4 ? 'коэффициента' : 'коэффициентов'}</p>
+                        </div>
+                        <button 
+                          onClick={() => setSelectedLine(null)}
+                          className="text-[var(--color-muted)] hover:text-[var(--color-ink)] bg-white/50 hover:bg-white rounded-full transition-all p-2 shadow-sm border border-transparent hover:border-[var(--border-soft)] cursor-pointer"
+                        >
+                          <X className="w-5 h-5" strokeWidth={1} />
+                        </button>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div>
+                          <span className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] block mb-1 font-medium">Суть линии в коде</span>
+                          <p className="font-serif text-lg leading-relaxed text-[var(--color-graphite)]">{lineData.essence}</p>
+                        </div>
+                        
+                        <div className="bg-[var(--color-ivory)] p-5 border-l-2 border-[var(--color-antique-gold)]">
+                          <span className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-antique-gold)] block mb-2 font-semibold">Влияние на характер</span>
+                          <p className="font-serif text-lg leading-relaxed text-[var(--color-graphite)]">
+                            <span className="font-serif text-xl block mb-2 text-[var(--color-ink)] font-medium">
+                              Уровень: {strengthKey === 'low' ? 'Требует внимания' : strengthKey === 'medium' ? 'Сбалансированный' : 'Интенсивный'}
+                            </span>
+                            {strengthDesc}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })()}
+            </AnimatePresence>
+
+                        {/* First Mirror */}
             <div className="w-full flex flex-col items-center mb-12">
               {reading ? (
                 <>
