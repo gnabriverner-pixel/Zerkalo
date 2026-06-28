@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { safetyGate, qualityGate } from './story';
+import { safetyGate, qualityGate, buildMythBrief } from './story';
 
 describe('Story Module constraints', () => {
   it('PersonalMyth.tsx does not contain forbidden words', () => {
@@ -108,5 +108,11 @@ describe('Story Module constraints', () => {
     const forbiddenStory = "<!-- такт 1 --><!-- такт 2 --><!-- такт 3 --><!-- такт 4 --><!-- такт 5 --><!-- такт 6 --><!-- такт 7 --><!-- такт 8 --> Терапия и Кету упоминаются в этом длинном тексте, который должен содержать более четырехсот слов, чтобы пройти проверку по длине. Но запрещенные слова мешают ему быть валидным. Поэтому гейт вернет ошибку.";
     const checkForbidden = qualityGate(forbiddenStory);
     expect(checkForbidden.isValid).toBe(false);
+  });
+
+  it('story.ts buildMythBrief runs fine without calc parameter', () => {
+    const brief = buildMythBrief();
+    expect(brief.core_gift).toContain("Дар глубокой чувствительности");
+    expect(brief.motif).toContain("тишина");
   });
 });

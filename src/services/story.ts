@@ -26,7 +26,17 @@ export function getMotifByNumber(num: number): string {
   return motifs[reduced] || "свет, путь";
 }
 
-export function buildMythBrief(calc: CalculationResult): MythBrief {
+export function buildMythBrief(calc?: CalculationResult): MythBrief {
+  if (!calc) {
+    return {
+      core_gift: "Дар глубокой чувствительности, интуиции и внутреннего компаса",
+      shadow: "Трудность удерживать внутреннее равновесие под давлением внешних обстоятельств",
+      resource: "Способность находить тишину внутри себя и доверять своим ощущениям",
+      motif: "тишина, тепло, направление, путеводный свет, опора",
+      main_axis: "Путь интеграции внутренней чувствительности в устойчивую жизненную силу."
+    };
+  }
+
   const soulInfo = numberKnowledge[calc.soul] || numberKnowledge[1];
   const pathInfo = numberKnowledge[calc.path] || numberKnowledge[1];
   const resultInfo = numberKnowledge[calc.result] || numberKnowledge[1];
