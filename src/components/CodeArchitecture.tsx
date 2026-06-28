@@ -380,6 +380,60 @@ const MeanderDivider = () => (
   </svg>
 );
 
+// Custom Input Mask Component for automatic dot insertion (DD.MM.YYYY)
+const DateInputMask = React.forwardRef<HTMLInputElement, any>(({ value, onClick, onChange, placeholder }, ref) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, ''); // strip all non-digits
+    if (val.length > 8) val = val.substring(0, 8);
+    
+    let formatted = '';
+    if (val.length > 0) {
+      formatted += val.substring(0, 2);
+    }
+    if (val.length > 2) {
+      formatted += '.' + val.substring(2, 4);
+    }
+    if (val.length > 4) {
+      formatted += '.' + val.substring(4, 8);
+    }
+    
+    e.target.value = formatted;
+    onChange(e);
+  };
+
+  return (
+    <input
+      ref={ref}
+      value={value}
+      onClick={onClick}
+      onChange={handleChange}
+      placeholder={placeholder}
+      className="w-full bg-transparent text-center font-serif text-2xl md:text-3xl py-6 outline-none transition-colors placeholder:text-[var(--color-muted)]/50 text-[var(--color-ink)] px-16"
+    />
+  );
+});
+DateInputMask.displayName = 'DateInputMask';
+
+// Check if all component cells of a matrix line are non-zero (greater than 0)
+const checkLineCompletion = (lineId: string, activeMatrix: Record<string, number>): { isCompleted: boolean; missing: string[] } => {
+  const lineCells: Record<string, string[]> = {
+    r1: ['1', '4', '7'],
+    r2: ['2', '5', '8'],
+    r3: ['3', '6', '9'],
+    c1: ['1', '2', '3'],
+    c2: ['4', '5', '6'],
+    c3: ['7', '8', '9'],
+    d1: ['1', '5', '9'],
+    d2: ['3', '5', '7']
+  };
+  const cells = lineCells[lineId] || [];
+  const missing = cells.filter(cell => (activeMatrix[cell] || 0) === 0);
+  return {
+    isCompleted: missing.length === 0,
+    missing
+  };
+};
+
 export default function CodeArchitecture() {
   const [date, setDate] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -653,6 +707,7 @@ export default function CodeArchitecture() {
         <div className="w-full space-y-4">
           <div className="relative w-full flex items-center group bg-white/40 backdrop-blur-md rounded-lg shadow-sm border border-[var(--border-soft)] hover:shadow-md transition-shadow">
             <DatePicker
+              customInput={<DateInputMask />}
               selected={selectedDate}
               onChange={(d: Date | null) => {
                 setSelectedDate(d);
@@ -990,10 +1045,14 @@ export default function CodeArchitecture() {
                       );
                     };
 
-                    const LineSum = ({ label, value, index, lineId }: { label: string, value: number, index: number, lineId: string }) => {
+                                        const LineSum = ({ label, value, index, lineId }: { label: string, value: number, index: number, lineId: string }) => {
                       const isHovered = hoveredLines.includes(lineId) || (!!selectedCell && NUM_LINES[selectedCell]?.includes(lineId)) || selectedLine === lineId;
                       const isSelected = selectedLine === lineId;
                       const lineMeaning = MATRIX_LINE_MEANS[lineId] || label;
+                      
+                      // Check if completed line by birthdate
+                      const completion = checkLineCompletion(lineId, activeMatrix);
+                      const isLineCompleted = completion.isCompleted;
                       
                       return (
                         <motion.button
@@ -1008,7 +1067,7 @@ export default function CodeArchitecture() {
                           whileHover={{ scale: isSelected ? 1.05 : 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           transition={{ duration: 0.4, delay: isHovered ? 0 : index * 0.02, ease: [0.16, 1, 0.3, 1] }}
-                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center outline-none transition-colors duration-500 cursor-pointer ${isSelected ? 'bg-[var(--color-ivory)] bg-marble z-20 relative opacity-100 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]' : isHovered ? LINE_STYLES['r'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'}`}
+                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center outline-none transition-colors duration-500 cursor-pointer ${isSelected ? 'bg-[var(--color-ivory)] bg-marble z-20 relative opacity-100 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]' : isLineCompleted ? 'bg-[var(--color-ivory)] bg-marble z-10 border border-[var(--color-antique-gold)] border-opacity-40 shadow-sm' : isHovered ? LINE_STYLES['r'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'}`}
                         >
                           <span className={`font-serif text-lg transition-colors duration-300 ${isSelected || isHovered ? LINE_STYLES['r'].text : (value >= 5 ? 'text-[var(--color-antique-gold)]' : 'text-[var(--color-muted)]')}`}>{value}</span>
                           <span className={`text-[0.45rem] sm:text-[0.55rem] tracking-widest uppercase mt-1 transition-colors duration-300 ${isSelected || isHovered ? LINE_STYLES['r'].text : 'text-[var(--color-muted)] opacity-60'}`}>{label}</span>
@@ -1046,6 +1105,11 @@ export default function CodeArchitecture() {
                         <LineSum label="Талант" value={c3} index={14} lineId="c3" />
                         
                         {/* DIAGONALS */}
+                                                const d1Completion = checkLineCompletion('d1', activeMatrix);
+                        const d2Completion = checkLineCompletion('d2', activeMatrix);
+                        const isD1Completed = d1Completion.isCompleted;
+                        const isD2Completed = d2Completion.isCompleted;
+                        const isAnyDiagonalCompleted = isD1Completed || isD2Completed;
                         <motion.button 
                           type="button"
                           key={`${matrixType}-diagonals`}
@@ -1064,7 +1128,7 @@ export default function CodeArchitecture() {
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           transition={{ duration: 0.4, delay: isAnyDActive ? 0 : 15 * 0.02, ease: [0.16, 1, 0.3, 1] }}
-                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center outline-none transition-colors duration-500 cursor-pointer ${selectedLine === 'd1' || selectedLine === 'd2' ? 'bg-[var(--color-ivory)] bg-marble z-20 relative opacity-100 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]' : isAnyDActive ? LINE_STYLES['d'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'}`}
+                          className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center outline-none transition-colors duration-500 cursor-pointer ${selectedLine === 'd1' || selectedLine === 'd2' ? 'bg-[var(--color-ivory)] bg-marble z-20 relative opacity-100 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]' : isAnyDiagonalCompleted ? 'bg-[var(--color-ivory)] bg-marble z-10 border border-[var(--color-antique-gold)] border-opacity-40 shadow-sm' : isAnyDActive ? LINE_STYLES['d'].bg + ' z-20 shadow-[var(--shadow-luxury)] ring-1 ring-[var(--color-antique-gold)]/40' : 'bg-[var(--color-surface)] bg-marble border-none shadow-sm'}`}
                         >
                           <div className="flex gap-2 sm:gap-3 mb-1">
                             <span className={`text-xs sm:text-[0.95rem] font-serif transition-colors duration-500 ${isD1Active || selectedLine === 'd1' ? LINE_STYLES['d'].text : 'text-[var(--color-ink)]'}`} title={`Внутренний компас (1-5-9): ${d1}`}>{d1}</span>
@@ -1148,6 +1212,10 @@ export default function CodeArchitecture() {
 
                 const strengthKey = lineCount < 3 ? 'low' : lineCount <= 5 ? 'medium' : 'high';
                 const strengthDesc = lineData.meanings[strengthKey];
+                
+                // Fetch live completion of the selected line
+                const completionInfo = checkLineCompletion(selectedLine, activeMatrix);
+                const isLineActive = completionInfo.isCompleted;
 
                 return (
                   <motion.div
@@ -1179,14 +1247,31 @@ export default function CodeArchitecture() {
                           <p className="font-serif text-lg leading-relaxed text-[var(--color-graphite)]">{lineData.essence}</p>
                         </div>
                         
-                        <div className="bg-[var(--color-ivory)] p-5 border-l-2 border-[var(--color-antique-gold)]">
+<div className="bg-[var(--color-ivory)] p-5 border-l-2 border-[var(--color-antique-gold)]">
                           <span className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-antique-gold)] block mb-2 font-semibold">Влияние на характер</span>
-                          <p className="font-serif text-lg leading-relaxed text-[var(--color-graphite)]">
+                          <p className="font-serif text-lg leading-relaxed text-[var(--color-graphite)] mb-4">
                             <span className="font-serif text-xl block mb-2 text-[var(--color-ink)] font-medium">
                               Уровень: {strengthKey === 'low' ? 'Требует внимания' : strengthKey === 'medium' ? 'Сбалансированный' : 'Интенсивный'}
                             </span>
                             {strengthDesc}
                           </p>
+                          
+                          {/* Live Completion Badge */}
+                          {isLineActive ? (
+                            <div className="bg-[#C8A45D]/10 border border-[#C8A45D]/30 p-4 rounded-sm mt-4">
+                              <span className="font-sans text-[9px] tracking-[0.15em] uppercase text-[var(--color-antique-gold)] block mb-1 font-semibold">Линия замкнута в вашей матрице</span>
+                              <p className="font-serif text-[0.95rem] text-[var(--color-graphite)]">
+                                Все ячейки этой линии («{lineData.title}») заполнены цифрами по дате вашего рождения. Это дает вам врожденную опору и автоматическое раскрытие потенциала этой сферы.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="bg-[var(--color-marble)] border border-[var(--border-soft)] p-4 rounded-sm mt-4">
+                              <span className="font-sans text-[9px] tracking-[0.15em] uppercase text-[var(--color-muted)] block mb-1 font-semibold">Линия разомкнута</span>
+                              <p className="font-serif text-[0.95rem] text-[var(--color-graphite)]">
+                                Для полной активации силы линии требуется уделить внимание проработке качеств: {completionInfo.missing.map(m => MATRIX_CELL_MEANS[m]).join(', ')}.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
