@@ -132,7 +132,7 @@ export default function PersonalMyth() {
   }, [step]);
 
   return (
-    <div className="flex flex-col items-center py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#0A0D0B] to-[#030403] min-h-screen text-[#F3EFE0] font-sans relative overflow-hidden">
+    <div className="flex flex-col items-center py-24 px-4 sm:px-6 lg:px-8 w-full text-[#F3EFE0] font-sans relative overflow-hidden">
       
       {/* Decorative luxury glows */}
       <div className="absolute top-12 left-12 w-96 h-96 bg-[#8A5A44]/5 blur-[140px] rounded-full pointer-events-none" />
@@ -187,7 +187,11 @@ export default function PersonalMyth() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full bg-white/[0.015] backdrop-blur-2xl border border-white/5 rounded-3xl p-8 sm:p-12 shadow-2xl relative flex flex-col"
+              className="w-full bg-white/[0.01] backdrop-blur-2xl border rounded-3xl p-8 sm:p-12 relative flex flex-col transition-all duration-1000"
+              style={{
+                borderColor: `${themeByStep[step]?.color}20`,
+                boxShadow: `0 30px 80px rgba(0,0,0,0.5), 0 0 50px ${themeByStep[step]?.color}05`
+              }}
             >
               {/* Questionnaire progress & navigation header */}
               <div className="flex justify-between items-center mb-10 border-b border-white/5 pb-6">
@@ -318,7 +322,9 @@ export default function PersonalMyth() {
               )}
               
               {/* Story Parchment/Book Page */}
-              <div className="w-full bg-white/[0.01] border border-white/5 rounded-3xl p-8 sm:p-12 shadow-2xl relative">
+              <div className="w-full bg-white/[0.01] border rounded-3xl p-8 sm:p-12 relative"
+                style={{ borderColor: 'rgba(200, 164, 93, 0.15)', boxShadow: '0 30px 80px rgba(0,0,0,0.5), 0 0 60px rgba(200, 164, 93, 0.02)' }}
+              >
                 {/* Vintage gold top line decor */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-transparent via-[#DCB059] to-transparent opacity-60" />
                 

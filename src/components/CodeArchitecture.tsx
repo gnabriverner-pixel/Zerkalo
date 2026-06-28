@@ -211,7 +211,7 @@ export default function CodeArchitecture() {
   };
 
   return (
-    <div className="flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 bg-[var(--color-ivory)] bg-marble min-h-screen text-[var(--color-ink)] font-sans">
+    <div className="flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 w-full text-[var(--color-ink)] font-sans">
       
       {/* Header */}
       <motion.div 

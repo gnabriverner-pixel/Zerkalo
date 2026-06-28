@@ -7,7 +7,7 @@ export default function App() {
   const [mode, setMode] = useState<'code' | 'myth'>('code');
 
   return (
-    <div className="min-h-screen w-full flex flex-col font-sans transition-colors duration-700" style={{ backgroundColor: mode === 'code' ? '#F8F5EF' : '#0A0D0B' }}>
+    <div className={`min-h-screen w-full flex flex-col font-sans transition-all duration-700 ${mode === 'code' ? 'bg-linen' : 'bg-dark-velvet'}`}>
       
       {/* Navigation */}
       <div className="fixed top-0 left-0 w-full flex justify-center z-50 py-4 px-2 sm:px-4">
