@@ -60,31 +60,31 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
       {
         id: "main_pattern",
         title: "Главный узор",
-        text: `Ядро вашей матрицы опирается на связку амбиции (Душа ${soul.number}), стратегии (Путь ${path.number}) и финальной цели (Результат ${result.number}). Изнутри вы чувствуете, что ${soul.positions.soul.essence.toLowerCase()} Внешний мир открывается, когда вы действуете по линии Пути: ${path.positions.path.essence.toLowerCase()} Этот способ двигаться неизбежно ведёт вас к финальной сборке: ${result.positions.result.essence.toLowerCase()}`
+        text: `Ядро вашей матрицы опирается на связку амбиции (Душа ${soul.number}), стратегии (Путь ${path.number}) и финальной цели (Результат ${result.number}). Ваша внутренняя суть (Душа) характеризуется качеством: «${soul.positions.soul.essence}». Внешний мир открывается, когда вы реализуете стратегию Пути: «${path.positions.path.essence}». Этот способ движения неизбежно ведёт вас к итоговому смыслу (Результат): «${result.positions.result.essence}».`
       },
       {
         id: "strength",
         title: "Что уже является силой",
-        text: `Ваша опора — это резонанс между внутренней потребностью (Душа ${soul.number}) и внешним стилем контакта с миром (Выражение ${expression.number}). У вас есть врожденная способность: ${soul.positions.soul.strength.toLowerCase()} И этот механизм усиливается в тот момент, когда через Выражение вы транслируете ${expression.positions.expression.strength.toLowerCase()} Это сочетание позволяет открывать двери, просто оставаясь собой.`
+        text: `Ваша опора — это резонанс между внутренней потребностью (Душа ${soul.number}) и внешним стилем контакта с миром (Выражение ${expression.number}). С одной стороны, ваша внутренняя сила проявляется так: «${soul.positions.soul.strength}». С другой стороны, этот механизм усиливается, когда во внешнем мире вы транслируете качество Выражения: «${expression.positions.expression.strength}». Сочетание этих двух векторов позволяет вам открывать любые двери.`
       },
       {
         id: "tension",
         title: "Где возникает напряжение",
-        text: `Сильная архитектура выявляет зоны трения там, где стратегия (Путь ${path.number}) сталкивается с фокусом приложения усилий (Направление ${direction.number}). Вы можете чувствовать сопротивление, когда вам нужно ${direction.positions.direction.tension.toLowerCase()}, в то время как ваш привычный метод требует ${path.positions.path.tension.toLowerCase()}${compoundPath ? ` Скрытый сценарий перехода (${calc.pathComposite}) добавляет нюанс: ${compoundPath.risk.toLowerCase()} ` : ''}${compoundDir ? ` А вектор (${calc.directionComposite}) уточняет: ${compoundDir.risk.toLowerCase()}` : ''}`
+        text: `Сильная архитектура выявляет зоны трения там, где стратегия Пути сталкивается с фокусом реализации Направления. Зона сопротивления со стороны Направления: «${direction.positions.direction.tension}». При этом ваш привычный метод со стороны Пути требует иного фокуса: «${path.positions.path.tension}».${compoundPath ? ` Дополнительный вызов по числу перехода (${calc.pathComposite}): «${compoundPath.risk}».` : ''}${compoundDir ? ` Уточняющий нюанс по числу Направления (${calc.directionComposite}): «${compoundDir.risk}».` : ''}`
       },
       {
         id: "step",
         title: "Первый практический шаг",
-        text: `Чтобы ваш потенциал не замирал, начните с точного применения энергии Направления (${direction.number}) с прицелом на ваш смысловой Результат (${result.number}). Ваш шаг: ${direction.positions.direction.recommendation.toLowerCase()} Это не просто действие, это способ проложить дорогу к вашему итоговому смыслу, где вы сможете ${result.positions.result.recommendation.toLowerCase()}${compoundRes ? ` Дополнительно: ${compoundRes.recommendation.toLowerCase()}` : ''}`
+        text: `Чтобы ваш потенциал развивался, начните с точных действий по числу Направления с прицелом на ваш итоговый Результат. Рекомендация для первого шага: «${direction.positions.direction.recommendation}». Это поможет проложить дорогу к вашему итоговому Результату, главная задача которого: «${result.positions.result.recommendation}».${compoundRes ? ` Дополнительный совет по числу Результата: «${compoundRes.recommendation}».` : ''}`
       }
     ],
     strengthTags: [soul.gift.split(',')[0], path.gift.split(',')[0], expression.keywords[0], direction.keywords[1]],
     tensionTags: [soul.shadow.split(',')[0], path.shadow.split(',')[0], direction.shadow.split(',')[0]],
     practicalStep: direction.practicalKey || soul.practicalKey,
     cta: {
-      title: "Хотите увидеть полную карту?",
-      text: "Большое исследование раскрывает не только эти пять чисел, но и матрицу, точки напряжения, денежный вектор и ваш персональный временной цикл.",
-      button: "Получить Большое исследование"
+      title: "Хотите получить детальный разбор?",
+      text: "Более детальный разбор вы можете получить в Telegram. Бот поможет раскрыть скрытый денежный вектор, точки напряжения, рассчитать полную матрицу ресурсов и ваш персональный временной цикл.",
+      button: "Получить разбор в Telegram"
     },
     disclaimer: "Информационно-аналитический формат. Не является вердиктом или гаданием. Цифровой Код — это инструмент самопознания и рефлексии."
   };

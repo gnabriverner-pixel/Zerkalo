@@ -62,9 +62,9 @@ export const BigResearchTeaser: React.FC<Props> = ({ onCtaClick }) => {
 
         <button 
           onClick={onCtaClick}
-          className="mt-6 px-12 py-5 bg-[var(--color-antique-gold)] text-[var(--color-ink)] hover:bg-[#b08833] transition-all font-sans text-[0.65rem] tracking-[0.25em] uppercase shadow-lg hover:shadow-xl hover:-translate-y-px"
+          className="mt-6 px-12 py-5 bg-[var(--color-antique-gold)] text-[var(--color-ink)] hover:bg-[#b08833] transition-all font-sans text-[0.65rem] tracking-[0.25em] uppercase shadow-lg hover:shadow-xl hover:-translate-y-px cursor-pointer"
         >
-          Обратиться к Эксперту
+          Получить разбор в Telegram
         </button>
         <p className="text-[0.65rem] text-gray-500 font-sans tracking-[0.2em] uppercase mt-6 opacity-80">
           Расчёт, собранный в живое слово.

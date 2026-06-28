@@ -57,6 +57,33 @@ async function notifyAdminTelegram(lead: { name: string; birthDate: string; cont
   });
 }
 
+function buildDeterministicStory(inputs: any) {
+  const tension = (inputs.q1 || "тихое ожидание").trim();
+  const image = (inputs.q2 || "туманный ориентир").trim();
+  const strength = (inputs.q3 || "момент внутренней тишины").trim();
+  const resource = (inputs.q4 || "ясность").trim();
+
+  return {
+    title: "Путь к Тихому Источнику",
+    story: `В одном старом краю, где холмы плавно переходят в вечерние сумерки, жил путник. Долгое время внутри него жило странное чувство — ${tension.toLowerCase()}. Оно то угасало, то разгоралось вновь, требуя внимания на каждом перекрестке.\n\nОднажды путник встретил на развилке образ, похожий на «${image}». Это было именно то состояние, которое давно просило быть увиденным. Путник не стал бороться, бежать или искать объяснения; он просто сел рядом, дал этому образу место в своей дорожной сумке и тепло поблагодарил за то, что тот все это время оберегал его.\n\nПостепенно, в тишине признания и покоя, образ начал мягко меняться, высвобождая то самое качество, которого так не хватало путнику в пути — «${resource}».\n\nВспоминая «${strength}», путник почувствовал, как возвращается его истинная сила, позволяя сделать один бережный и ясный шаг вперед.`,
+    mirror: {
+      mainImage: image,
+      innerTension: tension,
+      hiddenResource: resource,
+      newView: strength
+    },
+    meaning: [
+      `Образ «${image}» отражает глубинную потребность в трансформации.`,
+      `Состояние «${tension}» служит сигналом о том, что старые методы требуют пересмотра.`,
+      `Ваша точка силы «${strength}» — это надежный якорь для восстановления ресурса.`,
+      `Качество «${resource}» указывает на точное направление для первого шага.`
+    ],
+    one_step: `Позвольте себе уделить 15 минут тишины, чтобы просто побыть с качеством «${resource}» и записать одну мысль.`,
+    journal_question: `Что изменится в моих действиях завтра, если я впущу немного больше качества «${resource}»?`,
+    disclaimer: "Информационно-аналитический формат. Не является медицинским заключением."
+  };
+}
+
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
@@ -163,16 +190,20 @@ async function startServer() {
     try {
       const { mode, date, calc, storyInputs } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
+      const llmApiKey = process.env.LLM_API_KEY;
       
-      console.log(`SERVER LOG: Generating for mode=${mode}. Key exists: ${!!apiKey}`);
+      const hasGemini = apiKey && apiKey !== "YOUR_GEMINI_API_KEY" && apiKey.length >= 10 && !apiKey.includes("API_KEY");
+      const hasOpenAi = llmApiKey && llmApiKey.length > 5;
+
+      console.log(`SERVER LOG: Generating for mode=${mode}. Gemini key exists: ${!!hasGemini}. OpenAI key exists: ${!!hasOpenAi}`);
 
       let deterministicMirror;
       if (mode === "code") {
         deterministicMirror = generateFirstMirror(calc);
       }
 
-      if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.length < 10 || apiKey.includes("API_KEY")) {
-        console.error("Developer Log: Gemini request bypassed: invalid or missing API key.");
+      if (!hasGemini && !hasOpenAi) {
+        console.warn("Developer Log: LLM request bypassed: both Gemini and OpenAI-compatible keys are missing.");
         if (mode === "code") {
            return res.status(200).json({ 
              mode,
@@ -181,10 +212,14 @@ async function startServer() {
              ui: { safe_message: "Показана базовая версия первого слоя. Полная персональная генерация доступна в Большом исследовании." }
            });
         }
-        return res.status(200).json({ 
+        
+        // For story mode, generate a beautiful personalized deterministic story fallback instead of an empty screen!
+        const compiledStory = buildDeterministicStory(storyInputs);
+        return res.status(200).json({
           mode,
-          status: "demo",
-          ui: { safe_message: "Сейчас доступна демонстрационная версия." }
+          status: "ok",
+          story_result: compiledStory,
+          ui: { safe_message: "Показан базовый образный слой. Полная индивидуальная настройка доступна в Телеграм." }
         });
       }
 
@@ -334,16 +369,48 @@ ${payload2}
 }`;
       }
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: {
-          systemInstruction: systemInstruction,
-          temperature: 0.7,
+      let responseText = "";
+      if (hasGemini) {
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: prompt,
+          config: {
+            systemInstruction: systemInstruction,
+            temperature: 0.7,
+          }
+        });
+        responseText = response.text || "{}";
+      } else if (hasOpenAi) {
+        const llmBaseUrl = process.env.LLM_BASE_URL || "https://api.deepseek.com";
+        const llmModel = process.env.LLM_MODEL || "deepseek-chat";
+        console.log(`SERVER LOG: Generating using OpenAI endpoint: ${llmBaseUrl} with model ${llmModel}`);
+        
+        const openAiRes = await fetch(`${llmBaseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${llmApiKey}`
+          },
+          body: JSON.stringify({
+            model: llmModel,
+            messages: [
+              { role: 'system', content: systemInstruction },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.7,
+            response_format: { type: 'json_object' }
+          })
+        });
+
+        if (!openAiRes.ok) {
+          const errText = await openAiRes.text();
+          throw new Error(`OpenAI-compatible LLM gateway returned status ${openAiRes.status}: ${errText}`);
         }
-      });
-      
-      let responseText = response.text || "{}";
+
+        const openAiData = await openAiRes.json();
+        responseText = openAiData.choices?.[0]?.message?.content || "{}";
+      }
+
       responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
       
       let resultJson;

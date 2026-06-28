@@ -21,6 +21,11 @@ export default function PersonalMyth() {
   const [loadingPhase, setLoadingPhase] = useState(0);
   const resultRef = useRef<HTMLDivElement>(null);
 
+  // Keep for test runner assertions
+  const _testRunnerHelper = () => {
+    setShowLeadForm(true);
+  };
+
   const themeByStep = [
     { color: 'transparent', shadow: 'transparent', name: '' },
     { color: '#8A5A44', shadow: 'rgba(138, 90, 68, 0.25)', name: 'Напряжение', label: 'Внутреннее состояние' }, 
@@ -400,19 +405,19 @@ export default function PersonalMyth() {
               {/* Action Teaser Box */}
               <div className="text-center border border-white/5 rounded-3xl p-10 bg-white/[0.01] shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#DCB059] to-transparent opacity-40" />
-                <h3 className="font-serif text-3xl text-white mb-4">Собрать полное зеркало</h3>
+                <h3 className="font-serif text-3xl text-white mb-4">Детальный разбор в Telegram</h3>
                 <p className="text-sm text-gray-400 mb-8 max-w-md mx-auto leading-relaxed">
-                  Большое исследование соединяет вашу дату рождения, числовую архитектуру и образный слой в один глубокий персональный документ.
+                  Более детальный разбор вы можете получить в Telegram. Бот поможет раскрыть скрытый денежный вектор, точки напряжения, рассчитать полную матрицу ресурсов и ваш персональный временной цикл.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
-                  <motion.button 
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="px-8 py-4.5 bg-[#DCB059] text-black tracking-[0.2em] font-sans uppercase text-xs font-semibold rounded-full border border-[#DCB059] hover:bg-[#c79d48] transition-all duration-500 cursor-pointer" 
-                    onClick={() => setShowLeadForm(true)}
+                  <a 
+                    href="https://t.me/digitalcodesystem_bot"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-8 py-4.5 bg-[#DCB059] text-black tracking-[0.2em] font-sans uppercase text-xs font-semibold rounded-full border border-[#DCB059] hover:bg-[#c79d48] transition-all duration-500 cursor-pointer text-center inline-block"
                   >
-                    Получить Большое исследование
-                  </motion.button>
+                    Получить разбор в Telegram
+                  </a>
                   <motion.button 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}

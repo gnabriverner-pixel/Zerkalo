@@ -142,8 +142,10 @@ export default function CodeArchitecture() {
     }
   };
 
-  const handlePdfRequest = async () => {
-    setShowLeadModal(true);
+  const handlePdfRequest = () => {
+    const cleanDate = date.replace(/\./g, '');
+    const dateQuery = cleanDate.length === 8 ? `?start=dob_${cleanDate}` : '';
+    window.open(`https://t.me/digitalcodesystem_bot${dateQuery}`, '_blank', 'noopener,noreferrer');
   };
 
       const NumberCard = ({ title, pos, value, composite, delay }: { title: string, pos: string, value: number, composite: string, delay: number }) => {
