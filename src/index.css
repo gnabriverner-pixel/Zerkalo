@@ -83,3 +83,15 @@
   background-color: var(--color-antique-gold) !important;
   color: var(--color-ivory) !important;
 }
+.react-datepicker-popper {
+  z-index: 99999 !important;
+}
+.react-datepicker__year-select,
+.react-datepicker__month-select {
+  background-color: var(--color-marble) !important;
+  color: var(--color-ink) !important;
+  border: 1px solid var(--border-soft) !important;
+  font-family: inherit !important;
+  padding: 2px !important;
+  outline: none !important;
+}

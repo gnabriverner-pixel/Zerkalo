@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Info, ArrowRight, Loader2, X } from 'lucide-react';
 import DatePicker, { registerLocale } from 'react-datepicker';
@@ -263,6 +264,7 @@ export default function CodeArchitecture() {
               placeholderText="ДД.ММ.ГГГГ"
               className="w-full bg-transparent text-center font-serif text-2xl md:text-3xl py-6 outline-none transition-colors placeholder:text-[var(--color-muted)]/50 text-[var(--color-ink)] px-16"
               wrapperClassName="w-full"
+              popperContainer={({ children }) => createPortal(children, document.body)}
             />
             <button 
               type="submit" 

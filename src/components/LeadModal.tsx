@@ -20,12 +20,14 @@ export const LeadModal: React.FC<LeadModalProps> = ({
   const [leadForm, setLeadForm] = useState({ name: '', birthDate: defaultBirthDate, contact: '', request: '' });
   const [leadStatus, setLeadStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [leadMessage, setLeadMessage] = useState('');
+  const [consentChecked, setConsentChecked] = useState(false);
 
   React.useEffect(() => {
     if (isOpen) {
       setLeadForm(prev => ({ ...prev, birthDate: defaultBirthDate }));
       setLeadStatus('idle');
       setLeadMessage('');
+      setConsentChecked(false);
     }
   }, [isOpen, defaultBirthDate]);
 
@@ -95,9 +97,6 @@ export const LeadModal: React.FC<LeadModalProps> = ({
             </button>
             
             <h3 className={`font-serif text-3xl mb-4 ${textInk}`}>Большое исследование</h3>
-            <p className={`font-sans text-[0.95rem] mb-8 leading-relaxed ${textMuted}`}>
-              Оставьте заявку, и я свяжусь с вами, чтобы обсудить детали и начать работу над вашим персональным разбором.
-            </p>
             
             {leadStatus === 'success' ? (
               <div className={`border p-8 text-center font-serif text-[1.1rem] ${isDark ? 'bg-[#1A2621]/30 border-[#2A3B33] text-[#A3B8AD]' : 'bg-[var(--color-ivory)] border-[var(--border-soft)] text-[var(--color-ink)]'}`}>
@@ -111,6 +110,57 @@ export const LeadModal: React.FC<LeadModalProps> = ({
               </div>
             ) : (
               <form onSubmit={handleLeadSubmit} className="flex flex-col gap-5">
+                <div className="pt-2 flex items-center justify-start gap-3 w-full mb-2">
+                  <input 
+                    type="checkbox" 
+                    id="lead_consent" 
+                    required
+                    checked={consentChecked}
+                    onChange={(e) => setConsentChecked(e.target.checked)}
+                    className="w-4 h-4 cursor-pointer accent-[var(--color-antique-gold)]"
+                  />
+                  <label htmlFor="lead_consent" className={`text-[10px] sm:text-xs cursor-pointer select-none left-0 ${textMuted}`}>
+                    Я согласен с <a href="/privacy.html" target="_blank" className="underline hover:text-[var(--color-antique-gold)]">Политикой обработки персональных данных</a>
+                  </label>
+                </div>
+
+                {leadForm.birthDate && (
+                  <div className="mb-6 w-full">
+                    <p className={`font-sans text-[0.65rem] tracking-[0.2em] uppercase font-semibold mb-3 ${isDark ? 'text-[#A3B8AD]' : 'text-[var(--color-antique-gold)]'}`}>
+                      Быстрый запуск в Telegram
+                    </p>
+                    <a 
+                      href={consentChecked ? `https://t.me/digitalcode_bot?start=dob_${leadForm.birthDate.replace(/\./g, '').trim()}` : '#'}
+                      onClick={(e) => {
+                        if (!consentChecked) {
+                          e.preventDefault();
+                        }
+                      }}
+                      target={consentChecked ? "_blank" : undefined}
+                      rel={consentChecked ? "noopener noreferrer" : undefined}
+                      className={`w-full py-4 text-center font-sans text-xs tracking-[0.2em] uppercase font-bold transition-all duration-300 block ${
+                        consentChecked 
+                          ? (isDark ? 'bg-[#A3B8AD] text-[#0F1412] hover:bg-[#8CA296]' : 'bg-[var(--color-ink)] text-[var(--color-ivory)] hover:bg-black') 
+                          : 'bg-gray-700/20 text-gray-500 cursor-not-allowed opacity-50 pointer-events-none border border-dashed border-gray-700/30'
+                      } shadow-md`}
+                    >
+                      Открыть Цифровой паспорт
+                    </a>
+                    <p className={`font-sans text-[0.7rem] text-center mt-2 ${textMuted}`}>
+                      Система моментально рассчитает ваш Цифровой паспорт в Telegram и предложит Глубокий разбор.
+                    </p>
+                    
+                    <div className="flex items-center my-6">
+                      <div className="flex-grow border-t border-gray-700 opacity-20"></div>
+                      <span className={`mx-4 font-serif italic text-xs ${textMuted}`}>или оставьте ручную заявку</span>
+                      <div className="flex-grow border-t border-gray-700 opacity-20"></div>
+                    </div>
+                  </div>
+                )}
+
+                <p className={`font-sans text-[0.95rem] mb-2 leading-relaxed ${textMuted}`}>
+                  Заполните форму ниже, если у вас нет Telegram или вы хотите получить полный PDF-отчёт вручную:
+                </p>
                 <input 
                   type="text" 
                   placeholder="Ваше имя" 
@@ -142,18 +192,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
                   onChange={e => setLeadForm({...leadForm, request: e.target.value})}
                   className={`w-full bg-transparent border-b p-4 font-serif text-lg outline-none transition-colors resize-none mt-2 ${borderInput} ${textInput} ${focusBorder}`}
                 ></textarea>
-                
-                <div className="pt-2 flex items-center justify-start gap-3 w-full">
-                  <input 
-                    type="checkbox" 
-                    id="lead_consent" 
-                    required
-                    className="w-4 h-4 cursor-pointer accent-[var(--color-antique-gold)]"
-                  />
-                  <label htmlFor="lead_consent" className={`text-[10px] sm:text-xs cursor-pointer select-none left-0 ${textMuted}`}>
-                    Я согласен с <a href="/privacy.html" target="_blank" className="underline hover:text-[var(--color-antique-gold)]">Политикой обработки персональных данных</a>
-                  </label>
-                </div>
+
 
                 {leadStatus === 'error' && (
                   <div className={`p-3 text-sm font-sans mt-2 border ${errorBg}`}>{leadMessage}</div>
