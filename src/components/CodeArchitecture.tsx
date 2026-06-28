@@ -40,6 +40,68 @@ const MATRIX_CELL_MEANS: Record<string, string> = {
   '9': 'Память, ум'
 };
 
+const POSITION_EXPLANATIONS: Record<string, { math: string; purpose: string }> = {
+  soul: {
+    math: "Рассчитывается по дню вашего рождения",
+    purpose: "Это ваше истинное Я, ядро характера и глубинная мотивация — то, с чем вы пришли в этот мир."
+  },
+  path: {
+    math: "Складывается из суммы всех цифр вашей даты рождения",
+    purpose: "Это ваш жизненный маршрут, дорога опыта, уроки роста и способ проявления талантов в социуме."
+  },
+  direction: {
+    math: "Определяется из промежуточных расчетов даты",
+    purpose: "Ваш внутренний компас, вектор максимального раскрытия потенциала и развития способностей."
+  },
+  expression: {
+    math: "Складывается из числового выражения матрицы",
+    purpose: "Внешняя маска, социальная роль и то, как вас считывает и воспринимает окружающий мир."
+  },
+  result: {
+    math: "Итоговый синтез всей вашей числовой матрицы",
+    purpose: "Главный плод жизни, то качество сознания, к которому вы идете в процессе эволюции души."
+  }
+};
+
+const VEDIC_PLANET_MYTHS: Record<number, { name: string; myth: string }> = {
+  1: {
+    name: "Сурья (Солнце)",
+    myth: "Источник жизненной силы, дух, воля и царское лидерство. Влияние Сурьи требует от человека проявления авторства, раскрытия внутреннего огня и способности вести за собой, не подавляя других."
+  },
+  2: {
+    name: "Чандра (Луна)",
+    myth: "Управитель ума, интуиции и чувств. Энергия Чандры учит искусству гибкости, дипломатии, эмпатии и созданию гармоничной среды вокруг себя."
+  },
+  3: {
+    name: "Гуру (Юпитер)",
+    myth: "Учитель богов, мудрость и закон. Требует от человека накопления и передачи знаний, поиска смыслов, духовного наставничества и благородства."
+  },
+  4: {
+    name: "Раху (Северный узел)",
+    myth: "Энергия новаторства, прорыва и расширения границ. Раху заставляет человека выходить за рамки привычного, созидать новое и преодолевать любые шаблоны."
+  },
+  5: {
+    name: "Буддха (Меркурий)",
+    myth: "Вестник богов, интеллект, речь и коммуникация. Влияние Буддхи наделяет человека гибкостью ума, способностью связывать людей и передавать идеи."
+  },
+  6: {
+    name: "Шукра (Венера)",
+    myth: "Учитель красоты, эстетики и гармонии. Шукра требует от человека раскрытия творческого начала, любви, тепла и создания прекрасного."
+  },
+  7: {
+    name: "Кету (Южный узел)",
+    myth: "Мистическая глубина, интуиция и освобождение. Кету обращает внимание человека внутрь себя, к тишине, мудрости предков и калибровке духа."
+  },
+  8: {
+    name: "Шани (Сатурн)",
+    myth: "Владыка кармы, времени и дисциплины. Шани учит терпению, построению прочных структур, ответственности, труду и смиренному служению."
+  },
+  9: {
+    name: "Мангала (Марс)",
+    myth: "Защитник дхармы (порядка) и огненный воин. Мангала дает смелость, силу действия, стремление защищать слабых и преданно служить своему пути."
+  }
+};
+
 const MATRIX_LINE_MEANS: Record<string, string> = {
   'r1': 'Целеустремленность (1-4-7)',
   'r2': 'Семейственность (2-5-8)',
@@ -451,7 +513,9 @@ export default function CodeArchitecture() {
                 const knowledge = numberKnowledge[numKey] || numberKnowledge[1];
                 const pt = selectedMainNumber.pos as keyof typeof knowledge.positions;
                 const posData = knowledge.positions[pt] || { title: "", essence: "", strength: "", tension: "", recommendation: "" };
-                
+                const posExplanation = POSITION_EXPLANATIONS[selectedMainNumber.pos] || { math: "", purpose: "" };
+                const vedicMyth = VEDIC_PLANET_MYTHS[numKey];
+
                 return (
                   <motion.div
                     initial={{ opacity: 0, height: 0, y: -10 }}
@@ -462,49 +526,83 @@ export default function CodeArchitecture() {
                     <div className="p-8 md:p-12 bg-white/60 backdrop-blur-sm border border-[var(--border-soft)] shadow-[var(--shadow-luxury)] relative overflow-hidden rounded-sm">
                       <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-60"></div>
                       <div className="absolute -left-20 -top-20 w-64 h-64 bg-[var(--color-antique-gold)] opacity-5 blur-[100px] pointer-events-none"></div>
-                      <div className="flex justify-between items-start mb-10">
+                      
+                      {/* Top Header Row */}
+                      <div className="flex justify-between items-start mb-10 pb-6 border-b border-[var(--border-soft)]">
                         <div>
-                           <h3 className="font-serif text-4xl md:text-5xl text-[var(--color-ink)] tracking-wide">{posData.title}</h3>
-                           <p className="font-sans text-[0.7rem] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] mt-3 font-medium">{knowledge.archetypeName}</p>
+                           <div className="flex items-center gap-4">
+                             <span className="font-serif text-5xl md:text-6xl text-[var(--color-antique-gold)] font-semibold leading-none">{numVal}</span>
+                             <div>
+                               <h3 className="font-serif text-3xl md:text-4xl text-[var(--color-ink)] tracking-wide">{posData.title}</h3>
+                               <p className="font-sans text-[0.65rem] uppercase tracking-[0.2em] text-[var(--color-muted)] mt-2">{posExplanation.math}</p>
+                             </div>
+                           </div>
                         </div>
                         <button 
                           onClick={() => setSelectedMainNumber(null)}
-                          className="text-[var(--color-muted)] hover:text-[var(--color-ink)] bg-white/50 hover:bg-white rounded-full transition-all p-3 shadow-sm border border-transparent hover:border-[var(--border-soft)]"
+                          className="text-[var(--color-muted)] hover:text-[var(--color-ink)] bg-white/50 hover:bg-white rounded-full transition-all p-3 shadow-sm border border-transparent hover:border-[var(--border-soft)] cursor-pointer"
                         >
                           <X className="w-6 h-6" strokeWidth={1} />
                         </button>
+                      </div>
+
+                      {/* Position purpose explaining its architectural meaning */}
+                      <div className="bg-[var(--color-ivory)]/80 p-5 border-l-2 border-[var(--color-antique-gold)] mb-8">
+                        <span className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-antique-gold)] block mb-1 font-semibold">Роль в архитектуре</span>
+                        <p className="font-serif text-[1.1rem] leading-relaxed text-[var(--color-graphite)]">{posExplanation.purpose}</p>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                          <div className="md:col-span-2 space-y-6">
                             <div>
-                               <p className="font-serif text-[1.15rem] leading-relaxed text-[var(--color-graphite)] italic border-l-2 border-[var(--color-antique-gold)] pl-4">
+                               <span className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] block mb-2 font-medium">Суть проявления</span>
+                               <p className="font-serif text-[1.15rem] leading-relaxed text-[var(--color-graphite)] italic">
                                  "{posData.essence}"
                                </p>
                             </div>
+                            
                             <div>
-                               <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-2">Сила</h4>
+                               <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-2">Проявление силы</h4>
                                <p className="font-serif text-lg leading-relaxed text-[var(--color-ink)]">{posData.strength}</p>
                             </div>
+                            
                             <div>
-                               <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-2">Напряжение</h4>
+                               <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-2">Точка напряжения</h4>
                                <p className="font-serif text-lg leading-relaxed text-[var(--color-ink)]">{posData.tension}</p>
                             </div>
+                            
                             {posData.recommendation && (
                               <div className="bg-[var(--color-ivory)] p-4 border border-[var(--border-soft)]">
-                                 <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-2">Наблюдение</h4>
+                                 <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-2 font-semibold">Внутреннее наблюдение</h4>
                                  <p className="font-serif text-[1.05rem] leading-relaxed text-[var(--color-graphite)]">{posData.recommendation}</p>
                               </div>
                             )}
                          </div>
-                         <div className="bg-[var(--color-marble)] p-6 border border-[var(--border-soft)]">
-                            <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-4">Ядро энергии</h4>
-                            <p className="font-serif text-[1.05rem] leading-relaxed text-[var(--color-graphite)] mb-6">{knowledge.core}</p>
-                            <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-4">Теги</h4>
-                            <div className="flex flex-col gap-2">
-                              {knowledge.keywords.slice(0, 4).map(kw => (
-                                <span key={kw} className="font-serif text-sm text-[var(--color-ink)] py-1 border-b border-[var(--border-soft)]">{kw}</span>
-                              ))}
+
+                         {/* Vedic / Cosmological Sidebar */}
+                         <div className="bg-[var(--color-marble)] p-6 border border-[var(--border-soft)] flex flex-col gap-6">
+                            {vedicMyth && (
+                              <div>
+                                 <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-antique-gold)] mb-3 font-semibold">Ведический управитель</h4>
+                                 <span className="font-serif text-xl text-[var(--color-ink)] block mb-2">{vedicMyth.name}</span>
+                                 <p className="font-serif text-xs leading-relaxed text-[var(--color-muted)]">{vedicMyth.myth}</p>
+                              </div>
+                            )}
+                            
+                            <hr className="border-[var(--border-soft)]" />
+
+                            <div>
+                               <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-3">Ядро энергии</h4>
+                               <p className="font-serif text-[1.05rem] leading-relaxed text-[var(--color-graphite)]">{knowledge.core}</p>
+                            </div>
+
+                            <div>
+                               <h4 className="font-sans text-[0.65rem] tracking-[0.15em] uppercase text-[var(--color-muted)] mb-3">Смысловые теги</h4>
+                               <div className="flex flex-wrap gap-1.5">
+                                 {knowledge.keywords.map(kw => (
+                                   <span key={kw} className="font-sans text-[10px] text-[var(--color-ink)] px-2.5 py-1 bg-white border border-[var(--border-soft)] rounded-full">{kw}</span>
+                                 ))}
+                               </div>
                             </div>
                          </div>
                       </div>
@@ -513,7 +611,6 @@ export default function CodeArchitecture() {
                 );
               })()}
             </AnimatePresence>
-
             {/* Matrix Section */}
             <motion.div 
               layout
