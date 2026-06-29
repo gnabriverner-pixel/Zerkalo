@@ -452,6 +452,8 @@ export default function CodeArchitecture() {
   const [consentChecked, setConsentChecked] = useState(true);
 
   const matrixRef = useRef<HTMLDivElement>(null);
+  const activeMatrix = result ? (matrixType === 'base' ? result.baseMatrix : result.detailedMatrix) : {};
+  const getCount = (digits: string) => digits.split('').reduce((acc, d) => acc + (activeMatrix[d] || 0), 0);
   
   const handleCalculate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1001,9 +1003,15 @@ export default function CodeArchitecture() {
                 
                 <div className="grid grid-cols-4 gap-px bg-[var(--border-soft)] border border-[var(--border-soft)] shadow-sm bg-[var(--color-surface)]">
                   {(() => {
-                    const activeMatrix = matrixType === 'base' ? result.baseMatrix : result.detailedMatrix;
-                    
-                    const getCount = (digits: string) => digits.split('').reduce((acc, d) => acc + (activeMatrix[d] || 0), 0);
+                    const isD1Active = hoveredLines.includes('d1') || (!!selectedCell && NUM_LINES[selectedCell]?.includes('d1'));
+                    const isD2Active = hoveredLines.includes('d2') || (!!selectedCell && NUM_LINES[selectedCell]?.includes('d2'));
+                    const isAnyDActive = isD1Active || isD2Active;
+
+                    const d1Completion = checkLineCompletion('d1', activeMatrix);
+                    const d2Completion = checkLineCompletion('d2', activeMatrix);
+                    const isD1Completed = d1Completion.isCompleted;
+                    const isD2Completed = d2Completion.isCompleted;
+                    const isAnyDiagonalCompleted = isD1Completed || isD2Completed;
                     const r1 = getCount('147');
                     const r2 = getCount('258');
                     const r3 = getCount('369');
@@ -1088,10 +1096,6 @@ export default function CodeArchitecture() {
                       );
                     };
 
-                    const isD1Active = hoveredLines.includes('d1') || (!!selectedCell && NUM_LINES[selectedCell]?.includes('d1'));
-                    const isD2Active = hoveredLines.includes('d2') || (!!selectedCell && NUM_LINES[selectedCell]?.includes('d2'));
-                    const isAnyDActive = isD1Active || isD2Active;
-
                     return (
                       <>
                         {/* ROW 1 */}
@@ -1118,11 +1122,6 @@ export default function CodeArchitecture() {
                         <LineSum label="Итог" value={c3} index={14} lineId="c3" />
                         
                         {/* DIAGONALS */}
-                                                const d1Completion = checkLineCompletion('d1', activeMatrix);
-                        const d2Completion = checkLineCompletion('d2', activeMatrix);
-                        const isD1Completed = d1Completion.isCompleted;
-                        const isD2Completed = d2Completion.isCompleted;
-                        const isAnyDiagonalCompleted = isD1Completed || isD2Completed;
                         <motion.button 
                           type="button"
                           key={`${matrixType}-diagonals`}
