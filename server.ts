@@ -438,22 +438,32 @@ ${payload2}
           const llmBaseUrl = process.env.LLM_BASE_URL || "https://api.deepseek.com";
           const llmModel = process.env.LLM_MODEL || "deepseek-chat";
           
-          const openAiRes = await fetch(`${llmBaseUrl}/chat/completions`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${llmApiKey}`
-            },
-            body: JSON.stringify({
-              model: llmModel,
-              messages: [
-                { role: 'system', content: systemInstruction },
-                { role: 'user', content: prompt }
-              ],
-              temperature: 0.7,
-              response_format: { type: 'json_object' }
-            })
-          });
+          const controller = new AbortController();
+          const timeoutMs = mode === "story" ? 25000 : 12000;
+          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+          let openAiRes;
+          try {
+            openAiRes = await fetch(`${llmBaseUrl}/chat/completions`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${llmApiKey}`
+              },
+              body: JSON.stringify({
+                model: llmModel,
+                messages: [
+                  { role: 'system', content: systemInstruction },
+                  { role: 'user', content: prompt }
+                ],
+                temperature: 0.7,
+                response_format: { type: 'json_object' }
+              }),
+              signal: controller.signal
+            });
+          } finally {
+            clearTimeout(timeoutId);
+          }
 
           if (!openAiRes.ok) {
             const errText = await openAiRes.text();
