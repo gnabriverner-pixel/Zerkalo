@@ -380,39 +380,7 @@ const MeanderDivider = () => (
   </svg>
 );
 
-// Custom Input Mask Component for automatic dot insertion (DD.MM.YYYY)
-const DateInputMask = React.forwardRef<HTMLInputElement, any>(({ value, onClick, onChange, placeholder }, ref) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/\D/g, ''); // strip all non-digits
-    if (val.length > 8) val = val.substring(0, 8);
-    
-    let formatted = '';
-    if (val.length > 0) {
-      formatted += val.substring(0, 2);
-    }
-    if (val.length > 2) {
-      formatted += '.' + val.substring(2, 4);
-    }
-    if (val.length > 4) {
-      formatted += '.' + val.substring(4, 8);
-    }
-    
-    e.target.value = formatted;
-    onChange(e);
-  };
 
-  return (
-    <input
-      ref={ref}
-      value={value}
-      onClick={onClick}
-      onChange={handleChange}
-      placeholder={placeholder}
-      className="w-full bg-transparent text-center font-serif text-2xl md:text-3xl py-6 outline-none transition-colors placeholder:text-[var(--color-muted)]/50 text-[var(--color-ink)] px-16"
-    />
-  );
-});
-DateInputMask.displayName = 'DateInputMask';
 
 // Check if all component cells of a matrix line are non-zero (greater than 0)
 const checkLineCompletion = (lineId: string, activeMatrix: Record<string, number>): { isCompleted: boolean; missing: string[] } => {
@@ -435,6 +403,38 @@ const checkLineCompletion = (lineId: string, activeMatrix: Record<string, number
 };
 
 export default function CodeArchitecture() {
+  const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, ''); // strip all non-digits
+    if (val.length > 8) val = val.substring(0, 8);
+    
+    let formatted = '';
+    if (val.length > 0) {
+      formatted += val.substring(0, 2);
+    }
+    if (val.length > 2) {
+      formatted += '.' + val.substring(2, 4);
+    }
+    if (val.length > 4) {
+      formatted += '.' + val.substring(4, 8);
+    }
+    
+    setDate(formatted);
+
+    // If fully entered, parse to sync calendar
+    if (formatted.length === 10) {
+      const parts = formatted.split('.');
+      const d = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const y = parseInt(parts[2], 10);
+      const parsedDate = new Date(y, m, d);
+      if (!isNaN(parsedDate.getTime()) && y > 1000 && y < 9999) {
+        setSelectedDate(parsedDate);
+      }
+    } else {
+      setSelectedDate(null);
+    }
+  };
+
   const [date, setDate] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [result, setResult] = useState<CalculationResult | null>(null);
@@ -706,29 +706,42 @@ export default function CodeArchitecture() {
       >
         <div className="w-full space-y-4">
           <div className="relative w-full flex items-center group bg-white/40 backdrop-blur-md rounded-lg shadow-sm border border-[var(--border-soft)] hover:shadow-md transition-shadow">
-            <DatePicker
-              customInput={<DateInputMask />}
-              selected={selectedDate}
-              onChange={(d: Date | null) => {
-                setSelectedDate(d);
-                if (d) {
-                  const dayStr = String(d.getDate()).padStart(2, '0');
-                  const monthStr = String(d.getMonth() + 1).padStart(2, '0');
-                  const yearStr = String(d.getFullYear());
-                  setDate(`${dayStr}.${monthStr}.${yearStr}`);
-                } else {
-                  setDate('');
+            {/* Calendar popover trigger */}
+            <div className="absolute left-3 z-20 flex items-center">
+              <DatePicker
+                selected={selectedDate}
+                onChange={(d: Date | null) => {
+                  setSelectedDate(d);
+                  if (d) {
+                    const dayStr = String(d.getDate()).padStart(2, '0');
+                    const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+                    const yearStr = String(d.getFullYear());
+                    setDate(`${dayStr}.${monthStr}.${yearStr}`);
+                  } else {
+                    setDate('');
+                  }
+                }}
+                customInput={
+                  <button type="button" className="p-2 text-[var(--color-muted)] hover:text-[var(--color-antique-gold)] transition-colors cursor-pointer outline-none">
+                    <Calendar className="w-5 h-5" strokeWidth={1.5} />
+                  </button>
                 }
-              }}
-              dateFormat="dd.MM.yyyy"
-              locale="ru"
-              showYearDropdown
-              showMonthDropdown
-              dropdownMode="select"
-              placeholderText="ДД.ММ.ГГГГ"
-              className="w-full bg-transparent text-center font-serif text-2xl md:text-3xl py-6 outline-none transition-colors placeholder:text-[var(--color-muted)]/50 text-[var(--color-ink)] px-16"
-              wrapperClassName="w-full"
-              popperContainer={({ children }) => createPortal(children, document.body)}
+                dateFormat="dd.MM.yyyy"
+                locale="ru"
+                showYearDropdown
+                showMonthDropdown
+                dropdownMode="select"
+                popperContainer={({ children }) => createPortal(children, document.body)}
+              />
+            </div>
+            
+            {/* Masked Text Input */}
+            <input
+              type="text"
+              value={date}
+              onChange={handleDateInputChange}
+              placeholder="ДД.ММ.ГГГГ"
+              className="w-full bg-transparent text-center font-serif text-2xl md:text-3xl py-6 outline-none transition-colors placeholder:text-[var(--color-muted)]/50 text-[var(--color-ink)] px-16 relative z-10"
             />
             <button 
               type="submit" 
