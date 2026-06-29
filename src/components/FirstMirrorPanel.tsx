@@ -14,6 +14,20 @@ const GreekDivider = () => (
 );
 
 export const FirstMirrorPanel: React.FC<Props> = ({ data, onCtaClick }) => {
+  // Safe fallbacks to prevent React crashes
+  const subtitle = data?.subtitle || "Архитектура Силы";
+  const formulaNumbers = data?.formula?.numbers || "";
+  const formulaPlanets = data?.formula?.planets || "";
+  const formulaPositions = data?.formula?.positions || "";
+  const keyInsight = data?.keyInsight || "";
+  const blocks = Array.isArray(data?.blocks) ? data.blocks : [];
+  const strengthTags = Array.isArray(data?.strengthTags) ? data.strengthTags : [];
+  const tensionTags = Array.isArray(data?.tensionTags) ? data.tensionTags : [];
+  const ctaTitle = data?.cta?.title || "Хотите получить детальный разбор?";
+  const ctaText = data?.cta?.text || "Более детальный разбор доступен в Telegram.";
+  const ctaButton = data?.cta?.button || "Получить разбор в Telegram";
+  const disclaimer = data?.disclaimer || "Информационно-аналитический формат.";
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -29,7 +43,7 @@ export const FirstMirrorPanel: React.FC<Props> = ({ data, onCtaClick }) => {
             Первое Зеркало
           </p>
           <h2 className="text-3xl md:text-5xl font-serif text-[var(--color-ink)] mb-10 tracking-tight">
-            {data.subtitle}
+            {subtitle}
           </h2>
           
           <GreekDivider />
@@ -39,80 +53,86 @@ export const FirstMirrorPanel: React.FC<Props> = ({ data, onCtaClick }) => {
               Архитектура Формулы
             </h3>
             <div className="inline-block border border-[var(--color-antique-gold)] border-opacity-30 p-6 md:p-8 bg-transparent">
-               <div className="text-2xl md:text-3xl font-serif tracking-[0.15em] text-[var(--color-ink)] mb-3">
-                 {data.formula.numbers}
-               </div>
-               <div className="text-[0.8rem] md:text-sm font-sans tracking-[0.15em] text-[var(--color-graphite)] mb-3 uppercase">
-                 {data.formula.planets}
-               </div>
-               <div className="text-[0.65rem] tracking-[0.2em] text-[var(--color-muted)] uppercase opacity-80">
-                 {data.formula.positions}
-               </div>
+              <div className="text-2xl md:text-3xl font-serif tracking-[0.15em] text-[var(--color-ink)] mb-3">
+                {formulaNumbers}
+              </div>
+              <div className="text-[0.8rem] md:text-sm font-sans tracking-[0.15em] text-[var(--color-graphite)] mb-3 uppercase">
+                {formulaPlanets}
+              </div>
+              <div className="text-[0.65rem] tracking-[0.2em] text-[var(--color-muted)] uppercase opacity-80">
+                {formulaPositions}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="border-l-2 border-[var(--color-antique-gold)] pl-8 py-2 md:py-4 mb-16 mx-4 md:mx-0">
-          <p className="text-xl md:text-3xl font-serif italic text-[var(--color-ink)] leading-relaxed">
-            "{data.keyInsight}"
-          </p>
-        </div>
+        {keyInsight && (
+          <div className="border-l-2 border-[var(--color-antique-gold)] pl-8 py-2 md:py-4 mb-16 mx-4 md:mx-0">
+            <p className="text-xl md:text-3xl font-serif italic text-[var(--color-ink)] leading-relaxed">
+              "{keyInsight}"
+            </p>
+          </div>
+        )}
 
-        <div className="space-y-16 mt-16">
-          {data.blocks.map((block) => (
-            <div key={block.id} className="relative">
-              <h3 className="text-[0.7rem] tracking-[0.25em] uppercase text-[var(--color-antique-gold)] font-sans mb-4 inline-block bg-[var(--color-ivory)] px-2 -ml-2">
-                {block.title}
-              </h3>
-              <p className="font-serif text-[1.1rem] md:text-[1.25rem] leading-[1.8] text-[var(--color-graphite)] text-justify">
-                {block.text}
-              </p>
-            </div>
-          ))}
-        </div>
+        {blocks.length > 0 && (
+          <div className="space-y-16 mt-16">
+            {blocks.map((block) => (
+              <div key={block.id} className="relative">
+                <h3 className="text-[0.7rem] tracking-[0.25em] uppercase text-[var(--color-antique-gold)] font-sans mb-4 inline-block bg-[var(--color-ivory)] px-2 -ml-2">
+                  {block.title}
+                </h3>
+                <p className="font-serif text-[1.1rem] md:text-[1.25rem] leading-[1.8] text-[var(--color-graphite)] text-justify">
+                  {block.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
 
         <GreekDivider />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-px mt-16 bg-[var(--border-soft)] border border-[var(--border-soft)]">
-          <div className="bg-[var(--color-surface)] p-8 md:p-10">
-            <h4 className="text-[0.7rem] font-sans tracking-[0.2em] uppercase text-[var(--color-ink)] mb-6 border-b border-[var(--border-soft)] pb-4">Фундамент</h4>
-            <div className="flex flex-col gap-3">
-              {data.strengthTags.map((tag, i) => (
-                <span key={i} className="font-serif text-sm text-[var(--color-graphite)] leading-relaxed relative pl-4 before:content-[''] before:absolute before:left-0 before:top-[0.55rem] before:w-1.5 before:h-1.5 before:bg-[var(--color-antique-gold)] before:opacity-60">
-                  {tag.trim()}
-                </span>
-              ))}
+        {(strengthTags.length > 0 || tensionTags.length > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-px mt-16 bg-[var(--border-soft)] border border-[var(--border-soft)]">
+            <div className="bg-[var(--color-surface)] p-8 md:p-10">
+              <h4 className="text-[0.7rem] font-sans tracking-[0.2em] uppercase text-[var(--color-ink)] mb-6 border-b border-[var(--border-soft)] pb-4">Фундамент</h4>
+              <div className="flex flex-col gap-3">
+                {strengthTags.map((tag, i) => (
+                  <span key={i} className="font-serif text-sm text-[var(--color-graphite)] leading-relaxed relative pl-4 before:content-[''] before:absolute before:left-0 before:top-[0.55rem] before:w-1.5 before:h-1.5 before:bg-[var(--color-antique-gold)] before:opacity-60">
+                    {tag.trim()}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="bg-[var(--color-ivory)] p-8 md:p-10">
+              <h4 className="text-[0.7rem] font-sans tracking-[0.2em] uppercase text-[var(--color-ink)] mb-6 border-b border-[var(--border-soft)] pb-4">Точки давления</h4>
+              <div className="flex flex-col gap-3">
+                {tensionTags.map((tag, i) => (
+                  <span key={i} className="font-serif text-sm text-[var(--color-graphite)] leading-relaxed relative pl-4 before:content-[''] before:absolute before:left-0 before:top-[0.55rem] before:w-1.5 before:h-1.5 before:bg-[var(--color-muted)] before:opacity-40">
+                    {tag.trim()}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="bg-[var(--color-ivory)] p-8 md:p-10">
-            <h4 className="text-[0.7rem] font-sans tracking-[0.2em] uppercase text-[var(--color-ink)] mb-6 border-b border-[var(--border-soft)] pb-4">Точки давления</h4>
-            <div className="flex flex-col gap-3">
-              {data.tensionTags.map((tag, i) => (
-                <span key={i} className="font-serif text-sm text-[var(--color-graphite)] leading-relaxed relative pl-4 before:content-[''] before:absolute before:left-0 before:top-[0.55rem] before:w-1.5 before:h-1.5 before:bg-[var(--color-muted)] before:opacity-40">
-                  {tag.trim()}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+        )}
         
         <div className="mt-24 text-center">
-          <h3 className="text-3xl font-serif text-[var(--color-ink)] mb-6">{data.cta.title}</h3>
+          <h3 className="text-3xl font-serif text-[var(--color-ink)] mb-6">{ctaTitle}</h3>
           <p className="font-sans text-[var(--color-graphite)] text-sm max-w-xl mx-auto mb-10 leading-relaxed tracking-wide">
-            {data.cta.text}
+            {ctaText}
           </p>
           <button 
             onClick={onCtaClick}
-            className="px-10 py-5 bg-[var(--color-ink)] text-[var(--color-ivory)] font-sans text-[0.7rem] tracking-[0.3em] uppercase hover:bg-black transition-all border border-transparent hover:border-[var(--color-antique-gold)] duration-300"
+            className="px-10 py-5 bg-[var(--color-ink)] text-[var(--color-ivory)] font-sans text-[0.7rem] tracking-[0.3em] uppercase hover:bg-black transition-all border border-transparent hover:border-[var(--color-antique-gold)] duration-300 cursor-pointer"
           >
-            {data.cta.button}
+            {ctaButton}
           </button>
         </div>
       </div>
       
       <div className="bg-[#f2f0e9] py-6 px-4 text-center border-t border-[var(--border-soft)]">
          <p className="text-[0.6rem] uppercase tracking-[0.2em] text-[var(--color-muted)] opacity-60">
-           {data.disclaimer}
+           {disclaimer}
          </p>
       </div>
     </motion.div>
