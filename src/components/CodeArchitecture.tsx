@@ -449,7 +449,7 @@ export default function CodeArchitecture() {
   
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [demoNotice, setDemoNotice] = useState('');
-  const [consentChecked, setConsentChecked] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(true);
 
   const matrixRef = useRef<HTMLDivElement>(null);
   
@@ -746,7 +746,7 @@ export default function CodeArchitecture() {
             <button 
               type="submit" 
               disabled={isGenerating || date.length !== 10 || !consentChecked}
-              className="absolute right-3 p-4 bg-transparent text-[var(--color-ink)]/70 hover:text-[var(--color-antique-gold)] transition-all disabled:opacity-30 disabled:hover:text-[var(--color-ink)]/70"
+              className="absolute right-3 p-4 bg-transparent text-[var(--color-ink)]/70 hover:text-[var(--color-antique-gold)] transition-all disabled:opacity-30 disabled:hover:text-[var(--color-ink)]/70 z-20 cursor-pointer"
             >
               {isGenerating ? (
                 <Loader2 className="w-6 h-6 animate-spin" />
