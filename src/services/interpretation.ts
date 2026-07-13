@@ -76,20 +76,15 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
         id: "step",
         title: "Первый практический шаг",
         text: `Чтобы ваш потенциал не замирал, начните с точного применения энергии Направления (${direction.number}) с прицелом на ваш смысловой Результат (${result.number}). Ваш шаг: ${direction.positions.direction.recommendation.toLowerCase()} Это не просто действие, это способ проложить дорогу к вашему итоговому смыслу, где вы сможете ${result.positions.result.recommendation.toLowerCase()}${compoundRes ? ` Дополнительно: ${compoundRes.recommendation.toLowerCase()}` : ''}`
-      },
-      {
-        id: "resonance",
-        title: "Метафорический резонанс",
-        text: `"${soul.tale ? soul.tale.title : 'Легенда начального порядка'}". Ваше глубинное ядро (${soul.number}) требует реализации как ${soul.archetypeName.toLowerCase()}. Внутри вас живёт ${soul.core.toLowerCase()}. Если вы не используете этот дар (${soul.gift.toLowerCase()}), он превращается в тень (${soul.shadow.toLowerCase()}). Опирайтесь на планетарную энергию (${soul.planet}), чтобы выстроить свой маршрут.`
       }
     ],
     strengthTags: [soul.gift.split(',')[0], path.gift.split(',')[0], expression.keywords[0], direction.keywords[1]],
     tensionTags: [soul.shadow.split(',')[0], path.shadow.split(',')[0], direction.shadow.split(',')[0]],
     practicalStep: direction.practicalKey || soul.practicalKey,
     cta: {
-      title: "Хотите увидеть полную карту?",
-      text: "Большое исследование раскрывает не только эти пять чисел, но и матрицу, точки напряжения, денежный вектор и ваш персональный временной цикл.",
-      button: "Получить Большое исследование"
+      title: "Есть вопрос, который требует ясности?",
+      text: "В Telegram можно выбрать одну живую ситуацию и увидеть, какие позиции и составные маршруты поддерживают вывод. После разбора один шаг можно проверить в добровольном семидневном маршруте.",
+      button: "Разобрать мой вопрос"
     },
     disclaimer: "Информационно-аналитический формат. Не является вердиктом или гаданием. Цифровой Код — это инструмент самопознания и рефлексии."
   };

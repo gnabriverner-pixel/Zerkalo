@@ -18,6 +18,7 @@ import { LeadModal } from './LeadModal';
 import { AssociativeCloud } from './AssociativeCloud';
 import { QuoteOfTheDay } from './QuoteOfTheDay';
 import { saveElementAsPdf } from '../lib/pdfUtils';
+import { normalizeDateInputValue } from '../lib/dateInput';
 
 const playMagicalChime = () => {
     try {
@@ -268,16 +269,16 @@ export default function CodeArchitecture() {
         className="text-center mb-16 pt-10"
       >
         <h1 className="font-serif text-5xl md:text-7xl tracking-widest uppercase mb-6 text-[var(--color-ink)] drop-shadow-sm">
-          Архитектура<br className="md:hidden" /> Кода
+          Цифровой<br className="md:hidden" /> Код
         </h1>
         <p className="font-sans text-xs md:text-sm tracking-[0.4em] uppercase text-[var(--color-antique-gold)] opacity-90 mb-4">
-          Познай самого себя
+          Пять позиций одной связанной формулы
         </p>
         <MeanderDivider />
         <div className="relative inline-block mt-4">
           <div className="absolute -left-8 -top-8 w-16 h-16 bg-[var(--color-antique-gold)] opacity-5 blur-2xl rounded-full"></div>
           <p className="font-serif text-[1.1rem] md:text-xl text-[var(--color-muted)] max-w-md mx-auto italic leading-relaxed relative z-0">
-            Введите дату рождения — система покажет первый слой вашей внутренней архитектуры.
+            Введите дату рождения. Система покажет не только числа, но и объяснит, как одна позиция связана с другой.
           </p>
         </div>
       </motion.div>
@@ -295,17 +296,16 @@ export default function CodeArchitecture() {
             <DatePicker
               selected={selectedDate}
               onChangeRaw={(e) => {
-                const target = e.target as HTMLInputElement;
+                const target = e?.target as HTMLInputElement | undefined;
                 if (!target) return;
                 const prev = target.value;
-                let val = prev.replace(/[^\d]/g, '');
-                if (val.length > 2) val = val.substring(0, 2) + '.' + val.substring(2);
-                if (val.length > 5) val = val.substring(0, 5) + '.' + val.substring(5, 9);
+                const val = normalizeDateInputValue(prev);
+                if (val === null) return;
                 if (val !== prev) {
                    const selStart = target.selectionStart;
                    target.value = val;
                    setDate(val);
-                   if (selStart && selStart <= val.length) {
+                   if (selStart && selStart <= val.length && typeof target.setSelectionRange === 'function') {
                        target.setSelectionRange(selStart + (val.length > prev.length && (val.endsWith('.') || val.charAt(selStart - 1) === '.') ? 1 : 0), selStart + (val.length > prev.length && (val.endsWith('.') || val.charAt(selStart - 1) === '.') ? 1 : 0));
                    }
                 } else {
