@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import CodeArchitecture from './components/CodeArchitecture';
 import PersonalMyth from './components/PersonalMyth';
+import { ProductTrustLayer } from './components/ProductTrustLayer';
 
 export default function App() {
   const [mode, setMode] = useState<'code' | 'myth'>('code');
@@ -38,6 +39,7 @@ export default function App() {
             className="w-full flex-grow flex flex-col pt-16"
           >
             <CodeArchitecture />
+            <ProductTrustLayer />
           </motion.div>
         )}
         {mode === 'myth' && (

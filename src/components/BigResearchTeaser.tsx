@@ -22,13 +22,13 @@ export const BigResearchTeaser: React.FC<Props> = ({ onCtaClick }) => {
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-50"></div>
       
       <div className="p-12 md:p-20 relative z-10 flex flex-col items-center border border-[var(--border-soft)] border-opacity-20">
-        <h2 className="font-serif text-4xl md:text-5xl mb-4 text-center tracking-wide">Большое исследование</h2>
+        <h2 className="font-serif text-4xl md:text-5xl mb-4 text-center tracking-wide">Разбор вашего вопроса</h2>
         <p className="font-sans text-[0.65rem] tracking-[0.3em] uppercase text-[var(--color-antique-gold)] mb-8 text-center bg-[var(--color-ink)] px-4">
-          ПОЛНЫЙ ПЕРСОНАЛЬНЫЙ ДОКУМЕНТ
+          TELEGRAM + ПОДРОБНЫЙ PDF
         </p>
         
         <p className="font-serif text-[1.15rem] md:text-xl text-center leading-relaxed text-[var(--color-muted)] max-w-2xl mb-16 italic">
-          Глубокий разбор формулы личности. Мы описываем не только базовые числа, но и сложную архитектуру матрицы: внутренние опоры, точки напряжения, деньги и реализацию.
+          Один важный вопрос, полная цифровая формула и три коротких уточнения. В результате видно, откуда берётся вывод; семидневную проверку можно начать отдельно, по желанию.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-3xl mb-16 text-left">
@@ -64,7 +64,7 @@ export const BigResearchTeaser: React.FC<Props> = ({ onCtaClick }) => {
           onClick={onCtaClick}
           className="mt-6 px-12 py-5 bg-[var(--color-antique-gold)] text-[var(--color-ink)] hover:bg-[#b08833] transition-all font-sans text-[0.65rem] tracking-[0.25em] uppercase shadow-lg hover:shadow-xl hover:-translate-y-px cursor-pointer"
         >
-          Получить разбор в Telegram
+          Разобрать мой вопрос
         </button>
         <p className="text-[0.65rem] text-gray-500 font-sans tracking-[0.2em] uppercase mt-6 opacity-80">
           Расчёт, собранный в живое слово.

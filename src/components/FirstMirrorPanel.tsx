@@ -23,9 +23,9 @@ export const FirstMirrorPanel: React.FC<Props> = ({ data, onCtaClick }) => {
   const blocks = Array.isArray(data?.blocks) ? data.blocks : [];
   const strengthTags = Array.isArray(data?.strengthTags) ? data.strengthTags : [];
   const tensionTags = Array.isArray(data?.tensionTags) ? data.tensionTags : [];
-  const ctaTitle = data?.cta?.title || "Хотите получить детальный разбор?";
-  const ctaText = data?.cta?.text || "Более детальный разбор доступен в Telegram.";
-  const ctaButton = data?.cta?.button || "Получить разбор в Telegram";
+  const ctaTitle = data?.cta?.title || "Есть вопрос, который требует ясности?";
+  const ctaText = data?.cta?.text || "В Telegram можно связать формулу с одной живой ситуацией.";
+  const ctaButton = data?.cta?.button || "Разобрать мой вопрос";
   const disclaimer = data?.disclaimer || "Информационно-аналитический формат.";
 
   return (

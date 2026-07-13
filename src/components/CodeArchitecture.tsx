@@ -654,10 +654,10 @@ export default function CodeArchitecture() {
           </svg>
         </div>
         <h1 className="font-serif text-5xl md:text-7xl tracking-widest uppercase mb-6 text-[var(--color-ink)] drop-shadow-sm">
-          Архитектура<br className="md:hidden" /> Кода
+          Цифровой<br className="md:hidden" /> Код
         </h1>
         <p className="font-sans text-xs md:text-sm tracking-[0.4em] uppercase text-[var(--color-antique-gold)] opacity-90 mb-4">
-          Познай самого себя
+          Пять позиций одной связанной формулы
         </p>
         <MeanderDivider />
         
@@ -693,7 +693,7 @@ export default function CodeArchitecture() {
         <div className="relative inline-block mt-4">
           <div className="absolute -left-8 -top-8 w-16 h-16 bg-[var(--color-antique-gold)] opacity-5 blur-2xl rounded-full"></div>
           <p className="font-serif text-[1.1rem] md:text-xl text-[var(--color-muted)] max-w-md mx-auto italic leading-relaxed relative z-10">
-            Введите дату рождения — система покажет первый слой вашей внутренней архитектуры.
+            Введите дату рождения. Система покажет не только числа, но и объяснит, как одна позиция связана с другой.
           </p>
         </div>
       </motion.div>

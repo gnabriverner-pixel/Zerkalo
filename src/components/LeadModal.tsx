@@ -50,7 +50,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
 
       if (data.status === 'ok') {
         setLeadStatus('success');
-        setLeadMessage(data.ui?.safe_message || 'Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования.');
+        setLeadMessage(data.ui?.safe_message || 'Заявка принята. Я свяжусь с вами и уточню, какой вопрос важно разобрать.');
       } else {
         setLeadStatus('error');
         setLeadMessage(data.ui?.safe_message || 'Пожалуйста, проверьте данные и попробуйте ещё раз.');
@@ -96,7 +96,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
               <X className="w-6 h-6" strokeWidth={1} />
             </button>
             
-            <h3 className={`font-serif text-3xl mb-4 ${textInk}`}>Большое исследование</h3>
+            <h3 className={`font-serif text-3xl mb-4 ${textInk}`}>Разбор вашего вопроса</h3>
             
             {leadStatus === 'success' ? (
               <div className={`border p-8 text-center font-serif text-[1.1rem] ${isDark ? 'bg-[#1A2621]/30 border-[#2A3B33] text-[#A3B8AD]' : 'bg-[var(--color-ivory)] border-[var(--border-soft)] text-[var(--color-ink)]'}`}>
@@ -130,7 +130,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
                       Быстрый запуск в Telegram
                     </p>
                     <a 
-                      href={consentChecked ? `https://t.me/digitalcode_bot?start=dob_${leadForm.birthDate.replace(/\./g, '').trim()}` : '#'}
+                      href={consentChecked ? `https://t.me/digitalcodesystem_bot?start=dob_${leadForm.birthDate.replace(/\./g, '').trim()}` : '#'}
                       onClick={(e) => {
                         if (!consentChecked) {
                           e.preventDefault();
@@ -159,7 +159,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
                 )}
 
                 <p className={`font-sans text-[0.95rem] mb-2 leading-relaxed ${textMuted}`}>
-                  Заполните форму ниже, если у вас нет Telegram или вы хотите получить полный PDF-отчёт вручную:
+                  Заполните форму ниже, если у вас нет Telegram или вы хотите обсудить персональный разбор вручную:
                 </p>
                 <input 
                   type="text" 
@@ -179,7 +179,7 @@ export const LeadModal: React.FC<LeadModalProps> = ({
                 />
                 <input 
                   type="text" 
-                  placeholder="Дата рождения для полного исследования" 
+                  placeholder="Дата рождения для разбора"
                   required
                   value={leadForm.birthDate}
                   onChange={e => setLeadForm({...leadForm, birthDate: e.target.value})}
