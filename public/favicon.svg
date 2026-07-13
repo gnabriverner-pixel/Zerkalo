@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Цифровой Код">
+  <rect width="64" height="64" rx="8" fill="#17130f"/>
+  <circle cx="32" cy="32" r="21" fill="none" stroke="#c9a55c" stroke-width="2"/>
+  <circle cx="32" cy="32" r="5" fill="#c9a55c"/>
+  <path d="M32 11v11M32 42v11M11 32h11M42 32h11" stroke="#f7f1e7" stroke-width="2" stroke-linecap="round"/>
+</svg>

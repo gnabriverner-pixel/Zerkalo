@@ -62,7 +62,7 @@ async function startServer() {
       res.status(200).json({
         status: "ok",
         ui: {
-          safe_message: "Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования."
+          safe_message: "Заявка принята. Я свяжусь с вами и уточню, какой вопрос важно разобрать."
         }
       });
     } catch (error) {
@@ -71,7 +71,7 @@ async function startServer() {
       res.status(200).json({
         status: "ok",
         ui: {
-          safe_message: "Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования."
+          safe_message: "Заявка принята. Я свяжусь с вами и уточню, какой вопрос важно разобрать."
         }
       });
     }
