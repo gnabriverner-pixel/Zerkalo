@@ -32,6 +32,22 @@ describe('product analytics privacy boundary', () => {
       answer: 'must never leave the browser',
     })).toEqual({});
   });
+
+  it('keeps activation content-free and bounds continuation sources', () => {
+    expect(sanitizeProductEventPayload('first_mirror_result_viewed', {
+      date_of_birth: '06.05.1986',
+      generated_text: 'private result',
+    })).toEqual({});
+
+    expect(sanitizeProductEventPayload('telegram_deep_cta_click', {
+      source: 'first_mirror',
+      telegram_handle: '@private',
+    })).toEqual({ source: 'first_mirror' });
+
+    expect(sanitizeProductEventPayload('telegram_deep_cta_click', {
+      source: 'unknown_surface',
+    })).toEqual({});
+  });
 });
 
 describe('First Mirror telemetry request scope', () => {
