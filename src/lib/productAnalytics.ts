@@ -1,95 +1,48 @@
-export type ProductEventName =
-  | 'mode_view'
-  | 'hero_primary_cta_click'
-  | 'first_mirror_submit'
-  | 'first_mirror_generation_started'
-  | 'first_mirror_generation_succeeded'
-  | 'first_mirror_generation_failed'
-  | 'telegram_deep_cta_click'
-  | 'privacy_link_click'
-  | 'personal_myth_availability'
-  | 'personal_myth_started'
-  | 'personal_myth_step_completed'
-  | 'personal_myth_generation_started'
-  | 'personal_myth_generation_succeeded'
-  | 'personal_myth_generation_failed'
-  | 'personal_myth_restarted';
+import {
+  sanitizeProductEventPayload,
+  type ProductEventName,
+  type ProductEventPayload,
+} from './productEventContract';
 
-type EventValue = string | number | boolean | null | undefined;
-export type ProductEventPayload = Record<string, EventValue>;
+export { sanitizeProductEventPayload } from './productEventContract';
+export type { ProductEventName, ProductEventPayload } from './productEventContract';
 
 type DataLayerWindow = Window & {
   dataLayer?: Array<Record<string, unknown>>;
 };
 
-type PayloadRule = (value: EventValue) => boolean;
-
-const isFiniteNonNegativeNumber = (value: EventValue): value is number =>
-  typeof value === 'number' && Number.isFinite(value) && value >= 0;
-
-const isBoolean = (value: EventValue): value is boolean => typeof value === 'boolean';
-
-const oneOf = (...values: string[]): PayloadRule =>
-  (value) => typeof value === 'string' && values.includes(value);
-
-const API_STATUS = oneOf('ok', 'demo', 'error', 'crisis', 'unavailable', 'unknown', 'network_error');
-
-const EVENT_PAYLOAD_RULES: Record<ProductEventName, Record<string, PayloadRule>> = {
-  mode_view: { mode: oneOf('code', 'myth') },
-  hero_primary_cta_click: { destination: oneOf('first_mirror') },
-  first_mirror_submit: {},
-  first_mirror_generation_started: {},
-  first_mirror_generation_succeeded: {
-    duration_ms: isFiniteNonNegativeNumber,
-    http_status: isFiniteNonNegativeNumber,
-    api_status: API_STATUS,
-  },
-  first_mirror_generation_failed: {
-    duration_ms: isFiniteNonNegativeNumber,
-    http_status: isFiniteNonNegativeNumber,
-    api_status: API_STATUS,
-  },
-  telegram_deep_cta_click: { source: oneOf('product_trust_layer') },
-  privacy_link_click: { source: oneOf('product_trust_layer') },
-  personal_myth_availability: { state: oneOf('ready', 'unavailable') },
-  personal_myth_started: { draft_restored: isBoolean },
-  personal_myth_step_completed: {
-    step: (value) => typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 4,
-    answer_mode: oneOf('choice', 'free_text'),
-  },
-  personal_myth_generation_started: { retry: isBoolean },
-  personal_myth_generation_succeeded: { duration_ms: isFiniteNonNegativeNumber },
-  personal_myth_generation_failed: {
-    duration_ms: isFiniteNonNegativeNumber,
-    status: API_STATUS,
-  },
-  personal_myth_restarted: {},
-};
-
-/**
- * Enforces the analytics privacy contract at runtime.
- * Unknown keys and invalid values are dropped before any browser event or
- * analytics adapter can receive them.
- */
-export function sanitizeProductEventPayload(
-  name: ProductEventName,
-  payload: ProductEventPayload = {},
-): ProductEventPayload {
-  const rules = EVENT_PAYLOAD_RULES[name];
-  const safePayload: ProductEventPayload = {};
-
-  for (const [key, rule] of Object.entries(rules)) {
-    const value = payload[key];
-    if (value !== undefined && rule(value)) {
-      safePayload[key] = value;
-    }
+function createPageSessionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
   }
+  return `page_${Math.random().toString(36).slice(2, 18)}`;
+}
 
-  return safePayload;
+const pageSessionId = typeof window === 'undefined' ? '' : createPageSessionId();
+
+function deliverFirstPartyEvent(detail: {
+  name: ProductEventName;
+  payload: ProductEventPayload;
+  path: string;
+  occurred_at: string;
+}): void {
+  if (typeof window === 'undefined') return;
+
+  void window.fetch('/api/product-events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...detail,
+      page_session_id: pageSessionId,
+    }),
+    keepalive: true,
+  }).catch(() => {
+    // Product measurement must never block or degrade the user journey.
+  });
 }
 
 /**
- * Privacy-safe, vendor-neutral product analytics event.
+ * Privacy-safe product analytics event.
  *
  * Hard boundary:
  * - no date of birth;
@@ -97,9 +50,8 @@ export function sanitizeProductEventPayload(
  * - no generated report/story text;
  * - no names, phone numbers, Telegram handles, or other contact data.
  *
- * The runtime allowlist above is the enforcement layer. Components may only
- * emit bounded product-state metadata such as funnel step, availability,
- * duration and outcome.
+ * The shared runtime allowlist is enforced in the browser and again on the
+ * server before any first-party persistence.
  */
 export function trackProductEvent(
   name: ProductEventName,
@@ -123,6 +75,8 @@ export function trackProductEvent(
     event_name: name,
     ...safePayload,
   });
+
+  deliverFirstPartyEvent(detail);
 
   if (import.meta.env.DEV) {
     console.debug('[product-event]', detail);
