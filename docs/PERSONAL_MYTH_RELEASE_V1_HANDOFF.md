@@ -104,6 +104,7 @@ npm ci
 npm run lint
 npm test -- --run
 npm run build
+node --import tsx scripts/smoke_personal_myth_provider.ts
 git diff --check
 ```
 
@@ -130,4 +131,3 @@ Browser QA:
 
 Do not launch publicly if the provider is unavailable, the UI displays a canned
 story, or a generated result cannot show how all four answers entered the text.
-
