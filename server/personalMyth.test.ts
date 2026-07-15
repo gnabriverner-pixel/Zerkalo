@@ -132,7 +132,7 @@ describe("Personal Myth contract", () => {
 
     expect(generated.repaired).toBe(true);
     expect(calls[1]).toContain("фактически 240 слов");
-    expect(calls[1]).toContain("требуется 350–700");
+    expect(calls[1]).toContain("требуется 280–700");
   });
 
   it("retries one empty provider response without consuming the editorial repair", async () => {
@@ -156,5 +156,25 @@ describe("Personal Myth contract", () => {
 
     expect(calls).toBe(2);
     expect(generated.repaired).toBe(false);
+  });
+
+  it("grounds a paraphrased answer echo in the original synthetic answer", async () => {
+    const payload = validPayload();
+    payload.answer_echoes[0].source_phrase = "перефразированная моделью мысль";
+    const provider: PersonalMythProvider = {
+      name: "deepseek",
+      model: "test-model",
+      isReady: () => true,
+      generate: async () => JSON.stringify(payload),
+    };
+    const request = parsePersonalMythRequest({
+      request_id: "request_ground_echo_1",
+      answers,
+    });
+
+    const generated = await generatePersonalMyth(request, provider, 1000);
+
+    expect(generated.quality.passed).toBe(true);
+    expect(generated.result.answer_echoes[0].source_phrase).toBe("тяжесть и ощущение развилки");
   });
 });

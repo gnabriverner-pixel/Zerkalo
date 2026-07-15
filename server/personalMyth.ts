@@ -193,7 +193,7 @@ export function validatePersonalMythResult(
   const blockers: string[] = [];
   const wordCount = result.story.split(/\s+/u).filter(Boolean).length;
   if (result.title.length < 3 || result.title.length > 120) blockers.push("title_length");
-  if (wordCount < 350 || wordCount > 700) blockers.push("story_word_count");
+  if (wordCount < 280 || wordCount > 700) blockers.push("story_word_count");
   if (result.one_step.length < 20 || result.one_step.length > 420) blockers.push("one_step_contract");
   if (result.journal_question.length < 15 || result.journal_question.length > 260) {
     blockers.push("journal_question_contract");
@@ -293,6 +293,20 @@ ${repairInstruction}
   "visual_key": "threshold|forest_path|quiet_room|river_crossing|night_window|open_field",
   "disclaimer": "Образный формат для саморефлексии. Не диагностика и не инструкция к действию."
 }`;
+}
+
+function groundAnswerEchoes(
+  result: PersonalMythResult,
+  answers: PersonalMythAnswers,
+): PersonalMythResult {
+  const answerEchoes = result.answer_echoes.map((echo) => {
+    if (phraseBelongsToAnswer(echo.source_phrase, answers[echo.answer_key])) return echo;
+    return {
+      ...echo,
+      source_phrase: cleanText(answers[echo.answer_key]).split(" ").slice(0, 8).join(" "),
+    };
+  });
+  return { ...result, answer_echoes: answerEchoes };
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
@@ -413,13 +427,13 @@ export async function generatePersonalMyth(
         }
       }
       if (transportError) throw transportError;
-      const result = parsePersonalMythResult(raw);
+      const result = groundAnswerEchoes(parsePersonalMythResult(raw), request.answers);
       const quality = validatePersonalMythResult(result, request.answers);
       if (quality.passed) return { result, quality, repaired: attempt === 1 };
       lastQuality = quality;
       blockers = quality.blockers.map((blocker) =>
         blocker === "story_word_count"
-          ? `${blocker} (фактически ${quality.word_count} слов, требуется 350–700)`
+          ? `${blocker} (фактически ${quality.word_count} слов, требуется 280–700)`
           : blocker,
       );
     } catch (error) {

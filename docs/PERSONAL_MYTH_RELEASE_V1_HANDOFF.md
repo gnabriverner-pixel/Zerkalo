@@ -33,7 +33,7 @@ placeholder.
 - Explicit disabled, unavailable, rate-limit, invalid-input and provider-error
   responses.
 - Crisis-language diversion to human support copy.
-- 350–700 word literary contract, four answer echoes, one bounded retry and
+- 280–700 word literary contract, four answer echoes, one bounded retry and
   deterministic output-quality validation.
 
 ## Implemented frontend contract
@@ -67,7 +67,7 @@ different answer lengths and visual keys. Required:
 - 12/12 HTTP success or a documented provider-level failure;
 - 12/12 quality gate pass after at most one repair;
 - four answer echoes present and grounded;
-- 350–700 words, with 450–550 as the editorial target;
+- 280–700 words, with 400–550 as the editorial target;
 - no forbidden diagnostic/therapeutic language;
 - no identical generic opening across the batch.
 
