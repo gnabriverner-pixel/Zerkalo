@@ -1,6 +1,7 @@
 import React from 'react';
 import { FirstMirror } from '../types';
 import { motion } from 'motion/react';
+import { FivePositionRouteMap } from './FivePositionRouteMap';
 
 interface Props {
   data: FirstMirror;
@@ -15,47 +16,55 @@ const GreekDivider = () => (
 
 export const FirstMirrorPanel: React.FC<Props> = ({ data, onCtaClick }) => {
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-kraft border-x border-y border-[var(--border-soft)] w-full max-w-4xl mx-auto my-12 relative overflow-hidden"
       style={{ boxShadow: '0 30px 80px rgba(30,25,18,0.06)' }}
     >
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-60"></div>
-      
+
       <div className="p-8 md:p-14 lg:p-20 relative z-10">
-        <div className="text-center mb-14">
+        <div className="text-center mb-10">
           <p className="text-[0.65rem] tracking-[0.3em] uppercase text-[var(--color-antique-gold)] mb-6 font-sans animate-ethereal">
             Первое Зеркало
           </p>
-          <h2 className="text-3xl md:text-5xl font-serif text-[var(--color-ink)] mb-10 tracking-tight relative inline-block">
+          <h2 className="text-3xl md:text-5xl font-serif text-[var(--color-ink)] mb-8 tracking-tight relative inline-block">
             {data.subtitle}
           </h2>
-          
-          <GreekDivider />
-          
-          <div className="mt-10 mb-6">
-            <h3 className="text-[0.65rem] tracking-[0.25em] uppercase text-[var(--color-muted)] mb-4 font-sans">
-              Архитектура Формулы
-            </h3>
-            <div className="inline-block border border-[var(--color-antique-gold)] border-opacity-30 p-6 md:p-8 bg-transparent">
-               <div className="text-2xl md:text-3xl font-serif tracking-[0.15em] text-[var(--color-ink)] mb-3">
-                 {data.formula.numbers}
-               </div>
-               <div className="text-[0.8rem] md:text-sm font-sans tracking-[0.15em] text-[var(--color-graphite)] mb-3 uppercase">
-                 {data.formula.planets}
-               </div>
-               <div className="text-[0.65rem] tracking-[0.2em] text-[var(--color-muted)] uppercase opacity-80">
-                 {data.formula.positions}
-               </div>
-            </div>
-          </div>
         </div>
 
-        <div className="border-l-2 border-[var(--color-antique-gold)] pl-8 py-2 md:py-4 mb-16 mx-4 md:mx-0">
+        <div className="border-l-2 border-[var(--color-antique-gold)] pl-8 py-2 md:py-4 mb-10 mx-1 md:mx-0">
           <p className="text-xl md:text-3xl font-serif italic text-[var(--color-ink)] leading-relaxed">
-            "{data.keyInsight}"
+            “{data.keyInsight}”
           </p>
+        </div>
+
+        <FivePositionRouteMap
+          numbers={data.formula.numbers}
+          positions={data.formula.positions}
+        />
+
+        <GreekDivider />
+
+        <div className="mb-16 text-center">
+          <h3 className="text-[0.65rem] tracking-[0.25em] uppercase text-[var(--color-muted)] mb-4 font-sans">
+            Числовое основание
+          </h3>
+          <p className="mx-auto mb-6 max-w-xl text-sm leading-relaxed text-[var(--color-muted)]">
+            Формула появляется после смысла как проверяемая структура: пять позиций, пять функций и их последовательность.
+          </p>
+          <div className="inline-block border border-[var(--color-antique-gold)] border-opacity-30 p-6 md:p-8 bg-transparent">
+            <div className="text-2xl md:text-3xl font-serif tracking-[0.15em] text-[var(--color-ink)] mb-3">
+              {data.formula.numbers}
+            </div>
+            <div className="text-[0.8rem] md:text-sm font-sans tracking-[0.15em] text-[var(--color-graphite)] mb-3 uppercase">
+              {data.formula.planets}
+            </div>
+            <div className="text-[0.65rem] tracking-[0.2em] text-[var(--color-muted)] uppercase opacity-80">
+              {data.formula.positions}
+            </div>
+          </div>
         </div>
 
         <div className="space-y-16 mt-16">
@@ -95,13 +104,13 @@ export const FirstMirrorPanel: React.FC<Props> = ({ data, onCtaClick }) => {
             </div>
           </div>
         </div>
-        
+
         <div className="mt-24 text-center">
           <h3 className="text-3xl font-serif text-[var(--color-ink)] mb-6">{data.cta.title}</h3>
           <p className="font-sans text-[var(--color-graphite)] text-sm max-w-xl mx-auto mb-10 leading-relaxed tracking-wide">
             {data.cta.text}
           </p>
-          <button 
+          <button
             onClick={onCtaClick}
             className="px-10 py-5 bg-[var(--color-ink)] text-[var(--color-ivory)] font-sans text-[0.7rem] tracking-[0.3em] uppercase hover:bg-black transition-all border border-transparent hover:border-[var(--color-antique-gold)] duration-300"
           >
@@ -109,11 +118,11 @@ export const FirstMirrorPanel: React.FC<Props> = ({ data, onCtaClick }) => {
           </button>
         </div>
       </div>
-      
+
       <div className="bg-[#f2f0e9] py-6 px-4 text-center border-t border-[var(--border-soft)]">
-         <p className="text-[0.6rem] uppercase tracking-[0.2em] text-[var(--color-muted)] opacity-60">
-           {data.disclaimer}
-         </p>
+        <p className="text-[0.6rem] uppercase tracking-[0.2em] text-[var(--color-muted)] opacity-60">
+          {data.disclaimer}
+        </p>
       </div>
     </motion.div>
   );
