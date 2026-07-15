@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { FirstMirror } from '../types';
 import { motion } from 'motion/react';
 import { FivePositionRouteMap } from './FivePositionRouteMap';
+import { MeaningProvenance } from './MeaningProvenance';
 import { trackProductEvent } from '../lib/productAnalytics';
 
 interface Props {
@@ -87,7 +88,12 @@ export const FirstMirrorPanel: React.FC<Props> = ({ data, onCtaClick }) => {
           ))}
         </div>
 
-        <GreekDivider />
+        <MeaningProvenance
+          observation={data.keyInsight}
+          basisNumbers={data.formula.numbers}
+          basisPositions={data.formula.positions}
+          practicalStep={data.practicalStep}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px mt-16 bg-[var(--border-soft)] border border-[var(--border-soft)]">
           <div className="bg-marble p-8 md:p-10">
