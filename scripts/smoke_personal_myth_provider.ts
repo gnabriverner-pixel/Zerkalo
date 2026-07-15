@@ -32,21 +32,36 @@ async function main() {
 
   const reports = [];
   for (const [index, answers] of fixtures.entries()) {
-    const request = parsePersonalMythRequest({
-      request_id: `provider_smoke_${Date.now()}_${index}`,
-      consent_version: "personal-myth-v1-smoke",
-      answers,
-    });
-    const generated = await generatePersonalMyth(request, provider, 90_000);
-    reports.push({
-      fixture: index + 1,
-      passed: generated.quality.passed,
-      blockers: generated.quality.blockers,
-      word_count: generated.quality.word_count,
-      answer_coverage: generated.quality.answer_coverage,
-      repaired: generated.repaired,
-      visual_key: generated.result.visual_key,
-    });
+    try {
+      const request = parsePersonalMythRequest({
+        request_id: `provider_smoke_${Date.now()}_${index}`,
+        consent_version: "personal-myth-v1-smoke",
+        answers,
+      });
+      const generated = await generatePersonalMyth(request, provider, 90_000);
+      reports.push({
+        fixture: index + 1,
+        passed: generated.quality.passed,
+        blockers: generated.quality.blockers,
+        word_count: generated.quality.word_count,
+        answer_coverage: generated.quality.answer_coverage,
+        repaired: generated.repaired,
+        visual_key: generated.result.visual_key,
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "unknown";
+      reports.push({
+        fixture: index + 1,
+        passed: false,
+        blockers: reason.startsWith("personal_myth_quality_failed:")
+          ? reason.slice("personal_myth_quality_failed:".length).split(",").filter(Boolean)
+          : [reason.split(":", 1)[0]],
+        word_count: null,
+        answer_coverage: [],
+        repaired: true,
+        visual_key: null,
+      });
+    }
   }
 
   const passed = reports.every((report) => report.passed);
@@ -62,7 +77,7 @@ async function main() {
 main().catch((error) => {
   console.error(JSON.stringify({
     status: "ERROR",
-    reason: error instanceof Error ? error.message.split(":", 1)[0] : "unknown",
+    reason: error instanceof Error ? error.message : "unknown",
   }));
   process.exitCode = 1;
 });
