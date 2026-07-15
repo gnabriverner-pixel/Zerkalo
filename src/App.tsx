@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import CodeArchitecture from './components/CodeArchitecture';
 import PersonalMyth from './components/PersonalMyth';
 import HeroSection from './components/HeroSection';
+import { FirstMirrorTelemetryBoundary } from './components/FirstMirrorTelemetryBoundary';
 import { ProductTrustLayer } from './components/ProductTrustLayer';
 import { trackProductEvent } from './lib/productAnalytics';
 
@@ -50,7 +51,9 @@ export default function App() {
             className="w-full flex-grow flex flex-col"
             id="calculator-start"
           >
-            <CodeArchitecture />
+            <FirstMirrorTelemetryBoundary>
+              <CodeArchitecture />
+            </FirstMirrorTelemetryBoundary>
             <ProductTrustLayer />
           </motion.div>
         )}
