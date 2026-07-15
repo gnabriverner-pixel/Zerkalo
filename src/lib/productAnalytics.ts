@@ -24,9 +24,6 @@ type DataLayerWindow = Window & {
 
 type PayloadRule = (value: EventValue) => boolean;
 
-const isShortString = (value: EventValue): value is string =>
-  typeof value === 'string' && value.length > 0 && value.length <= 64;
-
 const isFiniteNonNegativeNumber = (value: EventValue): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0;
 
@@ -34,6 +31,8 @@ const isBoolean = (value: EventValue): value is boolean => typeof value === 'boo
 
 const oneOf = (...values: string[]): PayloadRule =>
   (value) => typeof value === 'string' && values.includes(value);
+
+const API_STATUS = oneOf('ok', 'demo', 'error', 'crisis', 'unavailable', 'unknown', 'network_error');
 
 const EVENT_PAYLOAD_RULES: Record<ProductEventName, Record<string, PayloadRule>> = {
   mode_view: { mode: oneOf('code', 'myth') },
@@ -43,12 +42,12 @@ const EVENT_PAYLOAD_RULES: Record<ProductEventName, Record<string, PayloadRule>>
   first_mirror_generation_succeeded: {
     duration_ms: isFiniteNonNegativeNumber,
     http_status: isFiniteNonNegativeNumber,
-    api_status: isShortString,
+    api_status: API_STATUS,
   },
   first_mirror_generation_failed: {
     duration_ms: isFiniteNonNegativeNumber,
     http_status: isFiniteNonNegativeNumber,
-    api_status: isShortString,
+    api_status: API_STATUS,
   },
   telegram_deep_cta_click: { source: oneOf('product_trust_layer') },
   privacy_link_click: { source: oneOf('product_trust_layer') },
@@ -62,7 +61,7 @@ const EVENT_PAYLOAD_RULES: Record<ProductEventName, Record<string, PayloadRule>>
   personal_myth_generation_succeeded: { duration_ms: isFiniteNonNegativeNumber },
   personal_myth_generation_failed: {
     duration_ms: isFiniteNonNegativeNumber,
-    status: isShortString,
+    status: API_STATUS,
   },
   personal_myth_restarted: {},
 };
