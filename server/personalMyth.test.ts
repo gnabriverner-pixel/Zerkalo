@@ -125,7 +125,7 @@ describe("Personal Myth contract", () => {
     expect(calls[1]).toContain("требуется 350–700");
   });
 
-  it("retries one empty provider response before failing the request", async () => {
+  it("retries one empty provider response without consuming the editorial repair", async () => {
     let calls = 0;
     const provider: PersonalMythProvider = {
       name: "deepseek",
@@ -145,6 +145,6 @@ describe("Personal Myth contract", () => {
     const generated = await generatePersonalMyth(request, provider, 1000);
 
     expect(calls).toBe(2);
-    expect(generated.repaired).toBe(true);
+    expect(generated.repaired).toBe(false);
   });
 });

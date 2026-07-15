@@ -390,7 +390,19 @@ export async function generatePersonalMyth(
   let lastQuality: PersonalMythQualityReport | null = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const raw = await provider.generate(buildPersonalMythPrompt(request, blockers), timeoutMs);
+      const prompt = buildPersonalMythPrompt(request, blockers);
+      let raw = "";
+      let transportError: unknown = null;
+      for (let transportAttempt = 0; transportAttempt < 2; transportAttempt += 1) {
+        try {
+          raw = await provider.generate(prompt, timeoutMs);
+          transportError = null;
+          break;
+        } catch (error) {
+          transportError = error;
+        }
+      }
+      if (transportError) throw transportError;
       const result = parsePersonalMythResult(raw);
       const quality = validatePersonalMythResult(result, request.answers);
       if (quality.passed) return { result, quality, repaired: attempt === 1 };
