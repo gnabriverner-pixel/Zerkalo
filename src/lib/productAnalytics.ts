@@ -1,6 +1,10 @@
 export type ProductEventName =
   | 'mode_view'
   | 'hero_primary_cta_click'
+  | 'first_mirror_submit'
+  | 'first_mirror_generation_started'
+  | 'first_mirror_generation_succeeded'
+  | 'first_mirror_generation_failed'
   | 'telegram_deep_cta_click'
   | 'privacy_link_click'
   | 'personal_myth_availability'
