@@ -50,6 +50,10 @@ placeholder.
 
 ## Remaining P0 work
 
+Preliminary provider proof on 2026-07-15 passed 3/3 synthetic fixtures at
+commit `3f0dd15`; see `docs/PERSONAL_MYTH_PROVIDER_PROOF.md`. The larger 12-case
+batch below remains the pre-deploy gate.
+
 ### Provider proof
 
 Configure a real supported provider in a controlled environment:
