@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowLeft, BookOpen, Feather, Loader2, RefreshCw } from 'lucide-react';
 import { ApiResponse, StoryInputs } from '../types';
+import { trackProductEvent } from '../lib/productAnalytics';
 
 const DRAFT_KEY = 'zerkalo.personal-myth.v1.draft';
 const EMPTY_INPUTS: StoryInputs = { q1: '', q2: '', q3: '', q4: '' };
@@ -59,6 +60,7 @@ export default function PersonalMyth() {
   const [availability, setAvailability] = useState<'checking' | 'ready' | 'unavailable'>('checking');
   const [activeRequestId, setActiveRequestId] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
+  const generationStartedAtRef = useRef<number | null>(null);
   const question = QUESTIONS[Math.max(0, step - 1)];
 
   useEffect(() => {
@@ -71,9 +73,18 @@ export default function PersonalMyth() {
       .then(async (response) => {
         const data = await response.json();
         const ready = response.ok && data?.features?.personal_myth?.enabled && data?.features?.personal_myth?.ready;
-        if (active) setAvailability(ready ? 'ready' : 'unavailable');
+        if (active) {
+          const nextAvailability = ready ? 'ready' : 'unavailable';
+          setAvailability(nextAvailability);
+          trackProductEvent('personal_myth_availability', { state: nextAvailability });
+        }
       })
-      .catch(() => active && setAvailability('unavailable'));
+      .catch(() => {
+        if (active) {
+          setAvailability('unavailable');
+          trackProductEvent('personal_myth_availability', { state: 'unavailable' });
+        }
+      });
     return () => { active = false; };
   }, []);
 
@@ -91,11 +102,28 @@ export default function PersonalMyth() {
     setInputs((current) => ({ ...current, [question.id]: value }));
   };
 
+  const completeCurrentStep = () => {
+    if (!question) return;
+    const answer = inputs[question.id].trim();
+    trackProductEvent('personal_myth_step_completed', {
+      step,
+      answer_mode: question.choices.includes(answer) ? 'choice' : 'free_text',
+    });
+    if (step < 4) {
+      setStep(step + 1);
+    } else {
+      void generate();
+    }
+  };
+
   const generate = async (reuseRequest = false) => {
     const id = reuseRequest && activeRequestId ? activeRequestId : requestId();
     setActiveRequestId(id);
     setStep(5);
     setErrorText('');
+    generationStartedAtRef.current = Date.now();
+    trackProductEvent('personal_myth_generation_started', { retry: reuseRequest });
+
     try {
       const response = await fetch('/api/personal-myth/generate', {
         method: 'POST',
@@ -107,29 +135,48 @@ export default function PersonalMyth() {
         }),
       });
       const data: ApiResponse = await response.json();
+      const durationMs = generationStartedAtRef.current ? Date.now() - generationStartedAtRef.current : undefined;
       if (data.status === 'ok' && data.story_result) {
         setResult(data.story_result);
         setAvailability('ready');
+        trackProductEvent('personal_myth_generation_succeeded', { duration_ms: durationMs });
         setStep(6);
         return;
       }
       setErrorText(data.ui?.safe_message || 'Историю не удалось собрать достаточно точно. Ответы сохранены.');
       if (data.status === 'unavailable') setAvailability('unavailable');
+      trackProductEvent('personal_myth_generation_failed', {
+        duration_ms: durationMs,
+        status: data.status,
+      });
       setStep(7);
     } catch {
+      const durationMs = generationStartedAtRef.current ? Date.now() - generationStartedAtRef.current : undefined;
       setAvailability('unavailable');
       setErrorText('Связь прервалась. Ответы сохранены в этом браузере — можно повторить попытку.');
+      trackProductEvent('personal_myth_generation_failed', {
+        duration_ms: durationMs,
+        status: 'network_error',
+      });
       setStep(7);
     }
   };
 
   const reset = () => {
+    trackProductEvent('personal_myth_restarted');
     localStorage.removeItem(DRAFT_KEY);
     setInputs(EMPTY_INPUTS);
     setResult(null);
     setActiveRequestId('');
     setErrorText('');
     setStep(0);
+  };
+
+  const start = () => {
+    trackProductEvent('personal_myth_started', {
+      draft_restored: Object.values(inputs).some((value) => value.trim().length > 0),
+    });
+    setStep(1);
   };
 
   return (
@@ -154,7 +201,7 @@ export default function PersonalMyth() {
                 Вы ответите на четыре коротких вопроса. История не объясняет вас окончательно — она даёт другой угол зрения, который можно принять или оставить.
               </p>
               <button
-                onClick={() => setStep(1)}
+                onClick={start}
                 disabled={availability === 'unavailable'}
                 className="mt-9 border border-[#b5a27a] bg-[#b5a27a] px-7 py-4 text-sm font-medium text-[#111512] transition hover:bg-[#c7b58d] disabled:cursor-not-allowed disabled:border-[#414840] disabled:bg-transparent disabled:text-[#717a72]"
               >
@@ -202,7 +249,7 @@ export default function PersonalMyth() {
               className="mt-8 min-h-32 w-full resize-none border-0 border-b border-[#465047] bg-transparent py-4 font-serif text-xl leading-relaxed text-[#ede9df] outline-none placeholder:text-[#606961] focus:border-[#b5a27a]"
             />
             <button
-              onClick={() => step < 4 ? setStep(step + 1) : void generate()}
+              onClick={completeCurrentStep}
               disabled={!canContinue}
               className="mt-9 self-end border border-[#b5a27a] px-7 py-3 text-sm text-[#ddd2ba] transition hover:bg-[#b5a27a] hover:text-[#111512] disabled:cursor-not-allowed disabled:opacity-30"
             >{step === 4 ? 'Собрать историю' : 'Продолжить'}</button>
