@@ -165,10 +165,13 @@ export function parsePersonalMythResult(raw: string): PersonalMythResult {
   });
   const visualKey = cleanText(result.visual_key) as PersonalMythVisualKey;
   if (!VISUAL_KEYS.has(visualKey)) throw new Error("visual_key_invalid");
+  const story = Array.isArray(result.story_parts)
+    ? result.story_parts.map((part) => String(part ?? "").trim()).filter(Boolean).join("\n\n")
+    : String(result.story ?? "").trim();
 
   return {
     title: cleanText(result.title),
-    story: String(result.story ?? "").trim(),
+    story,
     mirror: {
       mainImage: cleanText(result.mirror.mainImage),
       innerTension: cleanText(result.mirror.innerTension),
@@ -251,9 +254,12 @@ q3 — момент живости: ${request.answers.q3}
 q4 — недостающее качество: ${request.answers.q4}
 
 Требования:
-- 350–700 русских слов; цель — 450–550 слов и 7–10 читаемых абзацев;
+- верни ровно три части истории, каждая по 130–220 русских слов;
+- часть 1: мир героя, нарушение равновесия и образ состояния;
+- часть 2: попытка действовать, встреча или наблюдение, момент узнавания;
+- часть 3: изменение взгляда, один реальный шаг и открытый финал;
+- внутри частей делай короткие читаемые абзацы через двойной перенос строки;
 - раскрывай движение через конкретные сцены, а не повтор мысли и не литературный наполнитель;
-- девять движений: мир героя, нарушение равновесия, образ состояния, первая попытка, встреча, узнавание, изменение взгляда, один реальный шаг, открытый финал;
 - каждый из четырёх ответов должен быть узнаваем в истории;
 - для каждого ответа верни answer_echo: короткую дословную фразу 2–8 слов из ответа и образ, которым она стала в истории;
 - один шаг должен занимать не более 15 минут и не обещать внутреннюю трансформацию;
@@ -265,7 +271,11 @@ ${repairInstruction}
 Верни только JSON:
 {
   "title": "...",
-  "story": "абзац\\n\\nабзац...",
+  "story_parts": [
+    "часть 1, 130–220 слов",
+    "часть 2, 130–220 слов",
+    "часть 3, 130–220 слов"
+  ],
   "mirror": {
     "mainImage": "...",
     "innerTension": "...",

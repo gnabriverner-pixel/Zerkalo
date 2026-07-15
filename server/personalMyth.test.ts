@@ -67,6 +67,16 @@ describe("Personal Myth contract", () => {
     expect(validatePersonalMythResult(result, answers).blockers).toContain("answer_coverage_incomplete");
   });
 
+  it("joins three provider story parts into one public literary text", () => {
+    const payload = validPayload() as ReturnType<typeof validPayload> & { story_parts?: string[] };
+    payload.story_parts = ["первая сцена", "вторая сцена", "третья сцена"];
+    delete (payload as { story?: string }).story;
+
+    const result = parsePersonalMythResult(JSON.stringify(payload));
+
+    expect(result.story).toBe("первая сцена\n\nвторая сцена\n\nтретья сцена");
+  });
+
   it("blocks therapeutic promises and recognizes explicit crisis language", () => {
     const result = parsePersonalMythResult(JSON.stringify(validPayload()));
     result.story = result.story.replace("слово1", "исцеление") + " слово";
