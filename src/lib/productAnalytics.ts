@@ -11,38 +11,8 @@ type DataLayerWindow = Window & {
   dataLayer?: Array<Record<string, unknown>>;
 };
 
-function createPageSessionId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `page_${Math.random().toString(36).slice(2, 18)}`;
-}
-
-const pageSessionId = typeof window === 'undefined' ? '' : createPageSessionId();
-
-function deliverFirstPartyEvent(detail: {
-  name: ProductEventName;
-  payload: ProductEventPayload;
-  path: string;
-  occurred_at: string;
-}): void {
-  if (typeof window === 'undefined') return;
-
-  void window.fetch('/api/product-events', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...detail,
-      page_session_id: pageSessionId,
-    }),
-    keepalive: true,
-  }).catch(() => {
-    // Product measurement must never block or degrade the user journey.
-  });
-}
-
 /**
- * Privacy-safe product analytics event.
+ * Privacy-safe, vendor-neutral product analytics event.
  *
  * Hard boundary:
  * - no date of birth;
@@ -50,8 +20,8 @@ function deliverFirstPartyEvent(detail: {
  * - no generated report/story text;
  * - no names, phone numbers, Telegram handles, or other contact data.
  *
- * The shared runtime allowlist is enforced in the browser and again on the
- * server before any first-party persistence.
+ * The shared runtime allowlist is the enforcement layer. A future first-party
+ * storage adapter must reuse the same contract server-side before persistence.
  */
 export function trackProductEvent(
   name: ProductEventName,
@@ -75,8 +45,6 @@ export function trackProductEvent(
     event_name: name,
     ...safePayload,
   });
-
-  deliverFirstPartyEvent(detail);
 
   if (import.meta.env.DEV) {
     console.debug('[product-event]', detail);
