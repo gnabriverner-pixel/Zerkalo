@@ -52,9 +52,15 @@ export type PersonalMythMirror = {
   newView: string;
 };
 
+export type PersonalMythAnswerEcho = {
+  answer_key: keyof StoryInputs;
+  source_phrase: string;
+  story_image: string;
+};
+
 export interface ApiResponse {
   mode: "code" | "story" | "compatibility";
-  status: "ok" | "demo" | "error" | "crisis";
+  status: "ok" | "demo" | "error" | "crisis" | "unavailable";
   code_result?: {
     mirror_text?: string;
     first_mirror?: FirstMirror;
@@ -77,10 +83,19 @@ export interface ApiResponse {
     title: string;
     story: string;
     mirror: PersonalMythMirror;
-    meaning: string[];
+    meaning?: string[];
+    answer_echoes?: PersonalMythAnswerEcho[];
     one_step: string;
     journal_question: string;
+    visual_key?: "threshold" | "forest_path" | "quiet_room" | "river_crossing" | "night_window" | "open_field";
     disclaimer: string;
+  };
+  request_id?: string;
+  qa?: {
+    passed: boolean;
+    word_count: number;
+    answer_coverage: Array<keyof StoryInputs>;
+    repaired: boolean;
   };
   ui?: {
     safe_message?: string;

@@ -1,368 +1,266 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Loader2, BookOpen, Sparkles, Feather, Archive, X } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { ArrowLeft, BookOpen, Feather, Loader2, RefreshCw } from 'lucide-react';
 import { ApiResponse, StoryInputs } from '../types';
-import { LeadModal } from './LeadModal';
+
+const DRAFT_KEY = 'zerkalo.personal-myth.v1.draft';
+const EMPTY_INPUTS: StoryInputs = { q1: '', q2: '', q3: '', q4: '' };
+
+const QUESTIONS = [
+  {
+    id: 'q1' as const,
+    eyebrow: 'Что просит внимания',
+    title: 'Что сейчас труднее всего оставить без внимания?',
+    placeholder: 'Можно ответить одной фразой или описать состояние своими словами.',
+    choices: ['Неясность', 'Перегрузка', 'Ожидание', 'Развилка', 'Одиночество', 'Незавершённость'],
+  },
+  {
+    id: 'q2' as const,
+    eyebrow: 'Образ состояния',
+    title: 'На какой образ похоже это состояние?',
+    placeholder: 'Например: закрытая дверь, туманная дорога, дом с одним освещённым окном.',
+    choices: ['Закрытая дверь', 'Туман', 'Пустая комната', 'Тяжёлый рюкзак', 'Мост', 'Ночной сад'],
+  },
+  {
+    id: 'q3' as const,
+    eyebrow: 'Точка живости',
+    title: 'Где вы в последнее время чувствовали себя живее и яснее?',
+    placeholder: 'Место, разговор, работа, движение, музыка или короткий момент.',
+    choices: ['В движении', 'В разговоре', 'В работе руками', 'В одиночестве', 'На природе', 'Создавая новое'],
+  },
+  {
+    id: 'q4' as const,
+    eyebrow: 'Недостающее качество',
+    title: 'Какого качества вам сейчас особенно не хватает?',
+    placeholder: 'Назовите одно качество или опишите, как оно ощущается.',
+    choices: ['Тишины', 'Смелости', 'Тепла', 'Границы', 'Движения', 'Опоры'],
+  },
+];
+
+function requestId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `myth_${crypto.randomUUID().replaceAll('-', '')}`;
+  }
+  return `myth_${Date.now()}_${Math.random().toString(36).slice(2, 14)}`;
+}
 
 export default function PersonalMyth() {
-  const [step, setStep] = useState(0); // 0 = Intro, 1-4 = questions, 5 = generating, 6 = result
-  const [inputs, setInputs] = useState<StoryInputs>({ q1: '', q2: '', q3: '', q4: '' });
+  const [step, setStep] = useState(0);
+  const [inputs, setInputs] = useState<StoryInputs>(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      return saved ? { ...EMPTY_INPUTS, ...JSON.parse(saved) } : EMPTY_INPUTS;
+    } catch {
+      return EMPTY_INPUTS;
+    }
+  });
   const [result, setResult] = useState<ApiResponse['story_result'] | null>(null);
   const [errorText, setErrorText] = useState('');
-  const [safeMessage, setSafeMessage] = useState('');
-  const [showLeadForm, setShowLeadForm] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
+  const [availability, setAvailability] = useState<'checking' | 'ready' | 'unavailable'>('checking');
+  const [activeRequestId, setActiveRequestId] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
-
-  const themeByStep = [
-    { color: 'transparent', shadow: 'transparent', name: '' },
-    { color: '#8A5A44', shadow: 'rgba(138, 90, 68, 0.2)', name: 'Напряжение' }, // Шаг 1: Напряжение (тёмно-терракотовый)
-    { color: '#7C9082', shadow: 'rgba(124, 144, 130, 0.2)', name: 'Образ' }, // Шаг 2: Образ (приглушенно-оливковый)
-    { color: '#B59E74', shadow: 'rgba(181, 158, 116, 0.2)', name: 'Живость' }, // Шаг 3: Живость (старое золото)
-    { color: '#6B7A87', shadow: 'rgba(107, 122, 135, 0.2)', name: 'Потребность' }  // Шаг 4: Потребность (сумеречно-сизый)
-  ];
-
-  const steps = [
-      {
-        id: 'q1',
-        title: 'Что сейчас внутри требует внимания? Опишите не фактами, а ощущением.',
-        placeholder: 'Например: тяжесть, шум, ожидание, пустота, развилка, застывшее движение...'
-      },
-      {
-        id: 'q2',
-        title: 'Если это состояние стало бы образом, существом, погодой, комнатой или предметом — что бы это было?',
-        placeholder: 'Туман, закрытая дверь, дом без окон, зверь у порога, холодный сад...'
-      },
-      {
-        id: 'q3',
-        title: 'Вспомните момент, где вы чувствовали себя живее, яснее или ближе к себе. Что там было?',
-        placeholder: 'Место, человек, дело, движение, звук, свет, состояние...'
-      },
-      {
-        id: 'q4',
-        title: 'Какого качества вам сейчас не хватает?',
-        placeholder: 'Тишины, смелости, тепла, границы, движения, признания, воздуха, опоры...'
-      }
-  ];
-
-  const handleNext = () => {
-    if (step < 4) setStep(step + 1);
-    else handleGenerate();
-  };
-
-  const applyFallback = () => {
-    setResult({
-      title: "Отражение",
-      story: "Сейчас личный миф не удалось собрать. Вы можете сохранить ответы и вернуться позже.",
-      mirror: {
-        mainImage: inputs.q2 || "Образ пока не назван",
-        innerTension: inputs.q1 || "Состояние пока требует уточнения",
-        hiddenResource: inputs.q4 || "Качество, которого сейчас не хватает",
-        newView: inputs.q3 || "Точка живости пока не описана"
-      },
-      meaning: [],
-      one_step: "Выберите одно маленькое действие, которое сегодня вернёт вам ощущение опоры: убрать лишнее, выйти на воздух, записать одну мысль или поговорить с человеком, которому доверяете.",
-      journal_question: "Какое крошечное действие я могу сделать прямо сейчас?",
-      disclaimer: "Образный формат для саморефлексии. Не диагностика и не инструкция к действию."
-    });
-    setStep(6);
-  };
-
-  const handleGenerate = async () => {
-    setStep(5);
-    setErrorText('');
-    setSafeMessage('');
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'story', storyInputs: inputs })
-      });
-      const data: ApiResponse = await res.json();
-
-      if (data.status === 'crisis') {
-        setErrorText(data.ui?.safe_message || "Мы не можем сгенерировать историю в данный момент.");
-        setStep(4);
-      } else if (data.status === 'error' || data.status === 'demo' || !data.story_result) {
-        if (data.ui?.safe_message) setSafeMessage(data.ui.safe_message);
-        applyFallback();
-      } else {
-        if (data.ui?.safe_message) setSafeMessage(data.ui.safe_message);
-        setResult(data.story_result || null);
-        setStep(6);
-      }
-    } catch (err) {
-      console.error(err);
-      applyFallback();
-    }
-  };
+  const question = QUESTIONS[Math.max(0, step - 1)];
 
   useEffect(() => {
-    if (step === 6 && resultRef.current) {
-      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth' }), 200);
-    }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(inputs));
+  }, [inputs]);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/health/ready')
+      .then(async (response) => {
+        const data = await response.json();
+        const ready = response.ok && data?.features?.personal_myth?.enabled && data?.features?.personal_myth?.ready;
+        if (active) setAvailability(ready ? 'ready' : 'unavailable');
+      })
+      .catch(() => active && setAvailability('unavailable'));
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (step === 6) setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth' }), 150);
   }, [step]);
 
+  const canContinue = useMemo(() => {
+    if (step < 1 || step > 4) return true;
+    return inputs[QUESTIONS[step - 1].id].trim().length >= 3;
+  }, [inputs, step]);
+
+  const choose = (value: string) => {
+    if (!question) return;
+    setInputs((current) => ({ ...current, [question.id]: value }));
+  };
+
+  const generate = async (reuseRequest = false) => {
+    const id = reuseRequest && activeRequestId ? activeRequestId : requestId();
+    setActiveRequestId(id);
+    setStep(5);
+    setErrorText('');
+    try {
+      const response = await fetch('/api/personal-myth/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          request_id: id,
+          consent_version: 'personal-myth-v1',
+          answers: inputs,
+        }),
+      });
+      const data: ApiResponse = await response.json();
+      if (data.status === 'ok' && data.story_result) {
+        setResult(data.story_result);
+        setAvailability('ready');
+        setStep(6);
+        return;
+      }
+      setErrorText(data.ui?.safe_message || 'Историю не удалось собрать достаточно точно. Ответы сохранены.');
+      if (data.status === 'unavailable') setAvailability('unavailable');
+      setStep(7);
+    } catch {
+      setAvailability('unavailable');
+      setErrorText('Связь прервалась. Ответы сохранены в этом браузере — можно повторить попытку.');
+      setStep(7);
+    }
+  };
+
+  const reset = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setInputs(EMPTY_INPUTS);
+    setResult(null);
+    setActiveRequestId('');
+    setErrorText('');
+    setStep(0);
+  };
+
   return (
-    <div className="flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 bg-[#0F1412] min-h-screen text-[#EAEAEA] font-sans">
-      
-      {/* Container limits width for reading comfort */}
-      <div className="w-full max-w-2xl flex flex-col items-center">
-
-        <AnimatePresence mode="wait">
-          {step === 0 && (
-            <motion.div 
-              key="intro"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="text-center w-full mt-10"
-            >
-              <h1 className="font-serif text-5xl md:text-6xl mb-4 text-[#F4F4F4]">Личный миф</h1>
-              <h2 className="font-serif italic text-lg md:text-xl text-[#A3B8AD] mb-8">
-                Сказка про тебя
-              </h2>
-              <p className="text-sm text-gray-400 leading-relaxed mb-12 max-w-lg mx-auto">
-                Образная история, которая помогает увидеть своё состояние со стороны и найти один мягкий следующий шаг.
+    <main className="min-h-[100svh] bg-[#111512] text-[#ece9e1]">
+      <AnimatePresence mode="wait">
+        {step === 0 && (
+          <motion.section
+            key="intro"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, y: -16 }}
+            className="relative mx-auto grid min-h-[calc(100svh-72px)] max-w-6xl items-end overflow-hidden px-5 pb-12 pt-28 md:grid-cols-[1.2fr_0.8fr] md:items-center md:px-10"
+          >
+            <div className="absolute inset-0 opacity-70 [background:radial-gradient(circle_at_76%_28%,rgba(162,137,93,0.18),transparent_30%),linear-gradient(125deg,#111512_30%,#1a211b_100%)]" />
+            <div className="relative z-10 max-w-2xl">
+              <p className="mb-5 text-xs uppercase tracking-[0.22em] text-[#b5a27a]">Зеркало себя</p>
+              <h1 className="max-w-xl font-serif text-5xl leading-[0.98] text-[#f4f0e7] md:text-7xl">Личный миф</h1>
+              <p className="mt-7 max-w-lg font-serif text-xl leading-relaxed text-[#d8d4cb] md:text-2xl">
+                История, в которой ваше нынешнее состояние становится образом, движением и одним возможным шагом.
               </p>
-              
-              <button 
+              <p className="mt-5 max-w-lg text-sm leading-7 text-[#9fa69f]">
+                Вы ответите на четыре коротких вопроса. История не объясняет вас окончательно — она даёт другой угол зрения, который можно принять или оставить.
+              </p>
+              <button
                 onClick={() => setStep(1)}
-                className="px-10 py-4 bg-transparent text-[#EAEAEA] border border-[#2A3B33] hover:border-[#A3B8AD] hover:bg-[#1A2621] hover:shadow-[0_0_20px_rgba(163,184,173,0.1)] tracking-[0.2em] uppercase text-xs transition-all duration-500"
+                disabled={availability === 'unavailable'}
+                className="mt-9 border border-[#b5a27a] bg-[#b5a27a] px-7 py-4 text-sm font-medium text-[#111512] transition hover:bg-[#c7b58d] disabled:cursor-not-allowed disabled:border-[#414840] disabled:bg-transparent disabled:text-[#717a72]"
               >
-                Собрать личный миф
+                {availability === 'checking' ? 'Проверяем готовность…' : availability === 'ready' ? 'Начать историю' : 'Сейчас недоступно'}
               </button>
-              
-              <div className="mt-16 text-[10px] text-gray-600 tracking-wide uppercase">
-                 Образный формат для саморефлексии. Не диагностика и не инструкция к действию.
-              </div>
-            </motion.div>
-          )}
-
-          {step > 0 && step <= 4 && (
-            <motion.div
-              key={`step-${step}`}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="w-full flex flex-col"
-            >
-              <div className="flex justify-between items-center mb-8">
-                <span className="text-xs tracking-widest text-[#A3B8AD] uppercase">Шаг {step} из 4</span>
-                {step > 1 && (
-                   <button 
-                     onClick={() => setStep(step - 1)} 
-                     className="text-xs tracking-[0.15em] uppercase text-gray-500 hover:text-[#A3B8AD] transition-colors duration-300"
-                   >
-                     Назад
-                   </button>
-                )}
-              </div>
-              
-              <h3 className="font-serif text-2xl md:text-3xl text-[#EAEAEA] mb-8 leading-snug">
-                {steps[step - 1].title}
-              </h3>
-              
-              <div className="relative mb-10 w-full group">
-                <div 
-                   className="absolute -inset-4 rounded-xl transition-all duration-700 blur-xl pointer-events-none"
-                   style={{
-                     backgroundColor: isFocused ? themeByStep[step]?.color : 'transparent',
-                     opacity: isFocused ? 0.08 : 0,
-                     boxShadow: isFocused ? `0 0 40px 10px ${themeByStep[step]?.shadow}` : 'none'
-                   }}
-                />
-                
-                <textarea 
-                  autoFocus
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  className="relative z-10 w-full bg-transparent border-b text-[#EAEAEA] placeholder:text-[#3A4B43] text-lg font-serif py-4 outline-none transition-all duration-500 resize-none h-32 focus:bg-[#111A16]"
-                  style={{
-                    borderColor: isFocused ? themeByStep[step]?.color : '#2A3B33'
-                  }}
-                  placeholder={steps[step - 1].placeholder}
-                  value={inputs[steps[step - 1].id as keyof StoryInputs]}
-                  onChange={(e) => setInputs({ ...inputs, [steps[step - 1].id]: e.target.value })}
-                />
-
-                <div 
-                  className="absolute right-0 -bottom-6 text-[10px] tracking-widest uppercase transition-all duration-500 pointer-events-none"
-                  style={{
-                     opacity: isFocused ? 0.8 : 0,
-                     color: themeByStep[step]?.color,
-                     transform: isFocused ? 'translateY(0)' : 'translateY(-10px)'
-                  }}
-                >
-                  {themeByStep[step]?.name}
-                </div>
-              </div>
-              
-              {errorText && (
-                <div className="mb-6 bg-red-900/20 text-red-400 border border-red-900/50 p-4 text-sm font-sans">
-                  {errorText}
-                </div>
+              {availability === 'unavailable' && (
+                <p className="mt-4 max-w-md text-sm leading-6 text-[#a7aea8]">Сервис истории сейчас не готов. Мы не будем подменять её шаблонным текстом.</p>
               )}
+            </div>
+            <div aria-hidden="true" className="relative z-10 mt-16 hidden h-[26rem] md:block">
+              <div className="absolute left-1/2 top-10 h-72 w-px bg-gradient-to-b from-transparent via-[#b5a27a]/70 to-transparent" />
+              <div className="absolute left-[28%] top-[28%] h-40 w-40 rounded-full border border-[#b5a27a]/35" />
+              <div className="absolute left-[42%] top-[42%] h-52 w-36 border-l border-t border-[#687168]/40" />
+            </div>
+          </motion.section>
+        )}
 
-              <button 
-                onClick={handleNext}
-                disabled={inputs[steps[step - 1].id as keyof StoryInputs].length < 3}
-                className="self-end px-10 py-4 bg-transparent text-[#A3B8AD] border border-[#2A3B33] hover:border-[#A3B8AD] hover:text-[#EAEAEA] hover:bg-[#1A2621] tracking-[0.2em] uppercase text-xs transition-all duration-500 disabled:opacity-30 disabled:hover:border-[#2A3B33] disabled:hover:bg-transparent disabled:hover:text-[#A3B8AD] disabled:cursor-not-allowed"
-              >
-                {step === 4 ? 'Сплести сказку' : 'Далее'}
-              </button>
-            </motion.div>
-          )}
+        {step >= 1 && step <= 4 && question && (
+          <motion.section
+            key={question.id}
+            initial={{ opacity: 0, x: 18 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -18 }}
+            className="mx-auto flex min-h-[calc(100svh-72px)] w-full max-w-3xl flex-col justify-center px-5 py-28 md:px-10"
+          >
+            <div className="mb-12 flex items-center justify-between">
+              <button onClick={() => setStep(step - 1)} aria-label="Назад" className="p-2 text-[#899189] transition hover:text-white"><ArrowLeft /></button>
+              <span className="text-xs uppercase tracking-[0.22em] text-[#7e877f]">{step} / 4</span>
+            </div>
+            <p className="text-xs uppercase tracking-[0.22em] text-[#b5a27a]">{question.eyebrow}</p>
+            <h2 className="mt-5 max-w-2xl font-serif text-3xl leading-tight text-[#f1ede5] md:text-5xl">{question.title}</h2>
+            <div className="mt-8 flex flex-wrap gap-2">
+              {question.choices.map((choice) => (
+                <button
+                  key={choice}
+                  onClick={() => choose(choice)}
+                  className={`border px-4 py-3 text-sm transition ${inputs[question.id] === choice ? 'border-[#b5a27a] bg-[#b5a27a] text-[#111512]' : 'border-[#3c443d] text-[#bdc4bd] hover:border-[#7c867d]'}`}
+                >{choice}</button>
+              ))}
+            </div>
+            <textarea
+              value={inputs[question.id]}
+              onChange={(event) => choose(event.target.value)}
+              placeholder={question.placeholder}
+              className="mt-8 min-h-32 w-full resize-none border-0 border-b border-[#465047] bg-transparent py-4 font-serif text-xl leading-relaxed text-[#ede9df] outline-none placeholder:text-[#606961] focus:border-[#b5a27a]"
+            />
+            <button
+              onClick={() => step < 4 ? setStep(step + 1) : void generate()}
+              disabled={!canContinue}
+              className="mt-9 self-end border border-[#b5a27a] px-7 py-3 text-sm text-[#ddd2ba] transition hover:bg-[#b5a27a] hover:text-[#111512] disabled:cursor-not-allowed disabled:opacity-30"
+            >{step === 4 ? 'Собрать историю' : 'Продолжить'}</button>
+          </motion.section>
+        )}
 
-          {step === 5 && (
-            <motion.div
-              key="generating"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="w-full flex flex-col items-center justify-center py-20 text-center"
-            >
-              <Loader2 className="w-8 h-8 text-[#A3B8AD] animate-spin mb-6" />
-              <p className="font-serif text-xl italic text-[#EAEAEA] mb-4">Вплетаем нити в узор...</p>
-              <p className="text-sm text-[#4A5D53]">Это может занять немного времени.</p>
-            </motion.div>
-          )}
+        {step === 5 && (
+          <motion.section key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex min-h-[calc(100svh-72px)] flex-col items-center justify-center px-6 text-center">
+            <Loader2 className="mb-7 h-7 w-7 animate-spin text-[#b5a27a]" />
+            <h2 className="font-serif text-3xl text-[#eee9df]">История собирается</h2>
+            <p className="mt-4 max-w-sm text-sm leading-6 text-[#8e978f]">Мы связываем ваши четыре ответа в один сюжет. Если связь прервётся, ответы останутся в браузере.</p>
+          </motion.section>
+        )}
 
-          {step === 6 && result && (
-            <motion.div
-              key="result"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              ref={resultRef}
-              className="w-full flex flex-col gap-16 py-10"
-            >
-              {safeMessage && (
-                <div className="text-xs text-center p-4 border border-[#A3B8AD]/30 text-[#A3B8AD] bg-[#1A2621]/30">
-                  {safeMessage}
-                </div>
-              )}
-              
-              {/* Title Block */}
-              <div className="flex flex-col mb-4">
-                 <span className="text-xs tracking-widest uppercase text-[#A3B8AD] mb-4">ЛИЧНЫЙ МИФ</span>
-                 <h2 className="font-serif text-4xl text-[#F4F4F4]">{result.title}</h2>
+        {step === 7 && (
+          <motion.section key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto flex min-h-[calc(100svh-72px)] max-w-xl flex-col justify-center px-6">
+            <p className="text-xs uppercase tracking-[0.22em] text-[#b5a27a]">История не выдана</p>
+            <h2 className="mt-5 font-serif text-4xl text-[#f0ece3]">Лучше остановиться, чем выдать случайный текст.</h2>
+            <p className="mt-6 leading-7 text-[#aeb5ae]">{errorText}</p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <button onClick={() => void generate(false)} disabled={availability === 'unavailable'} className="flex items-center gap-2 border border-[#b5a27a] px-5 py-3 text-sm text-[#ddd2ba] disabled:opacity-40"><RefreshCw size={16} /> Повторить</button>
+              <button onClick={() => setStep(4)} className="border border-[#414941] px-5 py-3 text-sm text-[#aeb5ae]">Проверить ответы</button>
+            </div>
+          </motion.section>
+        )}
+
+        {step === 6 && result && (
+          <motion.article ref={resultRef} key="result" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mx-auto max-w-3xl px-5 pb-24 pt-28 md:px-10">
+            <p className="text-xs uppercase tracking-[0.22em] text-[#b5a27a]">Личный миф</p>
+            <h1 className="mt-5 font-serif text-5xl leading-tight text-[#f4f0e7] md:text-6xl">{result.title}</h1>
+            <div className="mt-12 space-y-7 font-serif text-xl leading-[1.9] text-[#d8d5cc]">
+              {result.story.split('\n\n').map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+            </div>
+
+            <section className="mt-20 border-y border-[#333b34] py-12">
+              <div className="flex items-center gap-3 text-[#b5a27a]"><BookOpen size={17} /><h2 className="font-sans text-xs uppercase tracking-[0.22em] text-inherit">Из каких образов родилась история</h2></div>
+              <div className="mt-8 space-y-7">
+                {result.answer_echoes?.map((echo) => (
+                  <div key={echo.answer_key} className="grid gap-2 md:grid-cols-[0.8fr_1.2fr]">
+                    <p className="font-serif text-lg text-[#ede7dc]">«{echo.source_phrase}»</p>
+                    <p className="text-sm leading-6 text-[#9da59e]">{echo.story_image}</p>
+                  </div>
+                ))}
               </div>
+            </section>
 
-              {/* BLOCK 1: STORY */}
-              <div className="flex flex-col">
-                 <div className="font-serif text-lg md:text-xl leading-loose text-gray-300 space-y-6">
-                    {result.story.split('\n\n').map((paragraph, i) => (
-                      <p key={i}>{paragraph}</p>
-                    ))}
-                 </div>
-              </div>
+            <section className="mt-16">
+              <div className="flex items-center gap-3 text-[#b5a27a]"><Feather size={17} /><h2 className="font-sans text-xs uppercase tracking-[0.22em] text-inherit">Один шаг сегодня</h2></div>
+              <p className="mt-6 font-serif text-2xl leading-relaxed text-[#ece6dc]">{result.one_step}</p>
+              <p className="mt-10 text-xs uppercase tracking-[0.18em] text-[#747d75]">Вопрос для дневника</p>
+              <p className="mt-4 font-serif text-xl text-[#c8cdc7]">{result.journal_question}</p>
+            </section>
 
-              <hr className="border-[#2A3B33] my-8" />
-
-              {/* BLOCK 2: MIRROR */}
-              <div className="flex flex-col space-y-12">
-                 <div className="flex items-center gap-3 opacity-80">
-                   <Sparkles className="w-4 h-4 text-[#A3B8AD]" />
-                   <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Что в этом образе про вас</span>
-                 </div>
-
-                 {result.mirror && (
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
-                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Главный образ</h4>
-                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.mainImage}</p>
-                     </div>
-                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
-                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Внутреннее напряжение</h4>
-                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.innerTension}</p>
-                     </div>
-                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
-                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Скрытый ресурс</h4>
-                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.hiddenResource}</p>
-                     </div>
-                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
-                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Новый взгляд</h4>
-                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.newView}</p>
-                     </div>
-                   </div>
-                 )}
-
-                 {/* Fallback for meaning strings if API hasn't synced or legacy */}
-                 {result.meaning && result.meaning.length > 0 && !result.mirror && (
-                   <ul className="space-y-4 font-sans text-sm md:text-base text-gray-400">
-                      {result.meaning.map((m, i) => {
-                        const cleanText = m.replace(/\\*\\*(.*?)\\*\\*/g, '$1');
-                        return (
-                          <li key={i} className="flex gap-4">
-                            <span className="text-[#A3B8AD] opacity-50">—</span>
-                            <span>{cleanText}</span>
-                          </li>
-                        );
-                      })}
-                   </ul>
-                 )}
-              </div>
-
-              {/* BLOCK 3: ONE STEP */}
-              <div className="flex flex-col mt-12 bg-[#111A16] border border-[#2A3B33] p-8 -mx-4 sm:mx-0">
-                 <div className="flex items-center gap-3 mb-4 opacity-80">
-                   <Feather className="w-4 h-4 text-[#A3B8AD]" />
-                   <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Один шаг сегодня</span>
-                 </div>
-                 <p className="font-serif text-xl italic text-[#EAEAEA]">
-                   {result.one_step}
-                 </p>
-              </div>
-
-              {/* BLOCK 4: JOURNAL */}
-              <div className="flex flex-col mt-12">
-                 <div className="flex items-center gap-3 mb-6 opacity-80">
-                   <Archive className="w-4 h-4 text-[#A3B8AD]" />
-                   <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Вопрос для дневника</span>
-                 </div>
-                 <p className="font-sans text-lg text-gray-300 mb-6">{result.journal_question || "Какой первый маленький шаг можно сделать сегодня?"}</p>
-                 <textarea 
-                    className="w-full bg-[#1A2621]/30 border border-[#2A3B33] text-[#EAEAEA] placeholder:text-[#3A4B43] text-base p-4 outline-none focus:border-[#A3B8AD] transition-colors resize-none h-32"
-                    placeholder="Напишите здесь свои впечатления..."
-                 />
-              </div>
-
-              {/* CTA Full Profile */}
-              <div className="mt-16 text-center border p-8 border-[#2A3B33] bg-[#111A16]">
-                <h3 className="font-serif text-2xl text-[#EAEAEA] mb-4">Собрать полное зеркало</h3>
-                <p className="text-sm text-gray-400 mb-8 max-w-md mx-auto">
-                  Большое исследование соединяет вашу дату рождения, числовую архитектуру и образный слой в один персональный документ.
-                </p>
-                <div className="flex flex-col sm:flex-row justify-center gap-4">
-                   <button className="px-8 py-4 bg-[#A3B8AD] text-[#0F1412] tracking-[0.2em] font-sans uppercase text-xs font-medium border border-[#A3B8AD] hover:bg-[#8CA296] hover:border-[#8CA296] transition-all duration-500" onClick={() => setShowLeadForm(true)}>
-                     Получить Большое исследование
-                   </button>
-                   <button onClick={() => { setStep(0); setInputs({q1:'', q2:'', q3:'', q4:''}) }} className="px-8 py-4 bg-transparent border border-[#2A3B33] text-[#A3B8AD] tracking-[0.2em] font-sans uppercase text-xs hover:text-[#EAEAEA] hover:border-[#A3B8AD] hover:bg-[#1A2621] transition-all duration-500">
-                     Новый миф
-                   </button>
-                </div>
-              </div>
-
-            </motion.div>
-          )}
-
-        </AnimatePresence>
-        
-        {/* Safety Footer */}
-        <div className="mt-20 pt-8 border-t border-[#1A2621] w-full text-center pb-8">
-          <p className="text-[10px] text-gray-600 max-w-sm mx-auto leading-relaxed uppercase tracking-wider">
-            Это образная история для саморефлексии. Она не является руководством к действию или единственно верным прочтением. При ощущении небезопасности или потери контроля лучше обратиться к человеку рядом или профильному специалисту.
-          </p>
-        </div>
-
-      </div>
-
-      {/* Lead Form Modal */}
-      <LeadModal 
-        isOpen={showLeadForm} 
-        onClose={() => setShowLeadForm(false)} 
-        source="personal_myth_big_research" 
-        theme="dark" 
-      />
-    </div>
+            <p className="mt-16 border-t border-[#293029] pt-8 text-xs leading-6 text-[#737c74]">{result.disclaimer}</p>
+            <button onClick={reset} className="mt-10 border border-[#414941] px-5 py-3 text-sm text-[#abb3ac]">Новая история</button>
+          </motion.article>
+        )}
+      </AnimatePresence>
+    </main>
   );
 }
