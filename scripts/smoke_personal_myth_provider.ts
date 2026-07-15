@@ -50,13 +50,18 @@ async function main() {
       });
     } catch (error) {
       const reason = error instanceof Error ? error.message : "unknown";
+      const wordCountMatch = reason.match(/word_count=(\d+)/u);
       reports.push({
         fixture: index + 1,
         passed: false,
         blockers: reason.startsWith("personal_myth_quality_failed:")
-          ? reason.slice("personal_myth_quality_failed:".length).split(",").filter(Boolean)
+          ? reason
+              .slice("personal_myth_quality_failed:".length)
+              .split(";", 1)[0]
+              .split("|")
+              .filter(Boolean)
           : [reason.split(":", 1)[0]],
-        word_count: null,
+        word_count: wordCountMatch ? Number(wordCountMatch[1]) : null,
         answer_coverage: [],
         repaired: true,
         visual_key: null,

@@ -251,7 +251,8 @@ q3 — момент живости: ${request.answers.q3}
 q4 — недостающее качество: ${request.answers.q4}
 
 Требования:
-- 600–900 слов и несколько читаемых абзацев;
+- 600–900 русских слов; цель — 720–780 слов и 9–12 читаемых абзацев;
+- не завершай историю раньше 650 слов; раскрывай движение через конкретные сцены, а не повтор мысли;
 - девять движений: мир героя, нарушение равновесия, образ состояния, первая попытка, встреча, узнавание, изменение взгляда, один реальный шаг, открытый финал;
 - каждый из четырёх ответов должен быть узнаваем в истории;
 - для каждого ответа верни answer_echo: короткую дословную фразу 2–8 слов из ответа и образ, которым она стала в истории;
@@ -326,6 +327,7 @@ class DeepSeekPersonalMythProvider implements PersonalMythProvider {
             { role: "user", content: prompt },
           ],
           temperature: 0.72,
+          max_tokens: 5_000,
           response_format: { type: "json_object" },
         }),
       },
@@ -385,16 +387,24 @@ export async function generatePersonalMyth(
   if (!provider.isReady()) throw new Error("personal_myth_provider_not_ready");
 
   let blockers: string[] = [];
+  let lastQuality: PersonalMythQualityReport | null = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const raw = await provider.generate(buildPersonalMythPrompt(request, blockers), timeoutMs);
     try {
       const result = parsePersonalMythResult(raw);
       const quality = validatePersonalMythResult(result, request.answers);
       if (quality.passed) return { result, quality, repaired: attempt === 1 };
-      blockers = quality.blockers;
+      lastQuality = quality;
+      blockers = quality.blockers.map((blocker) =>
+        blocker === "story_word_count"
+          ? `${blocker} (фактически ${quality.word_count} слов, требуется 600–900)`
+          : blocker,
+      );
     } catch (error) {
       blockers = [error instanceof Error ? error.message : "result_parse_failed"];
     }
   }
-  throw new Error(`personal_myth_quality_failed:${blockers.join(",")}`);
+  const finalBlockers = blockers.join("|");
+  const metrics = lastQuality ? `;word_count=${lastQuality.word_count}` : "";
+  throw new Error(`personal_myth_quality_failed:${finalBlockers}${metrics}`);
 }

@@ -99,4 +99,29 @@ describe("Personal Myth contract", () => {
     expect(calls[1]).toContain("не прошла проверку");
     expect(buildPersonalMythPrompt(request)).not.toContain("Альберт Анатольевич");
   });
+
+  it("gives the repair prompt the actual short-story word count", async () => {
+    const calls: string[] = [];
+    const shortPayload = validPayload();
+    shortPayload.story = "короткая сцена ".repeat(120).trim();
+    const provider: PersonalMythProvider = {
+      name: "deepseek",
+      model: "test-model",
+      isReady: () => true,
+      generate: async (prompt) => {
+        calls.push(prompt);
+        return JSON.stringify(calls.length === 1 ? shortPayload : validPayload());
+      },
+    };
+    const request = parsePersonalMythRequest({
+      request_id: "request_short_story_1",
+      answers,
+    });
+
+    const generated = await generatePersonalMyth(request, provider, 1000);
+
+    expect(generated.repaired).toBe(true);
+    expect(calls[1]).toContain("фактически 240 слов");
+    expect(calls[1]).toContain("требуется 600–900");
+  });
 });
