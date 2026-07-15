@@ -16,18 +16,12 @@ describe('Story Module constraints', () => {
     expect(fileContent).not.toMatch(/магия/i);
   });
 
-  it('PersonalMyth.tsx does not contain mock alert for lead CTA', () => {
+  it('PersonalMyth.tsx does not contain fake result fallback', () => {
     const fileContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
-    expect(fileContent).not.toContain('alert("Открытие');
-    expect(fileContent).toContain('setShowLeadForm(true)');
-  });
-
-  it('PersonalMyth.tsx fallback contains correct keys', () => {
-    const fileContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
-    expect(fileContent).toContain('mainImage: inputs.q2 ||');
-    expect(fileContent).toContain('innerTension: inputs.q1 ||');
-    expect(fileContent).toContain('hiddenResource: inputs.q4 ||');
-    expect(fileContent).toContain('newView: inputs.q3 ||');
+    expect(fileContent).not.toContain('applyFallback');
+    expect(fileContent).not.toContain('title: "Отражение"');
+    expect(fileContent).toContain("localStorage.setItem(DRAFT_KEY");
+    expect(fileContent).toContain("'/api/personal-myth/generate'");
   });
 
   it('server prompt does not use forbidden words loosely or directly in user-facing text', () => {
@@ -51,14 +45,16 @@ describe('Story Module constraints', () => {
     }
   });
 
-  it('server.ts contains new story_result mirror schema and crisis status', () => {
+  it('personal myth prompt contains the result schema and server returns crisis status', () => {
     const serverPath = path.join(__dirname, '../../server.ts');
+    const mythPath = path.join(__dirname, '../../server/personalMyth.ts');
     if (fs.existsSync(serverPath)) {
       const serverContent = fs.readFileSync(serverPath, 'utf-8');
-      expect(serverContent).toContain('"status": "crisis"');
-      expect(serverContent).toContain('"mirror": {');
-      expect(serverContent).toContain('"mainImage"');
-      expect(serverContent).toContain('"innerTension"');
+      const mythContent = fs.readFileSync(mythPath, 'utf-8');
+      expect(serverContent).toContain('status: "crisis"');
+      expect(mythContent).toContain('"mirror": {');
+      expect(mythContent).toContain('"mainImage"');
+      expect(mythContent).toContain('"answer_echoes"');
     }
   });
 
@@ -68,13 +64,13 @@ describe('Story Module constraints', () => {
     expect(fileContent).toMatch(/\/api\/lead/);
   });
 
-  it('LeadModal.tsx и PersonalMyth.tsx проверяет data.status', () => {
+  it('LeadModal.tsx and PersonalMyth.tsx check data.status', () => {
     const leadContent = fs.readFileSync(path.join(__dirname, '../components/LeadModal.tsx'), 'utf-8');
     expect(leadContent).toMatch(/data\.status === 'ok'/);
     
     const pmContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
-    expect(pmContent).toMatch(/data\.status === 'demo'/);
-    expect(pmContent).toMatch(/applyFallback\(\)/);
+    expect(pmContent).toMatch(/data\.status === 'ok'/);
+    expect(pmContent).toMatch(/data\.status === 'unavailable'/);
     expect(pmContent).not.toMatch(/dangerouslySetInnerHTML/);
   });
 });

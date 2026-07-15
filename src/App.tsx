@@ -33,7 +33,7 @@ export default function App() {
         </div>
       </div>
 
-      <HeroSection />
+      {mode === 'code' && <HeroSection />}
 
       <AnimatePresence mode="wait">
         {mode === 'code' && (
@@ -43,7 +43,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="w-full flex-grow flex flex-col pt-16"
+            className="w-full flex-grow flex flex-col"
             id="calculator-start"
           >
             <CodeArchitecture />
