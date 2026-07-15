@@ -190,7 +190,7 @@ export function validatePersonalMythResult(
   const blockers: string[] = [];
   const wordCount = result.story.split(/\s+/u).filter(Boolean).length;
   if (result.title.length < 3 || result.title.length > 120) blockers.push("title_length");
-  if (wordCount < 600 || wordCount > 900) blockers.push("story_word_count");
+  if (wordCount < 350 || wordCount > 700) blockers.push("story_word_count");
   if (result.one_step.length < 20 || result.one_step.length > 420) blockers.push("one_step_contract");
   if (result.journal_question.length < 15 || result.journal_question.length > 260) {
     blockers.push("journal_question_contract");
@@ -251,8 +251,8 @@ q3 — момент живости: ${request.answers.q3}
 q4 — недостающее качество: ${request.answers.q4}
 
 Требования:
-- 600–900 русских слов; цель — 720–780 слов и 9–12 читаемых абзацев;
-- не завершай историю раньше 650 слов; раскрывай движение через конкретные сцены, а не повтор мысли;
+- 350–700 русских слов; цель — 450–550 слов и 7–10 читаемых абзацев;
+- раскрывай движение через конкретные сцены, а не повтор мысли и не литературный наполнитель;
 - девять движений: мир героя, нарушение равновесия, образ состояния, первая попытка, встреча, узнавание, изменение взгляда, один реальный шаг, открытый финал;
 - каждый из четырёх ответов должен быть узнаваем в истории;
 - для каждого ответа верни answer_echo: короткую дословную фразу 2–8 слов из ответа и образ, которым она стала в истории;
@@ -389,15 +389,15 @@ export async function generatePersonalMyth(
   let blockers: string[] = [];
   let lastQuality: PersonalMythQualityReport | null = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const raw = await provider.generate(buildPersonalMythPrompt(request, blockers), timeoutMs);
     try {
+      const raw = await provider.generate(buildPersonalMythPrompt(request, blockers), timeoutMs);
       const result = parsePersonalMythResult(raw);
       const quality = validatePersonalMythResult(result, request.answers);
       if (quality.passed) return { result, quality, repaired: attempt === 1 };
       lastQuality = quality;
       blockers = quality.blockers.map((blocker) =>
         blocker === "story_word_count"
-          ? `${blocker} (фактически ${quality.word_count} слов, требуется 600–900)`
+          ? `${blocker} (фактически ${quality.word_count} слов, требуется 350–700)`
           : blocker,
       );
     } catch (error) {

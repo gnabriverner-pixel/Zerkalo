@@ -122,6 +122,29 @@ describe("Personal Myth contract", () => {
 
     expect(generated.repaired).toBe(true);
     expect(calls[1]).toContain("фактически 240 слов");
-    expect(calls[1]).toContain("требуется 600–900");
+    expect(calls[1]).toContain("требуется 350–700");
+  });
+
+  it("retries one empty provider response before failing the request", async () => {
+    let calls = 0;
+    const provider: PersonalMythProvider = {
+      name: "deepseek",
+      model: "test-model",
+      isReady: () => true,
+      generate: async () => {
+        calls += 1;
+        if (calls === 1) throw new Error("provider_empty_output");
+        return JSON.stringify(validPayload());
+      },
+    };
+    const request = parsePersonalMythRequest({
+      request_id: "request_empty_retry_1",
+      answers,
+    });
+
+    const generated = await generatePersonalMyth(request, provider, 1000);
+
+    expect(calls).toBe(2);
+    expect(generated.repaired).toBe(true);
   });
 });
