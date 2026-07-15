@@ -48,7 +48,7 @@ const EVENT_PAYLOAD_RULES: Record<ProductEventName, Record<string, PayloadRule>>
     http_status: isFiniteNonNegativeNumber,
     api_status: API_STATUS,
   },
-  first_mirror_result_viewed: { result_mode: oneOf('generated', 'fallback') },
+  first_mirror_result_viewed: {},
   telegram_deep_cta_click: { source: oneOf('first_mirror', 'product_trust_layer') },
   privacy_link_click: { source: oneOf('product_trust_layer') },
   personal_myth_availability: { state: oneOf('ready', 'unavailable') },
@@ -71,8 +71,8 @@ export function isProductEventName(value: unknown): value is ProductEventName {
 }
 
 /**
- * Shared privacy boundary used by both browser and server.
- * Unknown keys and invalid values are dropped before storage or adapters.
+ * Shared privacy boundary used by both browser and any future server adapter.
+ * Unknown keys and invalid values are dropped before emission or persistence.
  */
 export function sanitizeProductEventPayload(
   name: ProductEventName,
