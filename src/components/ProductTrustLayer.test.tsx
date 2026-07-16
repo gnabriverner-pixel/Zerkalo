@@ -22,9 +22,9 @@ describe('Digital Code release trust layer', () => {
     const teaser = fs.readFileSync(path.resolve('src/components/BigResearchTeaser.tsx'), 'utf8');
 
     expect(teaser).toContain(
-      'Разобрать один важный вопрос через полную цифровую формулу, понять происхождение внутреннего узла и увидеть конкретный следующий шаг.',
+      'Возьмите одну живую ситуацию. Сначала сформулируйте вопрос в Telegram — затем глубокий разбор сможет связать его с полной цифровой формулой, точками напряжения и следующим проверяемым шагом.',
     );
-    expect(teaser).toContain('Семидневную проверку можно начать отдельно, по желанию.');
+    expect(teaser).toContain('Сначала — вопрос. Затем — глубина.');
   });
 
   it('keeps the route optional and exposes the privacy disclosure', () => {

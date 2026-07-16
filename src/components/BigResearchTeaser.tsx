@@ -1,9 +1,12 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import { trackProductEvent } from '../lib/productAnalytics';
 
 interface Props {
   onCtaClick: () => void;
 }
+
+const TELEGRAM_URL = 'https://t.me/digitalcodesystem_bot';
 
 const MeanderDivider = () => (
   <svg width="120" height="12" viewBox="0 0 120 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto my-8 opacity-40">
@@ -13,22 +16,22 @@ const MeanderDivider = () => (
 
 export const BigResearchTeaser: React.FC<Props> = ({ onCtaClick }) => {
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="w-full max-w-4xl mx-auto my-16 bg-[var(--color-ink)] text-[var(--color-ivory)] relative overflow-hidden shadow-2xl"
     >
       <div className="absolute inset-0 opacity-20" style={{ background: 'radial-gradient(circle at center, rgba(163, 184, 173, 0.15) 0%, transparent 70%), linear-gradient(135deg, rgba(16, 26, 22, 0.8) 0%, rgba(20, 25, 22, 0.9) 100%)' }}></div>
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--color-antique-gold)] to-transparent opacity-50"></div>
-      
+
       <div className="p-12 md:p-20 relative z-10 flex flex-col items-center border border-[var(--border-soft)] border-opacity-20">
         <h2 className="font-serif text-4xl md:text-5xl mb-4 text-center tracking-wide">Разбор вашего вопроса</h2>
         <p className="font-sans text-[0.65rem] tracking-[0.3em] uppercase text-[var(--color-antique-gold)] mb-8 text-center bg-[var(--color-ink)] px-4">
           TELEGRAM + ПОДРОБНЫЙ PDF
         </p>
-        
+
         <p className="font-serif text-[1.15rem] md:text-xl text-center leading-relaxed text-[var(--color-muted)] max-w-2xl mb-16 italic">
-          Разобрать один важный вопрос через полную цифровую формулу, понять происхождение внутреннего узла и увидеть конкретный следующий шаг. Семидневную проверку можно начать отдельно, по желанию.
+          Возьмите одну живую ситуацию. Сначала сформулируйте вопрос в Telegram — затем глубокий разбор сможет связать его с полной цифровой формулой, точками напряжения и следующим проверяемым шагом.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-3xl mb-16 text-left">
@@ -60,14 +63,26 @@ export const BigResearchTeaser: React.FC<Props> = ({ onCtaClick }) => {
 
         <MeanderDivider />
 
-        <button 
-          onClick={onCtaClick}
-          className="mt-6 px-12 py-5 bg-[var(--color-antique-gold)] text-[var(--color-ink)] hover:bg-[#b08833] transition-all font-sans text-[0.65rem] tracking-[0.25em] uppercase shadow-lg hover:shadow-xl hover:-translate-y-px"
-        >
-          Разобрать мой вопрос
-        </button>
+        <div className="mt-6 flex flex-col items-center gap-4 sm:flex-row">
+          <a
+            href={TELEGRAM_URL}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => trackProductEvent('telegram_deep_cta_click', { source: 'first_mirror' })}
+            className="px-12 py-5 bg-[var(--color-antique-gold)] text-[var(--color-ink)] hover:bg-[#b08833] transition-all font-sans text-[0.65rem] tracking-[0.25em] uppercase shadow-lg hover:shadow-xl hover:-translate-y-px"
+          >
+            Задать вопрос в Telegram
+          </a>
+          <button
+            type="button"
+            onClick={onCtaClick}
+            className="px-8 py-4 border border-gray-600 text-gray-300 transition-colors font-sans text-[0.62rem] tracking-[0.2em] uppercase hover:border-[var(--color-antique-gold)] hover:text-[var(--color-antique-gold)]"
+          >
+            Оставить контакт
+          </button>
+        </div>
         <p className="text-[0.65rem] text-gray-500 font-sans tracking-[0.2em] uppercase mt-6 opacity-80">
-          Расчёт, собранный в живое слово.
+          Сначала — вопрос. Затем — глубина.
         </p>
       </div>
     </motion.div>

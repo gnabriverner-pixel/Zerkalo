@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowUpRight, BookOpen, Eye, Scale } from 'lucide-react';
+import { trackProductEvent } from '../lib/productAnalytics';
 
 const TELEGRAM_URL = 'https://t.me/digitalcodesystem_bot';
 
@@ -112,12 +113,17 @@ export function ProductTrustLayer() {
             href={TELEGRAM_URL}
             target="_blank"
             rel="noreferrer"
+            onClick={() => trackProductEvent('telegram_deep_cta_click', { source: 'product_trust_layer' })}
             className="inline-flex min-h-12 items-center gap-3 bg-[var(--color-ink)] px-7 py-4 text-sm font-medium text-white transition-colors hover:bg-[var(--color-aegean)]"
           >
             Разобрать мой вопрос
             <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
           </a>
-          <a href="/privacy.html" className="text-sm text-[var(--color-muted)] underline decoration-[var(--color-antique-gold)] underline-offset-4">
+          <a
+            href="/privacy.html"
+            onClick={() => trackProductEvent('privacy_link_click', { source: 'product_trust_layer' })}
+            className="text-sm text-[var(--color-muted)] underline decoration-[var(--color-antique-gold)] underline-offset-4"
+          >
             Как обрабатываются данные
           </a>
         </div>

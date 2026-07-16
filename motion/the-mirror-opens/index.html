@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Mirror Opens</title>
+  <style>
+    :root {
+      --paper: #F4F0E7;
+      --ink: #1D1A16;
+      --graphite: #6E675E;
+      --gold: #B69352;
+      --line: #D8D0C1;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; background: var(--paper); }
+    body { overflow: hidden; }
+
+    [data-composition-id="the-mirror-opens"] {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      color: var(--ink);
+      background-color: var(--paper);
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    [data-composition-id="the-mirror-opens"]::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.34;
+      background-image:
+        radial-gradient(circle at 18% 24%, rgba(182, 147, 82, 0.08), transparent 28%),
+        radial-gradient(circle at 82% 76%, rgba(110, 103, 94, 0.07), transparent 30%),
+        repeating-radial-gradient(circle at 0 0, rgba(29, 26, 22, 0.018) 0 0.7px, transparent 0.8px 4px);
+    }
+
+    .frame {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      padding: 96px 118px 88px;
+      gap: 34px;
+    }
+
+    .eyebrow {
+      font-size: 20px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .date-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 30px;
+    }
+
+    .date-label {
+      font-size: 20px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--graphite);
+    }
+
+    .date {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 116px;
+      line-height: 0.95;
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .route {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 20px;
+      padding-top: 22px;
+    }
+
+    .route-line {
+      position: absolute;
+      top: 58px;
+      left: 9%;
+      right: 9%;
+      height: 2px;
+      background: var(--line);
+      transform-origin: left center;
+    }
+
+    .node {
+      position: relative;
+      min-height: 210px;
+      padding: 22px 22px 24px;
+      border: 1px solid var(--line);
+      background: rgba(244, 240, 231, 0.9);
+    }
+
+    .node-index {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 54px;
+      height: 54px;
+      margin-bottom: 26px;
+      border: 1px solid var(--gold);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--gold);
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 34px;
+    }
+
+    .node-name {
+      margin-bottom: 10px;
+      font-size: 17px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .node-meaning {
+      max-width: 250px;
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 29px;
+      line-height: 1.16;
+    }
+
+    .meaning-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.55fr);
+      gap: 34px;
+      align-items: stretch;
+    }
+
+    .recognition {
+      padding: 28px 34px;
+      border-left: 3px solid var(--gold);
+      background: rgba(255, 255, 255, 0.3);
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 42px;
+      line-height: 1.2;
+    }
+
+    .formula {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 24px 28px;
+      border: 1px solid var(--line);
+    }
+
+    .formula-label {
+      margin-bottom: 12px;
+      font-size: 16px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--graphite);
+    }
+
+    .formula-value {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 48px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.05em;
+    }
+
+    .tagline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 30px;
+      padding-top: 2px;
+      color: var(--graphite);
+    }
+
+    .tagline-main {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 34px;
+    }
+
+    .tagline-mark {
+      font-size: 17px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+  </style>
+</head>
+<body>
+  <div
+    id="the-mirror-opens"
+    data-composition-id="the-mirror-opens"
+    data-start="0"
+    data-duration="15.8"
+    data-track-index="0"
+    data-width="1920"
+    data-height="1080"
+  >
+    <div class="frame">
+      <div id="eyebrow" class="eyebrow">Зеркало себя · Цифровой Код</div>
+
+      <div class="date-wrap">
+        <div id="date-label" class="date-label">Обычная дата</div>
+        <div id="date" class="date">17 · 04 · 1992</div>
+      </div>
+
+      <div class="route" aria-label="Пять позиций цифрового маршрута">
+        <div id="route-line" class="route-line"></div>
+
+        <div id="node-1" class="node">
+          <div class="node-index">1</div>
+          <div class="node-name">Душа</div>
+          <div class="node-meaning">что важно внутри</div>
+        </div>
+        <div id="node-2" class="node">
+          <div class="node-index">2</div>
+          <div class="node-name">Путь</div>
+          <div class="node-meaning">как начинается действие</div>
+        </div>
+        <div id="node-3" class="node">
+          <div class="node-index">3</div>
+          <div class="node-name">Выражение</div>
+          <div class="node-meaning">как потенциал становится видимым</div>
+        </div>
+        <div id="node-4" class="node">
+          <div class="node-index">4</div>
+          <div class="node-name">Направление</div>
+          <div class="node-meaning">куда направляется усилие</div>
+        </div>
+        <div id="node-5" class="node">
+          <div class="node-index">5</div>
+          <div class="node-name">Результат</div>
+          <div class="node-meaning">что может собрать вся связка</div>
+        </div>
+      </div>
+
+      <div class="meaning-row">
+        <div id="recognition" class="recognition">
+          Пять отдельных функций начинают читаться как один человеческий маршрут.
+        </div>
+        <div id="formula" class="formula">
+          <div class="formula-label">Числовое основание</div>
+          <div class="formula-value">8 · 6 · 5 · 1 · 2</div>
+        </div>
+      </div>
+
+      <div class="tagline">
+        <div id="tagline-main" class="tagline-main">Сначала — узнавание. Потом — цифровой код.</div>
+        <div id="tagline-mark" class="tagline-mark">The Mirror Opens</div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.from('#eyebrow', { opacity: 0, y: 18, duration: 0.55, ease: 'power2.out' }, 0.2);
+      tl.from('#date-label', { opacity: 0, x: -28, duration: 0.6, ease: 'expo.out' }, 0.55);
+      tl.from('#date', { opacity: 0, y: 34, scale: 0.96, duration: 0.9, ease: 'power3.out' }, 0.72);
+
+      tl.from('#node-1', { opacity: 0, y: 42, duration: 0.65, ease: 'power3.out' }, 2.25);
+      tl.from('#node-2', { opacity: 0, y: 32, duration: 0.62, ease: 'expo.out' }, 2.6);
+      tl.from('#node-3', { opacity: 0, y: 22, duration: 0.6, ease: 'power2.out' }, 2.95);
+      tl.from('#node-4', { opacity: 0, y: 30, duration: 0.62, ease: 'power3.out' }, 3.3);
+      tl.from('#node-5', { opacity: 0, y: 40, duration: 0.65, ease: 'expo.out' }, 3.65);
+      tl.from('#route-line', { scaleX: 0, duration: 1.3, ease: 'power2.inOut' }, 4.15);
+
+      tl.from('#recognition', { opacity: 0, x: -34, duration: 0.8, ease: 'power3.out' }, 6.35);
+      tl.from('#formula', { opacity: 0, x: 34, scale: 0.98, duration: 0.78, ease: 'expo.out' }, 8.2);
+      tl.from('#tagline-main', { opacity: 0, y: 22, duration: 0.7, ease: 'power2.out' }, 10.5);
+      tl.from('#tagline-mark', { opacity: 0, x: 24, duration: 0.55, ease: 'power3.out' }, 11.1);
+
+      tl.to('#the-mirror-opens', { opacity: 0, duration: 0.8, ease: 'power2.in' }, 14.8);
+
+      window.__timelines['the-mirror-opens'] = tl;
+    </script>
+  </div>
+</body>
+</html>
