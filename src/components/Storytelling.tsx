@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2, BookOpen, Sparkles, Feather, Archive, X } from 'lucide-react';
+import { Loader2, BookOpen, Sparkles, Feather, Archive, X, Clock, Layers } from 'lucide-react';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { ru } from 'date-fns/locale';
 import { ApiResponse, StoryInputs } from '../types';
+import { MythTimeline } from './MythTimeline';
 
 registerLocale('ru', ru);
 
@@ -21,6 +22,7 @@ export default function Storytelling() {
   const [date, setDate] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [resultTab, setResultTab] = useState<'all' | 'timeline' | 'story' | 'mirror'>('all');
   const resultRef = useRef<HTMLDivElement>(null);
 
   const themeByStep = [
@@ -187,7 +189,7 @@ export default function Storytelling() {
               exit={{ opacity: 0, x: -20 }}
               className="w-full flex flex-col"
             >
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex justify-between items-center mb-4">
                 <span className="text-xs tracking-widest text-[#A3B8AD] uppercase">Шаг {step} из 4</span>
                 {step > 1 && (
                    <button 
@@ -198,6 +200,9 @@ export default function Storytelling() {
                    </button>
                 )}
               </div>
+
+              {/* Interactive Timeline */}
+              <MythTimeline inputs={inputs} currentStep={step} mode="interactive" />
               
               <h3 className="font-serif text-2xl md:text-3xl text-[#EAEAEA] mb-8 leading-snug">
                 {steps[step - 1].title}
@@ -281,66 +286,135 @@ export default function Storytelling() {
                 </div>
               )}
               
-              {/* Title Block */}
-              <div className="flex flex-col mb-4">
-                 <span className="text-xs tracking-widest uppercase text-[#A3B8AD] mb-4">СКАЗКА</span>
-                 <h2 className="font-serif text-4xl text-[#F4F4F4]">{result.title}</h2>
+              {/* Title Block & View Mode Tabs */}
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-4 pb-4 border-b border-[#2A3B33]">
+                 <div className="flex flex-col">
+                   <span className="text-xs tracking-widest uppercase text-[#A3B8AD] mb-2">СКАЗКА</span>
+                   <h2 className="font-serif text-3xl sm:text-4xl text-[#F4F4F4]">{result.title}</h2>
+                 </div>
+
+                 {/* View Mode Switcher */}
+                 <div className="flex items-center gap-1 bg-[#111A16] p-1 rounded-sm border border-[#2A3B33] self-start sm:self-auto">
+                   <button
+                     type="button"
+                     onClick={() => setResultTab('all')}
+                     className={`px-3 py-1.5 text-xs font-sans tracking-wider uppercase rounded-xs transition-all flex items-center gap-1.5 ${
+                       resultTab === 'all'
+                         ? 'bg-[#A3B8AD] text-[#0F1412] font-medium'
+                         : 'text-gray-400 hover:text-gray-200'
+                     }`}
+                   >
+                     <Layers className="w-3.5 h-3.5" />
+                     <span>Полный вид</span>
+                   </button>
+
+                   <button
+                     type="button"
+                     onClick={() => setResultTab('timeline')}
+                     className={`px-3 py-1.5 text-xs font-sans tracking-wider uppercase rounded-xs transition-all flex items-center gap-1.5 ${
+                       resultTab === 'timeline'
+                         ? 'bg-[#A3B8AD] text-[#0F1412] font-medium'
+                         : 'text-gray-400 hover:text-gray-200'
+                     }`}
+                   >
+                     <Clock className="w-3.5 h-3.5" />
+                     <span>Шкала времени</span>
+                   </button>
+
+                   <button
+                     type="button"
+                     onClick={() => setResultTab('story')}
+                     className={`px-3 py-1.5 text-xs font-sans tracking-wider uppercase rounded-xs transition-all flex items-center gap-1.5 ${
+                       resultTab === 'story'
+                         ? 'bg-[#A3B8AD] text-[#0F1412] font-medium'
+                         : 'text-gray-400 hover:text-gray-200'
+                     }`}
+                   >
+                     <BookOpen className="w-3.5 h-3.5" />
+                     <span>Сказка</span>
+                   </button>
+
+                   <button
+                     type="button"
+                     onClick={() => setResultTab('mirror')}
+                     className={`px-3 py-1.5 text-xs font-sans tracking-wider uppercase rounded-xs transition-all flex items-center gap-1.5 ${
+                       resultTab === 'mirror'
+                         ? 'bg-[#A3B8AD] text-[#0F1412] font-medium'
+                         : 'text-gray-400 hover:text-gray-200'
+                     }`}
+                   >
+                     <Sparkles className="w-3.5 h-3.5" />
+                     <span>Зеркало</span>
+                   </button>
+                 </div>
               </div>
 
-              {/* BLOCK 1: STORY */}
-              <div className="flex flex-col">
-                 <div className="font-serif text-lg md:text-xl leading-loose text-gray-300 space-y-6">
+              {/* TIMELINE SECTION (Visible when in 'all' or 'timeline') */}
+              {(resultTab === 'all' || resultTab === 'timeline') && (
+                <MythTimeline inputs={inputs} result={result} mode="result" />
+              )}
+
+              {/* BLOCK 1: STORY (Visible when in 'all' or 'story') */}
+              {(resultTab === 'all' || resultTab === 'story') && (
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-3 mb-6 opacity-80">
+                    <BookOpen className="w-4 h-4 text-[#A3B8AD]" />
+                    <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Текст сказки-метафоры</span>
+                  </div>
+                  <div className="font-serif text-lg md:text-xl leading-loose text-gray-300 space-y-6">
                     {result.story.split('\n\n').map((paragraph, i) => (
                       <p key={i}>{paragraph}</p>
                     ))}
-                 </div>
-              </div>
+                  </div>
+                  {resultTab === 'all' && <hr className="border-[#2A3B33] my-8" />}
+                </div>
+              )}
 
-              <hr className="border-[#2A3B33] my-8" />
-
-              {/* BLOCK 2: MIRROR */}
-              <div className="flex flex-col space-y-12">
-                 <div className="flex items-center gap-3 opacity-80">
-                   <Sparkles className="w-4 h-4 text-[#A3B8AD]" />
-                   <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Что в этом образе про вас</span>
-                 </div>
-
-                 {result.mirror && (
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
-                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Главный образ</h4>
-                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.mainImage}</p>
-                     </div>
-                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
-                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Внутреннее напряжение</h4>
-                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.innerTension}</p>
-                     </div>
-                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
-                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Скрытый ресурс</h4>
-                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.hiddenResource}</p>
-                     </div>
-                     <div className="bg-[#111A16] border border-[#2A3B33] p-6">
-                       <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Новый взгляд</h4>
-                       <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.newView}</p>
-                     </div>
+              {/* BLOCK 2: MIRROR (Visible when in 'all' or 'mirror') */}
+              {(resultTab === 'all' || resultTab === 'mirror') && (
+                <div className="flex flex-col space-y-12">
+                   <div className="flex items-center gap-3 opacity-80">
+                     <Sparkles className="w-4 h-4 text-[#A3B8AD]" />
+                     <span className="text-xs tracking-widest uppercase text-[#A3B8AD]">Что в этом образе про вас</span>
                    </div>
-                 )}
 
-                 {/* Fallback for meaning strings if API hasn't synced or legacy */}
-                 {result.meaning && result.meaning.length > 0 && !result.mirror && (
-                   <ul className="space-y-4 font-sans text-sm md:text-base text-gray-400">
-                      {result.meaning.map((m, i) => {
-                        const cleanText = m.replace(/\\*\\*(.*?)\\*\\*/g, '$1');
-                        return (
-                          <li key={i} className="flex gap-4">
-                            <span className="text-[#A3B8AD] opacity-50">—</span>
-                            <span>{cleanText}</span>
-                          </li>
-                        );
-                      })}
-                   </ul>
-                 )}
-              </div>
+                   {result.mirror && (
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       <div className="bg-[#111A16] border border-[#2A3B33] p-6">
+                         <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Главный образ</h4>
+                         <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.mainImage}</p>
+                       </div>
+                       <div className="bg-[#111A16] border border-[#2A3B33] p-6">
+                         <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Внутреннее напряжение</h4>
+                         <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.innerTension}</p>
+                       </div>
+                       <div className="bg-[#111A16] border border-[#2A3B33] p-6">
+                         <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Скрытый ресурс</h4>
+                         <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.hiddenResource}</p>
+                       </div>
+                       <div className="bg-[#111A16] border border-[#2A3B33] p-6">
+                         <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Новый взгляд</h4>
+                         <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.newView}</p>
+                       </div>
+                     </div>
+                   )}
+
+                   {/* Fallback for meaning strings if API hasn't synced or legacy */}
+                   {result.meaning && result.meaning.length > 0 && !result.mirror && (
+                     <ul className="space-y-4 font-sans text-sm md:text-base text-gray-400">
+                        {result.meaning.map((m, i) => {
+                          const cleanText = m.replace(/\\*\\*(.*?)\\*\\*/g, '$1');
+                          return (
+                            <li key={i} className="flex gap-4">
+                              <span className="text-[#A3B8AD] opacity-50">—</span>
+                              <span>{cleanText}</span>
+                            </li>
+                          );
+                        })}
+                     </ul>
+                   )}
+                </div>
+              )}
 
               {/* BLOCK 3: ONE STEP */}
               <div className="flex flex-col mt-12 bg-[#111A16] border border-[#2A3B33] p-8 -mx-4 sm:mx-0">

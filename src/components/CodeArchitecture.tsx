@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Info, ArrowRight, Loader2, X, BookOpen, Download } from 'lucide-react';
+import { Info, ArrowRight, Loader2, X, BookOpen, Download, Compass, Grid, MessageSquare, Sparkles } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -17,8 +17,12 @@ import { CompatibilityPanel } from './CompatibilityPanel';
 import { LeadModal } from './LeadModal';
 import { AssociativeCloud } from './AssociativeCloud';
 import { QuoteOfTheDay } from './QuoteOfTheDay';
+import { CodeConstellation } from './CodeConstellation';
+import { SacredGeometryBackground } from './SacredGeometryBackground';
+import { MysticalCompass } from './MysticalCompass';
+import { MirrorJourney } from './MirrorJourney';
+import { AlbertDialogue } from './AlbertDialogue';
 import { saveElementAsPdf } from '../lib/pdfUtils';
-import { normalizeDateInputValue } from '../lib/dateInput';
 
 const playMagicalChime = () => {
     try {
@@ -89,7 +93,19 @@ const MeanderDivider = () => (
   </svg>
 );
 
-export default function CodeArchitecture() {
+interface CodeArchitectureProps {
+  onOpenAbout?: () => void;
+  onCodeCalculated?: (calc: CalculationResult, reading?: FirstMirror) => void;
+  onNavigateToMeeting?: () => void;
+  hasMythResult?: boolean;
+}
+
+export default function CodeArchitecture({ 
+  onOpenAbout,
+  onCodeCalculated,
+  onNavigateToMeeting,
+  hasMythResult
+}: CodeArchitectureProps = {}) {
   const [date, setDate] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [result, setResult] = useState<CalculationResult | null>(null);
@@ -106,6 +122,9 @@ export default function CodeArchitecture() {
   const [leadSource, setLeadSource] = useState('code_big_research');
   const [demoNotice, setDemoNotice] = useState('');
   const [consentChecked, setConsentChecked] = useState(false);
+  const [experienceMode, setExperienceMode] = useState<'journey' | 'map'>('journey');
+  const [isAlbertOpen, setIsAlbertOpen] = useState(false);
+  const [albertTopic, setAlbertTopic] = useState('');
 
   const matrixRef = useRef<HTMLDivElement>(null);
   
@@ -165,6 +184,9 @@ export default function CodeArchitecture() {
           setReading(generateFirstMirror(calc));
         } finally {
           setIsGenerating(false);
+          if (onCodeCalculated) {
+            onCodeCalculated(calc, reading || undefined);
+          }
           setTimeout(() => {
              matrixRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }, 100);
@@ -257,8 +279,10 @@ export default function CodeArchitecture() {
   };
 
   return (
-    <div className="flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 bg-[var(--color-ivory)] bg-marble min-h-screen text-[var(--color-ink)] font-sans overflow-x-hidden">
-      
+    <div className="flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 bg-[var(--color-ivory)] bg-marble min-h-screen text-[var(--color-ink)] font-sans overflow-x-hidden relative">
+      <SacredGeometryBackground />
+      <MysticalCompass />
+      <div className="relative z-10 w-full flex flex-col items-center">
       <QuoteOfTheDay />
 
       {/* Header */}
@@ -268,17 +292,20 @@ export default function CodeArchitecture() {
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         className="text-center mb-16 pt-10"
       >
-        <h1 className="font-serif text-5xl md:text-7xl tracking-widest uppercase mb-6 text-[var(--color-ink)] drop-shadow-sm">
-          Цифровой<br className="md:hidden" /> Код
+        <h1 className="font-serif text-5xl md:text-7xl tracking-widest uppercase mb-6 text-[var(--color-ink)] drop-shadow-sm relative inline-block">
+          Архитектура<br className="md:hidden" /> Кода
+          <div className="absolute inset-0 gold-shimmer-text blur-xl opacity-20 pointer-events-none" aria-hidden="true">
+            Архитектура<br className="md:hidden" /> Кода
+          </div>
         </h1>
-        <p className="font-sans text-xs md:text-sm tracking-[0.4em] uppercase text-[var(--color-antique-gold)] opacity-90 mb-4">
-          Пять позиций одной связанной формулы
+        <p className="font-sans text-xs md:text-sm tracking-[0.4em] uppercase gold-shimmer-text mb-4">
+          Познай самого себя
         </p>
         <MeanderDivider />
         <div className="relative inline-block mt-4">
           <div className="absolute -left-8 -top-8 w-16 h-16 bg-[var(--color-antique-gold)] opacity-5 blur-2xl rounded-full"></div>
           <p className="font-serif text-[1.1rem] md:text-xl text-[var(--color-muted)] max-w-md mx-auto italic leading-relaxed relative z-0">
-            Введите дату рождения. Система покажет не только числа, но и объяснит, как одна позиция связана с другой.
+            Введите дату рождения — система покажет первый слой вашей внутренней архитектуры.
           </p>
         </div>
       </motion.div>
@@ -292,20 +319,21 @@ export default function CodeArchitecture() {
         className="w-full max-w-lg flex flex-col items-center mb-16"
       >
         <div className="w-full space-y-4">
-          <div className="relative w-full flex items-center group bg-white/40 backdrop-blur-md rounded-lg shadow-sm border border-[var(--border-soft)] hover:shadow-md transition-shadow">
+          <div className="relative w-full flex items-center group bg-[var(--color-ivory)]/40 backdrop-blur-xl rounded-sm shadow-sm border border-[var(--color-antique-gold)]/20 hover:border-[var(--color-antique-gold)]/50 transition-colors duration-500">
             <DatePicker
               selected={selectedDate}
               onChangeRaw={(e) => {
                 const target = e?.target as HTMLInputElement | undefined;
-                if (!target) return;
+                if (!target || typeof target.value !== 'string') return;
                 const prev = target.value;
-                const val = normalizeDateInputValue(prev);
-                if (val === null) return;
+                let val = prev.replace(/[^\d]/g, '');
+                if (val.length > 2) val = val.substring(0, 2) + '.' + val.substring(2);
+                if (val.length > 5) val = val.substring(0, 5) + '.' + val.substring(5, 9);
                 if (val !== prev) {
                    const selStart = target.selectionStart;
                    target.value = val;
                    setDate(val);
-                   if (selStart && selStart <= val.length && typeof target.setSelectionRange === 'function') {
+                   if (selStart && selStart <= val.length) {
                        target.setSelectionRange(selStart + (val.length > prev.length && (val.endsWith('.') || val.charAt(selStart - 1) === '.') ? 1 : 0), selStart + (val.length > prev.length && (val.endsWith('.') || val.charAt(selStart - 1) === '.') ? 1 : 0));
                    }
                 } else {
@@ -364,17 +392,28 @@ export default function CodeArchitecture() {
             </button>
           </div>
           
-          <div className="pt-2 flex items-center justify-center gap-3 w-full">
-            <input 
-              type="checkbox" 
-              id="consent" 
-              checked={consentChecked}
-              onChange={(e) => setConsentChecked(e.target.checked)}
-              className="w-4 h-4 accent-[var(--color-antique-gold)] cursor-pointer"
-            />
-            <label htmlFor="consent" className="text-xs text-[var(--color-muted)] cursor-pointer select-none">
-              Я согласен с <a href="/privacy.html" target="_blank" className="underline hover:text-[var(--color-antique-gold)]">Политикой обработки персональных данных</a>
-            </label>
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 w-full">
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="consent" 
+                checked={consentChecked}
+                onChange={(e) => setConsentChecked(e.target.checked)}
+                className="w-4 h-4 accent-[var(--color-antique-gold)] cursor-pointer"
+              />
+              <label htmlFor="consent" className="text-xs text-[var(--color-muted)] cursor-pointer select-none">
+                Я согласен с <a href="/privacy.html" target="_blank" className="underline hover:text-[var(--color-antique-gold)]">Политикой обработки данных</a>
+              </label>
+            </div>
+            {onOpenAbout && (
+              <button
+                type="button"
+                onClick={onOpenAbout}
+                className="text-xs text-[var(--color-antique-gold)] hover:underline opacity-85 hover:opacity-100 flex items-center gap-1 transition-opacity"
+              >
+                О методе и принципах
+              </button>
+            )}
           </div>
         </div>
       </motion.form>
@@ -441,21 +480,72 @@ export default function CodeArchitecture() {
             exit={{ opacity: 0 }}
             className="w-full max-w-4xl flex flex-col items-center"
           >
-            <div className="flex flex-col items-center gap-3 mb-10 w-full text-center">
-              <h2 className="font-serif text-3xl text-[var(--color-ink)] mb-1">Архитектура Кода</h2>
-              <MeanderDivider />
+            {/* View Mode & Guide Switcher */}
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-10 w-full">
+              <button
+                type="button"
+                onClick={() => setExperienceMode('journey')}
+                className={`px-5 py-2.5 rounded-sm font-sans text-xs tracking-widest uppercase transition-all duration-300 flex items-center gap-2 cursor-pointer ${
+                  experienceMode === 'journey'
+                    ? 'bg-[var(--color-ink)] text-[var(--color-ivory)] shadow-md'
+                    : 'bg-white/60 text-[var(--color-muted)] hover:text-[var(--color-ink)] border border-[var(--border-soft)]'
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5 text-[var(--color-antique-gold)]" />
+                Зеркало себя (7 шагов)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setExperienceMode('map')}
+                className={`px-5 py-2.5 rounded-sm font-sans text-xs tracking-widest uppercase transition-all duration-300 flex items-center gap-2 cursor-pointer ${
+                  experienceMode === 'map'
+                    ? 'bg-[var(--color-ink)] text-[var(--color-ivory)] shadow-md'
+                    : 'bg-white/60 text-[var(--color-muted)] hover:text-[var(--color-ink)] border border-[var(--border-soft)]'
+                }`}
+              >
+                <Grid className="w-3.5 h-3.5 text-[var(--color-antique-gold)]" />
+                Архитектура и Матрица
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setAlbertTopic(''); setIsAlbertOpen(true); }}
+                className="px-5 py-2.5 rounded-sm font-sans text-xs tracking-widest uppercase transition-all duration-300 bg-[var(--color-ivory)] text-[var(--color-ink)] border border-[var(--color-antique-gold)] hover:bg-[var(--color-antique-gold)] hover:text-white flex items-center gap-2 cursor-pointer shadow-sm"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-[var(--color-antique-gold)]" />
+                Спросить Альберта
+              </button>
             </div>
 
-            {/* 5 Main Numbers Grid */}
-            <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-px bg-[var(--border-soft)] border border-[var(--border-soft)] w-full ${selectedMainNumber ? 'mb-2' : 'mb-16'} transition-all duration-500`}>
-              <NumberCard title="Душа" pos="soul" value={result.soul} composite={result.soulComposite} delay={0.1} />
-              <NumberCard title="Путь" pos="path" value={result.path} composite={result.pathComposite} delay={0.2} />
-              <NumberCard title="Направление" pos="direction" value={result.direction} composite={result.directionComposite} delay={0.3} />
-              <NumberCard title="Выражение" pos="expression" value={result.expression} composite={result.expressionComposite} delay={0.4} />
-               <div className="sm:col-span-2 md:col-span-1">
-                 <NumberCard title="Результат" pos="result" value={result.result} composite={result.resultComposite} delay={0.5} />
-               </div>
-            </div>
+            {experienceMode === 'journey' ? (
+              <MirrorJourney
+                calc={result}
+                reading={reading}
+                onViewFullMap={() => setExperienceMode('map')}
+                onOpenAlbertChat={(topic) => {
+                  setAlbertTopic(topic || '');
+                  setIsAlbertOpen(true);
+                }}
+                onOpenAbout={onOpenAbout}
+              />
+            ) : (
+              <>
+                <div className="flex flex-col items-center gap-3 mb-10 w-full text-center">
+                  <h2 className="font-serif text-3xl text-[var(--color-ink)] mb-1">Архитектура Кода</h2>
+                  <MeanderDivider />
+                </div>
+
+                {/* 5 Main Numbers Grid */}
+                <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-px bg-[var(--border-soft)] border border-[var(--border-soft)] w-full ${selectedMainNumber ? 'mb-2' : 'mb-16'} transition-all duration-500`}>
+                  <NumberCard title="Душа" pos="soul" value={result.soul} composite={result.soulComposite} delay={0.1} />
+                  <NumberCard title="Путь" pos="path" value={result.path} composite={result.pathComposite} delay={0.2} />
+                  <NumberCard title="Направление" pos="direction" value={result.direction} composite={result.directionComposite} delay={0.3} />
+                  <NumberCard title="Выражение" pos="expression" value={result.expression} composite={result.expressionComposite} delay={0.4} />
+                   <div className="sm:col-span-2 md:col-span-1">
+                     <NumberCard title="Результат" pos="result" value={result.result} composite={result.resultComposite} delay={0.5} />
+                   </div>
+                </div>
 
             {/* Main Number Detail Modal/Section */}
             <AnimatePresence>
@@ -580,6 +670,8 @@ export default function CodeArchitecture() {
                 );
               })()}
             </AnimatePresence>
+
+            <CodeConstellation result={result} />
 
             {/* Matrix Section */}
             <motion.div 
@@ -964,8 +1056,19 @@ export default function CodeArchitecture() {
                 </>
               ) : null}
             </div>
+          </>
+        )}
 
-            {/* Content wrapper closes usually... wait, I need to place it before the final div closes. */}
+      {/* Albert Dialogue Interface */}
+      {result && (
+        <AlbertDialogue
+          isOpen={isAlbertOpen}
+          onClose={() => setIsAlbertOpen(false)}
+          calc={result}
+          initialTopic={albertTopic}
+        />
+      )}
+
       {/* Tale Modal */}
       <AnimatePresence>
         {taleModal && (
@@ -1022,7 +1125,7 @@ export default function CodeArchitecture() {
           </motion.div>
         )}
       </AnimatePresence>
-
+      </div>
     </div>
   );
 }

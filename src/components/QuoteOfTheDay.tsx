@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { Bookmark, BookmarkCheck } from 'lucide-react';
 
 const DAILY_WISDOM: Record<number, string> = {
   1: "Сегодня — точка отсчёта. В ваших руках сосредоточена искра изначального импульса, способная запустить цепную реакцию создания. Не бойтесь быть первым, ибо пустота ждёт вашего шага.",
@@ -35,6 +36,8 @@ const calculateDayCode = (date: Date): number => {
 };
 
 export const QuoteOfTheDay = () => {
+  const [isSaved, setIsSaved] = useState(false);
+
   const { dateFormatted, todayCode, quote } = useMemo(() => {
     const today = new Date();
     const formatted = format(today, 'd MMMM yyyy', { locale: ru });
@@ -48,19 +51,51 @@ export const QuoteOfTheDay = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const checkSaved = () => {
+      const saved = JSON.parse(localStorage.getItem('saved_metaphors') || '[]');
+      setIsSaved(saved.some((item: any) => item.text === quote));
+    };
+    checkSaved();
+    window.addEventListener('metaphor_saved', checkSaved);
+    return () => window.removeEventListener('metaphor_saved', checkSaved);
+  }, [quote]);
+
+  const toggleSave = () => {
+    const saved = JSON.parse(localStorage.getItem('saved_metaphors') || '[]');
+    if (isSaved) {
+      const newSaved = saved.filter((item: any) => item.text !== quote);
+      localStorage.setItem('saved_metaphors', JSON.stringify(newSaved));
+      setIsSaved(false);
+    } else {
+      saved.push({ id: Date.now().toString(), text: quote, date: dateFormatted, code: todayCode, type: 'quote' });
+      localStorage.setItem('saved_metaphors', JSON.stringify(saved));
+      setIsSaved(true);
+    }
+    window.dispatchEvent(new Event('metaphor_saved'));
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 1, delay: 0.2 }}
-      className="w-full max-w-lg mx-auto mb-10 relative p-6 bg-kraft border border-[var(--color-antique-gold)] border-opacity-30 rounded-sm shadow-sm"
+      className="w-full max-w-lg mx-auto mb-10 relative p-6 bg-kraft border border-[var(--color-antique-gold)] border-opacity-30 rounded-sm shadow-sm group"
     >
       <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--color-ivory)] px-4 font-sans text-[0.6rem] tracking-[0.2em] uppercase text-[var(--color-antique-gold)] border border-[var(--color-antique-gold)] border-opacity-30 rounded-full z-10 whitespace-nowrap">
         Энергия Дня • {todayCode}
       </div>
+
+      <button 
+        onClick={toggleSave}
+        className="absolute top-4 right-4 text-[var(--color-antique-gold)] opacity-50 hover:opacity-100 transition-opacity z-10"
+        title={isSaved ? "Удалить из библиотеки" : "Сохранить в библиотеку"}
+      >
+        {isSaved ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
+      </button>
       
-      <div className="text-center relative z-0">
-        <p className="font-serif text-[0.95rem] md:text-[1.05rem] leading-relaxed text-[var(--color-graphite)] italic">
+      <div className="text-center relative z-0 mt-2">
+        <p className="font-serif text-[0.95rem] md:text-[1.05rem] leading-relaxed text-[var(--color-graphite)] italic pr-4">
           «{quote}»
         </p>
         <div className="mt-5 pt-4 border-t border-[var(--border-soft)] flex justify-between items-center opacity-70">

@@ -36,17 +36,18 @@ function reduceNumber(num: number): { value: number; composite: string } {
  * @param dateString Format: "DD.MM.YYYY"
  */
 export function calculateDigitalCode(dateString: string): CalculationResult {
-  const [dayStr, monthStr, yearStr] = dateString.split('.');
+  const safeDateStr = typeof dateString === 'string' ? dateString : '';
+  const [dayStr = '01', monthStr = '01', yearStr = '2000'] = safeDateStr.split('.');
   
-  const day = parseInt(dayStr, 10);
-  const month = parseInt(monthStr, 10);
-  const year = parseInt(yearStr, 10);
+  const day = parseInt(dayStr, 10) || 1;
+  const month = parseInt(monthStr, 10) || 1;
+  const year = parseInt(yearStr, 10) || 2000;
 
   // 1. Soul Number (ЧДш)
   const soulCalc = reduceNumber(day);
 
   // 2. Path Number (ЧП)
-  const fullDateSum = dateString.replace(/\./g, '').split('').reduce((acc, digit) => acc + parseInt(digit, 10), 0);
+  const fullDateSum = safeDateStr.replace(/\./g, '').split('').reduce((acc, digit) => acc + (parseInt(digit, 10) || 0), 0) || 1;
   const pathCalc = reduceNumber(fullDateSum);
 
   // 3. Direction Number (ЧН)
@@ -71,14 +72,15 @@ export function calculateDigitalCode(dateString: string): CalculationResult {
   const rc2 = rc1.toString().split('').reduce((acc, d) => acc + parseInt(d, 10), 0);
   
   // RC3 = RC1 - (first significant digit of day * 2)
-  const firstSignificantDayDigit = parseInt(dayStr.replace(/^0+/, '')[0], 10);
+  const nonZeroDayDigits = dayStr.replace(/^0+/, '');
+  const firstSignificantDayDigit = parseInt(nonZeroDayDigits[0] || '1', 10) || 1;
   const rc3 = rc1 - (firstSignificantDayDigit * 2);
   
   // RC4 = sum of digits of RC3
   const rc4 = Math.abs(rc3).toString().split('').reduce((acc, d) => acc + parseInt(d, 10), 0);
 
   // Build Base Matrix (Only Date)
-  const baseMatrixStr = dateString.replace(/\./g, '');
+  const baseMatrixStr = safeDateStr.replace(/\./g, '');
   const baseMatrix: Record<string, number> = {
     '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0, '0': 0
   };
@@ -89,7 +91,7 @@ export function calculateDigitalCode(dateString: string): CalculationResult {
   }
 
   // Build Detailed Matrix (Date + RC1, RC2, RC3, RC4)
-  const detailedMatrixStr = `${dateString.replace(/\./g, '')}${rc1}${rc2}${rc3}${rc4}`;
+  const detailedMatrixStr = `${safeDateStr.replace(/\./g, '')}${rc1}${rc2}${rc3}${rc4}`;
   const detailedMatrix: Record<string, number> = {
     '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0, '0': 0
   };

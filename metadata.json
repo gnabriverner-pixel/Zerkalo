@@ -1,6 +1,8 @@
 {
   "name": "ЗЕРКАЛО",
-  "description": "",
+  "description": "Интерактивное исследование цифрового кода и личного мифа по системе Вяземского.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

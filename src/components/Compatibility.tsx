@@ -124,8 +124,8 @@ export default function Compatibility() {
             <DatePicker
               selected={selectedDate}
               onChangeRaw={(e) => {
-                const target = e.target as HTMLInputElement;
-                if (!target) return;
+                const target = e?.target as HTMLInputElement | undefined;
+                if (!target || typeof target.value !== 'string') return;
                 const prev = target.value;
                 let val = prev.replace(/[^\d]/g, '');
                 if (val.length > 2) val = val.substring(0, 2) + '.' + val.substring(2);
@@ -191,8 +191,8 @@ export default function Compatibility() {
             <DatePicker
               selected={selectedDate2}
               onChangeRaw={(e) => {
-                const target = e.target as HTMLInputElement;
-                if (!target) return;
+                const target = e?.target as HTMLInputElement | undefined;
+                if (!target || typeof target.value !== 'string') return;
                 const prev = target.value;
                 let val = prev.replace(/[^\d]/g, '');
                 if (val.length > 2) val = val.substring(0, 2) + '.' + val.substring(2);

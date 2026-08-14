@@ -8,7 +8,7 @@ describe('interpretation', () => {
     const mirror = generateFirstMirror(calc);
     
     expect(mirror.title).toBeDefined();
-    expect(mirror.blocks.length).toBe(4);
+    expect(mirror.blocks.length).toBe(5);
     
     const textStr = JSON.stringify(mirror);
     expect(textStr).toContain('6');
