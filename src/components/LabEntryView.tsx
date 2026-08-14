@@ -48,9 +48,9 @@ export function LabEntryView({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="font-serif text-4xl sm:text-6xl text-[#F4F4F4] mb-4 tracking-wide font-normal max-w-2xl leading-tight"
+          className="font-serif text-3xl sm:text-5xl lg:text-6xl text-[#F4F4F4] mb-4 tracking-wide font-normal max-w-3xl leading-tight"
         >
-          Два способа посмотреть на себя
+          Как вы хотите посмотреть на себя сегодня?
         </motion.h1>
 
         {/* Subtitle */}
@@ -58,9 +58,9 @@ export function LabEntryView({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="text-sm sm:text-base text-gray-400 max-w-xl mb-12 leading-relaxed"
+          className="text-sm sm:text-base text-gray-400 max-w-2xl mb-12 leading-relaxed"
         >
-          Две независимые линзы: структура, заложенная в дате рождения, и живой мир ваших собственных метафор. Вы можете исследовать каждую по отдельности или провести их сопоставление.
+          Два самостоятельных пути самопознания. Вы можете выбрать любой или сопоставить оба во Встрече Зеркал:
         </motion.p>
 
         {/* TWO LENSES GRID */}
@@ -120,11 +120,14 @@ export function LabEntryView({
                 )}
               </div>
 
-              <h2 className="font-serif text-2xl text-[#F4F4F4] group-hover:text-[#A3B8AD] transition-colors mb-3">
+              <h2 className="font-serif text-2xl text-[#F4F4F4] group-hover:text-[#A3B8AD] transition-colors mb-1">
                 Личный Миф
               </h2>
+              <div className="text-xs text-[#A3B8AD]/80 uppercase tracking-widest font-mono mb-3">
+                Сказка про тебя
+              </div>
               <p className="text-xs sm:text-sm text-gray-400 leading-relaxed mb-6">
-                Персональная философская сказка, рождающаяся строго из четырёх ваших образных ответов. Тонкое зеркало текущего состояния без советов и оценок.
+                Четыре образных вопроса. Никакой даты рождения — только персональная философская сказка, рождающаяся строго из ваших метафор.
               </p>
             </div>
 
