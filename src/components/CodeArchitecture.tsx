@@ -1,29 +1,24 @@
-import React, { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { 
   ArrowRight, 
-  ChevronLeft, 
+  ChevronDown, 
   Loader2, 
-  Eye, 
-  Zap, 
-  Sparkles, 
   RotateCcw, 
   GitFork,
-  X
+  Send,
+  MessageSquare
 } from 'lucide-react';
-import DatePicker, { registerLocale } from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import { ru } from 'date-fns/locale';
 import { CalculationResult, FirstMirror, ApiResponse } from '../types';
 import { calculateDigitalCode } from '../services/calculator';
 import { generateFirstMirror } from '../services/interpretation';
 import { numberKnowledge } from '../data/numberKnowledge';
 import { PASSPORT_PRACTICES } from '../data/passportPractices';
-import { Orb } from './Orb';
-
-registerLocale('ru', ru);
+import { Orb, PLANET_PALETTES } from './Orb';
+import { AlbertDialogue } from './AlbertDialogue';
 
 interface CodeArchitectureProps {
+  initialDate?: string;
   onOpenAbout?: () => void;
   onCodeCalculated?: (calc: CalculationResult, reading?: FirstMirror) => void;
   onNavigateToMeeting?: () => void;
@@ -31,704 +26,858 @@ interface CodeArchitectureProps {
 }
 
 export default function CodeArchitecture({ 
+  initialDate = '',
   onOpenAbout,
   onCodeCalculated,
   onNavigateToMeeting,
   hasMythResult
 }: CodeArchitectureProps = {}) {
-  const [date, setDate] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [day, setDay] = useState(initialDate ? initialDate.split('.')[0] || '' : '');
+  const [month, setMonth] = useState(initialDate ? initialDate.split('.')[1] || '' : '');
+  const [year, setYear] = useState(initialDate ? initialDate.split('.')[2] || '' : '');
+  const [dateError, setDateError] = useState('');
+  
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [reading, setReading] = useState<FirstMirror | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [errorInfo, setErrorInfo] = useState<string | null>(null);
   const [consentChecked, setConsentChecked] = useState(true);
-  
-  // Reveal step: 1 = Soul, 2 = Expression, 3 = Path, 4 = Direction & Result, 5 = Full Map
-  const [revealStep, setRevealStep] = useState<number>(1);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [isAlbertOpen, setIsAlbertOpen] = useState(false);
 
-  const handleCalculate = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!consentChecked) return;
-    setErrorInfo(null);
+  // Section references for smooth editorial manuscript scrolling
+  const sectionIntroRef = useRef<HTMLDivElement>(null);
+  const sectionSoulRef = useRef<HTMLDivElement>(null);
+  const sectionExpressionRef = useRef<HTMLDivElement>(null);
+  const sectionCouplingRef = useRef<HTMLDivElement>(null);
+  const sectionPathRef = useRef<HTMLDivElement>(null);
+  const sectionTensionRef = useRef<HTMLDivElement>(null);
+  const sectionFullMapRef = useRef<HTMLDivElement>(null);
+  const sectionAlbertRef = useRef<HTMLDivElement>(null);
 
-    const regex = /^(\d{2})\.(\d{2})\.(\d{4})$/;
-    const match = date.match(regex);
+  const dayRef = useRef<HTMLInputElement>(null);
+  const monthRef = useRef<HTMLInputElement>(null);
+  const yearRef = useRef<HTMLInputElement>(null);
 
-    if (match) {
-      const day = parseInt(match[1], 10);
-      const month = parseInt(match[2], 10);
-      const year = parseInt(match[3], 10);
-
-      if (day > 0 && day <= 31 && month > 0 && month <= 12 && year >= 1900 && year <= 2099) {
-        const calc = calculateDigitalCode(date);
-        setResult(calc);
-        setRevealStep(1);
-        setIsGenerating(true);
-
-        try {
-          const res = await fetch('/api/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: 'code', date, calc })
-          });
-          const data: ApiResponse = await res.json();
-          if (data.status === 'ok' && data.code_result?.first_mirror) {
-            setReading(data.code_result.first_mirror);
-          } else {
-            setReading(data.code_result?.first_mirror || generateFirstMirror(calc));
-          }
-        } catch (err) {
-          console.error(err);
-          setReading(generateFirstMirror(calc));
-        } finally {
-          setIsGenerating(false);
-          if (onCodeCalculated) {
-            onCodeCalculated(calc, reading || undefined);
-          }
-        }
-      } else {
-        setErrorInfo("Некорректная дата. Проверьте день, месяц и год.");
-      }
-    } else {
-      setErrorInfo("Формат даты: ДД.ММ.ГГГГ");
+  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
+    if (ref.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
-  const scrollToTop = () => {
+  const executeCalculation = async (fullDate: string) => {
+    const calc = calculateDigitalCode(fullDate);
+    setResult(calc);
+    setIsGenerating(true);
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'code', date: fullDate, calc })
+      });
+      const data: ApiResponse = await res.json();
+      if (data.status === 'ok' && data.code_result?.first_mirror) {
+        setReading(data.code_result.first_mirror);
+      } else {
+        setReading(data.code_result?.first_mirror || generateFirstMirror(calc));
+      }
+    } catch (err) {
+      console.error(err);
+      setReading(generateFirstMirror(calc));
+    } finally {
+      setIsGenerating(false);
+      if (onCodeCalculated) {
+        onCodeCalculated(calc, reading || undefined);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (initialDate && initialDate.length === 10 && !result) {
+      const parts = initialDate.split('.');
+      if (parts.length === 3) {
+        setDay(parts[0]);
+        setMonth(parts[1]);
+        setYear(parts[2]);
+        executeCalculation(initialDate);
+      }
+    }
+  }, [initialDate]);
+
+  const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+    setDay(val);
+    setDateError('');
+    if (val.length === 2 && monthRef.current) {
+      monthRef.current.focus();
+    }
+  };
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+    setMonth(val);
+    setDateError('');
+    if (val.length === 2 && yearRef.current) {
+      yearRef.current.focus();
+    }
+  };
+
+  const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+    setYear(val);
+    setDateError('');
+  };
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    field: 'day' | 'month' | 'year'
+  ) => {
+    if (e.key === 'Backspace') {
+      if (field === 'year' && year.length === 0 && monthRef.current) {
+        monthRef.current.focus();
+      } else if (field === 'month' && month.length === 0 && dayRef.current) {
+        dayRef.current.focus();
+      }
+    } else if (e.key === 'Enter') {
+      handleCalculate();
+    }
+  };
+
+  const handleCalculate = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!consentChecked) return;
+    setDateError('');
+
+    const d = parseInt(day, 10);
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
+
+    if (day.length === 2 && month.length === 2 && year.length === 4 && d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2099) {
+      const fullDate = `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`;
+      executeCalculation(fullDate);
+    } else {
+      setDateError('Проверьте день, месяц и год (ДД.ММ.ГГГГ)');
+    }
+  };
+
+  const handleReset = () => {
+    setResult(null);
+    setReading(null);
+    setDay('');
+    setMonth('');
+    setYear('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Helper to render practice triptych
-  const renderPractices = (num: number) => {
-    const practice = PASSPORT_PRACTICES[num] || PASSPORT_PRACTICES[1];
-    return (
-      <div className="w-full mt-8 pt-8 border-t border-white/[0.06] space-y-4 text-left">
-        <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]/80 block">
-          Триптих практик архетипа
-        </span>
+  const soulNum = result ? result.soul : 1;
+  const exprNum = result ? result.expression : 1;
+  const pathNum = result ? result.path : 1;
+  const dirNum = result ? result.direction : 1;
+  const resNum = result ? result.result : 1;
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Observation */}
-          <div className="p-4 bg-[#0B0F18]/90 border border-white/[0.06] rounded-xs">
-            <div className="flex items-center gap-1.5 text-xs text-[#A3B8AD] font-medium mb-2">
-              <Eye size={14} />
-              <span>Наблюдение</span>
-            </div>
-            <p className="text-xs text-stone-300 leading-relaxed font-light mb-2">
-              {practice.observation.insight}
-            </p>
-            <span className="text-[10px] text-stone-500 font-mono block">
-              Маркер: {practice.observation.bodyMarker}
-            </span>
-          </div>
+  const soulInfo = numberKnowledge[soulNum] || numberKnowledge[1];
+  const exprInfo = numberKnowledge[exprNum] || numberKnowledge[1];
+  const pathInfo = numberKnowledge[pathNum] || numberKnowledge[1];
+  const dirInfo = numberKnowledge[dirNum] || numberKnowledge[1];
+  const resInfo = numberKnowledge[resNum] || numberKnowledge[1];
 
-          {/* Action */}
-          <div className="p-4 bg-[#0B0F18]/90 border border-white/[0.06] rounded-xs">
-            <div className="flex items-center gap-1.5 text-xs text-[var(--color-antique-gold)] font-medium mb-2">
-              <Zap size={14} />
-              <span>Действие</span>
-            </div>
-            <p className="text-xs text-stone-300 leading-relaxed font-light mb-2">
-              {practice.action.microStep}
-            </p>
-            <span className="text-[10px] text-stone-500 font-mono block">
-              Ритуал: {practice.action.ritual}
-            </span>
-          </div>
+  const soulPalette = PLANET_PALETTES[soulNum] || PLANET_PALETTES[1];
+  const exprPalette = PLANET_PALETTES[exprNum] || PLANET_PALETTES[1];
+  const pathPalette = PLANET_PALETTES[pathNum] || PLANET_PALETTES[1];
 
-          {/* Integration */}
-          <div className="p-4 bg-[#0B0F18]/90 border border-white/[0.06] rounded-xs">
-            <div className="flex items-center gap-1.5 text-xs text-purple-300 font-medium mb-2">
-              <Sparkles size={14} />
-              <span>Интеграция</span>
-            </div>
-            <p className="text-xs text-stone-300 leading-relaxed font-serif italic mb-2">
-              «{practice.integration.focusMantra}»
-            </p>
-            <span className="text-[10px] text-stone-500 font-mono block">
-              Ключ: {practice.integration.balanceKey}
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const soulPractice = PASSPORT_PRACTICES[soulNum] || PASSPORT_PRACTICES[1];
 
   return (
-    <div 
-      ref={containerRef}
-      className="flex flex-col items-center justify-center min-h-[calc(100vh-70px)] py-12 px-4 sm:px-6 lg:px-8 text-[#EAEAEA] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white"
-    >
-      <div className="w-full max-w-4xl flex flex-col items-center relative z-10 my-auto">
-        
-        {/* ========================================================= */}
-        {/* 1. INITIAL FORM SCREEN */}
-        {/* ========================================================= */}
-        {!result && (
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center w-full max-w-xl mx-auto py-8"
-          >
-            <div className="flex justify-center mb-8">
-              <Orb number={1} size="lg" glow={true} />
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] py-12 px-4 sm:px-6 lg:px-8 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
+      
+      {/* ========================================================= */}
+      {/* 1. INITIAL FORM SCREEN (When no result yet) */}
+      {/* ========================================================= */}
+      {!result && (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-center w-full max-w-xl mx-auto py-8 my-auto"
+        >
+          <div className="flex justify-center mb-8">
+            <Orb number={1} size={150} glow={true} />
+          </div>
+
+          <span className="text-[11px] uppercase tracking-[0.35em] text-[var(--color-antique-gold)] font-mono block mb-3 opacity-90">
+            Линза II · Цифровой Код
+          </span>
+
+          <h1 className="font-serif text-5xl sm:text-6xl text-[var(--color-text-primary)] mb-4 font-light tracking-tight leading-tight">
+            Архитектура природы
+          </h1>
+
+          <p className="text-[17px] text-[var(--color-text-secondary)] leading-relaxed mb-10 max-w-md mx-auto font-light">
+            Введите дату рождения. Система рассчитает пять главных ключей и развернет их в непрерывном цифровом свитке.
+          </p>
+
+          {/* THREE CLEAN DATE FIELDS: [ ДД ] [ ММ ] [ ГГГГ ] */}
+          <form onSubmit={handleCalculate} className="w-full flex flex-col items-center space-y-6">
+            
+            <div className="flex items-center justify-center gap-3 py-2">
+              <div className="relative">
+                <input
+                  ref={dayRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="ДД"
+                  maxLength={2}
+                  value={day}
+                  onChange={handleDayChange}
+                  onKeyDown={(e) => handleKeyDown(e, 'day')}
+                  className="w-16 sm:w-20 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
+                />
+              </div>
+              <span className="text-[var(--color-text-muted)] font-serif text-2xl">·</span>
+              <div className="relative">
+                <input
+                  ref={monthRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="ММ"
+                  maxLength={2}
+                  value={month}
+                  onChange={handleMonthChange}
+                  onKeyDown={(e) => handleKeyDown(e, 'month')}
+                  className="w-16 sm:w-20 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
+                />
+              </div>
+              <span className="text-[var(--color-text-muted)] font-serif text-2xl">·</span>
+              <div className="relative">
+                <input
+                  ref={yearRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="ГГГГ"
+                  maxLength={4}
+                  value={year}
+                  onChange={handleYearChange}
+                  onKeyDown={(e) => handleKeyDown(e, 'year')}
+                  className="w-24 sm:w-28 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
+                />
+              </div>
             </div>
 
-            <span className="text-[11px] uppercase tracking-[0.3em] text-[var(--color-antique-gold)]/90 font-mono block mb-3">
-              Линза II · Цифровой Код
-            </span>
+            {dateError && (
+              <p className="text-xs text-red-300 font-light">{dateError}</p>
+            )}
 
-            <h1 className="font-serif text-4xl sm:text-6xl text-stone-100 mb-4 font-light tracking-tight leading-tight">
-              Архитектура природы
-            </h1>
-
-            <p className="text-base sm:text-lg text-stone-300/80 leading-relaxed mb-10 max-w-md mx-auto font-light">
-              Введите дату рождения. Система рассчитает пять главных ключей и откроет их в пошаговом ритуале.
-            </p>
-
-            {/* Date Input Form */}
-            <form onSubmit={handleCalculate} className="w-full flex flex-col items-center space-y-6">
-              
-              <div className="relative w-full max-w-xs flex items-center border-b border-[var(--color-antique-gold)]/40 focus-within:border-[var(--color-antique-gold)] transition-colors py-2">
-                <DatePicker
-                  selected={selectedDate}
-                  onChangeRaw={(e) => {
-                    const target = e?.target as HTMLInputElement | undefined;
-                    if (!target || typeof target.value !== 'string') return;
-                    const prev = target.value;
-                    let val = prev.replace(/[^\d]/g, '');
-                    if (val.length > 2) val = val.substring(0, 2) + '.' + val.substring(2);
-                    if (val.length > 5) val = val.substring(0, 5) + '.' + val.substring(5, 9);
-                    setDate(val);
-                  }}
-                  onChange={(d: Date | null) => {
-                    setSelectedDate(d);
-                    if (d) {
-                      const dayStr = String(d.getDate()).padStart(2, '0');
-                      const monthStr = String(d.getMonth() + 1).padStart(2, '0');
-                      const yearStr = String(d.getFullYear());
-                      setDate(`${dayStr}.${monthStr}.${yearStr}`);
-                    } else {
-                      setDate('');
-                    }
-                  }}
-                  dateFormat="dd.MM.yyyy"
-                  locale="ru"
-                  showYearDropdown
-                  showMonthDropdown
-                  dropdownMode="select"
-                  placeholderText="ДД.ММ.ГГГГ"
-                  className="w-full bg-transparent text-center font-serif text-2xl sm:text-3xl text-stone-100 placeholder:text-stone-600 outline-none"
-                  wrapperClassName="w-full"
-                />
-
-                {date && (
-                  <button
-                    type="button"
-                    onClick={() => { setDate(''); setSelectedDate(null); }}
-                    className="p-1 text-stone-500 hover:text-stone-200"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
-
-              {errorInfo && (
-                <p className="text-xs text-red-400 font-light">{errorInfo}</p>
+            <button
+              type="submit"
+              disabled={isGenerating || day.length !== 2 || month.length !== 2 || year.length !== 4}
+              className="px-8 py-3.5 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-xs font-semibold disabled:opacity-30 transition-all flex items-center gap-2 cursor-pointer"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Рассчитываем карту...</span>
+                </>
+              ) : (
+                <>
+                  <span>Рассчитать код</span>
+                  <ArrowRight size={14} />
+                </>
               )}
+            </button>
 
-              <button
-                type="submit"
-                disabled={isGenerating || date.length !== 10}
-                className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] disabled:opacity-30 disabled:hover:bg-[var(--color-antique-gold)] transition-all flex items-center gap-2 cursor-pointer shadow-md"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Рассчитываем...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Рассчитать код</span>
-                    <ArrowRight size={14} />
-                  </>
-                )}
-              </button>
-
-              {/* Consent & About */}
-              <div className="pt-2 flex items-center justify-center gap-4 text-xs text-stone-400 font-light">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={consentChecked}
-                    onChange={(e) => setConsentChecked(e.target.checked)}
-                    className="accent-[var(--color-antique-gold)]"
-                  />
-                  <span>Согласен с обработкой</span>
-                </label>
-                {onOpenAbout && (
-                  <button
-                    type="button"
-                    onClick={onOpenAbout}
-                    className="text-[var(--color-antique-gold)] hover:underline"
-                  >
-                    О каноне
-                  </button>
-                )}
-              </div>
-
-            </form>
-          </motion.div>
-        )}
-
-        {/* ========================================================= */}
-        {/* 2. RITUAL STEP-BY-STEP REVEAL (Steps 1 to 5) */}
-        {/* ========================================================= */}
-        {result && (
-          <div className="w-full flex flex-col items-center">
-            
-            {/* Top Reveal Status Bar */}
-            <div className="w-full flex items-center justify-between py-4 mb-8 border-b border-white/[0.08]">
-              <div className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-[var(--color-antique-gold)]" />
-                <span className="text-xs uppercase font-mono tracking-[0.25em] text-stone-400">
-                  {revealStep < 5 
-                    ? `Шаг ${revealStep} из 5 · Раскрытие карты` 
-                    : 'Вся карта раскрыта'}
-                </span>
-              </div>
-
-              {revealStep < 5 && (
+            {/* Consent & About */}
+            <div className="pt-2 flex items-center justify-center gap-4 text-xs text-[var(--color-text-muted)] font-light">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={consentChecked}
+                  onChange={(e) => setConsentChecked(e.target.checked)}
+                  className="accent-[var(--color-antique-gold)]"
+                />
+                <span>Согласен с обработкой</span>
+              </label>
+              {onOpenAbout && (
                 <button
-                  onClick={() => { setRevealStep(5); scrollToTop(); }}
-                  className="text-xs uppercase font-mono tracking-wider text-[var(--color-antique-gold)]/80 hover:text-[var(--color-antique-gold)] hover:underline transition-colors"
+                  type="button"
+                  onClick={onOpenAbout}
+                  className="text-[var(--color-antique-gold)] hover:underline"
                 >
-                  Показать всю карту сразу →
+                  О каноне
                 </button>
               )}
             </div>
 
-            <AnimatePresence mode="wait">
+          </form>
+        </motion.div>
+      )}
 
-              {/* --------------------------------------------------- */}
-              {/* STEP 1: ЧИСЛО ДУШИ */}
-              {/* --------------------------------------------------- */}
-              {revealStep === 1 && (() => {
-                const num = result.soul;
-                const info = numberKnowledge[num] || numberKnowledge[1];
-                const pos = info.positions.soul;
-                return (
-                  <motion.div
-                    key="step-1-soul"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
-                    transition={{ duration: 0.6 }}
-                    className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-12 rounded-xs text-center"
-                  >
-                    <Orb number={num} size="xl" glow={true} className="mx-auto mb-6" />
+      {/* ========================================================= */}
+      {/* 2. EDITORIAL DIGITAL MANUSCRIPT SCROLL (When result calculated) */}
+      {/* ========================================================= */}
+      {result && (
+        <div className="w-full max-w-4xl flex flex-col items-center relative z-10 space-y-28 sm:space-y-36 pb-24">
+          
+          {/* ------------------------------------------------------- */}
+          {/* SECTION 1: HERO MANUSCRIPT HEADER */}
+          {/* ------------------------------------------------------- */}
+          <section 
+            ref={sectionIntroRef}
+            className="w-full min-h-[70vh] flex flex-col items-center justify-center text-center pt-8 pb-12 border-b border-[var(--color-border-subtle)]"
+          >
+            <span className="text-[11px] uppercase tracking-[0.35em] text-[var(--color-antique-gold)] font-mono block mb-4 opacity-90">
+              Цифровой манускрипт · Карта природы
+            </span>
 
-                    <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-2">
-                      Ключ 1 · Внутреннее Ядро
-                    </span>
+            <h1 className="font-serif text-6xl sm:text-7xl lg:text-[84px] text-[var(--color-antique-gold)] font-light tracking-tight leading-none mb-6">
+              {`${day}.${month}.${year}`}
+            </h1>
 
-                    <h2 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-2 font-light">
-                      Число Души: {num}
-                    </h2>
-                    
-                    <span className="text-xs text-stone-400 font-mono uppercase tracking-wider block mb-6">
-                      {info.planet} · Состав: {result.soulComposite}
-                    </span>
+            <p className="font-serif italic text-xl sm:text-2xl text-[var(--color-text-secondary)] max-w-xl mx-auto leading-relaxed font-light mb-12">
+              «Числа не предопределяют судьбу, но очерчивают контуры силы, точки напряжения и естественные траектории движения.»
+            </p>
 
-                    <p className="font-serif italic text-lg sm:text-xl text-[#C9C0AE] max-w-xl mx-auto mb-8 font-light leading-relaxed">
-                      «{pos.essence}»
-                    </p>
+            <button
+              onClick={() => scrollTo(sectionSoulRef)}
+              className="px-8 py-3.5 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer"
+            >
+              <span>Первый ключ: Кто вы внутри</span>
+              <ChevronDown size={14} />
+            </button>
+          </section>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto text-left mb-6">
-                      <div className="p-4 bg-[#0B0F18] border border-emerald-500/20 rounded-xs">
-                        <span className="text-[10px] uppercase font-mono text-emerald-400 block mb-1">Сила ядра</span>
-                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.strength}</p>
-                      </div>
-                      <div className="p-4 bg-[#0B0F18] border border-amber-500/20 rounded-xs">
-                        <span className="text-[10px] uppercase font-mono text-amber-400 block mb-1">Точка напряжения</span>
-                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.tension}</p>
-                      </div>
-                    </div>
+          {/* ------------------------------------------------------- */}
+          {/* SECTION 2: ПЕРВЫЙ КЛЮЧ (ДУША / КТО ВЫ ВНУТРИ) */}
+          {/* ------------------------------------------------------- */}
+          <section 
+            ref={sectionSoulRef}
+            className="w-full scroll-mt-24 flex flex-col items-center text-center space-y-12"
+          >
+            <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block">
+              Ключ I · Число Души
+            </span>
 
-                    {renderPractices(num)}
+            {/* 220px Radiant Orb with slow 90s rotation */}
+            <div className="my-2">
+              <Orb number={soulNum} size={220} glow={true} />
+            </div>
 
-                    <div className="pt-10 flex justify-center">
-                      <button
-                        onClick={() => { setRevealStep(2); scrollToTop(); }}
-                        className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 cursor-pointer shadow-md"
-                      >
-                        <span>Далее: Число Выражения</span>
-                        <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })()}
+            <div className="max-w-2xl mx-auto space-y-4">
+              <div className="flex items-center justify-center gap-3 text-xs font-mono text-[var(--color-text-muted)] uppercase tracking-widest">
+                <span>{soulPalette.name}</span>
+                <span>·</span>
+                <span className="text-[var(--color-antique-gold)]">{soulPalette.sanskrit}</span>
+                <span>·</span>
+                <span>Состав: {result.soulComposite}</span>
+              </div>
 
-              {/* --------------------------------------------------- */}
-              {/* STEP 2: ЧИСЛО ВЫРАЖЕНИЯ */}
-              {/* --------------------------------------------------- */}
-              {revealStep === 2 && (() => {
-                const num = result.expression;
-                const info = numberKnowledge[num] || numberKnowledge[1];
-                const pos = info.positions.expression;
-                return (
-                  <motion.div
-                    key="step-2-expression"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
-                    transition={{ duration: 0.6 }}
-                    className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-12 rounded-xs text-center"
-                  >
-                    <div className="flex items-center justify-center gap-6 mb-6">
-                      <Orb number={result.soul} size="sm" glow={false} />
-                      <span className="text-xs font-mono text-stone-500">↔</span>
-                      <Orb number={num} size="lg" glow={true} />
-                    </div>
+              <h2 className="font-serif text-4xl sm:text-5xl text-[var(--color-text-primary)] font-light">
+                {soulInfo.archetypeName} ({soulNum})
+              </h2>
 
-                    <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-2">
-                      Ключ 2 · Встреча двух сил (Ядро + Внешняя форма)
-                    </span>
+              <p className="font-serif italic text-xl sm:text-2xl text-[#D8D2C4] leading-relaxed font-light pt-2">
+                «{soulInfo.positions.soul.essence}»
+              </p>
+            </div>
 
-                    <h2 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-2 font-light">
-                      Число Выражения: {num}
-                    </h2>
-                    
-                    <span className="text-xs text-stone-400 font-mono uppercase tracking-wider block mb-6">
-                      {info.planet} · Состав: {result.expressionComposite}
-                    </span>
+            {/* In-depth manifestation text */}
+            <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+              <div className="p-8 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)]">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-emerald-400 block mb-2">
+                  Сила ядра
+                </span>
+                <p className="text-sm text-[var(--color-text-secondary)] font-light leading-relaxed">
+                  {soulInfo.positions.soul.strength}
+                </p>
+              </div>
 
-                    <p className="font-serif italic text-lg sm:text-xl text-[#C9C0AE] max-w-xl mx-auto mb-8 font-light leading-relaxed">
-                      «{pos.essence}»
-                    </p>
+              <div className="p-8 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)]">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-amber-400 block mb-2">
+                  Внутренний запрос
+                </span>
+                <p className="text-sm text-[var(--color-text-secondary)] font-light leading-relaxed">
+                  {soulInfo.positions.soul.tension}
+                </p>
+              </div>
+            </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto text-left mb-6">
-                      <div className="p-4 bg-[#0B0F18] border border-emerald-500/20 rounded-xs">
-                        <span className="text-[10px] uppercase font-mono text-emerald-400 block mb-1">Как вас считывает мир</span>
-                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.strength}</p>
-                      </div>
-                      <div className="p-4 bg-[#0B0F18] border border-amber-500/20 rounded-xs">
-                        <span className="text-[10px] uppercase font-mono text-amber-400 block mb-1">Рекомендация контакта</span>
-                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.recommendation}</p>
-                      </div>
-                    </div>
+            <button
+              onClick={() => scrollTo(sectionExpressionRef)}
+              className="px-8 py-3.5 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer mt-4"
+            >
+              <span>Как вы действуете: Число Выражения</span>
+              <ChevronDown size={14} />
+            </button>
+          </section>
 
-                    {renderPractices(num)}
+          {/* ------------------------------------------------------- */}
+          {/* SECTION 3: ВТОРОЙ КЛЮЧ (ДЕЙСТВИЕ / ЧИСЛО ВЫРАЖЕНИЯ) */}
+          {/* ------------------------------------------------------- */}
+          <section 
+            ref={sectionExpressionRef}
+            className="w-full scroll-mt-24 flex flex-col items-center text-center space-y-12"
+          >
+            <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block">
+              Ключ II · Число Выражения
+            </span>
 
-                    <div className="pt-10 flex items-center justify-center gap-4">
-                      <button
-                        onClick={() => { setRevealStep(1); scrollToTop(); }}
-                        className="px-6 py-3 border border-white/15 text-stone-400 hover:text-stone-200 uppercase tracking-wider text-xs rounded-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <ChevronLeft size={14} />
-                        <span>Назад</span>
-                      </button>
-                      <button
-                        onClick={() => { setRevealStep(3); scrollToTop(); }}
-                        className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 cursor-pointer shadow-md"
-                      >
-                        <span>Далее: Число Пути</span>
-                        <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })()}
+            <div className="my-2">
+              <Orb number={exprNum} size={180} glow={true} />
+            </div>
 
-              {/* --------------------------------------------------- */}
-              {/* STEP 3: ЧИСЛО ПУТИ */}
-              {/* --------------------------------------------------- */}
-              {revealStep === 3 && (() => {
-                const num = result.path;
-                const info = numberKnowledge[num] || numberKnowledge[1];
-                const pos = info.positions.path;
-                return (
-                  <motion.div
-                    key="step-3-path"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
-                    transition={{ duration: 0.6 }}
-                    className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-12 rounded-xs text-center"
-                  >
-                    <Orb number={num} size="xl" glow={true} className="mx-auto mb-6" />
+            <div className="max-w-2xl mx-auto space-y-4">
+              <div className="flex items-center justify-center gap-3 text-xs font-mono text-[var(--color-text-muted)] uppercase tracking-widest">
+                <span>{exprPalette.name}</span>
+                <span>·</span>
+                <span className="text-[var(--color-antique-gold)]">{exprPalette.sanskrit}</span>
+                <span>·</span>
+                <span>Состав: {result.expressionComposite}</span>
+              </div>
 
-                    <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-2">
-                      Ключ 3 · Движение в мире
-                    </span>
+              <h2 className="font-serif text-4xl sm:text-5xl text-[var(--color-text-primary)] font-light">
+                Паттерн проявления ({exprNum})
+              </h2>
 
-                    <h2 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-2 font-light">
-                      Число Пути: {num}
-                    </h2>
-                    
-                    <span className="text-xs text-stone-400 font-mono uppercase tracking-wider block mb-6">
-                      {info.planet} · Состав: {result.pathComposite}
-                    </span>
+              <p className="font-serif italic text-xl sm:text-2xl text-[#D8D2C4] leading-relaxed font-light pt-2">
+                «{exprInfo.positions.expression.essence}»
+              </p>
+            </div>
 
-                    <p className="font-serif italic text-lg sm:text-xl text-[#C9C0AE] max-w-xl mx-auto mb-8 font-light leading-relaxed">
-                      «{pos.essence}»
-                    </p>
+            <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+              <div className="p-8 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)]">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-emerald-400 block mb-2">
+                  Как вас считывает среда
+                </span>
+                <p className="text-sm text-[var(--color-text-secondary)] font-light leading-relaxed">
+                  {exprInfo.positions.expression.strength}
+                </p>
+              </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto text-left mb-6">
-                      <div className="p-4 bg-[#0B0F18] border border-emerald-500/20 rounded-xs">
-                        <span className="text-[10px] uppercase font-mono text-emerald-400 block mb-1">Маршрут успеха</span>
-                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.strength}</p>
-                      </div>
-                      <div className="p-4 bg-[#0B0F18] border border-amber-500/20 rounded-xs">
-                        <span className="text-[10px] uppercase font-mono text-amber-400 block mb-1">Ловушка пути</span>
-                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.tension}</p>
-                      </div>
-                    </div>
+              <div className="p-8 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)]">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-[var(--color-antique-gold)] block mb-2">
+                  Точность контакта
+                </span>
+                <p className="text-sm text-[var(--color-text-secondary)] font-light leading-relaxed">
+                  {exprInfo.positions.expression.recommendation}
+                </p>
+              </div>
+            </div>
 
-                    {renderPractices(num)}
+            <button
+              onClick={() => scrollTo(sectionCouplingRef)}
+              className="px-8 py-3.5 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer mt-4"
+            >
+              <span>Что происходит, когда они встречаются</span>
+              <ChevronDown size={14} />
+            </button>
+          </section>
 
-                    <div className="pt-10 flex items-center justify-center gap-4">
-                      <button
-                        onClick={() => { setRevealStep(2); scrollToTop(); }}
-                        className="px-6 py-3 border border-white/15 text-stone-400 hover:text-stone-200 uppercase tracking-wider text-xs rounded-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <ChevronLeft size={14} />
-                        <span>Назад</span>
-                      </button>
-                      <button
-                        onClick={() => { setRevealStep(4); scrollToTop(); }}
-                        className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 cursor-pointer shadow-md"
-                      >
-                        <span>Далее: Направление & Результат</span>
-                        <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })()}
+          {/* ------------------------------------------------------- */}
+          {/* SECTION 4: СОЕДИНЕНИЕ (ВСТРЕЧА ДВУХ СИЛ: ДУША + ВЫРАЖЕНИЕ) */}
+          {/* ------------------------------------------------------- */}
+          <section 
+            ref={sectionCouplingRef}
+            className="w-full scroll-mt-24 flex flex-col items-center text-center space-y-12 p-8 sm:p-12 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)]"
+          >
+            <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block">
+              Сопряжение сил · Диалог Ядра и Формы
+            </span>
 
-              {/* --------------------------------------------------- */}
-              {/* STEP 4: ЧИСЛО НАПРАВЛЕНИЯ & РЕЗУЛЬТАТА */}
-              {/* --------------------------------------------------- */}
-              {revealStep === 4 && (() => {
-                const dirNum = result.direction;
-                const resNum = result.result;
-                const dirInfo = numberKnowledge[dirNum] || numberKnowledge[1];
-                const resInfo = numberKnowledge[resNum] || numberKnowledge[1];
+            {/* TWO ORBS SIDE BY SIDE */}
+            <div className="flex items-center justify-center gap-8 sm:gap-14 my-4">
+              <div className="flex flex-col items-center gap-2">
+                <Orb number={soulNum} size={110} glow={false} />
+                <span className="text-[11px] font-mono text-[var(--color-text-muted)] uppercase tracking-wider">
+                  Душа {soulNum}
+                </span>
+              </div>
 
-                return (
-                  <motion.div
-                    key="step-4-vector-result"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
-                    transition={{ duration: 0.6 }}
-                    className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-12 rounded-xs text-center space-y-8"
-                  >
-                    <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block">
-                      Ключи 4 и 5 · Вектор реализации и Зрелый итог
-                    </span>
+              <span className="font-serif text-3xl text-[var(--color-antique-gold)] font-light">·</span>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-                      {/* Direction */}
-                      <div className="p-6 bg-[#0B0F18] border border-white/[0.06] rounded-xs flex flex-col items-center text-center">
-                        <Orb number={dirNum} size="md" glow={true} className="mb-4" />
-                        <span className="text-[10px] uppercase font-mono text-stone-500 block mb-1">
-                          Число Направления ({result.directionComposite})
-                        </span>
-                        <h3 className="font-serif text-2xl text-stone-100 mb-3">
-                          {dirInfo.archetypeName} ({dirNum})
-                        </h3>
-                        <p className="text-xs text-stone-300 font-light leading-relaxed">
-                          {dirInfo.positions.direction.essence}
-                        </p>
-                      </div>
+              <div className="flex flex-col items-center gap-2">
+                <Orb number={exprNum} size={110} glow={false} />
+                <span className="text-[11px] font-mono text-[var(--color-text-muted)] uppercase tracking-wider">
+                  Выражение {exprNum}
+                </span>
+              </div>
+            </div>
 
-                      {/* Result */}
-                      <div className="p-6 bg-[#0B0F18] border border-white/[0.06] rounded-xs flex flex-col items-center text-center">
-                        <Orb number={resNum} size="md" glow={true} className="mb-4" />
-                        <span className="text-[10px] uppercase font-mono text-stone-500 block mb-1">
-                          Число Результата ({result.resultComposite})
-                        </span>
-                        <h3 className="font-serif text-2xl text-stone-100 mb-3">
-                          {resInfo.archetypeName} ({resNum})
-                        </h3>
-                        <p className="text-xs text-stone-300 font-light leading-relaxed">
-                          {resInfo.positions.result.essence}
-                        </p>
-                      </div>
-                    </div>
+            <div className="max-w-2xl mx-auto space-y-4 text-left sm:text-center">
+              <h3 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light">
+                {soulNum === exprNum 
+                  ? 'Монолитный резонанс: Единая природа'
+                  : `Тандем двух начал: ${soulInfo.archetypeName} и ${exprInfo.archetypeName}`}
+              </h3>
 
-                    {renderPractices(dirNum)}
+              <p className="text-[16px] sm:text-[17px] text-[var(--color-text-secondary)] font-light leading-relaxed pt-2">
+                {soulNum === exprNum
+                  ? 'Когда число Души и число Выражения совпадают, внутренняя мотивация абсолютно совпадает с внешним проявлением. Нет зазора между тем, кто вы внутри, и тем, как вас воспринимают окружающие. Это даёт монолитность, но требует гибкости в адаптации.'
+                  : `Внутри вас действует импульс архетипа ${soulInfo.archetypeName} (${soulInfo.planet}), тогда как в мир вы выходите через язык архетипа ${exprInfo.archetypeName} (${exprPalette.name}). Это создает объемную многослойность: глубокая суть формулируется на более мягком или, напротив, более структурированном языке.`}
+              </p>
+            </div>
 
-                    <div className="pt-8 flex items-center justify-center gap-4">
-                      <button
-                        onClick={() => { setRevealStep(3); scrollToTop(); }}
-                        className="px-6 py-3 border border-white/15 text-stone-400 hover:text-stone-200 uppercase tracking-wider text-xs rounded-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <ChevronLeft size={14} />
-                        <span>Назад</span>
-                      </button>
-                      <button
-                        onClick={() => { setRevealStep(5); scrollToTop(); }}
-                        className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 cursor-pointer shadow-md"
-                      >
-                        <span>Открыть всю карту целиком</span>
-                        <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })()}
+            <button
+              onClick={() => scrollTo(sectionPathRef)}
+              className="px-8 py-3.5 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer mt-4"
+            >
+              <span>Где энергия ищет выход: Число Пути</span>
+              <ChevronDown size={14} />
+            </button>
+          </section>
 
-              {/* --------------------------------------------------- */}
-              {/* STEP 5: FULL COMPREHENSIVE MAP */}
-              {/* --------------------------------------------------- */}
-              {revealStep === 5 && (
-                <motion.div
-                  key="step-5-full-map"
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                  className="w-full flex flex-col items-center space-y-12"
+          {/* ------------------------------------------------------- */}
+          {/* SECTION 5: ТРЕТИЙ КЛЮЧ (РЕАЛИЗАЦИЯ И ВЕКТОР — ПУТЬ & НАПРАВЛЕНИЕ) */}
+          {/* ------------------------------------------------------- */}
+          <section 
+            ref={sectionPathRef}
+            className="w-full scroll-mt-24 flex flex-col items-center text-center space-y-12"
+          >
+            <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block">
+              Ключи III и IV · Реализация и Вектор
+            </span>
+
+            <div className="my-2">
+              <Orb number={pathNum} size={190} glow={true} />
+            </div>
+
+            <div className="max-w-2xl mx-auto space-y-4">
+              <div className="flex items-center justify-center gap-3 text-xs font-mono text-[var(--color-text-muted)] uppercase tracking-widest">
+                <span>{pathPalette.name}</span>
+                <span>·</span>
+                <span className="text-[var(--color-antique-gold)]">{pathPalette.sanskrit}</span>
+                <span>·</span>
+                <span>Состав: {result.pathComposite}</span>
+              </div>
+
+              <h2 className="font-serif text-4xl sm:text-5xl text-[var(--color-text-primary)] font-light">
+                Число Пути: {pathNum}
+              </h2>
+
+              <p className="font-serif italic text-xl sm:text-2xl text-[#D8D2C4] leading-relaxed font-light pt-2">
+                «{pathInfo.positions.path.essence}»
+              </p>
+            </div>
+
+            <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+              <div className="p-8 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)]">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-[var(--color-antique-gold)] block mb-2">
+                  Траектория реализации (Путь {pathNum})
+                </span>
+                <p className="text-sm text-[var(--color-text-secondary)] font-light leading-relaxed">
+                  {pathInfo.positions.path.strength}
+                </p>
+              </div>
+
+              <div className="p-8 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)]">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-purple-300 block mb-2">
+                  Вектор применения (Направление {dirNum})
+                </span>
+                <p className="text-sm text-[var(--color-text-secondary)] font-light leading-relaxed">
+                  {dirInfo.positions.direction.essence}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => scrollTo(sectionTensionRef)}
+              className="px-8 py-3.5 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer mt-4"
+            >
+              <span>Место напряжения и Тень</span>
+              <ChevronDown size={14} />
+            </button>
+          </section>
+
+          {/* ------------------------------------------------------- */}
+          {/* SECTION 6: ПРОТИВОРЕЧИЕ (ТЕНЬ И ВНУТРЕННЯЯ ЛОВУШКА) */}
+          {/* ------------------------------------------------------- */}
+          <section 
+            ref={sectionTensionRef}
+            className="w-full scroll-mt-24 flex flex-col items-center text-center space-y-10"
+          >
+            <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-amber-400/90 block">
+              Тень и Зона Внимания
+            </span>
+
+            <div className="max-w-2xl mx-auto space-y-4">
+              <h2 className="font-serif text-4xl sm:text-5xl text-[var(--color-text-primary)] font-light">
+                Точка слива ресурса
+              </h2>
+
+              <p className="text-[16px] text-[var(--color-text-secondary)] font-light leading-relaxed pt-2">
+                Тень — это не недостаток, а избыток неприрученной силы. Знание своей ловушки позволяет вовремя вернуть управление.
+              </p>
+            </div>
+
+            <div className="w-full max-w-3xl p-8 sm:p-10 rounded-xs bg-[var(--color-bg-surface)] border border-amber-500/20 text-left space-y-6">
+              <div>
+                <span className="text-[10px] uppercase font-mono text-amber-400 tracking-wider block mb-1">
+                  Ловушка архетипа {soulInfo.archetypeName} ({soulNum})
+                </span>
+                <p className="font-serif text-xl sm:text-2xl text-[var(--color-text-primary)] font-light">
+                  {soulInfo.shadow}
+                </p>
+              </div>
+
+              <p className="text-sm text-[var(--color-text-secondary)] font-light leading-relaxed border-t border-white/[0.06] pt-4">
+                {soulInfo.positions.soul.tension}
+              </p>
+
+              <div className="border-t border-white/[0.06] pt-4 flex items-center gap-3">
+                <span className="text-[10px] uppercase font-mono text-[var(--color-antique-gold)] tracking-wider">
+                  Ключ к равновесию:
+                </span>
+                <span className="text-xs text-[var(--color-text-secondary)] font-light">
+                  {soulInfo.practicalKey}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => scrollTo(sectionFullMapRef)}
+              className="px-8 py-3.5 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer mt-4"
+            >
+              <span>Показать карту целиком и триптих практик</span>
+              <ChevronDown size={14} />
+            </button>
+          </section>
+
+          {/* ------------------------------------------------------- */}
+          {/* SECTION 7: ПОЛНАЯ КАРТА + ТРИПТИХ ПРАКТИК */}
+          {/* ------------------------------------------------------- */}
+          <section 
+            ref={sectionFullMapRef}
+            className="w-full scroll-mt-24 flex flex-col items-center text-center space-y-16"
+          >
+            <div className="space-y-3">
+              <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block">
+                Синтез структуры
+              </span>
+              <h2 className="font-serif text-4xl sm:text-5xl text-[var(--color-text-primary)] font-light">
+                Полная карта кода ({day}.{month}.{year})
+              </h2>
+            </div>
+
+            {/* 5 KEYS ROW */}
+            <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {[
+                { key: 'Душа', num: soulNum, comp: result.soulComposite, title: 'Ядро' },
+                { key: 'Выражение', num: exprNum, comp: result.expressionComposite, title: 'Форма' },
+                { key: 'Путь', num: pathNum, comp: result.pathComposite, title: 'Маршрут' },
+                { key: 'Направление', num: dirNum, comp: result.directionComposite, title: 'Вектор' },
+                { key: 'Результат', num: resNum, comp: result.resultComposite, title: 'Итог' }
+              ].map((item, idx) => (
+                <div 
+                  key={idx}
+                  className="p-6 bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] rounded-xs flex flex-col items-center text-center"
                 >
-                  {/* Overview Cards (The 5 Keys) */}
-                  <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {[
-                      { key: 'Душа', num: result.soul, comp: result.soulComposite, title: 'Ядро' },
-                      { key: 'Выражение', num: result.expression, comp: result.expressionComposite, title: 'Форма' },
-                      { key: 'Путь', num: result.path, comp: result.pathComposite, title: 'Маршрут' },
-                      { key: 'Направление', num: result.direction, comp: result.directionComposite, title: 'Вектор' },
-                      { key: 'Результат', num: result.result, comp: result.resultComposite, title: 'Итог' }
-                    ].map((item, idx) => (
-                      <div 
-                        key={idx}
-                        className="p-5 bg-[#0D121D]/80 border border-white/[0.06] rounded-xs flex flex-col items-center text-center"
-                      >
-                        <span className="text-[10px] uppercase font-mono tracking-wider text-stone-500 mb-2">
-                          {item.key}
-                        </span>
-                        <Orb number={item.num} size="sm" glow={false} className="mb-2" />
-                        <span className="font-serif text-xl text-stone-100 font-normal">
-                          {item.num}
-                        </span>
-                        <span className="text-[9px] text-stone-500 font-mono">
-                          {item.comp !== item.num.toString() ? item.comp : item.title}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <span className="text-[10px] uppercase font-mono tracking-widest text-[var(--color-text-muted)] mb-3">
+                    {item.key}
+                  </span>
+                  <Orb number={item.num} size={46} glow={false} className="mb-3" />
+                  <span className="font-serif text-2xl text-[var(--color-text-primary)] font-light">
+                    {item.num}
+                  </span>
+                  <span className="text-[10px] text-[var(--color-text-muted)] font-mono mt-1">
+                    {item.comp !== item.num.toString() ? item.comp : item.title}
+                  </span>
+                </div>
+              ))}
+            </div>
 
-                  {/* 3x3 Quality Matrix */}
-                  <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-6 sm:p-10 rounded-xs text-center">
-                    <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-2">
-                      Матрица качеств
-                    </span>
-                    <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-8">
-                      Карта потенциалов ({date})
-                    </h3>
+            {/* 3x3 MATRIX */}
+            <div className="w-full bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] p-8 sm:p-12 rounded-xs text-center">
+              <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-2">
+                Матрица качеств
+              </span>
+              <h3 className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light mb-8">
+                Распределение плотности энергии
+              </h3>
 
-                    <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-md mx-auto mb-8">
-                      {[
-                        { digit: '1', name: 'Характер, воля' },
-                        { digit: '4', name: 'Здоровье, тело' },
-                        { digit: '7', name: 'Интуиция, удача' },
-                        { digit: '2', name: 'Энергия, связь' },
-                        { digit: '5', name: 'Логика, форма' },
-                        { digit: '8', name: 'Долг, система' },
-                        { digit: '3', name: 'Интерес, ум' },
-                        { digit: '6', name: 'Мастерство' },
-                        { digit: '9', name: 'Память, цель' }
-                      ].map((cell) => {
-                        const count = result.detailedMatrix[cell.digit] || 0;
-                        return (
-                          <div 
-                            key={cell.digit}
-                            className={`p-4 rounded-xs border text-center flex flex-col justify-between min-h-[90px] ${
-                              count > 0 
-                                ? 'bg-[#121927] border-[var(--color-antique-gold)]/30' 
-                                : 'bg-[#090D15]/50 border-white/5 text-stone-600'
-                            }`}
-                          >
-                            <span className="text-[10px] font-mono text-stone-400 block">
-                              {cell.digit} · {cell.name.split(',')[0]}
-                            </span>
-                            <span className={`font-serif text-xl sm:text-2xl font-light ${count > 0 ? 'text-[var(--color-antique-gold)]' : 'text-stone-600'}`}>
-                              {count > 0 ? cell.digit.repeat(count) : '—'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <p className="text-xs text-stone-400 font-light max-w-md mx-auto leading-relaxed">
-                      Матрица отражает распределение ресурсных качеств, плотности энергии и зон внимания.
-                    </p>
-                  </div>
-
-                  {/* Soul Key Practices Detailed */}
-                  <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-6 sm:p-10 rounded-xs">
-                    <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-4">
-                      Главный фокус интеграции (Число Души {result.soul})
-                    </span>
-                    {renderPractices(result.soul)}
-                  </div>
-
-                  {/* NEXT STEP: MEETING OF MIRRORS */}
-                  <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-10 rounded-xs text-center space-y-6">
-                    <div>
-                      <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
-                        Синтез зеркал
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-md mx-auto mb-8">
+                {[
+                  { digit: '1', name: 'Характер, воля' },
+                  { digit: '4', name: 'Здоровье, тело' },
+                  { digit: '7', name: 'Интуиция, удача' },
+                  { digit: '2', name: 'Энергия, связь' },
+                  { digit: '5', name: 'Логика, форма' },
+                  { digit: '8', name: 'Долг, система' },
+                  { digit: '3', name: 'Интерес, ум' },
+                  { digit: '6', name: 'Мастерство' },
+                  { digit: '9', name: 'Память, цель' }
+                ].map((cell) => {
+                  const count = result.detailedMatrix[cell.digit] || 0;
+                  return (
+                    <div 
+                      key={cell.digit}
+                      className={`p-4 rounded-xs border text-center flex flex-col justify-between min-h-[95px] transition-colors ${
+                        count > 0 
+                          ? 'bg-[var(--color-bg-deep)] border-[var(--color-border-gold)]' 
+                          : 'bg-[var(--color-bg-deep)]/40 border-white/[0.03] text-[var(--color-text-muted)]'
+                      }`}
+                    >
+                      <span className="text-[10px] font-mono text-[var(--color-text-muted)] block">
+                        {cell.digit} · {cell.name.split(',')[0]}
                       </span>
-                      <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
-                        Встреча Кода и Личного Мифа
-                      </h3>
-                      <p className="text-xs sm:text-sm text-stone-400 font-light max-w-md mx-auto leading-relaxed">
-                        {hasMythResult
-                          ? 'Ваш Личный Миф уже создан. Перейдите к синтезу для сопоставления двух независимых отражений.'
-                          : 'Пройдите образный ритуал (4 вопроса), чтобы сопоставить математическую карту со сказкой вашего состояния.'}
-                      </p>
+                      <span className={`font-serif text-2xl font-light ${count > 0 ? 'text-[var(--color-antique-gold)]' : 'text-stone-600'}`}>
+                        {count > 0 ? cell.digit.repeat(count) : '—'}
+                      </span>
                     </div>
+                  );
+                })}
+              </div>
 
-                    <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-                      {onNavigateToMeeting && (
-                        <button 
-                          onClick={onNavigateToMeeting}
-                          className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 cursor-pointer shadow-md"
-                        >
-                          <GitFork size={15} />
-                          <span>{hasMythResult ? 'Открыть Встречу Зеркал' : 'Войти в Личный Миф'}</span>
-                        </button>
-                      )}
+              <p className="text-xs text-[var(--color-text-secondary)] font-light max-w-md mx-auto leading-relaxed">
+                Матрица отражает распределение ресурсных качеств, плотности энергии и зон внимания в структуре личности.
+              </p>
+            </div>
 
-                      <button
-                        onClick={() => {
-                          setResult(null);
-                          setDate('');
-                          setSelectedDate(null);
-                          setRevealStep(1);
-                        }}
-                        className="px-5 py-3 text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <RotateCcw size={13} />
-                        <span>Рассчитать другую дату</span>
-                      </button>
-                    </div>
-                  </div>
+            {/* TRIPTYCH OF PRACTICES (CLEAN EDITORIAL) */}
+            <div className="w-full space-y-6 text-left">
+              <div className="text-center">
+                <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-2">
+                  Интеграция в жизнь
+                </span>
+                <h3 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light">
+                  Триптих практик архетипа {soulInfo.archetypeName}
+                </h3>
+              </div>
 
-                </motion.div>
-              )}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* 1. Observation */}
+                <div className="p-8 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] space-y-4">
+                  <span className="text-[10px] uppercase font-mono text-emerald-400 tracking-wider block">
+                    01 · Наблюдение
+                  </span>
+                  <p className="text-sm text-[var(--color-text-secondary)] font-light leading-relaxed">
+                    {soulPractice.observation.insight}
+                  </p>
+                  <span className="text-[11px] text-[var(--color-text-muted)] font-mono block pt-2 border-t border-white/[0.04]">
+                    Маркер: {soulPractice.observation.bodyMarker}
+                  </span>
+                </div>
 
-            </AnimatePresence>
+                {/* 2. Action */}
+                <div className="p-8 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] space-y-4">
+                  <span className="text-[10px] uppercase font-mono text-[var(--color-antique-gold)] tracking-wider block">
+                    02 · Действие
+                  </span>
+                  <p className="text-sm text-[var(--color-text-secondary)] font-light leading-relaxed">
+                    {soulPractice.action.microStep}
+                  </p>
+                  <span className="text-[11px] text-[var(--color-text-muted)] font-mono block pt-2 border-t border-white/[0.04]">
+                    Ритуал: {soulPractice.action.ritual}
+                  </span>
+                </div>
 
-          </div>
-        )}
+                {/* 3. Integration */}
+                <div className="p-8 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] space-y-4">
+                  <span className="text-[10px] uppercase font-mono text-purple-300 tracking-wider block">
+                    03 · Интеграция
+                  </span>
+                  <p className="font-serif italic text-base text-[var(--color-text-primary)] leading-relaxed">
+                    «{soulPractice.integration.focusMantra}»
+                  </p>
+                  <span className="text-[11px] text-[var(--color-text-muted)] font-mono block pt-2 border-t border-white/[0.04]">
+                    Ключ: {soulPractice.integration.balanceKey}
+                  </span>
+                </div>
+              </div>
+            </div>
 
-      </div>
+            <button
+              onClick={() => scrollTo(sectionAlbertRef)}
+              className="px-8 py-3.5 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-xs font-semibold transition-all inline-flex items-center gap-2 cursor-pointer mt-4"
+            >
+              <span>Осмысление и диалог с Альбертом</span>
+              <ChevronDown size={14} />
+            </button>
+          </section>
+
+          {/* ------------------------------------------------------- */}
+          {/* SECTION 8: МОСТ К АЛЬБЕРТУ & СИНТЕЗУ */}
+          {/* ------------------------------------------------------- */}
+          <section 
+            ref={sectionAlbertRef}
+            className="w-full scroll-mt-24 flex flex-col items-center text-center space-y-10 p-8 sm:p-14 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-gold)] shadow-[0_0_40px_rgba(200,164,93,0.06)]"
+          >
+            <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block">
+              Осмысление · Проводник системы
+            </span>
+
+            <div className="max-w-2xl mx-auto space-y-3">
+              <h3 className="font-serif text-3xl sm:text-5xl text-[var(--color-text-primary)] font-light">
+                Диалог с Альбертом Вяземским
+              </h3>
+              <p className="text-[16px] text-[var(--color-text-secondary)] font-light leading-relaxed">
+                Вы можете сохранить контекст вашего разбора и продолжить глубокое обсуждение чисел в Telegram или прямо здесь.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+              <a
+                href="https://t.me/digitalcodesystem_bot" 
+                target="_blank" 
+                rel="noreferrer"
+                className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 shadow-md cursor-pointer"
+              >
+                <Send size={14} />
+                <span>Открыть в Telegram</span>
+              </a>
+
+              <button
+                onClick={() => setIsAlbertOpen(true)}
+                className="px-8 py-3.5 border border-white/15 text-[var(--color-text-primary)] hover:text-white uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <MessageSquare size={14} />
+                <span>Диалог на сайте</span>
+              </button>
+            </div>
+
+            {/* Synthesis / Meeting CTA */}
+            <div className="w-full pt-10 border-t border-[var(--color-border-subtle)] flex flex-col sm:flex-row items-center justify-between gap-6">
+              <div className="text-left">
+                <span className="text-[10px] uppercase font-mono text-[var(--color-antique-gold)] block mb-1">
+                  Следующий шаг исследования
+                </span>
+                <span className="text-sm text-[var(--color-text-secondary)] font-light">
+                  {hasMythResult 
+                    ? 'Ваш Личный Миф уже создан. Готовы сопоставить оба зеркала?' 
+                    : 'Пройдите образный ритуал Личного Мифа для встречи двух зеркал.'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-4 shrink-0">
+                {onNavigateToMeeting && (
+                  <button 
+                    onClick={onNavigateToMeeting}
+                    className="px-6 py-3 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-xs font-medium transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <GitFork size={14} />
+                    <span>{hasMythResult ? 'Встреча Зеркал →' : 'Личный Миф →'}</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={handleReset}
+                  className="p-3 text-xs uppercase tracking-wider text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors cursor-pointer"
+                  title="Рассчитать другую дату"
+                >
+                  <RotateCcw size={14} />
+                </button>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      )}
+
+      {/* Albert Web Dialogue Modal */}
+      <AlbertDialogue
+        isOpen={isAlbertOpen}
+        onClose={() => setIsAlbertOpen(false)}
+        calc={result}
+        initialTopic={result ? `Разбор даты ${day}.${month}.${year} (Душа ${soulNum}, Путь ${pathNum}, Выражение ${exprNum})` : ''}
+        theme="dark"
+      />
+
     </div>
   );
 }

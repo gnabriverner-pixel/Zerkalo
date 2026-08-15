@@ -15,6 +15,7 @@ export default function App() {
   const [showAbout, setShowAbout] = useState(false);
 
   // Shared state between lenses
+  const [codeDate, setCodeDate] = useState<string>('');
   const [codeResult, setCodeResult] = useState<CalculationResult | null>(null);
   const [firstMirror, setFirstMirror] = useState<FirstMirror | null>(null);
   const [storyInputs, setStoryInputs] = useState<StoryInputs | null>(null);
@@ -123,7 +124,10 @@ export default function App() {
               <LabEntryView
                 codeResult={codeResult}
                 storyResult={storyResult}
-                onSelectMode={(m) => setMode(m)}
+                onSelectMode={(m, initialDate) => {
+                  if (initialDate) setCodeDate(initialDate);
+                  setMode(m);
+                }}
               />
             </motion.div>
           )}
@@ -138,6 +142,7 @@ export default function App() {
               className="w-full"
             >
               <CodeArchitecture 
+                initialDate={codeDate}
                 onOpenAbout={() => setShowAbout(true)} 
                 onCodeCalculated={(calc, reading) => {
                   setCodeResult(calc);

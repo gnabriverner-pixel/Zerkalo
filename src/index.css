@@ -2,7 +2,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-antique-gold: #C8A45D;
+  --color-antique-gold: oklch(0.80 0.115 74);
+  --color-gold: oklch(0.80 0.115 74);
+  --color-gold-soft: oklch(0.72 0.07 72 / 45%);
+  --color-gold-glow: oklch(0.80 0.115 74 / 15%);
+  
+  --color-bg-deep: oklch(0.14 0.03 264);
+  --color-bg-surface: oklch(0.18 0.03 263 / 70%);
+  --color-border-subtle: oklch(1 1 1 / 8%);
+  --color-border-gold: oklch(0.80 0.115 74 / 35%);
+
+  --color-text-primary: oklch(0.94 0.01 85);
+  --color-text-secondary: oklch(0.70 0.02 250);
+  --color-text-muted: oklch(0.50 0.02 250);
+
   --font-serif: 'Cormorant Garamond', Georgia, serif;
   --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -13,14 +26,21 @@
   --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Канонические цвета Lovable (OKLCH) */
+  /* Базовая атмосфера */
   --bg-deep: oklch(0.14 0.03 264);
+  --bg-surface: oklch(0.18 0.03 263 / 70%);
+  --border-subtle: oklch(1 1 1 / 8%);
+  --border-gold: oklch(0.80 0.115 74 / 35%);
+
+  /* Золото и акценты */
   --gold: oklch(0.80 0.115 74);
   --gold-soft: oklch(0.72 0.07 72 / 45%);
-  --text-main: oklch(0.94 0.01 85);
-  --text-muted: oklch(0.70 0.02 250);
-  --card-bg: oklch(0.18 0.03 263 / 70%);
-  --card-border: oklch(1 1 1 / 8%);
+  --gold-glow: oklch(0.80 0.115 74 / 15%);
+
+  /* Типографика */
+  --text-primary: oklch(0.94 0.01 85);
+  --text-secondary: oklch(0.70 0.02 250);
+  --text-muted: oklch(0.50 0.02 250);
 
   --gradient-deep: radial-gradient(120% 90% at 50% -10%, oklch(0.26 0.05 268) 0%, transparent 60%),
                     linear-gradient(180deg, oklch(0.15 0.03 262), oklch(0.11 0.02 265));
@@ -29,7 +49,7 @@
 body {
   background: var(--gradient-deep);
   background-attachment: fixed;
-  color: var(--text-main);
+  color: var(--text-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   margin: 0;
@@ -42,39 +62,44 @@ h1, h2, h3, .font-serif {
   font-weight: 300;
 }
 
-/* Ключевые анимации Lovable */
+/* Кинематика */
 @keyframes spin-slow {
+  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
 @keyframes spin-reverse {
+  from { transform: rotate(0deg); }
   to { transform: rotate(-360deg); }
 }
+
 @keyframes breathe {
-  0%, 100% { transform: scale(1); opacity: 0.85; }
-  50% { transform: scale(1.045); opacity: 1; }
+  0%, 100% { transform: scale(1); opacity: 0.92; }
+  50% { transform: scale(1.03); opacity: 1; }
 }
+
 @keyframes veil {
-  0%, 100% { opacity: 0.25; }
-  50% { opacity: 0.6; }
+  0%, 100% { opacity: 0.35; filter: blur(30px); }
+  50% { opacity: 0.6; filter: blur(45px); }
 }
 
 .animate-spin-slow { animation: spin-slow 90s linear infinite; }
 .animate-spin-reverse { animation: spin-reverse 120s linear infinite; }
-.animate-breathe { animation: breathe 7s ease-in-out infinite; }
-.animate-veil { animation: veil 9s ease-in-out infinite; }
+.animate-breathe   { animation: breathe 7s ease-in-out infinite; }
+.animate-veil      { animation: veil 9s ease-in-out infinite; }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #090D15;
+  background: oklch(0.12 0.02 264);
 }
 ::-webkit-scrollbar-thumb {
-  background: #1F293D;
-  border-radius: 3px;
+  background: oklch(0.80 0.115 74 / 20%);
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #C8A45D;
+  background: oklch(0.80 0.115 74 / 50%);
 }
