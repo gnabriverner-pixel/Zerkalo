@@ -8,7 +8,7 @@ import { LabEntryView } from './components/LabEntryView';
 import { GlobalNoise } from './components/GlobalNoise';
 import { MetaphorLibrary } from './components/MetaphorLibrary';
 import { AboutMethod } from './components/AboutMethod';
-import { Library, Compass, GitFork, Sliders, CheckCircle2, Home, Sparkles } from 'lucide-react';
+import { Library, Compass, GitFork, Sliders, CheckCircle2, Home, Sparkles, Feather } from 'lucide-react';
 import { CalculationResult, FirstMirror, StoryInputs, ApiResponse } from './types';
 
 export default function App() {
@@ -26,22 +26,8 @@ export default function App() {
   const hasMyth = !!storyResult;
   const hasBoth = hasCode && hasMyth;
 
-  const getBackgroundColor = () => {
-    switch (mode) {
-      case 'code':
-        return '#FAFAFA';
-      case 'ab-test':
-        return '#0B0F0D';
-      default:
-        return '#0F1412';
-    }
-  };
-
   return (
-    <div 
-      className="min-h-screen w-full flex flex-col font-sans transition-colors duration-700 relative" 
-      style={{ backgroundColor: getBackgroundColor() }}
-    >
+    <div className="min-h-screen w-full flex flex-col font-sans bg-[#090D15] text-[#EAEAEA] relative overflow-x-hidden">
       <GlobalNoise />
 
       {/* Top Floating Navigation */}
@@ -50,63 +36,57 @@ export default function App() {
         {/* Left: Home & About */}
         <div className="pointer-events-auto flex items-center gap-2">
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => setMode('entry')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] tracking-widest uppercase transition-all duration-500 border backdrop-blur-md ${
-              mode === 'code'
-                ? 'bg-white/80 text-[var(--color-ink)] border-black/10 hover:border-[var(--color-antique-gold)]/50'
-                : 'bg-[#1A2621]/80 text-[#A3B8AD] border-[#2A3B33] hover:border-[#A3B8AD] hover:text-[#EAEAEA]'
-            }`}
-            title="Главная лаборатории"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] tracking-widest uppercase transition-all duration-300 border bg-[#111827]/80 backdrop-blur-md text-gray-300 border-white/10 hover:border-[var(--color-antique-gold)]/60 hover:text-white"
+            title="Главная «Зеркало себя»"
           >
-            <Home size={13} className="shrink-0" />
-            <span className="hidden md:inline">Лаборатория</span>
+            <Home size={13} className="shrink-0 text-[var(--color-antique-gold)]" />
+            <span className="hidden sm:inline">Зеркало</span>
           </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => setShowAbout(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] tracking-widest uppercase transition-all duration-500 border backdrop-blur-md ${
-              mode === 'code' 
-                ? 'bg-white/80 text-[var(--color-ink)] border-black/10 hover:border-[var(--color-antique-gold)]/50' 
-                : 'bg-[#1A2621]/80 text-[#A3B8AD] border-[#2A3B33] hover:border-[#A3B8AD] hover:text-[#EAEAEA]'
-            }`}
-            title="О методе цифрового кода"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] tracking-widest uppercase transition-all duration-300 border bg-[#111827]/80 backdrop-blur-md text-gray-300 border-white/10 hover:border-[var(--color-antique-gold)]/60 hover:text-white"
+            title="О методе"
           >
             <Compass size={13} className="text-[var(--color-antique-gold)] shrink-0" />
-            <span className="hidden sm:inline">О методе</span>
+            <span className="hidden md:inline">О методе</span>
           </motion.button>
         </div>
 
         {/* Center: Mode Switcher Pills */}
-        <nav aria-label="Режимы исследования" className="flex flex-wrap sm:flex-nowrap justify-center gap-1 p-1 bg-black/20 backdrop-blur-md rounded-2xl sm:rounded-full border border-white/10 pointer-events-auto max-w-[90vw] overflow-x-auto">
+        <nav aria-label="Режимы исследования" className="flex items-center gap-1 p-1 bg-[#0D121D]/90 backdrop-blur-md rounded-full border border-white/10 pointer-events-auto max-w-[90vw] overflow-x-auto shadow-lg">
           
-          {/* Lens 1: Code */}
-          <button
-            onClick={() => setMode('code')}
-            className={`px-3 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-xs tracking-wider uppercase transition-all flex items-center gap-1.5 whitespace-nowrap ${
-              mode === 'code'
-                ? 'bg-white text-gray-900 shadow-sm font-semibold'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            <span>1. Код</span>
-            {hasCode && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-          </button>
-
-          {/* Lens 2: Myth */}
+          {/* Lens 1: Myth */}
           <button
             onClick={() => setMode('myth')}
             className={`px-3 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-xs tracking-wider uppercase transition-all flex items-center gap-1.5 whitespace-nowrap ${
               mode === 'myth'
-                ? 'bg-[#1A2621] text-[#A3B8AD] border border-[#3A4E43] font-semibold'
+                ? 'bg-purple-950/80 text-purple-200 border border-purple-500/50 font-semibold shadow-sm'
                 : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            <span>2. Миф</span>
-            {hasMyth && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+            <Feather size={11} className="text-purple-300" />
+            <span>1. Миф</span>
+            {hasMyth && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />}
+          </button>
+
+          {/* Lens 2: Code */}
+          <button
+            onClick={() => setMode('code')}
+            className={`px-3 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-xs tracking-wider uppercase transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              mode === 'code'
+                ? 'bg-amber-950/80 text-[var(--color-antique-gold)] border border-amber-500/50 font-semibold shadow-sm'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <Compass size={11} className="text-[var(--color-antique-gold)]" />
+            <span>2. Код</span>
+            {hasCode && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />}
           </button>
 
           {/* Synthesis: Meeting */}
@@ -114,22 +94,22 @@ export default function App() {
             onClick={() => setMode('meeting')}
             className={`px-3 sm:px-4 py-1.5 rounded-full text-[10px] sm:text-xs tracking-wider uppercase transition-all flex items-center gap-1.5 whitespace-nowrap ${
               mode === 'meeting'
-                ? 'bg-[#24352D] text-[#EAEAEA] border border-[#4E6B5B] font-semibold'
+                ? 'bg-[#182333] text-white border border-[var(--color-antique-gold)]/60 font-semibold shadow-sm'
                 : hasBoth
-                  ? 'text-[#C8A45D] hover:text-amber-200'
+                  ? 'text-[var(--color-antique-gold)] hover:text-amber-200 font-medium'
                   : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            <GitFork size={12} className={hasBoth ? 'text-[#C8A45D]' : ''} />
+            <GitFork size={12} className={hasBoth ? 'text-[var(--color-antique-gold)]' : ''} />
             <span>Встреча</span>
           </button>
 
-          {/* Harness: A/B Test */}
+          {/* A/B Harness */}
           <button
             onClick={() => setMode('ab-test')}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-full text-[10px] tracking-wider uppercase transition-all flex items-center gap-1 whitespace-nowrap ${
+            className={`px-2.5 py-1.5 rounded-full text-[10px] tracking-wider uppercase transition-all flex items-center gap-1 whitespace-nowrap ${
               mode === 'ab-test'
-                ? 'bg-[#1C2420] text-[#C8A45D] border border-[#3D4F44]'
+                ? 'bg-[#1A2333] text-[var(--color-antique-gold)] border border-[var(--color-antique-gold)]/40'
                 : 'text-gray-500 hover:text-gray-300'
             }`}
             title="Слепое сравнение моделей"
@@ -143,15 +123,13 @@ export default function App() {
         {/* Right: Metaphor Library */}
         <div className="pointer-events-auto flex justify-end">
           <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.94 }}
             onClick={() => setShowLibrary(true)}
-            className={`p-2 rounded-full transition-colors flex items-center justify-center ${
-              mode === 'code' ? 'text-[var(--color-antique-gold)] hover:bg-black/5' : 'text-[#A3B8AD] hover:bg-white/5'
-            }`}
+            className="p-2 rounded-full transition-colors flex items-center justify-center text-[var(--color-antique-gold)] bg-[#111827]/80 border border-white/10 hover:border-[var(--color-antique-gold)]/60 backdrop-blur-md"
             title="Библиотека Метафор"
           >
-            <Library size={20} strokeWidth={1.5} />
+            <Library size={18} strokeWidth={1.5} />
           </motion.button>
         </div>
       </header>
@@ -166,7 +144,7 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.3 }}
               className="w-full"
             >
               <LabEntryView
@@ -183,7 +161,7 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.3 }}
               className="w-full"
             >
               <CodeArchitecture 
@@ -204,7 +182,7 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.3 }}
               className="w-full"
             >
               <PersonalMyth 
@@ -225,7 +203,7 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.3 }}
               className="w-full"
             >
               <MeetingOfMirrors
@@ -245,7 +223,7 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.3 }}
               className="w-full"
             >
               <ModelComparisonHarness />
@@ -257,7 +235,7 @@ export default function App() {
 
       {/* Global Modals */}
       <MetaphorLibrary isOpen={showLibrary} onClose={() => setShowLibrary(false)} />
-      <AboutMethod isOpen={showAbout} onClose={() => setShowAbout(false)} theme={mode === 'code' ? 'light' : 'dark'} />
+      <AboutMethod isOpen={showAbout} onClose={() => setShowAbout(false)} theme="dark" />
     </div>
   );
 }

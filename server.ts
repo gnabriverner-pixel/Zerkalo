@@ -374,7 +374,7 @@ ${payload2}
   });
 
   // Dedicated Meeting of Mirrors Endpoint (Independent synthesis)
-  app.post("/api/meeting-of-mirrors", async (req, res) => {
+  const meetingHandler = async (req: express.Request, res: express.Response) => {
     try {
       const { codeData, storyData } = req.body;
 
@@ -456,7 +456,10 @@ ${payload2}
         ui: { safe_message: "Не удалось провести сопоставление. Пожалуйста, повторите попытку." }
       });
     }
-  });
+  };
+
+  app.post("/api/meeting-of-mirrors", meetingHandler);
+  app.post("/api/lab/meeting/generate", meetingHandler);
 
   // Dedicated Blind A/B Model Comparison Endpoint
   app.post("/api/ab-compare", async (req, res) => {

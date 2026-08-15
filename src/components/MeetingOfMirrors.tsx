@@ -14,10 +14,12 @@ import {
   RefreshCw, 
   GitFork,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  ShieldAlert,
+  Send
 } from 'lucide-react';
 import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, MeetingApiResponse } from '../types';
-import { CosmicParticleBackground } from './CosmicParticleBackground';
+import { Orb } from './Orb';
 import { AlbertDialogue } from './AlbertDialogue';
 
 interface MeetingOfMirrorsProps {
@@ -55,7 +57,7 @@ export function MeetingOfMirrors({
     setErrorMessage('');
 
     try {
-      const response = await fetch('/api/meeting-of-mirrors', {
+      const response = await fetch('/api/lab/meeting/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -86,53 +88,57 @@ export function MeetingOfMirrors({
   };
 
   return (
-    <div className="flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8 bg-[#0F1412] min-h-screen text-[#EAEAEA] font-sans relative overflow-x-hidden w-full">
-      <CosmicParticleBackground />
-
-      <div className="w-full max-w-3xl flex flex-col items-center relative z-10">
+    <div className="flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8 bg-cosmic-mesh min-h-screen text-[#EAEAEA] font-sans relative overflow-x-hidden w-full">
+      
+      <div className="w-full max-w-4xl flex flex-col items-center relative z-10">
         
         {/* Title Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1A2621] border border-[#2A3B33] text-[#A3B8AD] text-[11px] tracking-widest uppercase mb-4">
-            <GitFork size={12} className="text-[#C8A45D]" />
-            <span>Синтез двух независимых взглядов</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#121824] border border-[var(--color-antique-gold)]/30 text-[var(--color-antique-gold)] text-[11px] tracking-widest uppercase mb-4">
+            <GitFork size={12} className="text-[var(--color-antique-gold)]" />
+            <span>Синтез двух независимых линз</span>
           </div>
-          <h1 className="font-serif text-4xl sm:text-5xl text-[#F4F4F4] mb-3 tracking-wide">
+          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-[#F4F4F4] mb-3 tracking-wide">
             Встреча Зеркал
           </h1>
-          <p className="text-sm text-gray-400 max-w-lg mx-auto leading-relaxed">
-            Сопоставление объективной числовой матрицы по дате рождения и субъективного мира ваших метафор.
+          <p className="text-sm sm:text-base text-gray-300 max-w-xl mx-auto leading-relaxed font-light">
+            Сопоставление объективной числовой матрицы по дате рождения и субъективного мира ваших личных метафор.
           </p>
         </div>
 
-        {/* LENSES STATUS CARD */}
-        <div className="w-full bg-[#111A16] border border-[#2A3B33] p-6 mb-8 rounded-sm">
-          <h3 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-4 flex items-center gap-2">
+        {/* LENSES STATUS CARDS */}
+        <div className="w-full glass-card p-6 sm:p-8 mb-8 rounded-xs">
+          <h3 className="text-xs uppercase tracking-widest text-[var(--color-antique-gold)] mb-5 flex items-center gap-2 font-semibold">
             <Layers size={14} />
-            <span>Состояние исходных линз</span>
+            <span>Состояние исходных зеркал</span>
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             
-            {/* Lens A: Digital Code */}
-            <div className={`p-4 border transition-all ${
-              hasCode ? 'bg-[#15211B] border-[#3A4E43]' : 'bg-[#121614] border-[#222B26] opacity-75'
+            {/* Lens 1: Digital Code */}
+            <div className={`p-5 rounded-xs border transition-all ${
+              hasCode ? 'bg-[#101726] border-[var(--color-antique-gold)]/40 shadow-sm' : 'bg-[#0B0F18] border-white/5 opacity-75'
             }`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] uppercase tracking-wider text-[#A3B8AD]">Линза 1: Цифровой Код</span>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] uppercase tracking-wider text-gray-400 font-mono">Линза 1: Цифровой Код</span>
                 {hasCode ? (
-                  <CheckCircle2 size={16} className="text-[#7C9082]" />
+                  <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-medium">
+                    <CheckCircle2 size={15} /> Готов
+                  </span>
                 ) : (
                   <span className="text-[10px] text-gray-500 uppercase">Не рассчитан</span>
                 )}
               </div>
               {hasCode ? (
-                <div>
-                  <div className="font-serif text-lg text-[#F4F4F4]">
-                    {codeResult.soul} · {codeResult.path} · {codeResult.expression} · {codeResult.direction} · {codeResult.result}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    Душа {codeResult.soul} ({codeResult.soulComposite || codeResult.soul}) / Путь {codeResult.path}
+                <div className="flex items-center gap-3">
+                  <Orb number={codeResult.soul} size="xs" glow={false} />
+                  <div>
+                    <div className="font-serif text-lg text-white">
+                      Душа {codeResult.soul} · Путь {codeResult.path}
+                    </div>
+                    <div className="text-xs text-gray-400 font-mono">
+                      Выражение {codeResult.expression} · Направление {codeResult.direction}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -140,7 +146,7 @@ export function MeetingOfMirrors({
                   <span>Введите дату рождения, чтобы сформировать расчет.</span>
                   <button 
                     onClick={onOpenCode}
-                    className="text-[11px] text-[#C8A45D] hover:underline uppercase tracking-wider flex items-center gap-1"
+                    className="text-[11px] text-[var(--color-antique-gold)] hover:underline uppercase tracking-wider flex items-center gap-1 font-semibold"
                   >
                     Перейти к коду <ChevronRight size={12} />
                   </button>
@@ -148,33 +154,38 @@ export function MeetingOfMirrors({
               )}
             </div>
 
-            {/* Lens B: Personal Myth */}
-            <div className={`p-4 border transition-all ${
-              hasMyth ? 'bg-[#15211B] border-[#3A4E43]' : 'bg-[#121614] border-[#222B26] opacity-75'
+            {/* Lens 2: Personal Myth */}
+            <div className={`p-5 rounded-xs border transition-all ${
+              hasMyth ? 'bg-[#101726] border-purple-500/40 shadow-sm' : 'bg-[#0B0F18] border-white/5 opacity-75'
             }`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] uppercase tracking-wider text-[#A3B8AD]">Линза 2: Личный Миф</span>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] uppercase tracking-wider text-purple-300 font-mono">Линза 2: Личный Миф</span>
                 {hasMyth ? (
-                  <CheckCircle2 size={16} className="text-[#7C9082]" />
+                  <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-medium">
+                    <CheckCircle2 size={15} /> Создан
+                  </span>
                 ) : (
-                  <span className="text-[10px] text-gray-500 uppercase">Не собран</span>
+                  <span className="text-[10px] text-gray-500 uppercase">Не пройден</span>
                 )}
               </div>
               {hasMyth ? (
-                <div>
-                  <div className="font-serif text-lg text-[#F4F4F4] truncate">
-                    «{storyResult?.title || 'Сказка про тебя'}»
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1 truncate">
-                    Образ: {storyInputs?.q2 || 'Создан'}
+                <div className="flex items-center gap-3">
+                  <Orb number={7} size="xs" glow={false} />
+                  <div>
+                    <div className="font-serif text-lg text-white italic">
+                      «{storyResult.title}»
+                    </div>
+                    <div className="text-xs text-gray-400 font-mono truncate max-w-[200px]">
+                      Образ: {storyInputs.q2 || 'не назван'}
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="text-xs text-gray-400 flex flex-col items-start gap-2 mt-1">
-                  <span>Ответьте на 4 вопроса, чтобы создать образную историю.</span>
+                  <span>Ответьте на 4 образных вопроса для создания сказки.</span>
                   <button 
                     onClick={onOpenMyth}
-                    className="text-[11px] text-[#A3B8AD] hover:underline uppercase tracking-wider flex items-center gap-1"
+                    className="text-[11px] text-purple-300 hover:underline uppercase tracking-wider flex items-center gap-1 font-semibold"
                   >
                     Перейти к мифу <ChevronRight size={12} />
                   </button>
@@ -184,98 +195,99 @@ export function MeetingOfMirrors({
 
           </div>
 
-          {/* Action Button */}
+          {/* Action to trigger synthesis */}
           {!meetingResult && (
-            <div className="mt-6 text-center">
-              {isReadyForSynthesis ? (
-                <button
-                  onClick={handleRunSynthesis}
-                  disabled={isLoading}
-                  className="px-8 py-4 bg-[#A3B8AD] text-[#0F1412] tracking-[0.2em] font-sans uppercase text-xs font-semibold hover:bg-[#8CA296] transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-3 mx-auto shadow-lg"
-                >
-                  {isLoading ? (
-                    <>
-                      <RefreshCw size={16} className="animate-spin" />
-                      <span>Сопоставляем зеркала...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={16} />
-                      <span>Провести Встречу Зеркал</span>
-                    </>
-                  )}
-                </button>
-              ) : (
-                <div className="text-xs text-amber-300/80 bg-amber-950/20 border border-amber-800/30 p-3 rounded-xs inline-block">
-                  Пройдите обе линзы (Код и Миф) для сопоставления их независимых результатов.
-                </div>
-              )}
+            <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-xs text-gray-400 text-center sm:text-left">
+                {isReadyForSynthesis
+                  ? 'Оба зеркала готовы к сопоставлению. Запустите встречу для поиска параллелей и контрастов.'
+                  : 'Сначала завершите прохождение обеих линз выше.'}
+              </div>
+
+              <button
+                disabled={!isReadyForSynthesis || isLoading}
+                onClick={handleRunSynthesis}
+                className={`w-full sm:w-auto px-8 py-3.5 rounded-xs uppercase tracking-widest text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+                  isReadyForSynthesis
+                    ? 'bg-[var(--color-antique-gold)] text-gray-950 hover:bg-[#D9B770] shadow-[0_0_20px_rgba(200,164,93,0.3)] cursor-pointer'
+                    : 'bg-white/5 text-gray-500 cursor-not-allowed border border-white/5'
+                }`}
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Синтез зеркал...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={14} />
+                    <span>Провести встречу зеркал</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
 
           {errorMessage && (
-            <div className="mt-4 p-3 bg-red-950/30 border border-red-800/40 text-red-300 text-xs text-center">
-              {errorMessage}
+            <div className="mt-4 p-3 bg-red-950/40 border border-red-500/30 text-red-300 text-xs rounded-xs flex items-center gap-2">
+              <AlertCircle size={14} className="shrink-0" />
+              <span>{errorMessage}</span>
             </div>
           )}
         </div>
 
-        {/* SYNTHESIS RESULT VIEW */}
+        {/* RESULTS OF MEETING */}
         <AnimatePresence>
           {meetingResult && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
               className="w-full space-y-8"
             >
-              {/* Ethical Frame Notice */}
-              <div className="p-5 bg-[#15211B]/60 border border-[#2A3B33] rounded-xs text-xs text-gray-300 leading-relaxed text-center font-serif italic">
-                {meetingResult.disclaimer}
-              </div>
-
-              {/* Overview Summary */}
-              <div className="bg-[#111A16] border border-[#2A3B33] p-6 sm:p-8">
-                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                  <span className="text-[11px] uppercase tracking-widest text-[#A3B8AD]">Общее сопоставление</span>
-                  <span className={`text-[10px] uppercase px-2.5 py-1 rounded-full border ${
-                    meetingResult.hasStrongParallels 
-                      ? 'bg-emerald-950/40 border-emerald-700/50 text-emerald-300' 
-                      : 'bg-stone-900 border-stone-700 text-stone-300'
-                  }`}>
-                    {meetingResult.confidenceNote}
+              {/* SUMMARY CARD */}
+              <div className="glass-card p-8 rounded-xs border-[var(--color-antique-gold)]/40 relative overflow-hidden">
+                <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+                  <span className="text-[10px] uppercase font-mono tracking-widest text-[var(--color-antique-gold)] bg-[var(--color-antique-gold)]/10 px-3 py-1 rounded-xs border border-[var(--color-antique-gold)]/20">
+                    Итог встречи двух взглядов
                   </span>
+                  
+                  {meetingResult.confidenceNote && (
+                    <span className="text-xs text-gray-400 italic">
+                      {meetingResult.confidenceNote}
+                    </span>
+                  )}
                 </div>
-                <p className="font-serif text-lg text-gray-200 leading-relaxed">
+
+                <p className="font-serif text-xl sm:text-2xl text-white leading-relaxed font-light">
                   {meetingResult.summary}
                 </p>
               </div>
 
-              {/* PARALLELS SECTION (if any) */}
+              {/* PARALLELS SECTION */}
               {meetingResult.parallels && meetingResult.parallels.length > 0 && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#A3B8AD]">
-                    <Sparkles size={14} className="text-[#C8A45D]" />
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[var(--color-antique-gold)] font-semibold">
+                    <Sparkles size={14} className="text-[var(--color-antique-gold)]" />
                     <span>Точки смыслового пересечения</span>
                   </div>
 
                   <div className="space-y-4">
                     {meetingResult.parallels.map((item, idx) => (
-                      <div key={idx} className="bg-[#111A16] border border-[#2A3B33] p-6 transition-all hover:border-[#3E5246]">
-                        <h4 className="font-serif text-lg text-[#F4F4F4] mb-3">{item.theme}</h4>
+                      <div key={idx} className="glass-card p-6 rounded-xs border-white/10 hover:border-[var(--color-antique-gold)]/40 transition-all">
+                        <h4 className="font-serif text-xl text-white mb-3">{item.theme}</h4>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-xs">
-                          <div className="p-3 bg-[#15211B] border border-[#23332A]">
-                            <span className="text-[10px] uppercase text-[#A3B8AD] block mb-1">Линза Кода:</span>
+                          <div className="p-3.5 bg-[#0B0F18] border border-amber-500/20 rounded-xs">
+                            <span className="text-[10px] uppercase text-[var(--color-antique-gold)] font-mono block mb-1">Линза Кода:</span>
                             <span className="text-gray-300 leading-relaxed">{item.codeAnchor}</span>
                           </div>
-                          <div className="p-3 bg-[#15211B] border border-[#23332A]">
-                            <span className="text-[10px] uppercase text-[#A3B8AD] block mb-1">Линза Мифа:</span>
+                          <div className="p-3.5 bg-[#0B0F18] border border-purple-500/20 rounded-xs">
+                            <span className="text-[10px] uppercase text-purple-300 font-mono block mb-1">Линза Мифа:</span>
                             <span className="text-gray-300 leading-relaxed">{item.mythAnchor}</span>
                           </div>
                         </div>
 
-                        <p className="text-sm text-gray-300 border-t border-[#23332A] pt-3 leading-relaxed">
+                        <p className="text-sm text-gray-200 border-t border-white/10 pt-3 leading-relaxed">
                           {item.synthesis}
                         </p>
                       </div>
@@ -284,31 +296,31 @@ export function MeetingOfMirrors({
                 </div>
               )}
 
-              {/* DIVERGENCES / CONTRASTS (if any) */}
+              {/* DIVERGENCES / CONTRASTS */}
               {meetingResult.divergences && meetingResult.divergences.length > 0 && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#A3B8AD]">
-                    <GitFork size={14} className="text-[#7C9082]" />
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-gray-400 font-semibold">
+                    <GitFork size={14} className="text-[var(--color-antique-gold)]" />
                     <span>Различия ракурсов и дополняющие грани</span>
                   </div>
 
                   <div className="space-y-4">
                     {meetingResult.divergences.map((div, idx) => (
-                      <div key={idx} className="bg-[#111A16] border border-[#2A3B33] p-6">
-                        <h4 className="font-serif text-base text-[#EAEAEA] mb-3">{div.theme}</h4>
+                      <div key={idx} className="glass-card p-6 rounded-xs border-white/10">
+                        <h4 className="font-serif text-lg text-gray-200 mb-3">{div.theme}</h4>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3 text-xs">
-                          <div className="p-3 bg-[#171E1B] border border-[#23332A] text-gray-400">
-                            <span className="text-[10px] uppercase text-gray-500 block mb-1">В Коде:</span>
+                          <div className="p-3 bg-[#090D15] border border-white/5 text-gray-400 rounded-xs">
+                            <span className="text-[10px] uppercase text-gray-500 font-mono block mb-1">В Коде:</span>
                             {div.codeAspect}
                           </div>
-                          <div className="p-3 bg-[#171E1B] border border-[#23332A] text-gray-400">
-                            <span className="text-[10px] uppercase text-gray-500 block mb-1">В Мифе:</span>
+                          <div className="p-3 bg-[#090D15] border border-white/5 text-gray-400 rounded-xs">
+                            <span className="text-[10px] uppercase text-gray-500 font-mono block mb-1">В Мифе:</span>
                             {div.mythAspect}
                           </div>
                         </div>
 
-                        <p className="text-xs text-gray-400 italic">
+                        <p className="text-xs text-gray-300 italic">
                           {div.reflection}
                         </p>
                       </div>
@@ -318,58 +330,63 @@ export function MeetingOfMirrors({
               )}
 
               {/* ALBERT'S SYNTHESIS INSIGHT */}
-              <div className="bg-[#15211B] border border-[#3A4E43] p-6 sm:p-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <Feather size={16} className="text-[#C8A45D]" />
-                  <span className="text-xs uppercase tracking-widest text-[#C8A45D]">Взгляд Альберта Вяземского</span>
+              <div className="glass-card p-8 rounded-xs border-[var(--color-antique-gold)]/40 relative">
+                <div className="flex items-center gap-2.5 mb-4 text-[var(--color-antique-gold)]">
+                  <Feather size={16} />
+                  <span className="text-xs uppercase tracking-widest font-semibold">Взгляд Альберта Вяземского</span>
                 </div>
-                <p className="font-serif text-lg sm:text-xl text-[#F4F4F4] leading-relaxed mb-6">
+                <p className="font-serif text-lg sm:text-xl text-[#F4F4F4] leading-relaxed mb-6 font-light">
                   {meetingResult.albertInsight}
                 </p>
 
                 {/* Living Reflective Question */}
-                <div className="border-t border-[#2A3B33] pt-6 mt-6">
-                  <span className="text-[11px] uppercase tracking-widest text-[#A3B8AD] block mb-2">
+                <div className="border-t border-white/10 pt-6 mt-6">
+                  <span className="text-[10px] uppercase tracking-widest text-[var(--color-antique-gold)] font-mono block mb-2">
                     Вопрос для личного исследования
                   </span>
-                  <p className="font-serif italic text-base sm:text-lg text-emerald-200/90 mb-4">
-                    {meetingResult.reflectiveQuestion}
+                  <p className="font-serif italic text-base sm:text-lg text-emerald-200 mb-4">
+                    «{meetingResult.reflectiveQuestion}»
                   </p>
                   <textarea
                     value={userNote}
                     onChange={(e) => setUserNote(e.target.value)}
                     placeholder="Запишите здесь мысли, которые рождаются от этой встречи..."
-                    className="w-full bg-[#0F1412] border border-[#2A3B33] text-gray-200 text-sm p-4 outline-none focus:border-[#A3B8AD] resize-none h-24 rounded-xs placeholder:text-gray-600"
+                    className="w-full bg-[#080C14] border border-white/15 text-gray-200 text-sm p-4 outline-none focus:border-[var(--color-antique-gold)] resize-none h-24 rounded-xs placeholder:text-gray-600 font-sans"
                   />
                 </div>
               </div>
 
-              {/* ALBERT CONTINUATION CTA */}
-              <div className="p-8 bg-[#111A16] border border-[#2A3B33] text-center space-y-4">
-                <h3 className="font-serif text-2xl text-[#F4F4F4]">Продолжить исследование с Альбертом</h3>
-                <p className="text-sm text-gray-400 max-w-md mx-auto leading-relaxed">
-                  Вы можете обсудить результаты встречи зеркал напрямую, задать уточняющий вопрос или перейти к полному анализу.
+              {/* ALBERT TELEGRAM CTA */}
+              <div className="glass-card p-8 sm:p-10 rounded-xs border-[var(--color-antique-gold)]/50 text-center space-y-4 shadow-[0_0_40px_rgba(200,164,93,0.1)]">
+                <div className="w-12 h-12 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-antique-gold)]/30 mx-auto flex items-center justify-center text-[var(--color-antique-gold)] mb-2">
+                  <MessageSquare size={20} />
+                </div>
+                <h3 className="font-serif text-2xl sm:text-3xl text-white">
+                  Обсудить эту тему с Альбертом
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-300 max-w-md mx-auto leading-relaxed font-light">
+                  Вы можете обсудить результаты встречи зеркал напрямую, задать уточняющий вопрос или продолжить исследование в Telegram-проводнике.
                 </p>
 
-                <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row justify-center gap-3 pt-3">
                   <button
                     onClick={() => {
                       setAlbertTopic(`Обсуждение встречи двух зеркал: Душа ${codeResult?.soul}, Путь ${codeResult?.path}, образ Мифа "${storyResult?.title}".`);
                       setIsAlbertOpen(true);
                     }}
-                    className="px-8 py-3.5 bg-[#A3B8AD] text-[#0F1412] tracking-widest uppercase text-xs font-semibold hover:bg-[#8CA296] transition-all flex items-center justify-center gap-2"
+                    className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 tracking-widest uppercase text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                   >
                     <MessageSquare size={15} />
                     <span>Диалог с Альбертом</span>
                   </button>
 
                   <a
-                    href="https://t.me/vyazemsky_albert" 
+                    href="https://t.me/digitalcodesystem_bot" 
                     target="_blank" 
                     rel="noreferrer"
-                    className="px-8 py-3.5 border border-[#2A3B33] text-[#A3B8AD] tracking-widest uppercase text-xs hover:border-[#A3B8AD] hover:text-[#EAEAEA] transition-all flex items-center justify-center gap-2"
+                    className="px-8 py-3.5 border border-[var(--color-antique-gold)]/50 text-[var(--color-antique-gold)] tracking-widest uppercase text-xs font-semibold rounded-xs hover:bg-[var(--color-antique-gold)]/10 transition-all flex items-center justify-center gap-2"
                   >
-                    <ExternalLink size={14} />
+                    <Send size={14} />
                     <span>Telegram-проводник</span>
                   </a>
                 </div>
@@ -379,7 +396,7 @@ export function MeetingOfMirrors({
               <div className="text-center pt-4 pb-12">
                 <button
                   onClick={handleRunSynthesis}
-                  className="text-xs text-gray-500 hover:text-gray-300 uppercase tracking-widest flex items-center justify-center gap-2 mx-auto"
+                  className="text-xs text-gray-500 hover:text-[var(--color-antique-gold)] uppercase tracking-widest flex items-center justify-center gap-2 mx-auto transition-colors"
                 >
                   <RefreshCw size={12} />
                   <span>Обновить сопоставление</span>

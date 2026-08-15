@@ -1,61 +1,73 @@
 @import "tailwindcss";
 
 @theme {
-  --color-marble: #F8F5EF;
-  --color-ivory: #FFFDF8;
-  --color-warm-paper: #F4EFE6;
-  --color-ink: #171717;
-  --color-graphite: #2A2927;
-  --color-muted: #7C746A;
-  --color-antique-gold: #C8A45D;
-  --color-deep-gold: #9B762E;
-  --color-bronze: #7B6032;
-  --color-terracotta: #A85F3D;
-  --color-olive: #6F7655;
-  --color-aegean: #1E3A4A;
+  --color-canvas: #090D15;
+  --color-canvas-subtle: #0F141F;
+  --color-card-bg: rgba(15, 20, 31, 0.75);
+  --color-card-border: rgba(200, 164, 93, 0.2);
   
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-antique-gold: #C8A45D;
+  --color-gold-light: #E8D39E;
+  --color-gold-dark: #967431;
+  --color-graphite: #182030;
+  --color-slate-deep: #121824;
+  --color-veil: rgba(200, 164, 93, 0.08);
+
+  --font-sans: "Manrope", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Cormorant Garamond", ui-serif, Georgia, serif;
 }
 
 @layer base {
   :root {
-    --border-soft: rgba(42, 41, 39, 0.12);
-    --shadow-luxury: 0 24px 80px rgba(30, 25, 18, 0.10);
+    --bg-dark: #090D15;
+    --card-dark: #0F141F;
+    --border-gold: rgba(200, 164, 93, 0.22);
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --shadow-halo: 0 0 50px rgba(200, 164, 93, 0.15);
+    --shadow-card: 0 20px 60px rgba(0, 0, 0, 0.5);
   }
   
   body {
-    @apply font-sans antialiased text-[var(--color-ink)] bg-[var(--color-marble)];
+    background-color: #090D15;
+    color: #E6E9EF;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif tracking-tight text-[var(--color-ink)];
+    font-family: var(--font-serif);
+    letter-spacing: -0.01em;
   }
 }
 
 @layer components {
-  .bg-marble {
-    background-color: var(--color-marble);
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
-    box-shadow: inset 0 0 100px rgba(42, 41, 39, 0.03);
+  /* Subtle Atmospheric Background */
+  .bg-cosmic-mesh {
+    background-color: #090D15;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(200, 164, 93, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(30, 58, 138, 0.08) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, rgba(15, 23, 42, 0.6) 0px, transparent 100%);
   }
 
-  .bg-kraft {
-    background-color: var(--color-warm-paper);
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter2)' opacity='0.05'/%3E%3C/svg%3E");
-    box-shadow: inset 0 0 140px rgba(123, 96, 50, 0.04);
+  /* Glass Card */
+  .glass-card {
+    background: rgba(15, 20, 31, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(200, 164, 93, 0.18);
   }
 
-  /* Soft glowing animation for premium feel */
-  @keyframes ethereal-pulse {
-    0%, 100% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(200, 164, 93, 0.3)); }
-    50% { opacity: 1; filter: drop-shadow(0 0 35px rgba(200, 164, 93, 0.6)); }
+  .glass-card-hover {
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .animate-ethereal {
-    animation: ethereal-pulse 6s ease-in-out infinite;
+  .glass-card-hover:hover {
+    border-color: rgba(200, 164, 93, 0.45);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(200, 164, 93, 0.12);
   }
 
-  /* Golden text shimmer */
+  /* Gold Shimmer Text */
   @keyframes gold-shimmer {
     0% { background-position: -200% center; }
     100% { background-position: 200% center; }
@@ -63,10 +75,9 @@
   .gold-shimmer-text {
     background: linear-gradient(
       to right,
-      var(--color-antique-gold) 20%,
-      #fcebb6 40%,
-      #fcebb6 60%,
-      var(--color-antique-gold) 80%
+      #C8A45D 20%,
+      #FFF0CC 45%,
+      #C8A45D 70%
     );
     background-size: 200% auto;
     color: transparent;
@@ -75,101 +86,65 @@
     animation: gold-shimmer 8s linear infinite;
   }
 
-  /* Story Markdown Rendering */
+  /* Ethereal Glow */
+  @keyframes ethereal-halo {
+    0%, 100% { opacity: 0.6; filter: drop-shadow(0 0 20px rgba(200, 164, 93, 0.2)); }
+    50% { opacity: 0.9; filter: drop-shadow(0 0 45px rgba(200, 164, 93, 0.45)); }
+  }
+  .animate-halo {
+    animation: ethereal-halo 6s ease-in-out infinite;
+  }
+
+  /* Story & Editorial Typography */
   .markdown-body h1, .markdown-body h2, .markdown-body h3 {
-    @apply font-serif text-[var(--color-ink)] mt-10 mb-6;
+    font-family: var(--font-serif);
+    color: #F3F4F6;
+    margin-top: 2rem;
+    margin-bottom: 1.25rem;
+    font-weight: 400;
   }
   
   .markdown-body h2 {
-    @apply text-3xl italic;
+    font-size: 1.75rem;
+    font-style: italic;
   }
   .markdown-body h3 {
-    @apply text-2xl;
+    font-size: 1.35rem;
   }
   .markdown-body p {
-    @apply mb-6 text-[var(--color-ink)] leading-relaxed text-lg font-serif;
+    margin-bottom: 1.5rem;
+    color: #D1D5DB;
+    line-height: 1.8;
+    font-size: 1.05rem;
+    font-family: var(--font-serif);
   }
   .markdown-body strong {
-    @apply font-semibold;
-  }
-  .markdown-body ul {
-    @apply list-disc pl-6 mb-6 space-y-3 text-lg text-[var(--color-ink)] font-serif;
+    color: #F9FAFB;
+    font-weight: 600;
   }
   .markdown-body blockquote {
-    @apply border-l px-6 italic text-[var(--color-muted)] border-[var(--color-antique-gold)] my-8 text-xl font-serif;
+    border-left: 2px solid #C8A45D;
+    padding-left: 1.5rem;
+    font-style: italic;
+    color: #9CA3AF;
+    margin: 2rem 0;
+    font-size: 1.15rem;
+    font-family: var(--font-serif);
   }
 }
 
-/* DatePicker Customs */
-.react-datepicker-wrapper {
-  width: 100%;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-.react-datepicker-popper {
-  z-index: 9999 !important;
+::-webkit-scrollbar-track {
+  background: #090D15;
 }
-.react-datepicker {
-  font-family: var(--font-sans) !important;
-  border: 1px solid rgba(200, 164, 93, 0.3) !important;
-  background-color: var(--color-ivory) !important;
-  border-radius: 2px !important;
-  box-shadow: 0 24px 80px rgba(30, 25, 18, 0.15) !important;
-  padding: 16px;
+::-webkit-scrollbar-thumb {
+  background: #1F293D;
+  border-radius: 3px;
 }
-.react-datepicker__triangle {
-  display: none !important;
-}
-.react-datepicker__header {
-  background-color: transparent !important;
-  border-bottom: 1px solid rgba(200, 164, 93, 0.2) !important;
-  padding-top: 4px !important;
-  padding-bottom: 12px !important;
-}
-.react-datepicker__current-month, .react-datepicker-time__header, .react-datepicker-year-header {
-  font-family: var(--font-serif);
-  font-size: 1.25rem !important;
-  font-weight: 400 !important;
-  color: var(--color-ink) !important;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 8px;
-}
-.react-datepicker__day-name {
-  color: var(--color-muted) !important;
-  font-size: 0.65rem !important;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  width: 2.5rem !important;
-  margin: 0.25rem !important;
-}
-.react-datepicker__day {
-  color: var(--color-ink) !important;
-  width: 2.5rem !important;
-  line-height: 2.5rem !important;
-  margin: 0.25rem !important;
-  border-radius: 50% !important;
-  transition: all 0.3s ease !important;
-  font-size: 0.95rem !important;
-}
-.react-datepicker__day:hover {
-  background-color: rgba(200, 164, 93, 0.1) !important;
-  color: var(--color-antique-gold) !important;
-  border-radius: 2px !important;
-}
-.react-datepicker__day--selected,
-.react-datepicker__day--keyboard-selected {
-  background-color: var(--color-antique-gold) !important;
-  color: var(--color-ivory) !important;
-  border-radius: 2px !important;
-  box-shadow: 0 4px 12px rgba(200, 164, 93, 0.2) !important;
-}
-.react-datepicker__day--outside-month {
-  color: var(--color-muted) !important;
-  opacity: 0.4;
-}
-.react-datepicker__navigation {
-  top: 20px !important;
-}
-.react-datepicker__navigation-icon::before {
-  border-color: var(--color-antique-gold) !important;
-  border-width: 2px 2px 0 0 !important;
+::-webkit-scrollbar-thumb:hover {
+  background: #C8A45D;
 }
