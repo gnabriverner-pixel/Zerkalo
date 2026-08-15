@@ -118,7 +118,7 @@ async function main() {
   }
 
   const ts = new Date().toISOString().replace(/[:.]/gu, "-");
-  const outDir = path.join(process.cwd(), "lab_ab_runs");
+  const outDir = process.env.LAB_AB_OUT_DIR || path.join(process.cwd(), "lab_ab_runs");
   await fs.mkdir(outDir, { recursive: true });
 
   const blindPath = path.join(outDir, `${ts}-blind.json`);
