@@ -280,9 +280,15 @@ export class DeepSeekMythProvider implements PersonalMythProvider {
       max_tokens: 5000,
       response_format: { type: "json_object" },
     };
-    // Non-thinking по умолчанию: никаких reasoning-полей.
+    // DeepSeek V4: режим thinking должен быть ЯВНЫМ (по умолчанию API включает thinking,
+    // и content может оказаться пустым, пока reasoning пожирает max_tokens).
+    // Non-thinking (дефолт лаборатории): thinking.type=disabled — проверено эмпирически
+    // и соответствует официальному guide thinking_mode.
     // Thinking (эксперимент): одинаково для обеих моделей A/B, уровень из env.
-    if (this.thinking !== "off") {
+    if (this.thinking === "off") {
+      body.thinking = { type: "disabled" };
+    } else {
+      body.thinking = { type: "enabled" };
       body.reasoning_effort = this.reasoningEffort;
     }
     return body;

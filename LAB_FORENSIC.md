@@ -34,7 +34,8 @@ Base: свежий clone `gnabriverner-pixel/Zerkalo`
 ## Модельный контракт
 
 - Только `deepseek-v4-flash` / `deepseek-v4-pro`. `deepseek-chat`/`deepseek-reasoner` в конфигах и доки этой ветки отсутствуют.
-- A/B: одинаковый prompt, одинаковая температура, одинаковый `max_tokens`, одинаковый thinking-режим (по умолчанию `off`; `LAB_MYTH_THINKING=high|max` — эксперимент, до запуска сверяется с официальной документацией).
+- A/B: одинаковый prompt, одинаковая температура, одинаковый `max_tokens`, одинаковый thinking-режим.
+- **Эмпирически проверено (live-проба 2026-08):** DeepSeek V4 по умолчанию отвечает в thinking-режиме (`reasoning_content` заполнен, `content` может быть пустым, `finish_reason=length`). Non-thinking включается явно: `"thinking": {"type": "disabled"}`. Thinking: `"thinking": {"type": "enabled"}, "reasoning_effort": "high"|"max"`. Лаборатория по умолчанию использует `off` (`LAB_MYTH_THINKING=off`), для A/B обе модели получают одинаковые настройки.
 
 ## Заморожено (не трогать в Gate 1)
 
