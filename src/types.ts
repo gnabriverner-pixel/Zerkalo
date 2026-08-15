@@ -152,6 +152,9 @@ export interface ABComparisonResponse {
   variantB: ABModelOutput;
   modelAName: string;
   modelBName: string;
+  ui?: {
+    safe_message?: string;
+  };
 }
 
 export interface ABRevealResponse {

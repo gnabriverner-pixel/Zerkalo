@@ -11,6 +11,7 @@ import { generateDeterministicMeeting } from "./src/services/meetingOfMirrors";
 import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
 import {
+  buildPersonalMythPrompt as buildLabMythPrompt,
   containsCrisisLanguage,
   createMythProvider,
   generatePersonalMyth,
@@ -609,7 +610,7 @@ ${payload2}
         consent_version: "personal-myth-v1-ab",
         answers: fixture.inputs,
       });
-      const prompt = buildPersonalMythPrompt(request);
+      const prompt = buildLabMythPrompt(request);
 
       const runProvider = async (provider: PersonalMythProvider) => {
         const startedAt = Date.now();
