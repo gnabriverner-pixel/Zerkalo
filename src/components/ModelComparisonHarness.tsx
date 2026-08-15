@@ -1,23 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
-  Layers, 
-  Check, 
   Eye, 
   EyeOff, 
-  Clock, 
   RefreshCw, 
-  Send, 
-  BookOpen, 
-  Feather, 
-  CheckCircle2,
-  ChevronRight,
-  Sliders,
-  HelpCircle
+  Sliders
 } from 'lucide-react';
-import { ABComparisonResponse, ABModelOutput, StoryInputs } from '../types';
-import { AB_FIXTURES, FixtureItem } from '../data/abFixtures';
+import { ABComparisonResponse, StoryInputs } from '../types';
+import { AB_FIXTURES } from '../data/abFixtures';
 
 export function ModelComparisonHarness() {
   const [selectedFixtureIdx, setSelectedFixtureIdx] = useState<number>(0);
@@ -30,6 +21,8 @@ export function ModelComparisonHarness() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [comparisonData, setComparisonData] = useState<ABComparisonResponse | null>(null);
+  const [comparisonId, setComparisonId] = useState('');
+  const [revealData, setRevealData] = useState<{ aModel: string; bModel: string } | null>(null);
   const [showModelNames, setShowModelNames] = useState(false);
   const [selectedVote, setSelectedVote] = useState<'A' | 'B' | 'TIE' | null>(null);
   const [errorText, setErrorText] = useState('');
@@ -41,6 +34,7 @@ export function ModelComparisonHarness() {
     setErrorText('');
     setShowModelNames(false);
     setSelectedVote(null);
+    setRevealData(null);
 
     try {
       const payload = customMode 
@@ -57,14 +51,40 @@ export function ModelComparisonHarness() {
 
       if (data.status === 'ok') {
         setComparisonData(data);
+        setComparisonId((data as any).comparisonId || '');
       } else {
-        setErrorText('Ошибка при формировании сравнительной генерации.');
+        setErrorText(data.ui?.safe_message || 'Ошибка при формировании сравнительной генерации.');
       }
     } catch (err) {
       console.error(err);
       setErrorText('Сетевая ошибка при обращении к серверу.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleReveal = async () => {
+    if (showModelNames) {
+      setShowModelNames(false);
+      return;
+    }
+    if (!comparisonId) return;
+    try {
+      const response = await fetch('/api/ab-reveal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comparisonId })
+      });
+      const data = await response.json();
+      if (data.status === 'ok') {
+        setRevealData({ aModel: data.variantA.actualModel, bModel: data.variantB.actualModel });
+        setShowModelNames(true);
+      } else {
+        setErrorText(data.ui?.safe_message || 'Не удалось раскрыть модели.');
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorText('Сетевая ошибка при раскрытии моделей.');
     }
   };
 
@@ -257,7 +277,7 @@ export function ModelComparisonHarness() {
                 </div>
 
                 <button
-                  onClick={() => setShowModelNames(!showModelNames)}
+                  onClick={() => void handleReveal()}
                   className="text-xs text-[#C8A45D] hover:underline flex items-center gap-1.5"
                 >
                   {showModelNames ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -281,10 +301,10 @@ export function ModelComparisonHarness() {
                         <span className="font-serif text-lg text-[#F4F4F4]">Вариант А</span>
                       </div>
 
-                      {showModelNames && (
+                      {showModelNames && revealData && (
                         <div className="text-right">
                           <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-xs border border-emerald-800/40">
-                            {comparisonData.variantA.actualModel}
+                            {revealData.aModel}
                           </span>
                           <span className="text-[10px] text-gray-500 block mt-0.5">
                             {comparisonData.variantA.latencyMs} мс
@@ -332,10 +352,10 @@ export function ModelComparisonHarness() {
                         <span className="font-serif text-lg text-[#F4F4F4]">Вариант Б</span>
                       </div>
 
-                      {showModelNames && (
+                      {showModelNames && revealData && (
                         <div className="text-right">
                           <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-xs border border-emerald-800/40">
-                            {comparisonData.variantB.actualModel}
+                            {revealData.bModel}
                           </span>
                           <span className="text-[10px] text-gray-500 block mt-0.5">
                             {comparisonData.variantB.latencyMs} мс

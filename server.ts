@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
+import crypto from "crypto";
 import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
 import { generateFullInterpretationPayload, generateFirstMirror } from "./src/services/interpretation";
@@ -9,11 +10,23 @@ import { buildPersonalMythPrompt, buildMeetingOfMirrorsPrompt } from "./src/serv
 import { generateDeterministicMeeting } from "./src/services/meetingOfMirrors";
 import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
+import {
+  containsCrisisLanguage,
+  createMythProvider,
+  generatePersonalMyth,
+  parsePersonalMythRequest,
+  type PersonalMythProvider,
+} from "./server/myth";
 
+// --- Замороженные конфигурации предыдущего снапшота (не используются lab-флоу) ---
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const MYTH_MODEL_A = process.env.MYTH_MODEL_A || "gemini-2.5-flash";
 const MYTH_MODEL_B = process.env.MYTH_MODEL_B || "gemini-2.5-pro";
 const SYNTHESIS_MODEL = process.env.SYNTHESIS_MODEL || "gemini-2.5-flash";
+
+// --- Лаборатория Gate 1: Личный миф на DeepSeek V4 (актуальные model IDs) ---
+const LAB_MYTH_MODEL_A = process.env.LAB_MYTH_MODEL_A || "deepseek-v4-flash";
+const LAB_MYTH_MODEL_B = process.env.LAB_MYTH_MODEL_B || "deepseek-v4-pro";
 
 function isCrisisInput(inputs: StoryInputs): boolean {
   const combined = `${inputs.q1 || ''} ${inputs.q2 || ''} ${inputs.q3 || ''} ${inputs.q4 || ''}`.toLowerCase();
@@ -35,6 +48,22 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
+  const personalMythEnabled = /^(1|true|yes|on)$/iu.test(process.env.PERSONAL_MYTH_ENABLED || "1");
+  const personalMythTimeoutMs = Math.min(
+    90_000,
+    Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 45_000),
+  );
+  let mythProvider: PersonalMythProvider;
+  try {
+    mythProvider = createMythProvider(process.env);
+  } catch (error) {
+    console.error("Lab Myth provider configuration error:", error instanceof Error ? error.message : "unknown");
+    mythProvider = createMythProvider({ ...process.env, DEEPSEEK_API_KEY: "" });
+  }
+  const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
+  const mythRate = new Map<string, { windowStartedAt: number; count: number }>();
+  const abRevealCache = new Map<string, { expiresAt: number; modelA: string; modelB: string; swap: boolean }>();
+
   app.use(express.json({ limit: "5mb" }));
 
   app.get("/health", (req, res) => {
@@ -46,8 +75,28 @@ async function startServer() {
         default: DEFAULT_MODEL,
         mythA: MYTH_MODEL_A,
         mythB: MYTH_MODEL_B,
-        synthesis: SYNTHESIS_MODEL
+        synthesis: SYNTHESIS_MODEL,
+        labMythA: LAB_MYTH_MODEL_A,
+        labMythB: LAB_MYTH_MODEL_B
       }
+    });
+  });
+
+  app.get("/health/ready", (req, res) => {
+    const ready = mythProvider.isReady();
+    res.status(ready ? 200 : 503).json({
+      status: ready ? "ready" : "not_ready",
+      service: "zerkalo",
+      version: "1.0.0-lab",
+      features: {
+        lab_myth: {
+          enabled: personalMythEnabled,
+          ready,
+          provider: mythProvider.name,
+          model: mythProvider.model,
+        },
+        ab: { ready },
+      },
     });
   });
 
@@ -176,7 +225,86 @@ async function startServer() {
     }
   });
 
-  // Core generation endpoint
+  // --- LAB: Личный миф (DeepSeek V4, независимая линза) ---
+  // Writer и safety разделены. Никакого canned-фолбэка: ошибка — честная ошибка.
+  const handleLabMyth = async (req: express.Request, res: express.Response) => {
+    if (!personalMythEnabled) {
+      return res.status(503).json({
+        status: "unavailable",
+        code: "personal_myth_disabled",
+        ui: { safe_message: "Личный миф временно недоступен. Ответы сохранены в этом браузере." },
+      });
+    }
+    if (!mythProvider.isReady()) {
+      return res.status(503).json({
+        status: "unavailable",
+        code: "personal_myth_provider_not_ready",
+        ui: { safe_message: "Личный миф сейчас не удаётся собрать. Ответы сохранены в этом браузере." },
+      });
+    }
+
+    const now = Date.now();
+    const clientKey = req.ip || "unknown";
+    const rate = mythRate.get(clientKey);
+    if (!rate || now - rate.windowStartedAt > 10 * 60_000) {
+      mythRate.set(clientKey, { windowStartedAt: now, count: 1 });
+    } else if (rate.count >= 5) {
+      return res.status(429).json({
+        status: "error",
+        code: "rate_limited",
+        ui: { safe_message: "Слишком много попыток подряд. Вернитесь к истории через несколько минут." },
+      });
+    } else {
+      rate.count += 1;
+    }
+
+    try {
+      const request = parsePersonalMythRequest(req.body);
+      const cached = mythCache.get(request.request_id);
+      if (cached && cached.expiresAt > now) return res.status(200).json(cached.payload);
+
+      if (containsCrisisLanguage(request.answers)) {
+        return res.status(200).json({
+          status: "crisis",
+          ui: {
+            safe_message: "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой.",
+          },
+        });
+      }
+
+      const generated = await generatePersonalMyth(request, mythProvider, personalMythTimeoutMs);
+      const payload = {
+        mode: "story",
+        status: "ok",
+        request_id: request.request_id,
+        story_result: generated.result,
+        qa: {
+          passed: generated.quality.passed,
+          word_count: generated.quality.word_count,
+          repaired: generated.repaired,
+        },
+      };
+      mythCache.set(request.request_id, { expiresAt: now + 30 * 60_000, payload });
+      return res.status(200).json(payload);
+    } catch (error) {
+      const code = error instanceof Error ? error.message.split(":", 1)[0] : "personal_myth_failed";
+      console.error("Lab Myth generation failed:", code);
+      const inputError = code.startsWith("invalid_");
+      return res.status(inputError ? 400 : 502).json({
+        status: "error",
+        code,
+        ui: {
+          safe_message: inputError
+            ? "Проверьте, что на все четыре вопроса есть короткий ответ."
+            : "Историю не удалось собрать достаточно точно. Ответы сохранены — можно повторить попытку.",
+        },
+      });
+    }
+  };
+
+  app.post("/api/lab/myth/generate", handleLabMyth);
+
+  // Core generation endpoint (замороженный снапшот; UI лаборатории его не использует)
   app.post("/api/generate", async (req, res) => {
     try {
       const { mode, date, calc, storyInputs, modelOverride } = req.body;
@@ -373,7 +501,7 @@ ${payload2}
     }
   });
 
-  // Dedicated Meeting of Mirrors Endpoint (Independent synthesis)
+  // Dedicated Meeting of Mirrors Endpoint (замороженный снапшот; контракт переписывается в Gate 2)
   app.post("/api/meeting-of-mirrors", async (req, res) => {
     try {
       const { codeData, storyData } = req.body;
@@ -458,7 +586,7 @@ ${payload2}
     }
   });
 
-  // Dedicated Blind A/B Model Comparison Endpoint
+  // Dedicated Blind A/B Model Comparison Endpoint (DeepSeek V4, одинаковые настройки)
   app.post("/api/ab-compare", async (req, res) => {
     try {
       const { fixtureIndex, customInputs } = req.body;
@@ -466,51 +594,39 @@ ${payload2}
         ? AB_FIXTURES[fixtureIndex]
         : (customInputs ? { id: 'custom', title: 'Пользовательский ввод', subtitle: '', theme: '', inputs: customInputs } : AB_FIXTURES[0]);
 
-      const apiKey = process.env.GEMINI_API_KEY;
+      const providerA = createMythProvider(process.env, { model: LAB_MYTH_MODEL_A });
+      const providerB = createMythProvider(process.env, { model: LAB_MYTH_MODEL_B });
 
-      if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.length < 10 || apiKey.includes("API_KEY")) {
+      if (!providerA.isReady() || !providerB.isReady()) {
         return res.status(200).json({
           status: "error",
-          ui: { safe_message: "Для A/B тестирования моделей требуется действительный GEMINI_API_KEY." }
+          ui: { safe_message: "Для слепого сравнения моделей требуется действительный DEEPSEEK_API_KEY." }
         });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
-      const prompt = buildPersonalMythPrompt(fixture.inputs);
+      const request = parsePersonalMythRequest({
+        request_id: `ab_${Date.now()}`,
+        consent_version: "personal-myth-v1-ab",
+        answers: fixture.inputs,
+      });
+      const prompt = buildPersonalMythPrompt(request);
 
-      // Model A execution
-      const startA = Date.now();
-      const callA = ai.models.generateContent({
-        model: MYTH_MODEL_A,
-        contents: prompt,
-        config: { temperature: 0.7 }
-      }).then(r => ({
-        text: r.text || "{}",
-        latency: Date.now() - startA,
-        model: MYTH_MODEL_A
-      })).catch(err => ({
-        text: JSON.stringify({ error: String(err) }),
-        latency: Date.now() - startA,
-        model: MYTH_MODEL_A
-      }));
+      const runProvider = async (provider: PersonalMythProvider) => {
+        const startedAt = Date.now();
+        try {
+          const text = await provider.generate(prompt, personalMythTimeoutMs);
+          return { text, latencyMs: Date.now() - startedAt, model: provider.model, failed: false };
+        } catch (error) {
+          return {
+            text: JSON.stringify({ error: error instanceof Error ? error.message : "unknown" }),
+            latencyMs: Date.now() - startedAt,
+            model: provider.model,
+            failed: true,
+          };
+        }
+      };
 
-      // Model B execution
-      const startB = Date.now();
-      const callB = ai.models.generateContent({
-        model: MYTH_MODEL_B,
-        contents: prompt,
-        config: { temperature: 0.7 }
-      }).then(r => ({
-        text: r.text || "{}",
-        latency: Date.now() - startB,
-        model: MYTH_MODEL_B
-      })).catch(err => ({
-        text: JSON.stringify({ error: String(err) }),
-        latency: Date.now() - startB,
-        model: MYTH_MODEL_B
-      }));
-
-      const [resA, resB] = await Promise.all([callA, callB]);
+      const [resA, resB] = await Promise.all([runProvider(providerA), runProvider(providerB)]);
 
       const parseResult = (raw: string) => {
         try {
@@ -536,53 +652,62 @@ ${payload2}
 
       const variantA = swap ? {
         id: "A",
-        actualModel: resB.model,
+        actualModel: undefined,
         title: outB.title || "Без названия",
         story: outB.story || "",
         mirror: outB.mirror || {},
         one_step: outB.one_step || "",
         journal_question: outB.journal_question || "",
-        latencyMs: resB.latency
+        latencyMs: resB.latencyMs
       } : {
         id: "A",
-        actualModel: resA.model,
+        actualModel: undefined,
         title: outA.title || "Без названия",
         story: outA.story || "",
         mirror: outA.mirror || {},
         one_step: outA.one_step || "",
         journal_question: outA.journal_question || "",
-        latencyMs: resA.latency
+        latencyMs: resA.latencyMs
       };
 
       const variantB = swap ? {
         id: "B",
-        actualModel: resA.model,
+        actualModel: undefined,
         title: outA.title || "Без названия",
         story: outA.story || "",
         mirror: outA.mirror || {},
         one_step: outA.one_step || "",
         journal_question: outA.journal_question || "",
-        latencyMs: resA.latency
+        latencyMs: resA.latencyMs
       } : {
         id: "B",
-        actualModel: resB.model,
+        actualModel: undefined,
         title: outB.title || "Без названия",
         story: outB.story || "",
         mirror: outB.mirror || {},
         one_step: outB.one_step || "",
         journal_question: outB.journal_question || "",
-        latencyMs: resB.latency
+        latencyMs: resB.latencyMs
       };
+
+      const comparisonId = `ab_${crypto.randomUUID().replace(/-/gu, "")}`;
+      abRevealCache.set(comparisonId, {
+        expiresAt: Date.now() + 30 * 60_000,
+        modelA: providerA.model,
+        modelB: providerB.model,
+        swap,
+      });
 
       res.status(200).json({
         status: "ok",
+        comparisonId,
         fixtureId: fixture.id,
         fixtureTitle: fixture.title,
         inputs: fixture.inputs,
         variantA,
         variantB,
-        modelAName: MYTH_MODEL_A,
-        modelBName: MYTH_MODEL_B
+        modelAName: "—",
+        modelBName: "—"
       });
 
     } catch (error) {
@@ -592,6 +717,28 @@ ${payload2}
         ui: { safe_message: "Не удалось выполнить сравнительную генерацию моделей." }
       });
     }
+  });
+
+  // Blind reveal: имена моделей открываются только по явному запросу после выбора
+  app.post("/api/ab-reveal", (req, res) => {
+    const comparisonId = String(req.body?.comparisonId || "");
+    const entry = comparisonId ? abRevealCache.get(comparisonId) : undefined;
+    if (!entry || entry.expiresAt < Date.now()) {
+      return res.status(200).json({
+        status: "error",
+        ui: { safe_message: "Сравнение устарело — запустите генерацию заново." }
+      });
+    }
+    const aModel = entry.swap ? entry.modelB : entry.modelA;
+    const bModel = entry.swap ? entry.modelA : entry.modelB;
+    res.status(200).json({
+      status: "ok",
+      comparisonId,
+      modelAName: entry.modelA,
+      modelBName: entry.modelB,
+      variantA: { actualModel: aModel },
+      variantB: { actualModel: bModel },
+    });
   });
 
   // Vite middleware for development

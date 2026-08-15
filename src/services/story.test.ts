@@ -22,12 +22,18 @@ describe('Story Module constraints', () => {
     expect(fileContent).toContain('setShowLeadForm(true)');
   });
 
-  it('PersonalMyth.tsx fallback contains correct keys', () => {
+  it('PersonalMyth.tsx does not contain a canned fallback story (no fake success)', () => {
     const fileContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
-    expect(fileContent).toContain('mainImage: inputs.q2 ||');
-    expect(fileContent).toContain('innerTension: inputs.q1 ||');
-    expect(fileContent).toContain('hiddenResource: inputs.q4 ||');
-    expect(fileContent).toContain('newView: inputs.q3 ||');
+    expect(fileContent).not.toContain('applyFallback');
+    expect(fileContent).not.toContain('Отражение');
+    expect(fileContent).not.toContain('Сейчас личный миф не удалось собрать');
+  });
+
+  it('PersonalMyth.tsx sends to the lab myth endpoint with request id and consent', () => {
+    const fileContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
+    expect(fileContent).toContain('/api/lab/myth/generate');
+    expect(fileContent).toContain('request_id');
+    expect(fileContent).toContain('consent_version');
   });
 
   it('server prompt does not use forbidden words loosely or directly in user-facing text', () => {
@@ -68,13 +74,14 @@ describe('Story Module constraints', () => {
     expect(fileContent).toMatch(/\/api\/lead/);
   });
 
-  it('LeadModal.tsx и PersonalMyth.tsx проверяет data.status', () => {
+  it('LeadModal.tsx и PersonalMyth.tsx проверяет data.status без canned fallback', () => {
     const leadContent = fs.readFileSync(path.join(__dirname, '../components/LeadModal.tsx'), 'utf-8');
     expect(leadContent).toMatch(/data\.status === 'ok'/);
     
     const pmContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
-    expect(pmContent).toMatch(/data\.status === 'demo'/);
-    expect(pmContent).toMatch(/applyFallback\(\)/);
+    expect(pmContent).toMatch(/data\.status === 'ok'/);
+    expect(pmContent).toMatch(/data\.status === 'crisis'/);
+    expect(pmContent).not.toMatch(/data\.status === 'demo'/);
     expect(pmContent).not.toMatch(/dangerouslySetInnerHTML/);
   });
 });

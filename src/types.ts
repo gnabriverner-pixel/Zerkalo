@@ -54,7 +54,7 @@ export type PersonalMythMirror = {
 
 export interface ApiResponse {
   mode: "code" | "story" | "compatibility";
-  status: "ok" | "demo" | "error" | "crisis";
+  status: "ok" | "demo" | "error" | "crisis" | "unavailable";
   code_result?: {
     mirror_text?: string;
     first_mirror?: FirstMirror;
@@ -154,3 +154,14 @@ export interface ABComparisonResponse {
   modelBName: string;
 }
 
+export interface ABRevealResponse {
+  status: "ok" | "error";
+  comparisonId: string;
+  modelAName: string;
+  modelBName: string;
+  variantA: { actualModel: string };
+  variantB: { actualModel: string };
+  ui?: {
+    safe_message?: string;
+  };
+}

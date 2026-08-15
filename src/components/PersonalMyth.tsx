@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2, BookOpen, Sparkles, Feather, Archive, X, Clock, Compass, Layers, GitFork } from 'lucide-react';
+import { Loader2, BookOpen, Sparkles, Feather, Archive, X, Clock, Compass, Layers, GitFork, RefreshCw } from 'lucide-react';
 import { ApiResponse, StoryInputs } from '../types';
 import { LeadModal } from './LeadModal';
 import { CosmicParticleBackground } from './CosmicParticleBackground';
@@ -15,17 +15,35 @@ interface PersonalMythProps {
   hasCodeResult?: boolean;
 }
 
+const DRAFT_KEY = 'zerkalo.lab.myth.v1.draft';
+const EMPTY_INPUTS: StoryInputs = { q1: '', q2: '', q3: '', q4: '' };
+
+function requestId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `myth_${crypto.randomUUID().replaceAll('-', '')}`;
+  }
+  return `myth_${Date.now()}_${Math.random().toString(36).slice(2, 14)}`;
+}
+
 export default function PersonalMyth({ 
   onOpenAbout,
   onMythCompleted,
   onNavigateToMeeting,
   hasCodeResult 
 }: PersonalMythProps = {}) {
-  const [step, setStep] = useState(0); // 0 = Intro, 1-4 = questions, 5 = generating, 6 = result
-  const [inputs, setInputs] = useState<StoryInputs>({ q1: '', q2: '', q3: '', q4: '' });
+  const [step, setStep] = useState(0); // 0 = Intro, 1-4 = questions, 5 = generating, 6 = result, 7 = error
+  const [inputs, setInputs] = useState<StoryInputs>(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      return saved ? { ...EMPTY_INPUTS, ...JSON.parse(saved) } : EMPTY_INPUTS;
+    } catch {
+      return EMPTY_INPUTS;
+    }
+  });
   const [result, setResult] = useState<ApiResponse['story_result'] | null>(null);
   const [errorText, setErrorText] = useState('');
   const [safeMessage, setSafeMessage] = useState('');
+  const [activeRequestId, setActiveRequestId] = useState('');
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [resultTab, setResultTab] = useState<'all' | 'timeline' | 'story' | 'mirror'>('all');
@@ -62,66 +80,75 @@ export default function PersonalMyth({
       }
   ];
 
-  const handleNext = () => {
-    if (step < 4) setStep(step + 1);
-    else handleGenerate();
-  };
-
-  const applyFallback = () => {
-    setResult({
-      title: "Отражение",
-      story: "Сейчас личный миф не удалось собрать. Вы можете сохранить ответы и вернуться позже.",
-      mirror: {
-        mainImage: inputs.q2 || "Образ пока не назван",
-        innerTension: inputs.q1 || "Состояние пока требует уточнения",
-        hiddenResource: inputs.q4 || "Качество, которого сейчас не хватает",
-        newView: inputs.q3 || "Точка живости пока не описана"
-      },
-      meaning: [],
-      one_step: "Выберите одно маленькое действие, которое сегодня вернёт вам ощущение опоры: убрать лишнее, выйти на воздух, записать одну мысль или поговорить с человеком, которому доверяете.",
-      journal_question: "Какое крошечное действие я могу сделать прямо сейчас?",
-      disclaimer: "Образный формат для саморефлексии. Не диагностика и не инструкция к действию."
-    });
-    setStep(6);
-  };
-
-  const handleGenerate = async () => {
-    setStep(5);
-    setErrorText('');
-    setSafeMessage('');
+  useEffect(() => {
     try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'story', storyInputs: inputs })
-      });
-      const data: ApiResponse = await res.json();
-
-      if (data.status === 'crisis') {
-        setErrorText(data.ui?.safe_message || "Мы не можем сгенерировать историю в данный момент.");
-        setStep(4);
-      } else if (data.status === 'error' || data.status === 'demo' || !data.story_result) {
-        if (data.ui?.safe_message) setSafeMessage(data.ui.safe_message);
-        applyFallback();
-      } else {
-        if (data.ui?.safe_message) setSafeMessage(data.ui.safe_message);
-        setResult(data.story_result || null);
-        if (data.story_result && onMythCompleted) {
-          onMythCompleted(inputs, data.story_result);
-        }
-        setStep(6);
-      }
-    } catch (err) {
-      console.error(err);
-      applyFallback();
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(inputs));
+    } catch {
+      // draft persistence is best-effort
     }
-  };
+  }, [inputs]);
 
   useEffect(() => {
     if (step === 6 && resultRef.current) {
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth' }), 200);
     }
   }, [step]);
+
+  const handleNext = () => {
+    if (step < 4) setStep(step + 1);
+    else handleGenerate();
+  };
+
+  // Нет canned-фолбэка: история не подменяется шаблонным текстом ни при каких условиях.
+  const handleGenerate = async (reuseRequest = false) => {
+    const id = reuseRequest && activeRequestId ? activeRequestId : requestId();
+    setActiveRequestId(id);
+    setStep(5);
+    setErrorText('');
+    setSafeMessage('');
+    try {
+      const res = await fetch('/api/lab/myth/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          request_id: id,
+          consent_version: 'personal-myth-v1',
+          answers: inputs
+        })
+      });
+      const data: ApiResponse = await res.json();
+
+      if (data.status === 'crisis') {
+        setErrorText(data.ui?.safe_message || "Мы не можем сгенерировать историю в данный момент.");
+        setStep(4);
+      } else if (data.status === 'ok' && data.story_result) {
+        if (data.ui?.safe_message) setSafeMessage(data.ui.safe_message);
+        setResult(data.story_result);
+        if (onMythCompleted) onMythCompleted(inputs, data.story_result);
+        setStep(6);
+      } else {
+        setErrorText(data.ui?.safe_message || 'Историю не удалось собрать достаточно точно. Ответы сохранены — можно повторить попытку.');
+        setStep(7);
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorText('Связь прервалась. Ответы сохранены в этом браузере — можно повторить попытку.');
+      setStep(7);
+    }
+  };
+
+  const reset = () => {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // ignore
+    }
+    setInputs(EMPTY_INPUTS);
+    setResult(null);
+    setActiveRequestId('');
+    setErrorText('');
+    setStep(0);
+  };
 
   return (
     <div className="flex flex-col items-center py-20 px-4 sm:px-6 lg:px-8 bg-[#0F1412] min-h-screen text-[#EAEAEA] font-sans relative overflow-x-hidden">
@@ -262,6 +289,44 @@ export default function PersonalMyth({
             </motion.div>
           )}
 
+          {step === 7 && (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="w-full flex flex-col items-start py-16 text-left"
+            >
+              <span className="text-xs tracking-widest uppercase text-[#A3B8AD] mb-4">История не выдана</span>
+              <h2 className="font-serif text-3xl md:text-4xl text-[#F4F4F4] mb-6 leading-snug">
+                Лучше остановиться, чем выдать случайный текст.
+              </h2>
+              <p className="text-sm text-gray-400 leading-relaxed mb-10 max-w-lg">
+                {errorText}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button 
+                  onClick={() => void handleGenerate(true)}
+                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#A3B8AD] text-[#0F1412] tracking-[0.15em] uppercase text-xs font-semibold hover:bg-[#8CA296] transition-all"
+                >
+                  <RefreshCw size={14} />
+                  Повторить
+                </button>
+                <button 
+                  onClick={() => setStep(4)}
+                  className="px-6 py-3.5 bg-transparent border border-[#2A3B33] text-[#A3B8AD] tracking-[0.15em] uppercase text-xs hover:text-[#EAEAEA] hover:border-[#A3B8AD] transition-all"
+                >
+                  Проверить ответы
+                </button>
+                <button 
+                  onClick={reset}
+                  className="px-6 py-3.5 bg-transparent border border-[#2A3B33] text-gray-500 tracking-[0.15em] uppercase text-xs hover:text-[#EAEAEA] hover:border-[#A3B8AD] transition-all"
+                >
+                  Начать заново
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {step === 6 && result && (
             <motion.div
               key="result"
@@ -389,7 +454,7 @@ export default function PersonalMyth({
                      </div>
                    )}
 
-                   {/* Fallback for meaning strings if API hasn't synced or legacy */}
+                   {/* Legacy meaning list (if mirror unavailable) */}
                    {result.meaning && result.meaning.length > 0 && !result.mirror && (
                      <ul className="space-y-4 font-sans text-sm md:text-base text-gray-400">
                         {result.meaning.map((m, i) => {
@@ -463,6 +528,15 @@ export default function PersonalMyth({
                     Большое исследование
                   </button>
                 </div>
+              </div>
+
+              <div className="text-center mt-12">
+                <button 
+                  onClick={reset}
+                  className="px-6 py-3 bg-transparent border border-[#2A3B33] text-gray-500 tracking-[0.15em] uppercase text-xs hover:text-[#EAEAEA] hover:border-[#A3B8AD] transition-all"
+                >
+                  Новая история
+                </button>
               </div>
 
             </motion.div>
