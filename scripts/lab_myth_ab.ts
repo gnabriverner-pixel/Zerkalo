@@ -1,7 +1,8 @@
 // Лаборатория Gate 1: слепой A/B — deepseek-v4-flash vs deepseek-v4-pro.
 // Одинаковые prompt, одинаковые параметры (non-thinking по умолчанию, LAB_MYTH_THINKING).
 // Имена моделей не показываются в blind-файле; mapping — только в reveal-файле.
-// Требует DEEPSEEK_API_KEY в окружении.
+// Каждая фикстура сохраняется инкрементально (partial-файлы), чтобы прогресс
+// был виден и частичный результат не терялся. Требует DEEPSEEK_API_KEY.
 import fs from "fs/promises";
 import path from "path";
 import {
@@ -57,6 +58,12 @@ async function main() {
     Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 45_000),
   );
 
+  const ts = new Date().toISOString().replace(/[:.]/gu, "-");
+  const outDir = process.env.LAB_AB_OUT_DIR || path.join(process.cwd(), "lab_ab_runs");
+  await fs.mkdir(outDir, { recursive: true });
+  const partialBlindPath = path.join(outDir, `${ts}-partial-blind.jsonl`);
+  const partialRevealPath = path.join(outDir, `${ts}-partial-reveal.jsonl`);
+
   const runs: Array<Record<string, unknown>> = [];
   const swapMap: boolean[] = [];
 
@@ -69,6 +76,7 @@ async function main() {
     });
     const prompt = buildPersonalMythPrompt(request);
 
+    console.error(`[ab] fixture ${index + 1}/${AB_FIXTURES.length}: ${fixture.title} ...`);
     const [resA, resB] = await Promise.all([
       runProvider(providerA, prompt, timeoutMs),
       runProvider(providerB, prompt, timeoutMs),
@@ -104,22 +112,30 @@ async function main() {
       failed: (swap ? resA : resB).failed,
     };
 
-    runs.push({
+    const runEntry = {
       fixtureId: fixture.id,
       fixtureTitle: fixture.title,
       inputs: fixture.inputs,
       variantA: blindA,
       variantB: blindB,
-    });
+    };
+    runs.push(runEntry);
+
+    const revealEntry = {
+      fixtureId: fixture.id,
+      fixtureTitle: fixture.title,
+      variantA: { model: swap ? modelB : modelA },
+      variantB: { model: swap ? modelA : modelB },
+    };
+
+    await fs.appendFile(partialBlindPath, `${JSON.stringify(runEntry)}\n`, "utf-8");
+    await fs.appendFile(partialRevealPath, `${JSON.stringify(revealEntry)}\n`, "utf-8");
 
     console.log(`\n=== Фикстура ${index + 1}: ${fixture.title} ===`);
     console.log(`Вариант А: «${blindA.title}» (${wordsOf(blindA.story)} слов, ${blindA.latencyMs} мс${blindA.failed ? ", FAILED" : ""})`);
     console.log(`Вариант Б: «${blindB.title}» (${wordsOf(blindB.story)} слов, ${blindB.latencyMs} мс${blindB.failed ? ", FAILED" : ""})`);
+    console.error(`[ab] fixture ${index + 1} done (${wordsOf(blindA.story)}/${wordsOf(blindB.story)} words)`);
   }
-
-  const ts = new Date().toISOString().replace(/[:.]/gu, "-");
-  const outDir = process.env.LAB_AB_OUT_DIR || path.join(process.cwd(), "lab_ab_runs");
-  await fs.mkdir(outDir, { recursive: true });
 
   const blindPath = path.join(outDir, `${ts}-blind.json`);
   const revealPath = path.join(outDir, `${ts}-reveal.json`);
