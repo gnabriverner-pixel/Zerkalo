@@ -8,8 +8,6 @@ import {
   Zap, 
   Sparkles, 
   RotateCcw, 
-  Compass, 
-  Layers,
   GitFork,
   X
 } from 'lucide-react';
@@ -106,50 +104,50 @@ export default function CodeArchitecture({
   const renderPractices = (num: number) => {
     const practice = PASSPORT_PRACTICES[num] || PASSPORT_PRACTICES[1];
     return (
-      <div className="w-full mt-8 pt-8 border-t border-white/5 space-y-4 text-left">
+      <div className="w-full mt-8 pt-8 border-t border-white/[0.06] space-y-4 text-left">
         <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]/80 block">
           Триптих практик архетипа
         </span>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Observation */}
-          <div className="p-4 bg-[#0B0F18]/90 border border-white/5 rounded-xs">
+          <div className="p-4 bg-[#0B0F18]/90 border border-white/[0.06] rounded-xs">
             <div className="flex items-center gap-1.5 text-xs text-[#A3B8AD] font-medium mb-2">
               <Eye size={14} />
               <span>Наблюдение</span>
             </div>
-            <p className="text-xs text-gray-300 leading-relaxed font-light mb-2">
+            <p className="text-xs text-stone-300 leading-relaxed font-light mb-2">
               {practice.observation.insight}
             </p>
-            <span className="text-[10px] text-gray-500 font-mono block">
+            <span className="text-[10px] text-stone-500 font-mono block">
               Маркер: {practice.observation.bodyMarker}
             </span>
           </div>
 
           {/* Action */}
-          <div className="p-4 bg-[#0B0F18]/90 border border-white/5 rounded-xs">
+          <div className="p-4 bg-[#0B0F18]/90 border border-white/[0.06] rounded-xs">
             <div className="flex items-center gap-1.5 text-xs text-[var(--color-antique-gold)] font-medium mb-2">
               <Zap size={14} />
               <span>Действие</span>
             </div>
-            <p className="text-xs text-gray-300 leading-relaxed font-light mb-2">
+            <p className="text-xs text-stone-300 leading-relaxed font-light mb-2">
               {practice.action.microStep}
             </p>
-            <span className="text-[10px] text-gray-500 font-mono block">
+            <span className="text-[10px] text-stone-500 font-mono block">
               Ритуал: {practice.action.ritual}
             </span>
           </div>
 
           {/* Integration */}
-          <div className="p-4 bg-[#0B0F18]/90 border border-white/5 rounded-xs">
+          <div className="p-4 bg-[#0B0F18]/90 border border-white/[0.06] rounded-xs">
             <div className="flex items-center gap-1.5 text-xs text-purple-300 font-medium mb-2">
               <Sparkles size={14} />
               <span>Интеграция</span>
             </div>
-            <p className="text-xs text-gray-300 leading-relaxed font-serif italic mb-2">
-              {practice.integration.focusMantra}
+            <p className="text-xs text-stone-300 leading-relaxed font-serif italic mb-2">
+              «{practice.integration.focusMantra}»
             </p>
-            <span className="text-[10px] text-gray-500 font-mono block">
+            <span className="text-[10px] text-stone-500 font-mono block">
               Ключ: {practice.integration.balanceKey}
             </span>
           </div>
@@ -161,12 +159,12 @@ export default function CodeArchitecture({
   return (
     <div 
       ref={containerRef}
-      className="flex flex-col items-center justify-center min-h-[calc(100vh-70px)] py-12 px-4 sm:px-6 lg:px-8 bg-[#090D15] text-[#EAEAEA] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white"
+      className="flex flex-col items-center justify-center min-h-[calc(100vh-70px)] py-12 px-4 sm:px-6 lg:px-8 text-[#EAEAEA] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white"
     >
       <div className="w-full max-w-4xl flex flex-col items-center relative z-10 my-auto">
         
         {/* ========================================================= */}
-        {/* 1. INITIAL FORM SCREEN (When no result or isGenerating) */}
+        {/* 1. INITIAL FORM SCREEN */}
         {/* ========================================================= */}
         {!result && (
           <motion.div
@@ -183,11 +181,11 @@ export default function CodeArchitecture({
               Линза II · Цифровой Код
             </span>
 
-            <h1 className="font-serif text-4xl sm:text-6xl text-[#F4F4F4] mb-4 font-normal tracking-tight leading-tight">
+            <h1 className="font-serif text-4xl sm:text-6xl text-stone-100 mb-4 font-light tracking-tight leading-tight">
               Архитектура природы
             </h1>
 
-            <p className="text-base sm:text-lg text-[#C9C0AE] leading-relaxed mb-10 max-w-md mx-auto font-light">
+            <p className="text-base sm:text-lg text-stone-300/80 leading-relaxed mb-10 max-w-md mx-auto font-light">
               Введите дату рождения. Система рассчитает пять главных ключей и откроет их в пошаговом ритуале.
             </p>
 
@@ -223,7 +221,7 @@ export default function CodeArchitecture({
                   showMonthDropdown
                   dropdownMode="select"
                   placeholderText="ДД.ММ.ГГГГ"
-                  className="w-full bg-transparent text-center font-serif text-2xl sm:text-3xl text-white placeholder:text-gray-600 outline-none"
+                  className="w-full bg-transparent text-center font-serif text-2xl sm:text-3xl text-stone-100 placeholder:text-stone-600 outline-none"
                   wrapperClassName="w-full"
                 />
 
@@ -231,7 +229,7 @@ export default function CodeArchitecture({
                   <button
                     type="button"
                     onClick={() => { setDate(''); setSelectedDate(null); }}
-                    className="p-1 text-gray-500 hover:text-white"
+                    className="p-1 text-stone-500 hover:text-stone-200"
                   >
                     <X size={16} />
                   </button>
@@ -261,7 +259,7 @@ export default function CodeArchitecture({
               </button>
 
               {/* Consent & About */}
-              <div className="pt-2 flex items-center justify-center gap-4 text-xs text-gray-500 font-light">
+              <div className="pt-2 flex items-center justify-center gap-4 text-xs text-stone-400 font-light">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
@@ -293,10 +291,10 @@ export default function CodeArchitecture({
           <div className="w-full flex flex-col items-center">
             
             {/* Top Reveal Status Bar */}
-            <div className="w-full flex items-center justify-between py-4 mb-8 border-b border-white/5">
+            <div className="w-full flex items-center justify-between py-4 mb-8 border-b border-white/[0.08]">
               <div className="flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-[var(--color-antique-gold)]" />
-                <span className="text-xs uppercase font-mono tracking-[0.25em] text-gray-400">
+                <span className="text-xs uppercase font-mono tracking-[0.25em] text-stone-400">
                   {revealStep < 5 
                     ? `Шаг ${revealStep} из 5 · Раскрытие карты` 
                     : 'Вся карта раскрыта'}
@@ -329,7 +327,7 @@ export default function CodeArchitecture({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.6 }}
-                    className="w-full bg-[#0D121D] border border-white/10 p-8 sm:p-12 rounded-xs text-center"
+                    className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-12 rounded-xs text-center"
                   >
                     <Orb number={num} size="xl" glow={true} className="mx-auto mb-6" />
 
@@ -337,11 +335,11 @@ export default function CodeArchitecture({
                       Ключ 1 · Внутреннее Ядро
                     </span>
 
-                    <h2 className="font-serif text-3xl sm:text-5xl text-white mb-2 font-normal">
+                    <h2 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-2 font-light">
                       Число Души: {num}
                     </h2>
                     
-                    <span className="text-xs text-gray-400 font-mono uppercase tracking-wider block mb-6">
+                    <span className="text-xs text-stone-400 font-mono uppercase tracking-wider block mb-6">
                       {info.planet} · Состав: {result.soulComposite}
                     </span>
 
@@ -352,11 +350,11 @@ export default function CodeArchitecture({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto text-left mb-6">
                       <div className="p-4 bg-[#0B0F18] border border-emerald-500/20 rounded-xs">
                         <span className="text-[10px] uppercase font-mono text-emerald-400 block mb-1">Сила ядра</span>
-                        <p className="text-xs text-gray-300 font-light leading-relaxed">{pos.strength}</p>
+                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.strength}</p>
                       </div>
                       <div className="p-4 bg-[#0B0F18] border border-amber-500/20 rounded-xs">
                         <span className="text-[10px] uppercase font-mono text-amber-400 block mb-1">Точка напряжения</span>
-                        <p className="text-xs text-gray-300 font-light leading-relaxed">{pos.tension}</p>
+                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.tension}</p>
                       </div>
                     </div>
 
@@ -376,7 +374,7 @@ export default function CodeArchitecture({
               })()}
 
               {/* --------------------------------------------------- */}
-              {/* STEP 2: ЧИСЛО ВЫРАЖЕНИЯ (Встреча двух сил) */}
+              {/* STEP 2: ЧИСЛО ВЫРАЖЕНИЯ */}
               {/* --------------------------------------------------- */}
               {revealStep === 2 && (() => {
                 const num = result.expression;
@@ -389,11 +387,11 @@ export default function CodeArchitecture({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.6 }}
-                    className="w-full bg-[#0D121D] border border-white/10 p-8 sm:p-12 rounded-xs text-center"
+                    className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-12 rounded-xs text-center"
                   >
                     <div className="flex items-center justify-center gap-6 mb-6">
                       <Orb number={result.soul} size="sm" glow={false} />
-                      <span className="text-xs font-mono text-gray-500">↔</span>
+                      <span className="text-xs font-mono text-stone-500">↔</span>
                       <Orb number={num} size="lg" glow={true} />
                     </div>
 
@@ -401,11 +399,11 @@ export default function CodeArchitecture({
                       Ключ 2 · Встреча двух сил (Ядро + Внешняя форма)
                     </span>
 
-                    <h2 className="font-serif text-3xl sm:text-5xl text-white mb-2 font-normal">
+                    <h2 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-2 font-light">
                       Число Выражения: {num}
                     </h2>
                     
-                    <span className="text-xs text-gray-400 font-mono uppercase tracking-wider block mb-6">
+                    <span className="text-xs text-stone-400 font-mono uppercase tracking-wider block mb-6">
                       {info.planet} · Состав: {result.expressionComposite}
                     </span>
 
@@ -416,11 +414,11 @@ export default function CodeArchitecture({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto text-left mb-6">
                       <div className="p-4 bg-[#0B0F18] border border-emerald-500/20 rounded-xs">
                         <span className="text-[10px] uppercase font-mono text-emerald-400 block mb-1">Как вас считывает мир</span>
-                        <p className="text-xs text-gray-300 font-light leading-relaxed">{pos.strength}</p>
+                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.strength}</p>
                       </div>
                       <div className="p-4 bg-[#0B0F18] border border-amber-500/20 rounded-xs">
                         <span className="text-[10px] uppercase font-mono text-amber-400 block mb-1">Рекомендация контакта</span>
-                        <p className="text-xs text-gray-300 font-light leading-relaxed">{pos.recommendation}</p>
+                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.recommendation}</p>
                       </div>
                     </div>
 
@@ -429,7 +427,7 @@ export default function CodeArchitecture({
                     <div className="pt-10 flex items-center justify-center gap-4">
                       <button
                         onClick={() => { setRevealStep(1); scrollToTop(); }}
-                        className="px-6 py-3 border border-white/15 text-gray-400 hover:text-white uppercase tracking-wider text-xs rounded-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                        className="px-6 py-3 border border-white/15 text-stone-400 hover:text-stone-200 uppercase tracking-wider text-xs rounded-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
                         <ChevronLeft size={14} />
                         <span>Назад</span>
@@ -447,7 +445,7 @@ export default function CodeArchitecture({
               })()}
 
               {/* --------------------------------------------------- */}
-              {/* STEP 3: ЧИСЛО ПУТИ (Движение в мире) */}
+              {/* STEP 3: ЧИСЛО ПУТИ */}
               {/* --------------------------------------------------- */}
               {revealStep === 3 && (() => {
                 const num = result.path;
@@ -460,7 +458,7 @@ export default function CodeArchitecture({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.6 }}
-                    className="w-full bg-[#0D121D] border border-white/10 p-8 sm:p-12 rounded-xs text-center"
+                    className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-12 rounded-xs text-center"
                   >
                     <Orb number={num} size="xl" glow={true} className="mx-auto mb-6" />
 
@@ -468,11 +466,11 @@ export default function CodeArchitecture({
                       Ключ 3 · Движение в мире
                     </span>
 
-                    <h2 className="font-serif text-3xl sm:text-5xl text-white mb-2 font-normal">
+                    <h2 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-2 font-light">
                       Число Пути: {num}
                     </h2>
                     
-                    <span className="text-xs text-gray-400 font-mono uppercase tracking-wider block mb-6">
+                    <span className="text-xs text-stone-400 font-mono uppercase tracking-wider block mb-6">
                       {info.planet} · Состав: {result.pathComposite}
                     </span>
 
@@ -483,11 +481,11 @@ export default function CodeArchitecture({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto text-left mb-6">
                       <div className="p-4 bg-[#0B0F18] border border-emerald-500/20 rounded-xs">
                         <span className="text-[10px] uppercase font-mono text-emerald-400 block mb-1">Маршрут успеха</span>
-                        <p className="text-xs text-gray-300 font-light leading-relaxed">{pos.strength}</p>
+                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.strength}</p>
                       </div>
                       <div className="p-4 bg-[#0B0F18] border border-amber-500/20 rounded-xs">
                         <span className="text-[10px] uppercase font-mono text-amber-400 block mb-1">Ловушка пути</span>
-                        <p className="text-xs text-gray-300 font-light leading-relaxed">{pos.tension}</p>
+                        <p className="text-xs text-stone-300 font-light leading-relaxed">{pos.tension}</p>
                       </div>
                     </div>
 
@@ -496,7 +494,7 @@ export default function CodeArchitecture({
                     <div className="pt-10 flex items-center justify-center gap-4">
                       <button
                         onClick={() => { setRevealStep(2); scrollToTop(); }}
-                        className="px-6 py-3 border border-white/15 text-gray-400 hover:text-white uppercase tracking-wider text-xs rounded-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                        className="px-6 py-3 border border-white/15 text-stone-400 hover:text-stone-200 uppercase tracking-wider text-xs rounded-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
                         <ChevronLeft size={14} />
                         <span>Назад</span>
@@ -514,7 +512,7 @@ export default function CodeArchitecture({
               })()}
 
               {/* --------------------------------------------------- */}
-              {/* STEP 4: ЧИСЛО НАПРАВЛЕНИЯ & ЧИСЛО РЕЗУЛЬТАТА */}
+              {/* STEP 4: ЧИСЛО НАПРАВЛЕНИЯ & РЕЗУЛЬТАТА */}
               {/* --------------------------------------------------- */}
               {revealStep === 4 && (() => {
                 const dirNum = result.direction;
@@ -529,7 +527,7 @@ export default function CodeArchitecture({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.6 }}
-                    className="w-full bg-[#0D121D] border border-white/10 p-8 sm:p-12 rounded-xs text-center space-y-8"
+                    className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-12 rounded-xs text-center space-y-8"
                   >
                     <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block">
                       Ключи 4 и 5 · Вектор реализации и Зрелый итог
@@ -537,29 +535,29 @@ export default function CodeArchitecture({
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
                       {/* Direction */}
-                      <div className="p-6 bg-[#0B0F18] border border-white/5 rounded-xs flex flex-col items-center text-center">
+                      <div className="p-6 bg-[#0B0F18] border border-white/[0.06] rounded-xs flex flex-col items-center text-center">
                         <Orb number={dirNum} size="md" glow={true} className="mb-4" />
-                        <span className="text-[10px] uppercase font-mono text-gray-500 block mb-1">
+                        <span className="text-[10px] uppercase font-mono text-stone-500 block mb-1">
                           Число Направления ({result.directionComposite})
                         </span>
-                        <h3 className="font-serif text-2xl text-white mb-3">
+                        <h3 className="font-serif text-2xl text-stone-100 mb-3">
                           {dirInfo.archetypeName} ({dirNum})
                         </h3>
-                        <p className="text-xs text-gray-300 font-light leading-relaxed">
+                        <p className="text-xs text-stone-300 font-light leading-relaxed">
                           {dirInfo.positions.direction.essence}
                         </p>
                       </div>
 
                       {/* Result */}
-                      <div className="p-6 bg-[#0B0F18] border border-white/5 rounded-xs flex flex-col items-center text-center">
+                      <div className="p-6 bg-[#0B0F18] border border-white/[0.06] rounded-xs flex flex-col items-center text-center">
                         <Orb number={resNum} size="md" glow={true} className="mb-4" />
-                        <span className="text-[10px] uppercase font-mono text-gray-500 block mb-1">
+                        <span className="text-[10px] uppercase font-mono text-stone-500 block mb-1">
                           Число Результата ({result.resultComposite})
                         </span>
-                        <h3 className="font-serif text-2xl text-white mb-3">
+                        <h3 className="font-serif text-2xl text-stone-100 mb-3">
                           {resInfo.archetypeName} ({resNum})
                         </h3>
-                        <p className="text-xs text-gray-300 font-light leading-relaxed">
+                        <p className="text-xs text-stone-300 font-light leading-relaxed">
                           {resInfo.positions.result.essence}
                         </p>
                       </div>
@@ -570,7 +568,7 @@ export default function CodeArchitecture({
                     <div className="pt-8 flex items-center justify-center gap-4">
                       <button
                         onClick={() => { setRevealStep(3); scrollToTop(); }}
-                        className="px-6 py-3 border border-white/15 text-gray-400 hover:text-white uppercase tracking-wider text-xs rounded-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                        className="px-6 py-3 border border-white/15 text-stone-400 hover:text-stone-200 uppercase tracking-wider text-xs rounded-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
                         <ChevronLeft size={14} />
                         <span>Назад</span>
@@ -609,16 +607,16 @@ export default function CodeArchitecture({
                     ].map((item, idx) => (
                       <div 
                         key={idx}
-                        className="p-5 bg-[#0D121D] border border-white/5 rounded-xs flex flex-col items-center text-center"
+                        className="p-5 bg-[#0D121D]/80 border border-white/[0.06] rounded-xs flex flex-col items-center text-center"
                       >
-                        <span className="text-[10px] uppercase font-mono tracking-wider text-gray-500 mb-2">
+                        <span className="text-[10px] uppercase font-mono tracking-wider text-stone-500 mb-2">
                           {item.key}
                         </span>
                         <Orb number={item.num} size="sm" glow={false} className="mb-2" />
-                        <span className="font-serif text-xl text-white font-normal">
+                        <span className="font-serif text-xl text-stone-100 font-normal">
                           {item.num}
                         </span>
-                        <span className="text-[9px] text-gray-500 font-mono">
+                        <span className="text-[9px] text-stone-500 font-mono">
                           {item.comp !== item.num.toString() ? item.comp : item.title}
                         </span>
                       </div>
@@ -626,11 +624,11 @@ export default function CodeArchitecture({
                   </div>
 
                   {/* 3x3 Quality Matrix */}
-                  <div className="w-full bg-[#0D121D] border border-white/10 p-6 sm:p-10 rounded-xs text-center">
+                  <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-6 sm:p-10 rounded-xs text-center">
                     <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-2">
                       Матрица качеств
                     </span>
-                    <h3 className="font-serif text-2xl sm:text-3xl text-white font-normal mb-8">
+                    <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-8">
                       Карта потенциалов ({date})
                     </h3>
 
@@ -653,13 +651,13 @@ export default function CodeArchitecture({
                             className={`p-4 rounded-xs border text-center flex flex-col justify-between min-h-[90px] ${
                               count > 0 
                                 ? 'bg-[#121927] border-[var(--color-antique-gold)]/30' 
-                                : 'bg-[#090D15]/50 border-white/5 text-gray-600'
+                                : 'bg-[#090D15]/50 border-white/5 text-stone-600'
                             }`}
                           >
-                            <span className="text-[10px] font-mono text-gray-400 block">
+                            <span className="text-[10px] font-mono text-stone-400 block">
                               {cell.digit} · {cell.name.split(',')[0]}
                             </span>
-                            <span className={`font-serif text-xl sm:text-2xl font-normal ${count > 0 ? 'text-[var(--color-antique-gold)]' : 'text-gray-600'}`}>
+                            <span className={`font-serif text-xl sm:text-2xl font-light ${count > 0 ? 'text-[var(--color-antique-gold)]' : 'text-stone-600'}`}>
                               {count > 0 ? cell.digit.repeat(count) : '—'}
                             </span>
                           </div>
@@ -667,13 +665,13 @@ export default function CodeArchitecture({
                       })}
                     </div>
 
-                    <p className="text-xs text-gray-400 font-light max-w-md mx-auto leading-relaxed">
+                    <p className="text-xs text-stone-400 font-light max-w-md mx-auto leading-relaxed">
                       Матрица отражает распределение ресурсных качеств, плотности энергии и зон внимания.
                     </p>
                   </div>
 
                   {/* Soul Key Practices Detailed */}
-                  <div className="w-full bg-[#0D121D] border border-white/10 p-6 sm:p-10 rounded-xs">
+                  <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-6 sm:p-10 rounded-xs">
                     <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-4">
                       Главный фокус интеграции (Число Души {result.soul})
                     </span>
@@ -681,15 +679,15 @@ export default function CodeArchitecture({
                   </div>
 
                   {/* NEXT STEP: MEETING OF MIRRORS */}
-                  <div className="w-full bg-[#0B0F18] border border-white/10 p-8 sm:p-10 rounded-xs text-center space-y-6">
+                  <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-10 rounded-xs text-center space-y-6">
                     <div>
                       <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
                         Синтез зеркал
                       </span>
-                      <h3 className="font-serif text-2xl sm:text-3xl text-white font-normal mb-2">
+                      <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
                         Встреча Кода и Личного Мифа
                       </h3>
-                      <p className="text-xs sm:text-sm text-gray-400 font-light max-w-md mx-auto leading-relaxed">
+                      <p className="text-xs sm:text-sm text-stone-400 font-light max-w-md mx-auto leading-relaxed">
                         {hasMythResult
                           ? 'Ваш Личный Миф уже создан. Перейдите к синтезу для сопоставления двух независимых отражений.'
                           : 'Пройдите образный ритуал (4 вопроса), чтобы сопоставить математическую карту со сказкой вашего состояния.'}
@@ -714,7 +712,7 @@ export default function CodeArchitecture({
                           setSelectedDate(null);
                           setRevealStep(1);
                         }}
-                        className="px-5 py-3 text-xs uppercase tracking-wider text-gray-500 hover:text-gray-300 flex items-center gap-1.5 transition-colors cursor-pointer"
+                        className="px-5 py-3 text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
                         <RotateCcw size={13} />
                         <span>Рассчитать другую дату</span>

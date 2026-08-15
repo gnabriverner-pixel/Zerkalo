@@ -29,26 +29,30 @@ export default function PersonalMyth({
     {
       id: 'q1',
       tag: '01 / 04 · Напряжение',
-      title: 'Что сейчас внутри требует внимания? Опишите не фактами, а ощущением.',
-      placeholder: 'Например: тяжесть в груди, фоновый шум, застывшее ожидание, развилка...'
+      orbNumber: 4, // Rahu
+      title: 'Что сейчас создаёт внутреннее напряжение или неясность?',
+      placeholder: 'Опишите не фактами, а ощущением: развилка, тяжесть, застывшее ожидание, фоновый шум...'
     },
     {
       id: 'q2',
-      tag: '02 / 04 · Образ',
-      title: 'Если бы это состояние стало образом, природным явлением или комнатой — что бы это было?',
-      placeholder: 'Густой туман над озером, закрытая каменная дверь, пустой маяк на ветру...'
+      tag: '02 / 04 · Образ состояния',
+      orbNumber: 8, // Saturn
+      title: 'Если бы это состояние было образом — что это за образ?',
+      placeholder: 'Каменный замок без окон, туман над застывшим озером, закрытая дверь, маяк в бурю...'
     },
     {
       id: 'q3',
       tag: '03 / 04 · Точка живости',
-      title: 'Вспомните момент, где вы чувствовали себя по-настоящему живым, ясным или в согласии с собой. Что там было?',
-      placeholder: 'Утренний свет, холодная морская вода, разговор у костра, момент завершенного дела...'
+      orbNumber: 5, // Mercury
+      title: 'Вспомните момент за последнее время, когда вы чувствовали себя по-настоящему живым.',
+      placeholder: 'Что там происходило? Утренний свет, холодная вода, открытый разговор, ясность решения...'
     },
     {
       id: 'q4',
       tag: '04 / 04 · Искомое качество',
-      title: 'Какого качества или состояния вам сейчас острее всего не хватает?',
-      placeholder: 'Тишины, дерзости, мягкости, ясных границ, тепла, простора, опоры...'
+      orbNumber: 6, // Venus
+      title: 'Какое качество или состояние вы сейчас больше всего ищете?',
+      placeholder: 'Тишины, дерзости, мягкости, ясных границ, простора, опоры, тепла...'
     }
   ];
 
@@ -102,7 +106,7 @@ export default function PersonalMyth({
   const currentInputValue = currentQuestion ? inputs[currentQuestion.id as keyof StoryInputs] : '';
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-70px)] py-12 px-4 sm:px-6 lg:px-8 bg-[#090D15] text-[#EAEAEA] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-70px)] py-12 px-4 sm:px-6 lg:px-8 text-[#EAEAEA] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
       
       {/* Container */}
       <div className="w-full max-w-3xl flex flex-col items-center relative z-10 my-auto">
@@ -127,11 +131,11 @@ export default function PersonalMyth({
                 Линза I · Личный Миф
               </span>
 
-              <h1 className="font-serif text-4xl sm:text-6xl text-[#F4F4F4] mb-4 font-normal tracking-tight leading-tight">
+              <h1 className="font-serif text-4xl sm:text-6xl text-stone-100 mb-4 font-normal tracking-tight leading-tight">
                 Сказка про вас
               </h1>
 
-              <p className="text-base sm:text-lg text-[#C9C0AE] leading-relaxed mb-10 max-w-lg mx-auto font-light">
+              <p className="text-base sm:text-lg text-stone-300/80 leading-relaxed mb-10 max-w-lg mx-auto font-light">
                 Четыре образных вопроса. Никаких анкет и дат рождения — только живая история, рождающаяся из ваших собственных метафор.
               </p>
               
@@ -143,7 +147,7 @@ export default function PersonalMyth({
                 <ArrowRight size={14} />
               </button>
               
-              <div className="mt-14 text-xs text-gray-500 font-light tracking-wide flex items-center justify-center gap-2">
+              <div className="mt-14 text-xs text-stone-400/60 font-light tracking-wide flex items-center justify-center gap-2">
                  <span>Образный формат для внутренней тишины и саморефлексии.</span>
                  {onOpenAbout && (
                    <button
@@ -169,7 +173,7 @@ export default function PersonalMyth({
               className="w-full flex flex-col items-center text-center max-w-2xl mx-auto py-6"
             >
               {/* Header metadata */}
-              <div className="flex items-center justify-between w-full mb-12">
+              <div className="flex items-center justify-between w-full mb-10">
                 <span className="text-xs uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono">
                   {currentQuestion.tag}
                 </span>
@@ -177,7 +181,7 @@ export default function PersonalMyth({
                 {step > 1 ? (
                   <button 
                     onClick={() => setStep(step - 1)} 
-                    className="text-xs uppercase tracking-wider text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors cursor-pointer"
+                    className="text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <ChevronLeft size={14} />
                     <span>Назад</span>
@@ -185,24 +189,29 @@ export default function PersonalMyth({
                 ) : (
                   <button 
                     onClick={() => setStep(0)} 
-                    className="text-xs uppercase tracking-wider text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
+                    className="text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 transition-colors cursor-pointer"
                   >
                     Отмена
                   </button>
                 )}
               </div>
 
+              {/* Central Orb for current step */}
+              <div className="mb-8">
+                <Orb number={currentQuestion.orbNumber} size="md" glow={true} />
+              </div>
+
               {/* Central Grand Question */}
-              <h2 className="font-serif text-2xl sm:text-4xl text-[#F4F4F4] mb-12 leading-relaxed font-normal max-w-xl">
+              <h2 className="font-serif text-2xl sm:text-4xl text-stone-100 mb-10 leading-relaxed font-light max-w-xl">
                 {currentQuestion.title}
               </h2>
               
-              {/* Minimalist Input (Bottom Gold Line Only) */}
-              <div className="relative w-full mb-12">
+              {/* Minimalist Input (Transparent with Bottom Line) */}
+              <div className="relative w-full mb-10">
                 <textarea 
                   autoFocus
                   rows={3}
-                  className="w-full bg-transparent border-0 border-b border-[var(--color-antique-gold)]/40 focus:border-[var(--color-antique-gold)] text-white placeholder:text-gray-600 text-lg sm:text-2xl font-serif text-center py-4 px-2 outline-none transition-all duration-300 resize-none leading-relaxed"
+                  className="w-full bg-transparent border-0 border-b border-white/20 focus:border-[var(--color-antique-gold)] text-stone-100 placeholder:text-stone-600 text-lg sm:text-2xl font-serif text-center py-4 px-2 outline-none transition-all duration-300 resize-none leading-relaxed"
                   placeholder={currentQuestion.placeholder}
                   value={currentInputValue}
                   onChange={(e) => setInputs({ ...inputs, [currentQuestion.id]: e.target.value })}
@@ -233,7 +242,7 @@ export default function PersonalMyth({
                   <ArrowRight size={14} />
                 </button>
                 
-                <span className="text-[11px] text-gray-600 font-light">
+                <span className="text-[11px] text-stone-500 font-light">
                   {step === 4 ? 'Нажмите Enter для завершения' : 'Нажмите Enter для следующего шага'}
                 </span>
               </div>
@@ -252,10 +261,10 @@ export default function PersonalMyth({
             >
               <Orb number={7} size="lg" glow={true} className="mb-8" />
               <Loader2 className="w-6 h-6 text-[var(--color-antique-gold)] animate-spin mb-6" />
-              <h3 className="font-serif text-2xl sm:text-3xl text-white mb-3 font-normal">
+              <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 mb-3 font-light">
                 Вплетаем нити ваших символов...
               </h3>
-              <p className="text-xs text-gray-400 font-light max-w-sm leading-relaxed">
+              <p className="text-xs text-stone-400 font-light max-w-sm leading-relaxed">
                 Сказка рождается строго из ваших четырех ответов, без домыслов и шаблонов.
               </p>
             </motion.div>
@@ -279,39 +288,39 @@ export default function PersonalMyth({
                   Личный Миф · Сказка
                 </span>
                 
-                <h1 className="font-serif text-3xl sm:text-5xl text-[#F4F4F4] mb-4 font-normal tracking-tight">
+                <h1 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-4 font-light tracking-tight">
                   {result.title}
                 </h1>
               </div>
 
               {/* PROVENANCE: Из каких образов родилась история */}
-              <div className="w-full bg-[#0B0F18]/80 border border-white/5 p-6 sm:p-8 rounded-xs">
+              <div className="w-full bg-[#0D121D]/70 border border-white/[0.08] p-6 sm:p-8 rounded-xs">
                 <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]/80 block mb-4">
                   Символические истоки
                 </span>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <span className="text-[10px] uppercase text-gray-500 font-mono block mb-1">01 · Напряжение</span>
-                    <p className="text-xs text-gray-300 font-serif italic">«{inputs.q1 || '—'}»</p>
+                    <span className="text-[10px] uppercase text-stone-500 font-mono block mb-1">01 · Напряжение</span>
+                    <p className="text-xs text-stone-300 font-serif italic">«{inputs.q1 || '—'}»</p>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase text-gray-500 font-mono block mb-1">02 · Образ состояния</span>
-                    <p className="text-xs text-gray-300 font-serif italic">«{inputs.q2 || '—'}»</p>
+                    <span className="text-[10px] uppercase text-stone-500 font-mono block mb-1">02 · Образ состояния</span>
+                    <p className="text-xs text-stone-300 font-serif italic">«{inputs.q2 || '—'}»</p>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase text-gray-500 font-mono block mb-1">03 · Точка живости</span>
-                    <p className="text-xs text-gray-300 font-serif italic">«{inputs.q3 || '—'}»</p>
+                    <span className="text-[10px] uppercase text-stone-500 font-mono block mb-1">03 · Точка живости</span>
+                    <p className="text-xs text-stone-300 font-serif italic">«{inputs.q3 || '—'}»</p>
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase text-gray-500 font-mono block mb-1">04 · Искомое качество</span>
-                    <p className="text-xs text-gray-300 font-serif italic">«{inputs.q4 || '—'}»</p>
+                    <span className="text-[10px] uppercase text-stone-500 font-mono block mb-1">04 · Искомое качество</span>
+                    <p className="text-xs text-stone-300 font-serif italic">«{inputs.q4 || '—'}»</p>
                   </div>
                 </div>
               </div>
 
-              {/* EDITORIAL STORY TEXT (High Leading, Book Aesthetic) */}
-              <div className="w-full bg-[#0B0F18]/40 border border-white/5 p-8 sm:p-12 rounded-xs">
+              {/* EDITORIAL STORY TEXT (High Leading, Book Chapter) */}
+              <div className="w-full bg-[#0D121D]/50 border border-white/[0.08] p-8 sm:p-12 rounded-xs">
                 <div className="font-serif text-lg sm:text-[21px] leading-[2] text-[#E0E4EC] space-y-8 font-light max-w-2xl mx-auto tracking-wide">
                   {result.story.split('\n\n').map((paragraph, idx) => (
                     <p key={idx}>{paragraph}</p>
@@ -320,12 +329,12 @@ export default function PersonalMyth({
               </div>
 
               {/* LIVING QUESTION FOR REFLECTION */}
-              <div className="w-full bg-[#0D131F]/90 border border-[var(--color-antique-gold)]/20 p-8 sm:p-10 rounded-xs text-center">
+              <div className="w-full bg-[#0D121D]/90 border border-[var(--color-antique-gold)]/20 p-8 sm:p-10 rounded-xs text-center">
                 <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-3">
                   Вопрос для внутренней тишины
                 </span>
                 
-                <p className="font-serif italic text-xl sm:text-2xl text-white mb-6 font-normal max-w-xl mx-auto">
+                <p className="font-serif italic text-xl sm:text-2xl text-stone-100 mb-6 font-light max-w-xl mx-auto">
                   «{result.journal_question || "Какое крошечное решение из чувства покоя я могу принять прямо сейчас?"}»
                 </p>
 
@@ -334,20 +343,20 @@ export default function PersonalMyth({
                   value={journalNote}
                   onChange={(e) => setJournalNote(e.target.value)}
                   placeholder="Запишите здесь свой отклик или мысль..."
-                  className="w-full max-w-xl mx-auto bg-transparent border-0 border-b border-white/15 focus:border-[var(--color-antique-gold)] text-sm text-center py-2 outline-none transition-colors text-white placeholder:text-gray-600 font-light resize-none block"
+                  className="w-full max-w-xl mx-auto bg-transparent border-0 border-b border-white/20 focus:border-[var(--color-antique-gold)] text-sm text-center py-2 outline-none transition-colors text-stone-100 placeholder:text-stone-600 font-light resize-none block"
                 />
               </div>
 
               {/* CTA TO DIGITAL CODE / MEETING */}
-              <div className="w-full bg-[#0B0F18] border border-white/10 p-8 sm:p-10 rounded-xs text-center space-y-6">
+              <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-10 rounded-xs text-center space-y-6">
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
                     Второе зеркало
                   </span>
-                  <h3 className="font-serif text-2xl sm:text-3xl text-white font-normal mb-2">
+                  <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
                     Цифровой Код вашей природы
                   </h3>
-                  <p className="text-xs sm:text-sm text-gray-400 font-light max-w-md mx-auto leading-relaxed">
+                  <p className="text-xs sm:text-sm text-stone-400 font-light max-w-md mx-auto leading-relaxed">
                     {hasCodeResult 
                       ? 'Ваш код уже рассчитан. Вы можете перейти к синтезу двух независимых отражений.'
                       : 'Откройте вторую линзу через дату рождения, чтобы получить пять ключей и сопоставить их со сказкой.'}
@@ -371,7 +380,7 @@ export default function PersonalMyth({
                       setInputs({ q1: '', q2: '', q3: '', q4: '' });
                       setResult(null);
                     }}
-                    className="px-5 py-3 text-xs uppercase tracking-wider text-gray-500 hover:text-gray-300 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="px-5 py-3 text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <RotateCcw size={13} />
                     <span>Пройти заново</span>
