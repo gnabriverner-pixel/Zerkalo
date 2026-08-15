@@ -7,10 +7,11 @@ import { ModelComparisonHarness } from './components/ModelComparisonHarness';
 import { LabEntryView } from './components/LabEntryView';
 import { MetaphorLibrary } from './components/MetaphorLibrary';
 import { AboutMethod } from './components/AboutMethod';
+import { AlabasterSanctuary } from './components/AlabasterSanctuary';
 import { CalculationResult, FirstMirror, StoryInputs, ApiResponse } from './types';
 
 export default function App() {
-  const [mode, setMode] = useState<'entry' | 'code' | 'myth' | 'meeting' | 'ab-test'>('entry');
+  const [mode, setMode] = useState<'entry' | 'code' | 'myth' | 'meeting' | 'alabaster' | 'ab-test'>('alabaster');
   const [showLibrary, setShowLibrary] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
 
@@ -24,6 +25,26 @@ export default function App() {
   const hasCode = !!codeResult;
   const hasMyth = !!storyResult;
   const hasBoth = hasCode && hasMyth;
+
+  // In Alabaster mode, we render the light sanctuary directly
+  if (mode === 'alabaster') {
+    return (
+      <div className="w-full min-h-screen">
+        <AlabasterSanctuary
+          initialDate={codeDate}
+          onCodeCalculated={(calc, reading) => {
+            setCodeResult(calc);
+            if (reading) setFirstMirror(reading);
+          }}
+          onSwitchToDark={() => setMode('code')}
+          onOpenAbout={() => setShowAbout(true)}
+        />
+        {/* Global Modals */}
+        <MetaphorLibrary isOpen={showLibrary} onClose={() => setShowLibrary(false)} />
+        <AboutMethod isOpen={showAbout} onClose={() => setShowAbout(false)} theme="light" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full flex flex-col font-sans bg-[#090D15] text-[#EAEAEA] relative overflow-x-hidden selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
@@ -48,6 +69,14 @@ export default function App() {
         {/* Center: Quiet Lens Switcher */}
         <nav aria-label="Режимы исследования" className="flex items-center gap-1.5 p-1 bg-[#0D121D]/80 backdrop-blur-md rounded-full border border-white/5 pointer-events-auto shadow-sm">
           
+          {/* Alabaster Sanctuary Switch */}
+          <button
+            onClick={() => setMode('alabaster')}
+            className="px-3.5 py-1.5 rounded-full text-[11px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 bg-[#C8A45D]/15 text-[#C8A45D] font-medium border border-[#C8A45D]/30 shadow-xs cursor-pointer"
+          >
+            <span>Алебастр 2026</span>
+          </button>
+
           {/* Lens 1: Myth */}
           <button
             onClick={() => setMode('myth')}
