@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-08-16T21:11:39.313Z",
+  "personal_myth": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-pro",
+    "writer_version": "personal-myth-v1.1-rc",
+    "status": "ok",
+    "qa": {
+      "passed": true,
+      "word_count": 403,
+      "repaired": false
+    }
+  },
+  "meeting_synthesis": {
+    "provider": "google",
+    "model": "gemini-2.5-flash",
+    "status": "ok",
+    "parallels_count": 2,
+    "divergences_count": 1
+  }
+}

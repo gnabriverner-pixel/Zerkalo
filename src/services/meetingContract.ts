@@ -13,21 +13,28 @@ function text(value: unknown, field: string, max = 2400): string {
 
 function parallel(value: unknown, index: number): MeetingParallel {
   if (!isRecord(value)) throw new Error(`meeting_invalid_parallel_${index}`);
+  const theme = value.theme || value.title;
+  const codeAnchor = value.codeAnchor || value.code_anchor || value.codePerspective || value.code;
+  const mythAnchor = value.mythAnchor || value.myth_anchor || value.mythPerspective || value.myth;
+  const synthesis = value.synthesis || value.reflection || value.note;
   return {
-    theme: text(value.theme, `parallel_${index}_theme`, 240),
-    codeAnchor: text(value.codeAnchor, `parallel_${index}_code_anchor`),
-    mythAnchor: text(value.mythAnchor, `parallel_${index}_myth_anchor`),
-    synthesis: text(value.synthesis, `parallel_${index}_synthesis`),
+    theme: text(theme, `parallel_${index}_theme`, 240),
+    codeAnchor: text(codeAnchor, `parallel_${index}_code_anchor`),
+    mythAnchor: text(mythAnchor, `parallel_${index}_myth_anchor`),
+    synthesis: text(synthesis, `parallel_${index}_synthesis`),
   };
 }
 
 function divergence(value: unknown, index: number): MeetingDivergence {
   if (!isRecord(value)) throw new Error(`meeting_invalid_divergence_${index}`);
+  const theme = value.theme || value.title;
+  const codeAspect = value.codeAspect || value.code_aspect || value.codePerspective || value.code_view || value.code;
+  const mythAspect = value.mythAspect || value.myth_aspect || value.mythPerspective || value.myth_view || value.myth;
   const refl = value.reflection || value.synthesis || value.note;
   return {
-    theme: text(value.theme, `divergence_${index}_theme`, 240),
-    codeAspect: text(value.codeAspect, `divergence_${index}_code_aspect`),
-    mythAspect: text(value.mythAspect, `divergence_${index}_myth_aspect`),
+    theme: text(theme, `divergence_${index}_theme`, 240),
+    codeAspect: text(codeAspect, `divergence_${index}_code_aspect`),
+    mythAspect: text(mythAspect, `divergence_${index}_myth_aspect`),
     reflection: text(refl, `divergence_${index}_reflection`),
   };
 }
@@ -37,23 +44,33 @@ export function parseMeetingResponse(value: unknown): MeetingApiResponse {
     throw new Error("meeting_not_ok");
   }
   const raw = value.result;
-  if (!Array.isArray(raw.parallels) || raw.parallels.length > 4) throw new Error("meeting_invalid_parallel_count");
-  if (!Array.isArray(raw.divergences) || raw.divergences.length > 2) throw new Error("meeting_invalid_divergence_count");
-  if (typeof raw.hasStrongParallels !== "boolean") throw new Error("meeting_invalid_strength_flag");
+  const parallelsRaw = Array.isArray(raw.parallels) ? raw.parallels : (Array.isArray(raw.resonances) ? raw.resonances : []);
+  const divergencesRaw = Array.isArray(raw.divergences) ? raw.divergences : (Array.isArray(raw.contrasts) ? raw.contrasts : []);
+  if (parallelsRaw.length > 4) throw new Error("meeting_invalid_parallel_count");
+  if (divergencesRaw.length > 2) throw new Error("meeting_invalid_divergence_count");
 
-  const parallels = raw.parallels.map(parallel);
-  const divergences = raw.divergences.map(divergence);
-  if (raw.hasStrongParallels && parallels.length === 0) throw new Error("meeting_strong_without_evidence");
+  const hasStrong = typeof raw.hasStrongParallels === "boolean" 
+    ? raw.hasStrongParallels 
+    : (typeof raw.has_strong_parallels === "boolean" ? raw.has_strong_parallels : parallelsRaw.length > 0);
+
+  const parallels = parallelsRaw.map(parallel);
+  const divergences = divergencesRaw.map(divergence);
+  if (hasStrong && parallels.length === 0) throw new Error("meeting_strong_without_evidence");
+
+  const confNote = raw.confidenceNote || raw.confidence_note || "Синтез независимых линз";
+  const insight = raw.albertInsight || raw.albert_insight || raw.insight || raw.summary;
+  const question = raw.reflectiveQuestion || raw.reflective_question || raw.question || "О чем для вас этот диалог двух зеркал?";
+  const disclaimerText = raw.disclaimer || "Эти две версии появились независимо. Одна — из вашей даты, другая — из образов, выбранных вами. Совпадения между ними ничего не доказывают, но дают повод присмотреться к себе внимательнее.";
 
   const result: MeetingOfMirrorsResult = {
     summary: text(raw.summary, "summary"),
-    hasStrongParallels: raw.hasStrongParallels,
-    confidenceNote: text(raw.confidenceNote, "confidence_note", 500),
+    hasStrongParallels: hasStrong,
+    confidenceNote: text(confNote, "confidence_note", 500),
     parallels,
     divergences,
-    albertInsight: text(raw.albertInsight, "albert_insight"),
-    reflectiveQuestion: text(raw.reflectiveQuestion, "reflective_question", 800),
-    disclaimer: text(raw.disclaimer, "disclaimer", 1200),
+    albertInsight: text(insight, "albert_insight"),
+    reflectiveQuestion: text(question, "reflective_question", 800),
+    disclaimer: text(disclaimerText, "disclaimer", 1200),
   };
   return { status: "ok", result };
 }

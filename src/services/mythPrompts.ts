@@ -118,7 +118,7 @@ export function buildMeetingOfMirrorsPrompt(
   "status": "ok",
   "result": {
     "summary": "Краткое введение (2-3 предложения) о том, как встретились эти два зеркала: структурное (дата) и образное (собственные слова).",
-    "hasStrongParallels": true / false,
+    "hasStrongParallels": true,
     "confidenceNote": "Короткая ремарка о характере связи (высокий резонанс / тонкое частичное дополнение / контраст разных граней).",
     "parallels": [
       {

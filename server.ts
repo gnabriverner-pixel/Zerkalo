@@ -2,8 +2,9 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
+import dotenv from "dotenv";
+dotenv.config({ override: true });
 import { GoogleGenAI } from "@google/genai";
-import "dotenv/config";
 import { generateFullInterpretationPayload, generateFirstMirror } from "./src/services/interpretation";
 import { buildPersonalMythPrompt, buildMeetingOfMirrorsPrompt } from "./src/services/mythPrompts";
 import { parseMeetingResponse } from "./src/services/meetingContract";
@@ -226,9 +227,10 @@ async function startServer() {
     const now = Date.now();
     const clientKey = req.ip || "unknown";
     const currentRate = mythRate.get(clientKey);
+    const maxRequests = process.env.NODE_ENV === "production" ? 10 : 100;
     if (!currentRate || now - currentRate.windowStartedAt > 10 * 60_000) {
       mythRate.set(clientKey, { windowStartedAt: now, count: 1 });
-    } else if (currentRate.count >= 5) {
+    } else if (currentRate.count >= maxRequests) {
       return res.status(429).json({
         mode: "story",
         status: "error",
@@ -514,10 +516,26 @@ ${payload2}
       });
 
       let responseText = response.text || "{}";
-      responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
-
+      
       try {
-        const resultJson = parseMeetingResponse(JSON.parse(responseText));
+        let cleaned = responseText.replace(/```json/gi, "").replace(/```/g, "").trim();
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+        }
+        // Remove trailing commas before } or ]
+        cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+        
+        let parsedRaw;
+        try {
+          parsedRaw = JSON.parse(cleaned);
+        } catch {
+          const sanitized = cleaned.replace(/[\u0000-\u001F]+/g, (m) => m === '\n' || m === '\r' || m === '\t' ? m : ' ');
+          parsedRaw = JSON.parse(sanitized);
+        }
+
+        const resultJson = parseMeetingResponse(parsedRaw);
         res.status(200).json(resultJson);
       } catch (err) {
         console.error("Developer Log: Synthesis contract error:", err instanceof Error ? err.message : "unknown");

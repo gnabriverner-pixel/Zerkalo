@@ -21,7 +21,6 @@ export default function PersonalMyth({
   onNavigateToMeeting,
   hasCodeResult 
 }: PersonalMythProps = {}) {
-  // 0 = Intro, 1-4 = questions, 5 = generating, 6 = result
   const [step, setStep] = useState(initialResult ? 6 : 0);
   const [inputs, setInputs] = useState<StoryInputs>(initialInputs || { q1: '', q2: '', q3: '', q4: '' });
   const [result, setResult] = useState<ApiResponse['story_result'] | null>(initialResult || null);
@@ -29,6 +28,19 @@ export default function PersonalMyth({
   const [journalNote, setJournalNote] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
   const requestIdRef = useRef(`myth_${crypto.randomUUID().replace(/-/g, '')}`);
+
+  useEffect(() => {
+    if (initialResult) {
+      setResult(initialResult);
+      setStep(6);
+    }
+  }, [initialResult]);
+
+  useEffect(() => {
+    if (initialInputs) {
+      setInputs(initialInputs);
+    }
+  }, [initialInputs]);
 
   const stepMeta = [
     {
