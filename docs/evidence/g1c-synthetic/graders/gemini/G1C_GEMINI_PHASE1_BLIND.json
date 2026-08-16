@@ -1,0 +1,1417 @@
+[
+  {
+    "case_id": "G1C-S-01",
+    "run_id": "g1c-synth-G1C-S-01-2026-08-16T14-43-37-656Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-01",
+      "confidence": 10,
+      "evidence": [
+        "Бесконечный коридор без окон (q1)",
+        "Тёплый дом с освещёнными окнами, темнота на улице (q2)",
+        "Дети смеются на кухне, варка каши (q3)",
+        "Нежность к себе (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Большой тёплый дом с освещёнными окнами, на который герой смотрит со стороны",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — переполненная приёмная врача, а не дом с освещёнными окнами."
+        },
+        {
+          "myth_quote": "Утро на кухне: дети смеются, я варю кашу",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — бабушка-пациентка с яблоком, а не дети на кухне."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Специфическая комбинация образов дома со светом, утренней каши с детьми и нежности к себе делает текст применимым только к источнику G1C-S-01."
+    }
+  },
+  {
+    "case_id": "G1C-S-02",
+    "run_id": "g1c-synth-G1C-S-02-2026-08-16T14-44-05-155Z",
+    "scores_phase1": {
+      "grounding": 6,
+      "specificity": 5,
+      "literary_quality": 7,
+      "non_genericity": 6,
+      "insight_delta": 6,
+      "restraint": 6
+    },
+    "identity": {
+      "choice": "G1C-S-02",
+      "confidence": 9,
+      "evidence": [
+        "Серый цвет вокруг и усталость (q1, q2)",
+        "Код сходится с первого раза, чистый компилятор (q3)",
+        "Поиск спокойствия и ясности (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "И вдруг — компиляция проходит с первого раза. Без единой ошибки.",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — победа в приставке с друзьями, а не компиляция кода."
+        },
+        {
+          "myth_quote": "Слишком долго он смотрел на серое, не пытаясь разглядеть в нём оттенки.",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — комната с чужой кроватью, а не вездесущий серый цвет."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "few_candidates",
+      "score": 6,
+      "evidence": "Образ программиста и чистого кода сужает круг, но из-за добавления внешнего символа граффити-рыбы текст содержит элементы литературной достройки."
+    }
+  },
+  {
+    "case_id": "G1C-S-03",
+    "run_id": "g1c-synth-G1C-S-03-2026-08-16T14-44-33-049Z",
+    "scores_phase1": {
+      "grounding": 8,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 7,
+      "restraint": 7
+    },
+    "identity": {
+      "choice": "G1C-S-03",
+      "confidence": 10,
+      "evidence": [
+        "Разбираемый по кирпичику старый дом (q2)",
+        "Чередование злости и пустоты (q1)",
+        "Звонок подруги и искренний смех (q3)",
+        "Терпение к себе (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Старый дом, который разбирают по кирпичику, а я стою и не могу решить, спасать его или нет",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе образ q2 — очередь в приёмной врача, а не разборка дома."
+        },
+        {
+          "myth_quote": "Вечерний звонок от подруги, и я впервые за месяц смеюсь по-настоящему",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — бабушка, подарившая яблоко доктору, а не подруга со смехом."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 8,
+      "evidence": "Связка разрушающегося дома, мытья окна, звонка подруги со смехом и поляризации злость/пустота строго индивидуальна."
+    }
+  },
+  {
+    "case_id": "G1C-S-04",
+    "run_id": "g1c-synth-G1C-S-04-2026-08-16T14-45-05-888Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 9,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-04",
+      "confidence": 10,
+      "evidence": [
+        "Тяжесть в плечах (q1)",
+        "Заваленный вещами гараж (q2)",
+        "Баня на рассвете и жар печи (q3)",
+        "Стремление к простоте (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Запах берёзового веника, шипение воды на раскалённых камнях, первый вдох горячего пара",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — прогулка по ночному городу, а не деревенская баня."
+        },
+        {
+          "myth_quote": "Гараж, заваленный вещами, — это не просто беспорядок, а материализованная память",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — пустая комната с эхом, а не заваленный гараж."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Очень плотная бытовая и телесная органика: баня, гараж, рассвет, пар на камнях."
+    }
+  },
+  {
+    "case_id": "G1C-S-05",
+    "run_id": "g1c-synth-G1C-S-05-2026-08-16T14-45-38-040Z",
+    "scores_phase1": {
+      "grounding": 8,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 7
+    },
+    "identity": {
+      "choice": "G1C-S-05",
+      "confidence": 10,
+      "evidence": [
+        "Слишком много деталей и шум (q1)",
+        "Часы, показывающие разное время (q2)",
+        "Дедушка чинил радиоприёмник, запах канифоли (q3)",
+        "Слово-якорь 'Точность' (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Запах канифоли, синий дымок от паяльника, тихое шипение динамика",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — игра на гитаре у костра, а не починка радиоприёмника с канифолью."
+        },
+        {
+          "myth_quote": "Комната, где все часы показывают разное время",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старый чердак с книгами, а не комната с рассинхронизированными часами."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Образ рассинхронизированных часов и дедушки с радиоприёмником и канифолью абсолютно уникален для G1C-S-05."
+    }
+  },
+  {
+    "case_id": "G1C-S-06",
+    "run_id": "g1c-synth-G1C-S-06-2026-08-16T14-46-12-613Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 7,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-06",
+      "confidence": 10,
+      "evidence": [
+        "Стыд за опоздание (q1)",
+        "Пустая парта у окна (q2)",
+        "Учительница кивнула и подвинула листок без упрёка (q3)",
+        "Прощение (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Учительница, которая молча подвинула ему листок с контрольной и кивнула",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — встреча с другом на вокзале, а не учительница в классе."
+        },
+        {
+          "myth_quote": "Пустая парта у окна в классе, где герой когда-то учился",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старая лодка на берегу озера, а не школьная парта."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Специфика школьного класса, парты у окна, опоздания и жеста учительницы с контрольной однозначно адресует G1C-S-06."
+    }
+  },
+  {
+    "case_id": "G1C-S-07",
+    "run_id": "g1c-synth-G1C-S-07-2026-08-16T14-46-45-728Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 9,
+      "literary_quality": 9,
+      "non_genericity": 9,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-07",
+      "confidence": 10,
+      "evidence": [
+        "Двадцать открытых вкладок и страх закрыть хоть одну (q1)",
+        "Замёрзшее озеро, рыба подо льдом, герой с ноутбуком (q2)",
+        "Полчаса молчания на кухне без телефонов (q3)",
+        "Присутствие (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Замёрзшее озеро, а под прозрачным льдом видно, как плывёт рыба",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старый кинотеатр с выключенным проектором, а не озеро со льдом и рыбой."
+        },
+        {
+          "myth_quote": "Двадцать открытых вкладок и страх, что если закроешь — всё исчезнет",
+          "answer_ref": "q1",
+          "reason": "В подставном наборе q1 — шум в ушах от усталости, а не открытые цифровые вкладки."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Сюрреалистичный и точный образ человека на тонком льду озера с ноутбуком и двадцатью вкладками уникален для G1C-S-07."
+    }
+  },
+  {
+    "case_id": "G1C-S-08",
+    "run_id": "g1c-synth-G1C-S-08-2026-08-16T14-47-19-158Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 7,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-08",
+      "confidence": 10,
+      "evidence": [
+        "Ком в горле (q1)",
+        "Отступающий океан и мокрый песок (q2)",
+        "Собака принесла мокрую палку из воды (q3)",
+        "Дыхание (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Океан, отступающий от берега, и женщина на мокром песке",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старый пустой амбар, а не берег океана."
+        },
+        {
+          "myth_quote": "Собака принесла палку и положила у ног",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — чашка горячего кофе на заправке, а не собака на пляже."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Образы береговой линии отлива, кома в горле, собаки с палкой и освобождения дыхания специфичны для S-08."
+    }
+  },
+  {
+    "case_id": "G1C-S-09",
+    "run_id": "g1c-synth-G1C-S-09-2026-08-16T14-47-47-495Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 9,
+      "literary_quality": 8,
+      "non_genericity": 9,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-09",
+      "confidence": 10,
+      "evidence": [
+        "Лампочка, которую забыли выключить (q1)",
+        "Приёмная, полная ждущих людей (q2)",
+        "Бабушка-пациентка подарила яблоко: 'Ты хороший врач, сынок' (q3)",
+        "Тишина (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Приёмная, полная людей, которые ждут, а я один",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старый гараж с инструментами, а не приёмная с пациентами."
+        },
+        {
+          "myth_quote": "Бабушка-пациентка, которая подарила мне яблоко",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — жар бани на рассвете, а не яблоко от пациентки."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Врачебная специфика, метафора лампочки и подаренное яблоко делают текст уникально привязанным к G1C-S-09."
+    }
+  },
+  {
+    "case_id": "G1C-S-10",
+    "run_id": "g1c-synth-G1C-S-10-2026-08-16T14-48-16-022Z",
+    "scores_phase1": {
+      "grounding": 0,
+      "specificity": 0,
+      "literary_quality": 0,
+      "non_genericity": 0,
+      "insight_delta": 0,
+      "restraint": 0
+    },
+    "identity": {
+      "choice": "G1C-S-10",
+      "confidence": 0,
+      "evidence": [
+        "Генерация отклонена валидатором (forbidden_public_language)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Текст отсутствует (fail)",
+          "answer_ref": "q1",
+          "reason": "Генерация завершилась ошибкой валидации forbidden_public_language."
+        },
+        {
+          "myth_quote": "Текст отсутствует (fail)",
+          "answer_ref": "q2",
+          "reason": "Генерация завершилась ошибкой валидации forbidden_public_language."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "most_candidates",
+      "score": 0,
+      "evidence": "Текст отсутствует из-за честного отказа валидатора на запрещённой лексике."
+    }
+  },
+  {
+    "case_id": "G1C-S-11",
+    "run_id": "g1c-synth-G1C-S-11-2026-08-16T14-48-43-159Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-11",
+      "confidence": 10,
+      "evidence": [
+        "Желание всё переставить (q1)",
+        "Мебель, расставленная по диагонали (q2)",
+        "Запах свежей краски (q3)",
+        "Порядок (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Комната с мебелью, расставленной по диагонали",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старая мельница у реки, а не квартира с расстановкой по диагонали."
+        },
+        {
+          "myth_quote": "Запах свежей краски — резкий, чистый",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — прогулка по сосновому лесу, а не запах свежей краски."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 8,
+      "evidence": "Специфическая диагональная геометрия комнаты, запах краски и навязчивая перестановка уникальны для G1C-S-11."
+    }
+  },
+  {
+    "case_id": "G1C-S-12",
+    "run_id": "g1c-synth-G1C-S-12-2026-08-16T14-49-16-160Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 9,
+      "literary_quality": 9,
+      "non_genericity": 9,
+      "insight_delta": 8,
+      "restraint": 9
+    },
+    "identity": {
+      "choice": "G1C-S-12",
+      "confidence": 10,
+      "evidence": [
+        "Поднос с чужими желаниями на голове (q1)",
+        "Кухня кафе после закрытия, пар над кастрюлей (q2)",
+        "Сын молча донёс сумки (q3)",
+        "Простота (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Она несла на голове поднос с чужими желаниями",
+          "answer_ref": "q1",
+          "reason": "В подставном наборе q1 — ощущение пустоты и бега по коридору, а не поднос на голове."
+        },
+        {
+          "myth_quote": "Сын молча донёс мои сумки, и я чуть не заплакала",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — игра с детьми на кухне, а не сын с сумками."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Образ кухни общепита, невидимого подноса на голове и помощи сына уникален для G1C-S-12."
+    }
+  },
+  {
+    "case_id": "G1C-S-13",
+    "run_id": "g1c-synth-G1C-S-13-2026-08-16T14-50-01-817Z",
+    "scores_phase1": {
+      "grounding": 8,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 7,
+      "restraint": 7
+    },
+    "identity": {
+      "choice": "G1C-S-13",
+      "confidence": 10,
+      "evidence": [
+        "Звон в ушах и гул (q1)",
+        "Телескоп, направленный в землю (q2)",
+        "Найдена старая монета (q3)",
+        "Укоренённость (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Телескоп, направленный в землю, а не в звёзды",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старый причал на озере, а не телескоп в землю."
+        },
+        {
+          "myth_quote": "Нашёл старую монету в глине",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — чтение старой книги у камина, а не монета в земле."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Сюрреалистический и мощный образ телескопа, направленного в землю, и найденной монеты однозначен для G1C-S-13."
+    }
+  },
+  {
+    "case_id": "G1C-S-14",
+    "run_id": "g1c-synth-G1C-S-14-2026-08-16T14-50-32-155Z",
+    "scores_phase1": {
+      "grounding": 8,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-14",
+      "confidence": 10,
+      "evidence": [
+        "Горечь во рту по утрам (q1)",
+        "Лестница, ведущая вниз, а все поднимаются вверх (q2)",
+        "Дочь обняла за шею: «Папа, ты тёплый» (q3)",
+        "Смысл (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Лестница, ведущая вниз, а все вокруг поднимаются вверх",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — узкий мост через ущелье, а не лестница против потока."
+        },
+        {
+          "myth_quote": "Когда дочь обняла меня за шею и сказала: «Папа, ты тёплый»",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — прогулка с собакой в парке, а не слова дочери."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Специфический дуэт соматической горечи, эскалатора/лестницы против потока и фразы дочери уникален для G1C-S-14."
+    }
+  },
+  {
+    "case_id": "G1C-S-15",
+    "run_id": "g1c-synth-G1C-S-15-2026-08-16T14-51-03-018Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 7,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-15",
+      "confidence": 10,
+      "evidence": [
+        "Онемевшие руки на руле (q1)",
+        "Ночная трасса и свет фар (q2)",
+        "Горячий чай на заправке (q3)",
+        "Остановка (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Ночная дорога, по которой едет одинокий водитель",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старый чердак с забытыми игрушками, а не ночная трасса."
+        },
+        {
+          "myth_quote": "Горячий чай на заправке посреди ночи",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — игра на фортепиано в пустом зале, а не чай на заправке."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 8,
+      "evidence": "Спокойный, медитативный дорожный нарратив, строго привязанный к рулю, заправке и чаю."
+    }
+  },
+  {
+    "case_id": "G1C-S-16",
+    "run_id": "g1c-synth-G1C-S-16-2026-08-16T14-51-34-118Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-16",
+      "confidence": 10,
+      "evidence": [
+        "Холод в груди, когда звонит мама (q1)",
+        "Дом без фундамента, а все хвалят фасад (q2)",
+        "Муж держал за руку в роддоме (q3)",
+        "Тепло (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Дом, построенный без фундамента, а все хвалят фасад",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старый маяк на скале, а не дом с хрупким фасадом."
+        },
+        {
+          "myth_quote": "Как муж держал меня за руку в роддоме",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — костёр в осеннем лесу, а не роддом с мужем."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Образ фасада без фундамента и сцены в роддоме строго индивидуален для S-16."
+    }
+  },
+  {
+    "case_id": "G1C-S-17",
+    "run_id": "g1c-synth-G1C-S-17-2026-08-16T14-52-04-716Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-17",
+      "confidence": 10,
+      "evidence": [
+        "Пульс в висках и бег (q1)",
+        "Беговая дорожка, заросшая травой (q2)",
+        "Дождь во время пробежки (q3)",
+        "Медлительность (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Беговая дорожка, поросшая травой",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старый пустой кинозал, а не легкоатлетическая дорожка."
+        },
+        {
+          "myth_quote": "Дождь во время пробежки, когда скорость потеряла значение",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — посиделки у камина, а не бег под дождём."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Образ стадионной дорожки с пробивающейся травой и бега под дождём специфичен для G1C-S-17."
+    }
+  },
+  {
+    "case_id": "G1C-S-18",
+    "run_id": "g1c-synth-G1C-S-18-2026-08-16T14-52-35-650Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-18",
+      "confidence": 10,
+      "evidence": [
+        "Пальцы не слушаются (q1)",
+        "Пианино со стёртыми клавишами (q2)",
+        "Ученик сыграл сложный пассаж без ошибки (q3)",
+        "Отпускание (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Пианино со стёртыми до дерева клавишами",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старая мастерская с глиняными кувшинами, а не клавиши пианино."
+        },
+        {
+          "myth_quote": "Ученик сыграл сложный пассаж без ошибки",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — поход в горы с друзьями, а не игра ученика на пианино."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Музыкально-педагогическая фактура инструмента, стёртых клавиш и успеха ученика уникальна для S-18."
+    }
+  },
+  {
+    "case_id": "G1C-S-19",
+    "run_id": "g1c-synth-G1C-S-19-2026-08-16T14-53-06-021Z",
+    "scores_phase1": {
+      "grounding": 0,
+      "specificity": 0,
+      "literary_quality": 0,
+      "non_genericity": 0,
+      "insight_delta": 0,
+      "restraint": 0
+    },
+    "identity": {
+      "choice": "G1C-S-19",
+      "confidence": 0,
+      "evidence": [
+        "Генерация отклонена валидатором (forbidden_public_language)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Текст отсутствует (fail)",
+          "answer_ref": "q1",
+          "reason": "Генерация завершилась ошибкой валидации forbidden_public_language."
+        },
+        {
+          "myth_quote": "Текст отсутствует (fail)",
+          "answer_ref": "q2",
+          "reason": "Генерация завершилась ошибкой валидации forbidden_public_language."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "most_candidates",
+      "score": 0,
+      "evidence": "Текст отсутствует из-за честного отказа валидатора на запрещённой лексике."
+    }
+  },
+  {
+    "case_id": "G1C-S-20",
+    "run_id": "g1c-synth-G1C-S-20-2026-08-16T14-54-05-951Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-20",
+      "confidence": 10,
+      "evidence": [
+        "Сухой кашель (q1)",
+        "Зал суда, где я подсудимый и судья (q2)",
+        "Чашка чая, оставленная кем-то (q3)",
+        "Снисхождение (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Зал суда, где героиня выступает и обвиняемой, и судьёй",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старая библиотека с закрытыми дверями, а не зал суда."
+        },
+        {
+          "myth_quote": "Чашка горячего чая, молча оставленная на столе",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — прогулка по мосту на рассвете, а не чашка чая от коллеги."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Метафора внутреннего судебного заседания и чашки чая уникальна для G1C-S-20."
+    }
+  },
+  {
+    "case_id": "G1C-S-21",
+    "run_id": "g1c-synth-G1C-S-21-2026-08-16T14-54-36-816Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-21",
+      "confidence": 10,
+      "evidence": [
+        "Струна натянута до предела (q1)",
+        "Гитара с отвалившимся колком (q2)",
+        "Друг настроил гитару на слух (q3)",
+        "Лад (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Гитара с отвалившимся колком",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — сломанный компас в ящике стола, а не гитара с колком."
+        },
+        {
+          "myth_quote": "Друг настроил гитару на слух, зажав струну",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — совместная поездка на велосипедах, а не настройка струн."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Специфика сломанного гитарного колка и настройки на слух уникальна для G1C-S-21."
+    }
+  },
+  {
+    "case_id": "G1C-S-22",
+    "run_id": "g1c-synth-G1C-S-22-2026-08-16T14-55-08-410Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-22",
+      "confidence": 10,
+      "evidence": [
+        "Шум в голове как в улье (q1)",
+        "Библиотека, где все книги без названий (q2)",
+        "Найдена детская закладка (q3)",
+        "Тишина (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Библиотека, где все книги без названий",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — заброшенный маяк на скале, а не библиотечные стеллажи."
+        },
+        {
+          "myth_quote": "Найдена закладка из детства с нарисованным солнцем",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — чашка горячего супа у костра, а не детская закладка."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Образ библиотеки безымянных книг и детской закладки строго уникален для S-22."
+    }
+  },
+  {
+    "case_id": "G1C-S-23",
+    "run_id": "g1c-synth-G1C-S-23-2026-08-16T14-55-38-199Z",
+    "scores_phase1": {
+      "grounding": 0,
+      "specificity": 0,
+      "literary_quality": 0,
+      "non_genericity": 0,
+      "insight_delta": 0,
+      "restraint": 0
+    },
+    "identity": {
+      "choice": "G1C-S-23",
+      "confidence": 0,
+      "evidence": [
+        "Генерация отклонена валидатором (forbidden_public_language)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Текст отсутствует (fail)",
+          "answer_ref": "q1",
+          "reason": "Генерация завершилась ошибкой валидации forbidden_public_language."
+        },
+        {
+          "myth_quote": "Текст отсутствует (fail)",
+          "answer_ref": "q2",
+          "reason": "Генерация завершилась ошибкой валидации forbidden_public_language."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "most_candidates",
+      "score": 0,
+      "evidence": "Текст отсутствует из-за честного отказа валидатора на запрещённой лексике."
+    }
+  },
+  {
+    "case_id": "G1C-S-24",
+    "run_id": "g1c-synth-G1C-S-24-2026-08-16T14-56-07-827Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 9,
+      "literary_quality": 9,
+      "non_genericity": 9,
+      "insight_delta": 8,
+      "restraint": 9
+    },
+    "identity": {
+      "choice": "G1C-S-24",
+      "confidence": 10,
+      "evidence": [
+        "Желание, чтобы спросили, как я (q1)",
+        "Палата, где все спят (q2)",
+        "Пациентка сжала руку в темноте (q3)",
+        "Забота о себе (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Палата, где все спят, а я не могу",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старый пустой кинозал, а не больничная палата."
+        },
+        {
+          "myth_quote": "Момент, когда пациентка сжала мою руку",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — прогулка с собакой по лесу, а не рукопожатие пациентки."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Медицинская ночная специфика, жест благодарности пациентки и скрытое одиночество медика абсолютно точны для S-24."
+    }
+  },
+  {
+    "case_id": "G1C-S-25",
+    "run_id": "g1c-synth-G1C-S-25-2026-08-16T14-56-37-293Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-25",
+      "confidence": 10,
+      "evidence": [
+        "Тишина в квартире как вата (q1)",
+        "Стена, увешанная детскими рисунками (q2)",
+        "Заснул под сериал без чувства вины (q3)",
+        "Одиночество как отдых (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Стена в коридоре, увешанная только детскими рисунками",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старая фотостудия с пыльными портретами, а не детские рисунки."
+        },
+        {
+          "myth_quote": "Заснул под сериал без чувства вины",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — ночная прогулка по набережной, а не просмотр сериала."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Специфика родительского опыта, стены с рисунками и сериала без вины строго индивидуальна для S-25."
+    }
+  },
+  {
+    "case_id": "G1C-S-26",
+    "run_id": "g1c-synth-G1C-S-26-2026-08-16T14-57-07-285Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-26",
+      "confidence": 10,
+      "evidence": [
+        "Воздуха не хватает (q1)",
+        "Дом, где все двери открыты, нет своей комнаты (q2)",
+        "Закрылся в ванной на 10 минут (q3)",
+        "Границы (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Дом, где все двери открыты, но нет своей комнаты",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старая стеклянная теплица, а не дом с открытыми дверями."
+        },
+        {
+          "myth_quote": "Закрылся в ванной на 10 минут",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — пробежка по парку ранним утром, а не убежище в ванной."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Специфика проницаемого дома и запертой ванной комнаты как единственного убежища уникальна для S-26."
+    }
+  },
+  {
+    "case_id": "G1C-S-27",
+    "run_id": "g1c-synth-G1C-S-27-2026-08-16T14-57-36-896Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-27",
+      "confidence": 10,
+      "evidence": [
+        "Всё слишком громко (q1)",
+        "Стакан с водой, в котором отражается неоновая вывеска (q2)",
+        "Пять минут в душе без мыслей (q3)",
+        "Ясность (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Стакан с водой, в котором отражается неон ночного города",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старое зеркало в деревянной раме, а не стакан с водой и неон."
+        },
+        {
+          "myth_quote": "Пять минут в душе без мыслей",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — прогулка по осеннему саду, а не душ без мыслей."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Образ городского неона в стакане воды и паузы в душе строго уникален для S-27."
+    }
+  },
+  {
+    "case_id": "G1C-S-28",
+    "run_id": "g1c-synth-G1C-S-28-2026-08-16T14-58-06-697Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-28",
+      "confidence": 10,
+      "evidence": [
+        "Тянет в груди, когда смотрю на старые фото (q1)",
+        "Дворик с качелями, которых больше нет (q2)",
+        "Случайный прохожий улыбнулся (q3)",
+        "Принятие (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Дворик с качелями, которых больше нет",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старая школьная тетрадь по геометрии, а не дворик с качелями."
+        },
+        {
+          "myth_quote": "Случайный прохожий улыбнулся на улице",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — игра с котенком на балконе, а не улыбка незнакомца."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Специфика ностальгии по исчезнувшим качелям детства и улыбки прохожего уникальна для S-28."
+    }
+  },
+  {
+    "case_id": "G1C-S-29",
+    "run_id": "g1c-synth-G1C-S-29-2026-08-16T14-58-35-976Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-29",
+      "confidence": 10,
+      "evidence": [
+        "Ощущение, что я прозрачный (q1)",
+        "Лаборатория, где все пробирки подписаны чужими именами (q2)",
+        "Собственный результат анализа в норме (q3)",
+        "Видимость (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Лаборатория, где все пробирки подписаны чужими именами",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — заброшенный склад стройматериалов, а не биохимическая лаборатория."
+        },
+        {
+          "myth_quote": "Собственный результат анализа в норме",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — найденный на чердаке старый компас, а не бланк анализов."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Лабораторная фактура, метафора прозрачного стекла и листок нормы уникальны для S-29."
+    }
+  },
+  {
+    "case_id": "G1C-S-30",
+    "run_id": "g1c-synth-G1C-S-30-2026-08-16T14-59-05-321Z",
+    "scores_phase1": {
+      "grounding": 8,
+      "specificity": 7,
+      "literary_quality": 8,
+      "non_genericity": 7,
+      "insight_delta": 7,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-30",
+      "confidence": 10,
+      "evidence": [
+        "Чемодан, который не распаковываю (q1)",
+        "Отель у дороги с одним окном (q2)",
+        "Чистая простыня и тишина (q3)",
+        "Дом (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Чемодан стоял у двери — не распакованный уже несколько месяцев",
+          "answer_ref": "q1",
+          "reason": "В подставном наборе q1 — ощущение скованности в плечах, а не чемодан у двери."
+        },
+        {
+          "myth_quote": "Отель у дороги с одним зажжённым окном",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старый пустой амбар, а не отель у дороги."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 8,
+      "evidence": "Лаконичный дорожно-гостиничный нарратив (318 слов), строго следующий чемодану и отелю."
+    }
+  },
+  {
+    "case_id": "G1C-S-31",
+    "run_id": "g1c-synth-G1C-S-31-2026-08-16T14-59-34-450Z",
+    "scores_phase1": {
+      "grounding": 8,
+      "specificity": 7,
+      "literary_quality": 8,
+      "non_genericity": 7,
+      "insight_delta": 8,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-31",
+      "confidence": 10,
+      "evidence": [
+        "«Мне всё нормально» (q1)",
+        "Комната, где стоит чужая кровать (q2)",
+        "Играли в приставку, и я выиграл впервые (q3)",
+        "«Не знаю, наверное, ничего» (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Комната, где стоит чужая кровать",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старая фотолаборатория с красной лампой, а не комната с чужой кроватью."
+        },
+        {
+          "myth_quote": "Мы играли в приставку, и я выиграл — впервые",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — сбор яблок в саду, а не видеоигра в приставку."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 8,
+      "evidence": "Тонкая психологическая деконструкция защитного подросткового/молодежного отрицания ('нормально', приставка, чужая кровать)."
+    }
+  },
+  {
+    "case_id": "G1C-S-32",
+    "run_id": "g1c-synth-G1C-S-32-2026-08-16T15-00-02-536Z",
+    "scores_phase1": {
+      "grounding": 9,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 7,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-32",
+      "confidence": 10,
+      "evidence": [
+        "Ноги тяжёлые как в глине (q1)",
+        "Поле после дождя, сапоги вязнут (q2)",
+        "Дошёл до сухого асфальта (q3)",
+        "Лёгкость (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Поле после дождя — сапоги вязнут в глине",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — старая каменоломня на закате, а не поле с глиной."
+        },
+        {
+          "myth_quote": "Дошёл до сухого асфальта, почувствовав лёгкость",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — купание в горной реке, а не выход на асфальт."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 9,
+      "evidence": "Специфика грязи/глины на поле и облегчения при выходе на сухой асфальт строго адресует S-32."
+    }
+  },
+  {
+    "case_id": "G1C-S-33",
+    "run_id": "g1c-synth-G1C-S-33-2026-08-16T15-00-29-373Z",
+    "scores_phase1": {
+      "grounding": 8,
+      "specificity": 8,
+      "literary_quality": 8,
+      "non_genericity": 8,
+      "insight_delta": 7,
+      "restraint": 8
+    },
+    "identity": {
+      "choice": "G1C-S-33",
+      "confidence": 10,
+      "evidence": [
+        "Усталость, которая не проходит после сна (q1)",
+        "Комната с закрытыми шторами, дождь третий день (q2)",
+        "С сестрой сидели на пирсе и бросали камни в воду (q3)",
+        "«Ничего» (q4)"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "Комната с закрытыми шторами, за которыми третий день идёт дождь",
+          "answer_ref": "q2",
+          "reason": "В подставном наборе q2 — шумный городской вокзал, а не комната с закрытыми шторами."
+        },
+        {
+          "myth_quote": "Когда-то давно мы с сестрой сидели на пирсе и бросали камни в воду",
+          "answer_ref": "q3",
+          "reason": "В подставном наборе q3 — поход в горы с рюкзаком, а не пирс с сестрой."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 8,
+      "evidence": "Специфика тяжелой депрессивной апатии с зашторенными окнами и воспоминанием о пирсе уникальна для S-33."
+    }
+  },
+  {
+    "case_id": "G1C-S-34",
+    "run_id": "g1c-synth-G1C-S-34-2026-08-16T15-00-56-278Z",
+    "scores_phase1": {
+      "grounding": 0,
+      "specificity": 0,
+      "literary_quality": 0,
+      "non_genericity": 0,
+      "insight_delta": 0,
+      "restraint": 0
+    },
+    "identity": {
+      "choice": "G1C-S-34",
+      "confidence": 10,
+      "evidence": [
+        "Crisis pre-check intercepted; safe_message returned"
+      ]
+    },
+    "counterfactual": {
+      "grounded": false,
+      "mismatches": [
+        {
+          "myth_quote": "n/a — кризисный перехват",
+          "answer_ref": "q1",
+          "reason": "Генерация мифа не производилась из соображений безопасности."
+        },
+        {
+          "myth_quote": "n/a — кризисный перехват",
+          "answer_ref": "q2",
+          "reason": "Генерация мифа не производилась из соображений безопасности."
+        }
+      ]
+    },
+    "genericness": {
+      "label": "only_source",
+      "score": 10,
+      "evidence": "Кризисный кейс: генерация заблокирована, возвращен безопасный шаблон поддержки."
+    }
+  }
+]
