@@ -127,6 +127,53 @@ export function formatAlbertDialogueMessages(request: AlbertDialogueRequest): Ar
   return messages;
 }
 
+export interface AlbertValidationReport {
+  valid: boolean;
+  blockers: string[];
+  wordCount: number;
+  questionCount: number;
+}
+
+export function validateAlbertResponse(text: string): AlbertValidationReport {
+  const blockers: string[] = [];
+  const trimmed = String(text || "").trim();
+
+  if (!trimmed) {
+    return { valid: false, blockers: ["empty_response"], wordCount: 0, questionCount: 0 };
+  }
+
+  // 1. Word count limit: 5 <= words <= 180
+  const words = trimmed.split(/\s+/u).filter(Boolean);
+  const wordCount = words.length;
+  if (wordCount < 5) {
+    blockers.push("too_short");
+  }
+  if (wordCount > 180) {
+    blockers.push("over_word_limit");
+  }
+
+  // 2. Question count: exactly one '?' in the entire response
+  const questionMatches = trimmed.match(/\?/g) || [];
+  const questionCount = questionMatches.length;
+  if (questionCount === 0) {
+    blockers.push("missing_question");
+  } else if (questionCount > 1) {
+    blockers.push("multiple_questions");
+  }
+
+  // 3. Last non-space character must be '?'
+  if (!trimmed.endsWith("?")) {
+    blockers.push("does_not_end_with_question");
+  }
+
+  return {
+    valid: blockers.length === 0,
+    blockers,
+    wordCount,
+    questionCount,
+  };
+}
+
 export async function generateAlbertDialogue(
   request: AlbertDialogueRequest,
   client: DeepSeekClient,
@@ -142,24 +189,59 @@ export async function generateAlbertDialogue(
     throw new Error("invalid_message");
   }
 
-  const messages = formatAlbertDialogueMessages(request);
+  const baseMessages = formatAlbertDialogueMessages(request);
+
+  // Attempt 1: Initial generation
   const responseText = await client.call({
     model,
-    messages,
+    messages: baseMessages,
     temperature: 0.7,
     max_tokens: 800,
     timeoutMs,
   });
 
   const cleaned = responseText.trim();
-  if (!cleaned) {
-    throw new Error("albert_empty_response");
+  const initialValidation = validateAlbertResponse(cleaned);
+  if (initialValidation.valid) {
+    return {
+      status: "ok",
+      message: cleaned,
+      provider: "deepseek",
+      model,
+    };
   }
 
-  return {
-    status: "ok",
-    message: cleaned,
-    provider: "deepseek",
+  console.warn("[Albert Dialogue Validation] Initial response failed format checks:", initialValidation.blockers);
+
+  // Attempt 2: Bounded editorial format repair (exactly 1 repair generation)
+  const repairMessages = [
+    ...baseMessages,
+    { role: "assistant" as const, content: cleaned },
+    {
+      role: "user" as const,
+      content: `Предыдущий ответ нарушил механический формат: ${initialValidation.blockers.join(", ")}. Перепишите ответ строго по правилам: объём до 180 слов, уважительное «вы», и завершите его РОВНО ОДНИМ вопросом (знак '?' должен быть единственным в тексте и стоять в самом конце).`,
+    },
+  ];
+
+  const repairText = await client.call({
     model,
-  };
+    messages: repairMessages,
+    temperature: 0.6,
+    max_tokens: 800,
+    timeoutMs,
+  });
+
+  const cleanedRepair = repairText.trim();
+  const repairValidation = validateAlbertResponse(cleanedRepair);
+  if (repairValidation.valid) {
+    return {
+      status: "ok",
+      message: cleanedRepair,
+      provider: "deepseek",
+      model,
+    };
+  }
+
+  console.error("[Albert Dialogue Validation] Repair attempt also failed format checks:", repairValidation.blockers);
+  throw new Error(`albert_contract_violation:${repairValidation.blockers.join("|")}`);
 }

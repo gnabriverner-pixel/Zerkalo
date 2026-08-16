@@ -249,21 +249,25 @@ export async function generatePersonalMyth(
   let blockers: string[] = [];
   for (let editorialAttempt = 0; editorialAttempt < 3; editorialAttempt += 1) {
     const prompt = buildPersonalMythPromptV11(request, blockers);
-    let lastTransportError: unknown;
-    for (let transportAttempt = 0; transportAttempt < 2; transportAttempt += 1) {
-      try {
-        const result = parsePersonalMythResult(await provider.generate(prompt, timeoutMs));
-        const quality = validatePersonalMythResult(result);
-        if (quality.passed) return { result, quality, repaired: editorialAttempt > 0 };
-        blockers = quality.blockers;
-        console.warn(`[PersonalMyth Quality Check] attempt ${editorialAttempt + 1} failed with blockers:`, blockers);
-        lastTransportError = undefined;
-        break;
-      } catch (error) {
-        lastTransportError = error;
-      }
+    // Transport errors (terminal 4xx or exhausted transient 5xx) propagate immediately.
+    // DeepSeekClient handles single transient retry; generatePersonalMyth does not stack transport retries.
+    const raw = await provider.generate(prompt, timeoutMs);
+    
+    let result: PersonalMythResult;
+    try {
+      result = parsePersonalMythResult(raw);
+    } catch (parseError) {
+      console.warn(`[PersonalMyth Parse Check] attempt ${editorialAttempt + 1} failed:`, parseError);
+      blockers = ["result_shape_invalid"];
+      continue;
     }
-    if (lastTransportError) blockers = [lastTransportError instanceof Error ? lastTransportError.message.split(":", 1)[0] : "provider_failed"];
+
+    const quality = validatePersonalMythResult(result);
+    if (quality.passed) {
+      return { result, quality, repaired: editorialAttempt > 0 };
+    }
+    blockers = quality.blockers;
+    console.warn(`[PersonalMyth Quality Check] attempt ${editorialAttempt + 1} failed with blockers:`, blockers);
   }
   throw new Error(`personal_myth_quality_failed:${blockers.join("|")}`);
 }

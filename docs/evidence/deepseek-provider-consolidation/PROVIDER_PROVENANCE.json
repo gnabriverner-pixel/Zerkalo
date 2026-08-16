@@ -1,28 +1,119 @@
 {
-  "consolidation_timestamp": "2026-08-16T22:09:05.816Z",
-  "provider": "deepseek",
-  "models": {
-    "personal_myth": "deepseek-v4-pro",
-    "meeting_of_mirrors": "deepseek-v4-pro",
-    "albert_dialogue": "deepseek-v4-pro"
-  },
+  "consolidation_timestamp": "2026-08-16T22:55:50.363Z",
+  "execution_environment": "live_node_express_playwright",
+  "canonical_runtime_provider": "deepseek",
   "google_production_dependency": "none",
   "runs": {
     "route_a": {
       "status": "success",
-      "timestamp": "2026-08-16T22:10:15.371Z"
+      "personal_myth": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "title": "Камень под вечерней тишиной",
+        "word_count": 339
+      },
+      "code": {
+        "dob": "15.08.1990",
+        "calculated": true
+      },
+      "meeting_of_mirrors": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro"
+      },
+      "albert_dialogue": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "message_length": 1022,
+        "ends_with_question": true
+      },
+      "verified_at": "2026-08-16T22:56:48.967Z"
     },
     "route_b": {
       "status": "success",
-      "timestamp": "2026-08-16T22:11:12.242Z"
+      "code": {
+        "dob": "07.03.1988",
+        "calculated": true
+      },
+      "personal_myth": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "title": "Терраса над соснами",
+        "word_count": 345
+      },
+      "meeting_of_mirrors": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro"
+      },
+      "albert_dialogue": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "message_length": 712,
+        "ends_with_question": true
+      },
+      "verified_at": "2026-08-16T22:57:39.795Z"
     },
-    "provider_unavailable_tests": {
-      "meeting_status": 503,
-      "meeting_code": "meeting_provider_not_ready",
-      "albert_status": 503,
-      "albert_code": "albert_provider_not_ready",
+    "failure_c_meeting_unavailable": {
+      "http_status": 503,
+      "code": "meeting_provider_not_ready",
+      "honest_error_rendered": true,
+      "no_fake_result": true,
+      "myth_preserved": true,
+      "code_preserved": true,
       "lenses_intact": true,
-      "timestamp": "2026-08-16T22:11:19.373Z"
+      "verified_at": "2026-08-16T22:58:10.480Z"
+    },
+    "failure_d_albert_unavailable": {
+      "http_status": 503,
+      "code": "albert_provider_not_ready",
+      "honest_error_rendered": true,
+      "no_fake_assistant_message": true,
+      "meeting_summary_preserved": true,
+      "parallels_preserved": true,
+      "meeting_intact": true,
+      "verified_at": "2026-08-16T22:58:29.317Z"
     }
+  },
+  "preflight": {
+    "health": {
+      "status": "ok",
+      "service": "zerkalo",
+      "version": "1.0.0-lab",
+      "models": {
+        "personalMyth": "deepseek-v4-pro",
+        "meeting": "deepseek-v4-pro",
+        "albert": "deepseek-v4-pro"
+      },
+      "google_production_dependency": "none"
+    },
+    "health_ready": {
+      "status": "ready",
+      "service": "zerkalo",
+      "providers": {
+        "personal_myth": {
+          "ready": true,
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro",
+          "writer": "personal-myth-v1.1-rc"
+        },
+        "meeting": {
+          "ready": true,
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro"
+        },
+        "albert": {
+          "ready": true,
+          "provider": "deepseek",
+          "model": "deepseek-v4-pro"
+        }
+      },
+      "google_production_dependency": "none"
+    },
+    "verified_at": "2026-08-16T22:55:50.655Z"
   }
 }

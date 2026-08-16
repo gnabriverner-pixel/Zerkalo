@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   PERSONAL_MYTH_WRITER_VERSION,
   buildPersonalMythPromptV11,
@@ -7,8 +7,10 @@ import {
   parsePersonalMythRequest,
   parsePersonalMythResult,
   validatePersonalMythResult,
+  DeepSeekMythProvider,
   type PersonalMythProvider,
 } from "./myth";
+import { DeepSeekClient } from "./deepseek";
 
 const answers = {
   q1: "тяжесть и ощущение развилки",
@@ -104,6 +106,78 @@ describe("Personal Myth v1.1 release contract", () => {
       ...provider,
       generate: async () => { throw new Error("provider_http_500"); },
     };
-    await expect(generatePersonalMyth(request(), broken, 1000)).rejects.toThrow("personal_myth_quality_failed");
+    await expect(generatePersonalMyth(request(), broken, 1000)).rejects.toThrow("provider_http_500");
+  });
+
+  describe("DeepSeek Myth Transport & Editorial Boundaries", () => {
+    it("fails terminal 401 on exactly 1 HTTP attempt total", async () => {
+      let httpCalls = 0;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation(async () => {
+        httpCalls += 1;
+        return {
+          ok: false,
+          status: 401,
+          text: async () => "Unauthorized: Invalid API key",
+        } as Response;
+      });
+
+      try {
+        const client = new DeepSeekClient({ DEEPSEEK_API_KEY: "sk-12345678901234567890" });
+        const provider = new DeepSeekMythProvider(process.env, client);
+
+        await expect(generatePersonalMyth(request(), provider, 1000)).rejects.toThrow("provider_http_401");
+        expect(httpCalls).toBe(1);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("retries persistent transient 503 exactly once (2 HTTP attempts total)", async () => {
+      let httpCalls = 0;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockImplementation(async () => {
+        httpCalls += 1;
+        return {
+          ok: false,
+          status: 503,
+          text: async () => "Service Unavailable",
+        } as Response;
+      });
+
+      try {
+        const client = new DeepSeekClient({ DEEPSEEK_API_KEY: "sk-12345678901234567890" });
+        const provider = new DeepSeekMythProvider(process.env, client);
+
+        await expect(generatePersonalMyth(request(), provider, 1000)).rejects.toThrow("provider_http_503");
+        expect(httpCalls).toBe(2);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("triggers editorial rewrite for quality failure without extra transport retries", async () => {
+      let attempts = 0;
+      const badPayload = validPayload();
+      badPayload.story_result.story += " карма"; // forbidden word
+
+      const provider: PersonalMythProvider = {
+        name: "deepseek",
+        model: "deepseek-v4-pro",
+        isReady: () => true,
+        generate: async () => {
+          attempts += 1;
+          if (attempts === 1) {
+            return JSON.stringify(badPayload);
+          }
+          return JSON.stringify(validPayload());
+        },
+      };
+
+      const res = await generatePersonalMyth(request(), provider, 1000);
+      expect(res.repaired).toBe(true);
+      expect(attempts).toBe(2);
+      expect(res.quality.passed).toBe(true);
+    });
   });
 });

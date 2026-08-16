@@ -3,6 +3,7 @@ import {
   buildAlbertSystemPrompt,
   formatAlbertDialogueMessages,
   generateAlbertDialogue,
+  validateAlbertResponse,
   type AlbertDialogueRequest,
 } from "./albert";
 import { DeepSeekClient } from "./deepseek";
@@ -109,5 +110,70 @@ describe("Albert Web Dialogue Server (RP-1 DeepSeek)", () => {
     await expect(
       generateAlbertDialogue({ message: "   " }, client)
     ).rejects.toThrow("invalid_message");
+  });
+
+  describe("Mechanical Format Validation (validateAlbertResponse)", () => {
+    it("accepts valid concise response with single final question mark", () => {
+      const validText = "Вы обратили внимание на важное расхождение между ритмом действия и потребностью в покое. Что сейчас кажется вам более надежной опорой?";
+      const report = validateAlbertResponse(validText);
+      expect(report.valid).toBe(true);
+      expect(report.blockers).toHaveLength(0);
+      expect(report.questionCount).toBe(1);
+    });
+
+    it("rejects response with multiple question marks", () => {
+      const multiQ = "Почему это происходит? Вы чувствуете напряжение? Каков ваш следующий шаг?";
+      const report = validateAlbertResponse(multiQ);
+      expect(report.valid).toBe(false);
+      expect(report.blockers).toContain("multiple_questions");
+    });
+
+    it("rejects response not ending with a question mark", () => {
+      const noEndQ = "Вы чувствуете напряжение, но это нормально. Сделайте один шаг.";
+      const report = validateAlbertResponse(noEndQ);
+      expect(report.valid).toBe(false);
+      expect(report.blockers).toContain("missing_question");
+      expect(report.blockers).toContain("does_not_end_with_question");
+    });
+
+    it("rejects response exceeding 180 words", () => {
+      const longText = Array.from({ length: 190 }, (_, i) => `слово${i}`).join(" ") + "?";
+      const report = validateAlbertResponse(longText);
+      expect(report.valid).toBe(false);
+      expect(report.blockers).toContain("over_word_limit");
+    });
+  });
+
+  describe("Editorial Format Repair in generateAlbertDialogue", () => {
+    it("successfully repairs invalid response on second attempt", async () => {
+      const client = new DeepSeekClient({
+        DEEPSEEK_API_KEY: "sk-12345678901234567890",
+      });
+
+      // Attempt 1: fails (no question mark)
+      // Attempt 2 (repair): succeeds
+      const callSpy = vi.spyOn(client, "call")
+        .mockResolvedValueOnce("Вы чувствуете этот контраст между динамикой и покоем.")
+        .mockResolvedValueOnce("Вы чувствуете этот контраст между динамикой и покоем. Что сейчас дает вам уверенность?");
+
+      const response = await generateAlbertDialogue(sampleRequest, client, "deepseek-v4-pro");
+      expect(response.status).toBe("ok");
+      expect(response.message).toContain("Что сейчас дает вам уверенность?");
+      expect(callSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("fails closed when both initial and repair attempts violate format", async () => {
+      const client = new DeepSeekClient({
+        DEEPSEEK_API_KEY: "sk-12345678901234567890",
+      });
+
+      vi.spyOn(client, "call")
+        .mockResolvedValueOnce("Первый некорректный ответ.")
+        .mockResolvedValueOnce("Второй некорректный ответ тоже без вопроса.");
+
+      await expect(
+        generateAlbertDialogue(sampleRequest, client, "deepseek-v4-pro")
+      ).rejects.toThrow("albert_contract_violation");
+    });
   });
 });
