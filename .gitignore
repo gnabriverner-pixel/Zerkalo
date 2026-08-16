@@ -8,3 +8,4 @@ coverage/
 !.env.example
 leads.json
 feedback.json
+test-results/

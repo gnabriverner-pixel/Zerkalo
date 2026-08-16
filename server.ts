@@ -3,7 +3,8 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
 import { GoogleGenAI } from "@google/genai";
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config({ override: true });
 import { generateFullInterpretationPayload, generateFirstMirror } from "./src/services/interpretation";
 import { buildPersonalMythPrompt, buildMeetingOfMirrorsPrompt } from "./src/services/mythPrompts";
 import { parseMeetingResponse } from "./src/services/meetingContract";
@@ -17,10 +18,11 @@ import {
   parsePersonalMythRequest,
 } from "./server/myth";
 
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const MYTH_MODEL_A = process.env.MYTH_MODEL_A || "gemini-2.5-flash";
-const MYTH_MODEL_B = process.env.MYTH_MODEL_B || "gemini-2.5-pro";
-const SYNTHESIS_MODEL = process.env.SYNTHESIS_MODEL || "gemini-2.5-flash";
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.7-flash";
+const CODE_MODEL = process.env.CODE_MODEL || 'gemini-flash-latest';
+const SYNTHESIS_MODEL = process.env.SYNTHESIS_MODEL || 'gemini-flash-latest';
+const MYTH_MODEL_A = process.env.MYTH_MODEL_A || 'gemini-flash-latest';
+const MYTH_MODEL_B = process.env.MYTH_MODEL_B || 'gemini-flash-latest';
 
 function isCrisisInput(inputs: StoryInputs): boolean {
   const combined = `${inputs.q1 || ''} ${inputs.q2 || ''} ${inputs.q3 || ''} ${inputs.q4 || ''}`.toLowerCase();
@@ -504,13 +506,26 @@ ${payload2}
       const ai = new GoogleGenAI({ apiKey });
       const prompt = buildMeetingOfMirrorsPrompt(codeData, storyData);
 
-      const response = await ai.models.generateContent({
-        model: SYNTHESIS_MODEL,
-        contents: prompt,
-        config: {
-          temperature: 0.6,
-        }
-      });
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: SYNTHESIS_MODEL,
+          contents: prompt,
+          config: {
+            temperature: 0.6,
+          }
+        });
+      } catch (callErr) {
+        const fallbackModel = 'gemini-flash-lite-latest';
+        console.warn(`Developer Log: Synthesis model ${SYNTHESIS_MODEL} failed, retrying with ${fallbackModel}:`, callErr);
+        response = await ai.models.generateContent({
+          model: fallbackModel,
+          contents: prompt,
+          config: {
+            temperature: 0.6,
+          }
+        });
+      }
 
       let responseText = response.text || "{}";
       responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
