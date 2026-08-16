@@ -1,0 +1,224 @@
+{
+ "$schema": "http://json-schema.org/draft-07/schema#",
+ "title": "G1C Phase-1 Grader Output Schema",
+ "description": "Один объект на Миф (только кейсы со story_result). Грейдер возвращает JSON-массив объектов по этому шаблону. Поля Phase-2 (шкалы 7–9, provenance, overreach, adjusted_after_context) в этом пакете не запрашиваются.",
+ "type": "array",
+ "items": {
+  "type": "object",
+  "required": [
+   "grader_id",
+   "grader_model",
+   "run_id",
+   "case_id",
+   "scores",
+   "confidence",
+   "evidence",
+   "identity",
+   "genericness",
+   "counterfactual",
+   "notes"
+  ],
+  "properties": {
+   "grader_id": {
+    "type": "string",
+    "description": "Ваш идентификатор (например, ваша модель и версия)"
+   },
+   "grader_model": {
+    "type": "string",
+    "description": "Точная модель и версия, например 'Model X (2026-08)'"
+   },
+   "run_id": {
+    "type": "string",
+    "description": "run_id из G1C_PHASE1_MYTHS.jsonl"
+   },
+   "case_id": {
+    "type": "string",
+    "pattern": "^G1C-S-\\d+$"
+   },
+   "scores": {
+    "type": "object",
+    "description": "Шесть шкал Phase-1 (0–10)",
+    "required": [
+     "grounding",
+     "specificity",
+     "literary_quality",
+     "non_genericity",
+     "insight_delta",
+     "restraint"
+    ],
+    "properties": {
+     "grounding": {
+      "$ref": "#/definitions/score"
+     },
+     "specificity": {
+      "$ref": "#/definitions/score"
+     },
+     "literary_quality": {
+      "$ref": "#/definitions/score"
+     },
+     "non_genericity": {
+      "$ref": "#/definitions/score"
+     },
+     "insight_delta": {
+      "$ref": "#/definitions/score"
+     },
+     "restraint": {
+      "$ref": "#/definitions/score"
+     }
+    },
+    "additionalProperties": false
+   },
+   "confidence": {
+    "type": "object",
+    "description": "Уверенность грейдера в собственных оценках",
+    "required": [
+     "overall",
+     "per_dimension"
+    ],
+    "properties": {
+     "overall": {
+      "$ref": "#/definitions/score"
+     },
+     "per_dimension": {
+      "type": "object",
+      "description": "Уверенность по каждой шкале (0–10)",
+      "additionalProperties": {
+       "$ref": "#/definitions/score"
+      }
+     }
+    },
+    "additionalProperties": false
+   },
+   "evidence": {
+    "type": "object",
+    "description": "Короткие цитаты-доказательства. Ключ — шкала, значение — {quote, reference}",
+    "additionalProperties": {
+     "type": "object",
+     "required": [
+      "quote",
+      "reference"
+     ],
+     "properties": {
+      "quote": {
+       "type": "string",
+       "description": "Цитата из Мифа или из ответов-кандидатов (до 200 символов)"
+      },
+      "reference": {
+       "type": "string",
+       "description": "Референс: q1|q2|q3|q4|title|story|mirror.mainImage|mirror.innerTension|mirror.hiddenResource|mirror.newView|meaning[0-2]|one_step|journal_question|disclaimer"
+      }
+     },
+     "additionalProperties": false
+    }
+   },
+   "identity": {
+    "type": "object",
+    "description": "Задача A: идентификация источника Мифа среди 5 кандидатов",
+    "required": [
+     "choice",
+     "confidence",
+     "evidence"
+    ],
+    "properties": {
+     "choice": {
+      "type": "string",
+      "pattern": "^G1C-S-\\d+$",
+      "description": "case_id выбранного кандидата"
+     },
+     "confidence": {
+      "$ref": "#/definitions/score"
+     },
+     "evidence": {
+      "type": "array",
+      "items": {
+       "type": "string",
+       "description": "Цитата из Мифа, указывающая на выбранный источник"
+      },
+      "minItems": 1,
+      "maxItems": 4
+     }
+    },
+    "additionalProperties": false
+   },
+   "genericness": {
+    "type": "object",
+    "description": "Задача C: насколько Миф универсален",
+    "required": [
+     "label",
+     "score",
+     "evidence"
+    ],
+    "properties": {
+     "label": {
+      "type": "string",
+      "enum": [
+       "only_source",
+       "few_candidates",
+       "most_candidates"
+      ]
+     },
+     "score": {
+      "$ref": "#/definitions/score",
+      "description": "10 = подходит только источнику"
+     },
+     "evidence": {
+      "type": "string"
+     }
+    },
+    "additionalProperties": false
+   },
+   "counterfactual": {
+    "type": "object",
+    "description": "Задача B: обоснован ли Миф подставленным чужим набором ответов",
+    "required": [
+     "grounded",
+     "mismatches"
+    ],
+    "properties": {
+     "grounded": {
+      "type": "boolean"
+     },
+     "mismatches": {
+      "type": "array",
+      "description": "Цитируемые несовпадения (минимум 2 при grounded=false)",
+      "items": {
+       "type": "object",
+       "required": [
+        "myth_quote",
+        "answer_ref",
+        "reason"
+       ],
+       "properties": {
+        "myth_quote": {
+         "type": "string"
+        },
+        "answer_ref": {
+         "type": "string",
+         "description": "q1|q2|q3|q4 подставленного набора"
+        },
+        "reason": {
+         "type": "string"
+        }
+       },
+       "additionalProperties": false
+      }
+     }
+    },
+    "additionalProperties": false
+   },
+   "notes": {
+    "type": "string",
+    "description": "Свободные замечания (необязательно)"
+   }
+  },
+  "additionalProperties": false
+ },
+ "definitions": {
+  "score": {
+   "type": "number",
+   "minimum": 0,
+   "maximum": 10,
+   "multipleOf": 1
+  }
+ }
+}

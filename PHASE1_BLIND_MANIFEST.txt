@@ -1,0 +1,22 @@
+# G1C PHASE-1 BLIND TRANSPORT — MANIFEST
+# Независимый слепой (Phase-1) пакет для оценки «Личного мифа».
+# Создан из неизменяемого снапшота benchmark (issue #16); benchmark НЕ менялся, Мифы НЕ регенерированы.
+
+SOURCE_BRANCH=evidence/g1c-synthetic-f06759c
+SOURCE_COMMIT=5959d019f454dc7b4fecc9a9ff66de3e88b9c0a3
+SOURCE_COMMIT_SHA256=f6a681d494a7a64c31fcb37d8013ed649689c84429c018a6e01c9ebe4339fb7f
+SOURCE_HUB_COMMIT=f06759c
+SOURCE_HUB_PATH=04_ARTEFACTS/G1C_SYNTHETIC/
+TRANSPORT_BRANCH=evidence/g1c-phase1-blind-f06759c
+TRANSPORT_DATE=2026-08-16
+COPY_POLICY=sanitized blind subset; benchmark data semantics unchanged; no regeneration
+RANDOMIZATION=identity-matching candidate order shuffled (seed=0x5959D019, fixed)
+GROUND_TRUTH_EXCLUDED=hidden_context, true_source, decoys, wrong_source_case_id, expected, plausibility, grader outputs, summary, owner sample, PASS/FAIL conclusions, writer/model names
+MERGE_POLICY=not merged to main
+
+FILES=5
+G1C_PHASE1_COUNTERFACTUALS.json sha256=7d52b564445c16f8fc5c9b5e8f51f2c94a16e356235db94247baa8303a3d6162
+G1C_PHASE1_GRADER_PACK.md sha256=ccf5c2f64ca58e09c8b11a6f97cea7fda515bd78fbf4494c49011bbc33366c1b
+G1C_PHASE1_IDENTITY_MATCHING.json sha256=8922e7006e44c65ed307a600ea7ecf1052f0b1e26c1bbc904929ba098d272c9d
+G1C_PHASE1_MYTHS.jsonl sha256=7152fa9705ebcf3b23589ae4f2e59c6d4362ee428f4299459cd1b2264a6ed5f2
+G1C_PHASE1_SCHEMA.json sha256=6802a12685c276bfe671ef20b74259ae7d6c680fa6908309c2cd7128401bbec2
