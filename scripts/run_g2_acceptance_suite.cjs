@@ -1,6 +1,7 @@
 const { chromium } = require("@playwright/test");
 const path = require("path");
 const fs = require("fs");
+const child_process = require("child_process");
 
 const repoRoot = path.resolve(__dirname, "..");
 const evidenceDir = path.join(repoRoot, "docs/evidence/g2-live-acceptance");
@@ -429,7 +430,53 @@ async function runSuite() {
   // ========================================================
   console.log("\n>>> TEST 6: Controlled Provider Failures & State Preservation");
 
-  // 1. Myth Provider Failure (502 / Unavailable) + Answers Preserved
+  // 1. Myth Provider Failure (Missing DEEPSEEK_API_KEY on alternate server port 3006)
+  console.log("  Testing missing DEEPSEEK_API_KEY against fresh server instance on port 3006...");
+  const altServer = child_process.spawn("npx", ["tsx", "server.ts"], {
+    cwd: repoRoot,
+    env: { ...process.env, PORT: "3006", DEEPSEEK_API_KEY: "" },
+    stdio: "pipe"
+  });
+
+  try {
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Timeout waiting for alt server on port 3006")), 15000);
+      altServer.stdout.on("data", (data) => {
+        if (data.toString().includes("3006")) {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+      altServer.on("error", (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
+
+    // Verify API returns 503 personal_myth_provider_not_ready
+    const altApiRes = await fetch("http://localhost:3006/api/personal-myth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        request_id: "test_missing_key_proof_12345",
+        answers: {
+          q1: "Чувствую усталость",
+          q2: "Старый маяк в тумане",
+          q3: "Тихий вечер у моря",
+          q4: "Внутреннее спокойствие"
+        }
+      })
+    });
+    const altApiJson = await altApiRes.json();
+    console.log(`  Alt-port 3006 API response: HTTP ${altApiRes.status}, code: ${altApiJson.code}`);
+    if (altApiRes.status !== 503 || altApiJson.code !== "personal_myth_provider_not_ready") {
+      throw new Error(`Expected 503 personal_myth_provider_not_ready from server without DEEPSEEK_API_KEY, got ${altApiRes.status}: ${JSON.stringify(altApiJson)}`);
+    }
+  } finally {
+    altServer.kill("SIGTERM");
+  }
+
+  // 1b. Client Failure Injection (503 / Provider Not Ready) + Answers Preserved
   await page.goto("http://localhost:3005", { waitUntil: "networkidle" });
   const mythEntry = page.locator('button:has-text("Войти через образы")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Войти через образы →'));
   await mythEntry.first().click();
@@ -445,15 +492,15 @@ async function runSuite() {
   await answerQuestion(page, "02 / 04", "Ответ 2 для проверки ошибки.");
   await answerQuestion(page, "03 / 04", "Ответ 3 для проверки ошибки.");
 
-  // Inject 502 on /api/personal-myth
+  // Inject 503 on /api/personal-myth (CONTROLLED_FAILURE_INJECTION)
   await page.route("**/api/personal-myth", async route => {
     await route.fulfill({
-      status: 502,
+      status: 503,
       contentType: "application/json",
       body: JSON.stringify({
         status: "error",
-        code: "personal_myth_provider_failed",
-        ui: { safe_message: "Личный миф временно недоступен. Ваши ответы сохранены — попробуйте снова позже." }
+        code: "personal_myth_provider_not_ready",
+        ui: { safe_message: "Личный миф временно недоступен (провайдер генерации не настроен). Ваши ответы сохранены." }
       })
     });
   });
@@ -628,22 +675,58 @@ async function runSuite() {
 
   await browser.close();
 
-  // Save provenance artifact
+  // Fail-closed verification of synthesis model via /health endpoint
+  const healthRes = await fetch("http://localhost:3005/health");
+  if (!healthRes.ok) {
+    throw new Error(`Failed to query /health endpoint: HTTP ${healthRes.status}`);
+  }
+  const healthJson = await healthRes.json();
+  const synthesisModel = healthJson?.models?.synthesis;
+  if (!synthesisModel) {
+    throw new Error("Synthesis model missing in /health endpoint");
+  }
+
+  // Fail-closed verification of captured real provider responses
+  if (
+    !lastMythResponse ||
+    lastMythResponse.status !== "ok" ||
+    lastMythResponse.provider !== "deepseek" ||
+    lastMythResponse.model !== "deepseek-v4-pro" ||
+    !lastMythResponse.story_result ||
+    !lastMythResponse.qa ||
+    !lastMythResponse.qa.passed
+  ) {
+    throw new Error(`Personal Myth response failed fail-closed provenance validation: ${JSON.stringify(lastMythResponse)}`);
+  }
+
+  if (
+    !lastMeetingResponse ||
+    lastMeetingResponse.status !== "ok" ||
+    !lastMeetingResponse.result
+  ) {
+    throw new Error(`Meeting response failed fail-closed provenance validation: ${JSON.stringify(lastMeetingResponse)}`);
+  }
+
+  // Save fail-closed provenance artifact
   const provenanceData = {
     timestamp: new Date().toISOString(),
     personal_myth: {
-      provider: lastMythResponse?.provider || "deepseek",
-      model: lastMythResponse?.model || "deepseek-v4-pro",
-      writer_version: lastMythResponse?.writer_version || "personal-myth-v1.1",
-      status: lastMythResponse?.status || "ok",
-      qa: lastMythResponse?.qa || null
+      provider: lastMythResponse.provider,
+      model: lastMythResponse.model,
+      writer_version: lastMythResponse.writer_version,
+      status: lastMythResponse.status,
+      qa: {
+        passed: lastMythResponse.qa.passed,
+        word_count: lastMythResponse.qa.word_count,
+        repaired: lastMythResponse.qa.repaired
+      }
     },
     meeting_synthesis: {
       provider: "google",
-      model: "gemini-2.5-flash",
-      status: lastMeetingResponse?.status || "ok",
-      parallels_count: lastMeetingResponse?.result?.parallels?.length ?? lastMeetingResponse?.meeting_result?.resonances?.length ?? 2,
-      divergences_count: lastMeetingResponse?.result?.divergences?.length ?? lastMeetingResponse?.meeting_result?.divergences?.length ?? 1
+      model: synthesisModel,
+      status: lastMeetingResponse.status,
+      parallels_count: Array.isArray(lastMeetingResponse.result.parallels) ? lastMeetingResponse.result.parallels.length : 0,
+      divergences_count: Array.isArray(lastMeetingResponse.result.divergences) ? lastMeetingResponse.result.divergences.length : 0
     }
   };
 
@@ -652,7 +735,7 @@ async function runSuite() {
     JSON.stringify(provenanceData, null, 2),
     "utf-8"
   );
-  console.log("  Saved PROVIDER_PROVENANCE.json successfully.");
+  console.log("  Saved fail-closed PROVIDER_PROVENANCE.json successfully.");
 
   console.log("\n=========================================================");
   console.log("=== ALL CANONICAL LIVE ACCEPTANCE SUITES PASSED CLEAN ===");

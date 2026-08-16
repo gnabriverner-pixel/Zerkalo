@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-16T21:11:39.313Z",
+  "timestamp": "2026-08-16T21:34:19.684Z",
   "personal_myth": {
     "provider": "deepseek",
     "model": "deepseek-v4-pro",
@@ -7,15 +7,15 @@
     "status": "ok",
     "qa": {
       "passed": true,
-      "word_count": 403,
+      "word_count": 306,
       "repaired": false
     }
   },
   "meeting_synthesis": {
     "provider": "google",
-    "model": "gemini-2.5-flash",
+    "model": "gemini-flash-lite-latest",
     "status": "ok",
-    "parallels_count": 2,
+    "parallels_count": 0,
     "divergences_count": 1
   }
 }

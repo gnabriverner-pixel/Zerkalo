@@ -2,8 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
-import dotenv from "dotenv";
-dotenv.config({ override: true });
+import "dotenv/config";
 import { GoogleGenAI } from "@google/genai";
 import { generateFullInterpretationPayload, generateFirstMirror } from "./src/services/interpretation";
 import { buildPersonalMythPrompt, buildMeetingOfMirrorsPrompt } from "./src/services/mythPrompts";
@@ -227,7 +226,7 @@ async function startServer() {
     const now = Date.now();
     const clientKey = req.ip || "unknown";
     const currentRate = mythRate.get(clientKey);
-    const maxRequests = process.env.NODE_ENV === "production" ? 10 : 100;
+    const maxRequests = process.env.NODE_ENV === "production" ? 5 : 100;
     if (!currentRate || now - currentRate.windowStartedAt > 10 * 60_000) {
       mythRate.set(clientKey, { windowStartedAt: now, count: 1 });
     } else if (currentRate.count >= maxRequests) {
@@ -272,14 +271,17 @@ async function startServer() {
     } catch (error) {
       const code = error instanceof Error ? error.message.split(":", 1)[0] : "personal_myth_failed";
       const inputError = code.startsWith("invalid_");
+      const notReady = code === "personal_myth_provider_not_ready";
       console.error("Personal Myth generation failed:", code);
-      return res.status(inputError ? 400 : 502).json({
+      return res.status(inputError ? 400 : notReady ? 503 : 502).json({
         mode: "story",
         status: "error",
         code,
         ui: {
           safe_message: inputError
             ? "Проверьте, что на все четыре вопроса есть короткий ответ."
+            : notReady
+            ? "Личный миф временно недоступен (провайдер генерации не настроен). Ваши ответы сохранены."
             : "Историю не удалось собрать достаточно точно. Ответы сохранены — можно повторить попытку.",
         },
       });

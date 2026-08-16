@@ -71,15 +71,15 @@ All negative test cases, architectural boundary preconditions, deterministic eng
 * **Reduced Viewport (390×500 Keyboard Simulation):** All inputs remain fully accessible, scrollable, and tap-safe under reduced virtual keyboard height.
   * Screenshot: `16_keyboard_reduced_viewport.png` / `02-myth-question-keyboard-390x844.png` (`REAL_LIVE`) — `PASS`
 
-### 3.4. Real Provider Failures vs Crisis Intercept
-* **Myth Provider Failure (502 / Gateway Error):** Simulated provider failure; UI displays honest error message and **preserves the user's typed answers in the textarea**.
-  * Screenshot: `17_myth_provider_failure.png` / `19-myth-provider-failure-answers-preserved-390x844.png` (`REAL_LIVE`) — `PASS`
-* **Meeting Provider Failure (503 Service Unavailable):** Simulated meeting failure; UI displays honest error message, and **both the Code calculation and Myth story remain fully preserved across lens switches**.
-  * Screenshot: `18_meeting_provider_failure.png` / `08-meeting-provider-error-preserves-results-390x844.png` (`REAL_LIVE`) — `PASS`
+### 3.4. Controlled Provider Failures vs Crisis Intercept
+* **Myth Provider Failure (Missing DEEPSEEK_API_KEY on fresh alt-port server / 503 unavailable):** Proven against fresh server instance on port 3006 without `DEEPSEEK_API_KEY`. Endpoint `/api/personal-myth` returns honest HTTP 503 with code `personal_myth_provider_not_ready`, UI displays safe message, and **all four typed answers remain preserved in client textarea for retry**.
+  * Screenshot: `19-myth-provider-failure-answers-preserved-390x844.png` / `17_myth_provider_failure.png` (`CONTROLLED_FAILURE_INJECTION`) — `PASS`
+* **Meeting Provider Failure (503 Service Unavailable Injection):** Controlled failure injection on `/api/lab/meeting/generate` with two completed real lenses; UI displays honest error message, and **both the Code calculation and Myth story remain fully preserved and accessible across lens switches**.
+  * Screenshot: `08-meeting-provider-error-preserves-results-390x844.png` / `18_meeting_provider_failure.png` (`CONTROLLED_FAILURE_INJECTION`) — `PASS`
 * **Crisis Safety Intercept:** Input containing crisis keywords triggers an immediate emergency interception modal with the 8-800 crisis hotline, completely aborting LLM invocation.
-  * Screenshot: `19_crisis_safety_intercept.png` / `20-crisis-safety-intercept-390x844.png` (`REAL_LIVE`) — `PASS`
+  * Screenshot: `20-crisis-safety-intercept-390x844.png` / `19_crisis_safety_intercept.png` (`REAL_LIVE`) — `PASS`
 * **Zero-Resonance State:** Synthetic UI fixture demonstrating the edge case where Code and Myth have zero common resonance points, rendering honest divergence notices without false resonances.
-  * Screenshot: `20_meeting_zero_match_synthetic.png` / `07-meeting-zero-390x844.png` (`SYNTHETIC_UI_STATE`) — `PASS`
+  * Screenshot: `07-meeting-zero-390x844.png` / `20_meeting_zero_match_synthetic.png` (`SYNTHETIC_UI_STATE`) — `PASS`
 
 ---
 
@@ -94,7 +94,7 @@ All negative test cases, architectural boundary preconditions, deterministic eng
 | 05 | `05-meeting-normal-390x844.png` | `06_meeting_resonances_live.png` | `REAL_LIVE` | Gemini Meeting synthesis (parallels) |
 | 06 | `06-meeting-divergence-390x844.png` | - | `REAL_LIVE` | Meeting divergences rendered with equal status |
 | 07 | `07-meeting-zero-390x844.png` | `20_meeting_zero_match_synthetic.png` | `SYNTHETIC_UI_STATE` | Zero-resonance fixture UI state |
-| 08 | `08-meeting-provider-error-preserves-results-390x844.png` | `18_meeting_provider_failure.png` | `REAL_LIVE` | Meeting 503 error with preserved Code & Myth results |
+| 08 | `08-meeting-provider-error-preserves-results-390x844.png` | `18_meeting_provider_failure.png` | `CONTROLLED_FAILURE_INJECTION` | Meeting 503 error with preserved Code & Myth results |
 | 09 | `09-albert-open-390x844.png` | `07_albert_dialogue_live.png` | `REAL_LIVE` | Live interactive Albert Vyazemsky modal |
 | 10 | `10-route-b-code-first-390x844.png` | `08_route_b_code_first_live.png` | `REAL_LIVE` | Route B Code calculation for 06.05.1986 |
 | 11 | `11-route-b-myth-390x844.png` | `09_route_b_myth_live.png` | `REAL_LIVE` | Route B DeepSeek v4-pro Personal Myth |
@@ -104,25 +104,26 @@ All negative test cases, architectural boundary preconditions, deterministic eng
 | 15 | `15-invalid-future-date-390x844.png` | `12_invalid_future_date.png` | `REAL_LIVE` | Rejection of 01.01.2099 |
 | 16 | `16-meeting-precondition-blocked-390x844.png` | `13_meeting_precondition_blocked.png` | `REAL_LIVE` | Disabled synthesis button when mirrors are incomplete |
 | 17 | `17-code-deterministic-offline-390x844.png` | `14_code_deterministic_offline.png` | `REAL_LIVE` | Deterministic Code calculations without network |
-| 18 | `19-myth-provider-failure-answers-preserved-390x844.png` | `17_myth_provider_failure.png` | `REAL_LIVE` | Myth 502 error with answer preservation in textarea |
+| 18 | `19-myth-provider-failure-answers-preserved-390x844.png` | `17_myth_provider_failure.png` | `CONTROLLED_FAILURE_INJECTION` | Myth 503/502 failure with answer preservation in textarea |
 | 19 | `20-crisis-safety-intercept-390x844.png` | `19_crisis_safety_intercept.png` | `REAL_LIVE` | Crisis hotline intercept modal |
-| 20 | - | `15_feedback_error_handling.png` | `REAL_LIVE` | Honest error notice on feedback submission failure |
+| 20 | - | `15_feedback_error_handling.png` | `CONTROLLED_FAILURE_INJECTION` | Error notice on simulated feedback failure |
 
 ---
 
-## 5. Bounded Fix Log (Owner Review #2 Corrections)
+## 5. Bounded Fix Log (Owner Review #3 Cleanups)
 
-1. **Flexible Gemini Meeting Contract Parser (`src/services/meetingContract.ts`):**
-   * Supported camelCase and snake_case properties from LLM outputs (`codeAspect` / `code_aspect` / `codePerspective` / `code_view` / `code`).
-   * Supported fallback fields for parallels and divergences.
-2. **React State Synchronization Across Lens Switching (`src/components/PersonalMyth.tsx`):**
-   * Added synchronization effects ensuring that `initialResult` and `initialInputs` persist without loss when switching between Code, Myth, and Meeting lenses.
-3. **Automated End-to-End Suite Hardening (`scripts/run_g2_acceptance_suite.cjs`):**
-   * Added `test:acceptance` npm script for canonical single-command execution.
-   * Fully automated Route A, Route B through Albert, negative states, controlled provider errors with state preservation assertions, and synthetic zero-match.
-   * Outputted complete `PROVIDER_PROVENANCE.json` artifact.
-4. **Owner Acceptance Pack Superseded Marker (`docs/evidence/g2-owner-acceptance/`):**
-   * Added `SUPERSEDED_BY_BOUNDED_CORRECTION.md` pointing to canonical live evidence.
+1. **Reverted Unapproved Dotenv Precedence Drift (`server.ts`):**
+   * Restored `import "dotenv/config";` baseline without override.
+2. **Restored Production Rate Limit Baseline (`server.ts`):**
+   * Production rate limit restored to `5` requests per 10-minute window.
+3. **Verified Missing-Key Server Condition (`server.ts` & `scripts/run_g2_acceptance_suite.cjs`):**
+   * Server returns honest 503 `personal_myth_provider_not_ready` when `DEEPSEEK_API_KEY` is absent/invalid.
+   * Acceptance runner explicitly verifies this against an isolated server instance on port 3006.
+4. **Fail-Closed Provider Provenance (`scripts/run_g2_acceptance_suite.cjs`):**
+   * Guaranteed that `PROVIDER_PROVENANCE.json` only writes live-captured attributes without fallback defaults.
+   * Explicitly asserts `models.synthesis === "gemini-2.5-flash"` via `/health`.
+5. **Truthful Evidence Labeling:**
+   * Injected failure simulations explicitly marked as `CONTROLLED_FAILURE_INJECTION`.
 
 ---
 
