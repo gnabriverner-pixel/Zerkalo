@@ -347,30 +347,34 @@ export function MeetingOfMirrors({
               {/* Divergence / Contrast */}
               {meetingResult.divergences && meetingResult.divergences.length > 0 && (
                 <div className="space-y-4">
-                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-stone-400 block">
+                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                     Различия ракурсов (где зеркала расходятся)
                   </span>
 
                   <div className="space-y-4">
                     {meetingResult.divergences.map((div, idx) => (
-                      <div key={idx} className="bg-[#0D121D]/60 border border-white/[0.08] p-6 sm:p-8 rounded-xs space-y-3">
-                        <h4 className="font-serif text-lg text-stone-200 font-light">
+                      <div key={idx} className="bg-[#0D121D]/60 border border-white/[0.08] p-6 sm:p-8 rounded-xs space-y-4">
+                        <h4 className="font-serif text-xl sm:text-2xl text-stone-100 font-light">
                           {div.theme}
                         </h4>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                          <div className="p-3 bg-[#090D15] border border-white/[0.06] text-stone-400 rounded-xs">
-                            <span className="text-[10px] uppercase text-stone-500 font-mono block mb-1">В Коде:</span>
-                            {div.codeAspect}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                          <div className="p-4 bg-[#E8E0D4] border border-[#C8A45D]/35 rounded-xs text-[#2B241C]">
+                            <span className="text-[10px] uppercase text-[var(--color-antique-gold)] font-mono block mb-1">
+                              Линза Кода:
+                            </span>
+                            <p className="text-[#4D4338] font-normal leading-relaxed">{div.codeAspect}</p>
                           </div>
-                          <div className="p-3 bg-[#090D15] border border-white/[0.06] text-stone-400 rounded-xs">
-                            <span className="text-[10px] uppercase text-stone-500 font-mono block mb-1">В Мифе:</span>
-                            {div.mythAspect}
+                          <div className="p-4 bg-[#EFE5D3] border border-[#B89568]/35 rounded-xs text-[#282019]">
+                            <span className="text-[10px] uppercase text-[#7B6545] font-mono block mb-1">
+                              Линза Мифа:
+                            </span>
+                            <p className="font-serif text-[#3A2D22] leading-relaxed">{div.mythAspect}</p>
                           </div>
                         </div>
 
-                        <p className="text-xs text-stone-400 italic font-light pt-1">
-                          {div.reflection}
+                        <p className="text-sm text-stone-300 border-t border-white/[0.06] pt-4 font-serif italic leading-relaxed">
+                          «{div.reflection}»
                         </p>
                       </div>
                     ))}
@@ -405,41 +409,41 @@ export function MeetingOfMirrors({
                 </div>
               </div>
 
-              {/* TELEGRAM CTA: ОБСУДИТЬ С АЛЬБЕРТОМ В TELEGRAM */}
+              {/* ALBERT CONTINUATION CTA: PRIMARY WEB DIALOGUE + SECONDARY TELEGRAM */}
               <div className="bg-[#0D121D]/80 border border-[var(--color-antique-gold)]/40 p-8 sm:p-10 rounded-xs text-center space-y-5">
                 <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                   Продолжение исследования
                 </span>
                 
                 <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
-                  Обсудить с Альбертом в Telegram
+                  Исследовать синтез с Альбертом
                 </h3>
                 
-                <p className="text-xs sm:text-sm text-stone-400 font-light max-w-md mx-auto leading-relaxed">
-                  Проводник Альберт Вяземский доступен в Telegram для сохранения контекста, разбора ваших чисел и глубокого диалога.
+                <p className="text-xs sm:text-sm text-stone-300 font-light max-w-lg mx-auto leading-relaxed">
+                  Задайте вопрос Альберту прямо на сайте: он удерживает структуру вашего Кода, образы Мифа и найденные параллели.
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-2">
-                  <a
-                    href="https://t.me/digitalcodesystem_bot" 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 shadow-md cursor-pointer"
-                  >
-                    <Send size={14} />
-                    <span>Обсудить в Telegram</span>
-                  </a>
-
                   <button
                     onClick={() => {
                       setAlbertTopic(`Обсуждение синтеза: Душа ${codeResult?.soul}, Путь ${codeResult?.path}, Миф "${storyResult?.title}".`);
                       setIsAlbertOpen(true);
                     }}
-                    className="px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center gap-2 cursor-pointer"
+                    className="w-full sm:w-auto px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   >
                     <MessageSquare size={14} />
                     <span>Диалог на сайте</span>
                   </button>
+
+                  <a
+                    href="https://t.me/digitalcodesystem_bot" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Send size={14} />
+                    <span>Открыть в Telegram</span>
+                  </a>
                 </div>
               </div>
 

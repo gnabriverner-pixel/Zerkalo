@@ -332,9 +332,36 @@ export function AlabasterSanctuary({
               {`${day}.${month}.${year}`}
             </h1>
 
-            <p className="font-serif italic text-xl sm:text-2xl text-[#63656C] max-w-xl mx-auto leading-relaxed font-light mb-12">
+            <p className="font-serif italic text-xl sm:text-2xl text-[#63656C] max-w-xl mx-auto leading-relaxed font-light mb-8">
               «Числа не предопределяют судьбу. Они называют силы, которые уже действуют в вашей жизни.»
             </p>
+
+            {/* 5 KEYS ROW — РАННЯЯ НАГРАДА */}
+            <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-10">
+              {[
+                { key: 'Душа', num: soulNum, comp: result.soulComposite, title: 'Ядро' },
+                { key: 'Выражение', num: exprNum, comp: result.expressionComposite, title: 'Форма' },
+                { key: 'Путь', num: pathNum, comp: result.pathComposite, title: 'Маршрут' },
+                { key: 'Направление', num: dirNum, comp: result.directionComposite, title: 'Вектор' },
+                { key: 'Результат', num: resNum, comp: result.resultComposite, title: 'Итог' }
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-5 sm:p-6 bg-[#FCFAF7] border border-[#1A1A1C]/8 rounded-xs flex flex-col items-center text-center shadow-xs"
+                >
+                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#8C8E96] mb-3">
+                    {item.key}
+                  </span>
+                  <ArchetypeBasRelief number={item.num} size={54} showNumber={false} className="mb-2" />
+                  <span className="font-serif text-2xl text-[#1A1A1C] font-light">
+                    {item.num}
+                  </span>
+                  <span className="text-[10px] text-[#8C8E96] font-mono mt-1">
+                    {item.comp !== item.num.toString() ? item.comp : item.title}
+                  </span>
+                </div>
+              ))}
+            </div>
 
             <button
               onClick={() => scrollTo(sectionAct2Ref)}
@@ -617,10 +644,6 @@ export function AlabasterSanctuary({
                 </p>
               </div>
 
-              <p className="text-sm text-[#4A4B50] font-light leading-relaxed border-t border-[#1A1A1C]/8 pt-4">
-                {soulInfo.positions.soul.tension}
-              </p>
-
               <div className="border-t border-[#1A1A1C]/8 pt-4 flex items-center gap-3">
                 <span className="text-[10px] uppercase font-mono text-[#C8A45D] tracking-wider font-semibold">
                   Ключ к равновесию:
@@ -656,32 +679,70 @@ export function AlabasterSanctuary({
               </h2>
             </div>
 
-            {/* 5 KEYS ROW */}
-            <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              {[
-                { key: 'Душа', num: soulNum, comp: result.soulComposite, title: 'Ядро' },
-                { key: 'Выражение', num: exprNum, comp: result.expressionComposite, title: 'Форма' },
-                { key: 'Путь', num: pathNum, comp: result.pathComposite, title: 'Маршрут' },
-                { key: 'Направление', num: dirNum, comp: result.directionComposite, title: 'Вектор' },
-                { key: 'Результат', num: resNum, comp: result.resultComposite, title: 'Итог' }
-              ].map((item, idx) => (
-                <div
-                  key={idx}
-                  className="p-6 bg-[#FCFAF7] border border-[#1A1A1C]/8 rounded-xs flex flex-col items-center text-center shadow-xs"
-                >
-                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#8C8E96] mb-3">
-                    {item.key}
+            {/* FIRST MIRROR / MEETING EVIDENCE SYNTHESIS BLOCK */}
+            {reading && (
+              <div className="w-full bg-[#FCFAF7] border border-[#C8A45D]/40 p-8 sm:p-10 rounded-xs text-left shadow-xs space-y-6">
+                <div className="space-y-2 text-center sm:text-left">
+                  <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[#C8A45D] block font-medium">
+                    Смысловой узор Кода · Материал для Встречи зеркал
                   </span>
-                  <ArchetypeBasRelief number={item.num} size={54} showNumber={false} className="mb-2" />
-                  <span className="font-serif text-2xl text-[#1A1A1C] font-light">
-                    {item.num}
-                  </span>
-                  <span className="text-[10px] text-[#8C8E96] font-mono mt-1">
-                    {item.comp !== item.num.toString() ? item.comp : item.title}
-                  </span>
+                  <h3 className="font-serif text-2xl sm:text-3xl text-[#1A1A1C] font-light">
+                    {reading.title || 'Синтез формулы'}
+                  </h3>
+                  {reading.keyInsight && (
+                    <p className="font-serif italic text-base sm:text-lg text-[#4A4B50] font-light pt-1">
+                      «{reading.keyInsight}»
+                    </p>
+                  )}
                 </div>
-              ))}
-            </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                  {reading.blocks?.find(b => b.id === 'main_pattern') && (
+                    <div className="p-5 rounded-xs bg-[#F8F6F1] border border-[#1A1A1C]/8 space-y-2">
+                      <span className="text-[10px] uppercase font-mono tracking-wider text-[#8C8E96] block font-medium">
+                        Главный узор
+                      </span>
+                      <p className="text-xs text-[#4A4B50] font-light leading-relaxed">
+                        {reading.blocks.find(b => b.id === 'main_pattern')?.text}
+                      </p>
+                    </div>
+                  )}
+
+                  {reading.blocks?.find(b => b.id === 'strength') && (
+                    <div className="p-5 rounded-xs bg-[#F8F6F1] border border-[#1A1A1C]/8 space-y-2">
+                      <span className="text-[10px] uppercase font-mono tracking-wider text-emerald-800 block font-medium">
+                        Зона силы
+                      </span>
+                      <p className="text-xs text-[#4A4B50] font-light leading-relaxed">
+                        {reading.blocks.find(b => b.id === 'strength')?.text}
+                      </p>
+                    </div>
+                  )}
+
+                  {reading.blocks?.find(b => b.id === 'tension') && (
+                    <div className="p-5 rounded-xs bg-[#F8F6F1] border border-[#1A1A1C]/8 space-y-2">
+                      <span className="text-[10px] uppercase font-mono tracking-wider text-[#9E6A1B] block font-medium">
+                        Зона напряжения
+                      </span>
+                      <p className="text-xs text-[#4A4B50] font-light leading-relaxed">
+                        {reading.blocks.find(b => b.id === 'tension')?.text}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {reading.practicalStep && (
+                  <div className="border-t border-[#1A1A1C]/8 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <span className="text-[10px] uppercase font-mono text-[#C8A45D] tracking-wider font-semibold">
+                      Рекомендованный шаг:
+                    </span>
+                    <span className="text-[#4A4B50] font-light">
+                      {reading.practicalStep}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 3x3 MATRIX */}
             <div className="w-full bg-[#FCFAF7] border border-[#1A1A1C]/8 p-8 sm:p-12 rounded-xs text-center shadow-xs">
