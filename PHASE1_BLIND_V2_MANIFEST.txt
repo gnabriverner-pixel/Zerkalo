@@ -1,0 +1,25 @@
+# G1C PHASE-1 BLIND V2 — MANIFEST
+
+INPUT_COMMIT=7fad6be3e084856cd1e8a102ae241d73d44e4a4b
+SOURCE_HUB_COMMIT=f06759c
+SEED=G1C-PHASE1-BLIND-V2-F06759C-20260816
+RANDOMIZATION=sha256(seed|target-order|original-id), then sha256(seed|candidate-order|target-id|original-candidate-id)
+TARGETS=T001..T030
+CANDIDATES=A..E
+SCORE_SCALE=integer 1..6
+COPY_POLICY=myths and answer payloads unchanged; wrappers and deterministic order only
+HISTORY_POLICY=orphan root commit; no parent containing the leaked v1 package
+MERGE_POLICY=not merged to main
+AUTOMATIC_EVALUATION=not run
+SANITIZATION=PASS
+SCHEMA_VALIDATION=PASS (JSON Schema draft 2020-12, Ajv)
+SEMANTIC_PRESERVATION=PASS (30 myths, 150 candidate answer sets, 30 counterfactual answer sets)
+SEALED_MAPPING_IN_HEAD_TREE=ABSENT
+
+FILES=6
+docs/evidence/g1c-phase1-blind-v2/G1C_PHASE1_BLIND_V2_COUNTERFACTUALS.json sha256=191ad586bf46431ff766f2b2aefdd18523e3e5f88bebde540c0d15b3ae54b603
+docs/evidence/g1c-phase1-blind-v2/G1C_PHASE1_BLIND_V2_EVALUATION_GUIDE.md sha256=097abadcb2a91ec993e9d5a1b6c150535828903f5effd7b13058892c94698983
+docs/evidence/g1c-phase1-blind-v2/G1C_PHASE1_BLIND_V2_IDENTITY_MATCHING.json sha256=0ef6de3d8ed327bcd0f647dca0d9d50df70ecfff2588e520e6873711abffcb5b
+docs/evidence/g1c-phase1-blind-v2/G1C_PHASE1_BLIND_V2_MYTHS.jsonl sha256=5ad5b07aab81d87b022bef0bebf40cdabccf78d687618b382652a4001d6492e0
+docs/evidence/g1c-phase1-blind-v2/G1C_PHASE1_BLIND_V2_RESULT_SCHEMA.json sha256=2a87f13ff5862ffafbf03f369c9f229094ddd2a0046ee032556b0015c714560f
+tests/test_phase1_blind_v2.py sha256=4918b86916abbe56e93e256ae96bfb8e19ed643bd94555681aa6af31a0459f2a
