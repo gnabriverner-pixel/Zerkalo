@@ -1,0 +1,156 @@
+{
+  "format": "g1c-phase1-blind-v2-sealed-mapping",
+  "seed": "G1C-PHASE1-BLIND-V2-F06759C-20260816",
+  "mapping": [
+    {
+      "target_id": "T001",
+      "correct_candidate": "A",
+      "original_case_id": "G1C-S-14"
+    },
+    {
+      "target_id": "T002",
+      "correct_candidate": "B",
+      "original_case_id": "G1C-S-33"
+    },
+    {
+      "target_id": "T003",
+      "correct_candidate": "D",
+      "original_case_id": "G1C-S-22"
+    },
+    {
+      "target_id": "T004",
+      "correct_candidate": "B",
+      "original_case_id": "G1C-S-26"
+    },
+    {
+      "target_id": "T005",
+      "correct_candidate": "A",
+      "original_case_id": "G1C-S-18"
+    },
+    {
+      "target_id": "T006",
+      "correct_candidate": "D",
+      "original_case_id": "G1C-S-17"
+    },
+    {
+      "target_id": "T007",
+      "correct_candidate": "C",
+      "original_case_id": "G1C-S-05"
+    },
+    {
+      "target_id": "T008",
+      "correct_candidate": "C",
+      "original_case_id": "G1C-S-09"
+    },
+    {
+      "target_id": "T009",
+      "correct_candidate": "C",
+      "original_case_id": "G1C-S-11"
+    },
+    {
+      "target_id": "T010",
+      "correct_candidate": "C",
+      "original_case_id": "G1C-S-08"
+    },
+    {
+      "target_id": "T011",
+      "correct_candidate": "E",
+      "original_case_id": "G1C-S-07"
+    },
+    {
+      "target_id": "T012",
+      "correct_candidate": "B",
+      "original_case_id": "G1C-S-04"
+    },
+    {
+      "target_id": "T013",
+      "correct_candidate": "A",
+      "original_case_id": "G1C-S-30"
+    },
+    {
+      "target_id": "T014",
+      "correct_candidate": "D",
+      "original_case_id": "G1C-S-20"
+    },
+    {
+      "target_id": "T015",
+      "correct_candidate": "B",
+      "original_case_id": "G1C-S-28"
+    },
+    {
+      "target_id": "T016",
+      "correct_candidate": "B",
+      "original_case_id": "G1C-S-13"
+    },
+    {
+      "target_id": "T017",
+      "correct_candidate": "A",
+      "original_case_id": "G1C-S-03"
+    },
+    {
+      "target_id": "T018",
+      "correct_candidate": "B",
+      "original_case_id": "G1C-S-02"
+    },
+    {
+      "target_id": "T019",
+      "correct_candidate": "D",
+      "original_case_id": "G1C-S-21"
+    },
+    {
+      "target_id": "T020",
+      "correct_candidate": "B",
+      "original_case_id": "G1C-S-24"
+    },
+    {
+      "target_id": "T021",
+      "correct_candidate": "E",
+      "original_case_id": "G1C-S-25"
+    },
+    {
+      "target_id": "T022",
+      "correct_candidate": "E",
+      "original_case_id": "G1C-S-29"
+    },
+    {
+      "target_id": "T023",
+      "correct_candidate": "E",
+      "original_case_id": "G1C-S-16"
+    },
+    {
+      "target_id": "T024",
+      "correct_candidate": "A",
+      "original_case_id": "G1C-S-06"
+    },
+    {
+      "target_id": "T025",
+      "correct_candidate": "A",
+      "original_case_id": "G1C-S-32"
+    },
+    {
+      "target_id": "T026",
+      "correct_candidate": "A",
+      "original_case_id": "G1C-S-12"
+    },
+    {
+      "target_id": "T027",
+      "correct_candidate": "C",
+      "original_case_id": "G1C-S-01"
+    },
+    {
+      "target_id": "T028",
+      "correct_candidate": "B",
+      "original_case_id": "G1C-S-27"
+    },
+    {
+      "target_id": "T029",
+      "correct_candidate": "C",
+      "original_case_id": "G1C-S-31"
+    },
+    {
+      "target_id": "T030",
+      "correct_candidate": "D",
+      "original_case_id": "G1C-S-15"
+    }
+  ]
+}

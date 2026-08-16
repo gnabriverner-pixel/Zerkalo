@@ -1,0 +1,14 @@
+# G1C PHASE-1 BLIND V2 — SEALED MANIFEST
+
+BLIND_BRANCH=evidence/g1c-phase1-blind-v2-f06759c
+BLIND_COMMIT=2ee422247adaad5db0a168101038fb6cde920415
+INPUT_COMMIT=7fad6be3e084856cd1e8a102ae241d73d44e4a4b
+SEED=G1C-PHASE1-BLIND-V2-F06759C-20260816
+CONTENTS=target_id -> correct_candidate -> original_case_id
+ENTRIES=30
+HISTORY_POLICY=orphan root commit; no shared history with blind branch
+ACCESS_POLICY=sealed; do not provide to evaluator before result lock
+MERGE_POLICY=not merged to main
+
+FILES=1
+sealed/G1C_PHASE1_BLIND_V2_MAPPING.json sha256=9d5fffa822f68c758bb110a091ac5ab9924633686b5dfc8bff4125e42715ca87
