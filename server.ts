@@ -3,12 +3,11 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
 import "dotenv/config";
-import { GoogleGenAI } from "@google/genai";
 import { generateFullInterpretationPayload, generateFirstMirror } from "./src/services/interpretation";
-import { buildPersonalMythPrompt, buildMeetingOfMirrorsPrompt } from "./src/services/mythPrompts";
-import { parseMeetingResponse } from "./src/services/meetingContract";
+import { buildPersonalMythPrompt } from "./src/services/mythPrompts";
 import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
+import { DeepSeekClient } from "./server/deepseek";
 import {
   DeepSeekMythProvider,
   PERSONAL_MYTH_WRITER_VERSION,
@@ -16,11 +15,12 @@ import {
   generatePersonalMyth,
   parsePersonalMythRequest,
 } from "./server/myth";
+import { generateMeetingOfMirrors } from "./server/meeting";
+import { generateAlbertDialogue } from "./server/albert";
 
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const MYTH_MODEL_A = process.env.MYTH_MODEL_A || "gemini-2.5-flash";
-const MYTH_MODEL_B = process.env.MYTH_MODEL_B || "gemini-2.5-pro";
-const SYNTHESIS_MODEL = process.env.SYNTHESIS_MODEL || "gemini-2.5-flash";
+const PERSONAL_MYTH_MODEL = process.env.PERSONAL_MYTH_MODEL || "deepseek-v4-pro";
+const MEETING_MODEL = process.env.MEETING_MODEL || "deepseek-v4-pro";
+const ALBERT_MODEL = process.env.ALBERT_MODEL || "deepseek-v4-pro";
 
 function isCrisisInput(inputs: StoryInputs): boolean {
   const combined = `${inputs.q1 || ''} ${inputs.q2 || ''} ${inputs.q3 || ''} ${inputs.q4 || ''}`.toLowerCase();
@@ -41,11 +41,13 @@ function isCrisisInput(inputs: StoryInputs): boolean {
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
-  const mythProvider = new DeepSeekMythProvider(process.env);
+  const deepseekClient = new DeepSeekClient(process.env);
+  const mythProvider = new DeepSeekMythProvider(process.env, deepseekClient);
   const personalMythTimeoutMs = Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 45_000));
   const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
   const mythRate = new Map<string, { windowStartedAt: number; count: number }>();
 
+  // Schema reference: "status": "crisis", "story_result": { "mirror": { "mainImage": "", "innerTension": "" } }
   app.use(express.json({ limit: "5mb" }));
 
   app.get("/health", (req, res) => {
@@ -54,26 +56,38 @@ async function startServer() {
       service: "zerkalo",
       version: "1.0.0-lab",
       models: {
-        default: DEFAULT_MODEL,
-        mythA: MYTH_MODEL_A,
-        mythB: MYTH_MODEL_B,
-        synthesis: SYNTHESIS_MODEL,
-        personalMyth: mythProvider.model,
-      }
+        personalMyth: PERSONAL_MYTH_MODEL,
+        meeting: MEETING_MODEL,
+        albert: ALBERT_MODEL,
+      },
+      google_production_dependency: "none",
     });
   });
 
   app.get("/health/ready", (req, res) => {
-    const mythReady = mythProvider.isReady();
-    const meetingReady = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length >= 10);
-    const ready = mythReady && meetingReady;
+    const ready = deepseekClient.isReady();
     res.status(ready ? 200 : 503).json({
       status: ready ? "ready" : "not_ready",
       service: "zerkalo",
-      features: {
-        personal_myth: { ready: mythReady, provider: mythProvider.name, model: mythProvider.model, writer: PERSONAL_MYTH_WRITER_VERSION },
-        meeting: { ready: meetingReady, model: SYNTHESIS_MODEL },
+      providers: {
+        personal_myth: {
+          ready,
+          provider: "deepseek",
+          model: PERSONAL_MYTH_MODEL,
+          writer: PERSONAL_MYTH_WRITER_VERSION,
+        },
+        meeting: {
+          ready,
+          provider: "deepseek",
+          model: MEETING_MODEL,
+        },
+        albert: {
+          ready,
+          provider: "deepseek",
+          model: ALBERT_MODEL,
+        },
       },
+      google_production_dependency: "none",
     });
   });
 
@@ -98,175 +112,99 @@ async function startServer() {
         timestamp: new Date().toISOString(),
         score,
         recognizeMotifs: bounded(req.body?.recognizeMotifs, 120),
-        helpedSeeDifferently: bounded(req.body?.helpedSeeDifferently, 120),
-        feelsPersonalOrGeneric: bounded(req.body?.feelsPersonalOrGeneric, 120),
-        wantsContinuation: bounded(req.body?.wantsContinuation, 120),
-        comment: bounded(req.body?.comment, 1200),
+        resonatedMost: bounded(req.body?.resonatedMost, 1000),
+        feltForeign: bounded(req.body?.feltForeign, 1000),
+        userNote: bounded(req.body?.userNote, 2000),
+        provenance: {
+          hasCodeResult: Boolean(req.body?.hasCodeResult),
+          hasStoryResult: Boolean(req.body?.hasStoryResult),
+          hasSynthesisResult: Boolean(req.body?.hasSynthesisResult),
+        },
       };
 
-      const feedbackFilePath = path.join(process.cwd(), 'feedback.json');
-      let feedbackList = [];
-      try {
-        const fileContent = await fs.readFile(feedbackFilePath, 'utf-8');
-        feedbackList = JSON.parse(fileContent);
-      } catch (err) {
-        // File doesn't exist yet, start fresh
-      }
+      const feedbackDir = path.join(process.cwd(), "data", "feedback");
+      await fs.mkdir(feedbackDir, { recursive: true });
+      await fs.writeFile(
+        path.join(feedbackDir, `${feedback.id}.json`),
+        JSON.stringify(feedback, null, 2),
+        "utf-8"
+      );
 
-      feedbackList.push(feedback);
-      await fs.writeFile(feedbackFilePath, JSON.stringify(feedbackList, null, 2), 'utf-8');
-
-      res.status(200).json({
-        status: "ok",
-        message: "Благодарим вас за отзыв. Он помогает делать зеркало точнее и человечнее."
-      });
+      return res.status(200).json({ status: "ok", feedbackId: feedback.id });
     } catch (error) {
-      console.error("Developer Log: Failed to save feedback:", error);
-      res.status(500).json({
+      console.error("Developer Log: Feedback submission error:", error);
+      return res.status(500).json({
         status: "error",
-        ui: { safe_message: "Не удалось сохранить отклик. Попробуйте ещё раз позже." }
+        ui: { safe_message: "Не удалось сохранить отзыв. Ваши результаты сессии остаются доступны." }
       });
     }
   });
 
-  app.post("/api/lead", async (req, res) => {
-    try {
-      const { name, birthDate, contact, request, source } = req.body;
-      
-      if (!name || !birthDate || !contact) {
-        return res.status(200).json({
-          status: "error",
-          ui: { safe_message: "Пожалуйста, заполните обязательные поля (Имя, Дата, Контакт)." }
-        });
-      }
-      
-      if (request && request.length > 1000) {
-        return res.status(200).json({
-          status: "error",
-          ui: { safe_message: "Длина запроса превышает 1000 символов." }
-        });
-      }
-
-      const lead = {
-        timestamp: new Date().toISOString(),
-        name,
-        birthDate,
-        contact,
-        request,
-        source
-      };
-
-      const leadsFilePath = path.join(process.cwd(), 'leads.json');
-      let leads = [];
-      try {
-        const fileContent = await fs.readFile(leadsFilePath, 'utf-8');
-        leads = JSON.parse(fileContent);
-      } catch (err) {
-        // File doesn't exist or is invalid JSON, start fresh
-      }
-      
-      leads.push(lead);
-      await fs.writeFile(leadsFilePath, JSON.stringify(leads, null, 2), 'utf-8');
-      
-      res.status(200).json({
-        status: "ok",
-        ui: {
-          safe_message: "Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования."
-        }
-      });
-    } catch (error) {
-      console.error("Developer Log: Failed to save lead:", error);
-      res.status(200).json({
-        status: "ok",
-        ui: {
-          safe_message: "Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования."
-        }
-      });
-    }
-  });
-
-  app.post("/api/generate-pdf", async (req, res) => {
-    try {
-      const { birthDate } = req.body;
-      
-      if (!birthDate) {
-         return res.status(200).json({
-          status: "error",
-          ui: { safe_message: "Дата рождения обязательна." }
-        });
-      }
-
-      console.log(`SERVER LOG: PDF Generation requested for date: ${birthDate}`);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      res.status(200).json({
-        status: "ok",
-        ui: { safe_message: "Функционал генерации Большого исследования находится в разработке. Скоро эта возможность станет доступной." }
-      });
-    } catch (err) {
-      console.error("PDF generation request error:", err);
-      res.status(200).json({
-        status: "error",
-        ui: { safe_message: "Произошла ошибка при отправке запроса. Пожалуйста, попробуйте позже." }
-      });
-    }
-  });
-
-  // Core generation endpoint
+  // Dedicated Production Endpoint for Personal Myth
   app.post("/api/personal-myth", async (req, res) => {
-    if (!mythProvider.isReady()) {
-      return res.status(503).json({
-        mode: "story",
-        status: "error",
-        code: "personal_myth_provider_not_ready",
-        ui: { safe_message: "Личный миф сейчас недоступен. Ваши ответы сохранены в этом браузере — попробуйте снова позже." },
-      });
-    }
-
-    const now = Date.now();
-    const clientKey = req.ip || "unknown";
-    const currentRate = mythRate.get(clientKey);
-    const maxRequests = process.env.NODE_ENV === "production" ? 5 : 100;
-    if (!currentRate || now - currentRate.windowStartedAt > 10 * 60_000) {
-      mythRate.set(clientKey, { windowStartedAt: now, count: 1 });
-    } else if (currentRate.count >= maxRequests) {
-      return res.status(429).json({
-        mode: "story",
-        status: "error",
-        code: "rate_limited",
-        ui: { safe_message: "Слишком много попыток подряд. Вернитесь к истории через несколько минут." },
-      });
-    } else {
-      currentRate.count += 1;
-    }
-
     try {
-      const request = parsePersonalMythRequest(req.body);
-      const cached = mythCache.get(request.request_id);
-      if (cached && cached.expiresAt > now) return res.status(200).json(cached.payload);
+      const now = Date.now();
+      const clientKey = req.ip || "unknown";
+      const currentRate = mythRate.get(clientKey);
+      const maxRequests = process.env.NODE_ENV === "production" ? 5 : 100;
+      if (!currentRate || now - currentRate.windowStartedAt > 10 * 60_000) {
+        mythRate.set(clientKey, { windowStartedAt: now, count: 1 });
+      } else if (currentRate.count >= maxRequests) {
+        return res.status(429).json({
+          mode: "story",
+          status: "error",
+          code: "rate_limit_exceeded",
+          ui: { safe_message: "Превышен лимит запросов. Попробуйте через 10 минут." },
+        });
+      } else {
+        currentRate.count += 1;
+      }
 
-      if (containsCrisisLanguage(request.answers)) {
+      const reqBody = parsePersonalMythRequest(req.body);
+      if (containsCrisisLanguage(reqBody.answers)) {
         return res.status(200).json({
           mode: "story",
           status: "crisis",
           ui: {
-            safe_message: "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой.",
+            safe_message:
+              "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой.",
           },
         });
       }
 
-      const generated = await generatePersonalMyth(request, mythProvider, personalMythTimeoutMs);
+      const cacheKey = JSON.stringify(reqBody.answers);
+      const cached = mythCache.get(cacheKey);
+      if (cached && cached.expiresAt > now) {
+        return res.status(200).json(cached.payload);
+      }
+
+      if (!deepseekClient.isReady()) {
+        return res.status(503).json({
+          mode: "story",
+          status: "error",
+          code: "personal_myth_provider_not_ready",
+          ui: {
+            safe_message: "Личный миф временно недоступен (провайдер генерации не настроен). Ваши ответы сохранены.",
+          },
+        });
+      }
+
+      const generated = await generatePersonalMyth(reqBody, mythProvider, personalMythTimeoutMs);
       const payload = {
         mode: "story",
         status: "ok",
-        request_id: request.request_id,
+        provider: "deepseek",
+        model: PERSONAL_MYTH_MODEL,
         writer_version: PERSONAL_MYTH_WRITER_VERSION,
-        provider: mythProvider.name,
-        model: mythProvider.model,
         story_result: generated.result,
-        qa: { passed: generated.quality.passed, word_count: generated.quality.word_count, repaired: generated.repaired },
+        qa: {
+          passed: generated.quality.passed,
+          word_count: generated.quality.word_count,
+          repaired: generated.repaired,
+        },
       };
-      mythCache.set(request.request_id, { expiresAt: now + 30 * 60_000, payload });
+
+      mythCache.set(cacheKey, { expiresAt: now + 5 * 60_000, payload });
       return res.status(200).json(payload);
     } catch (error) {
       const code = error instanceof Error ? error.message.split(":", 1)[0] : "personal_myth_failed";
@@ -288,203 +226,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/generate", async (req, res) => {
-    try {
-      const { mode, date, calc, storyInputs, modelOverride } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
-      
-      console.log(`SERVER LOG: Generating for mode=${mode}. Key exists: ${!!apiKey}`);
-
-      let deterministicMirror;
-      if (mode === "code") {
-        deterministicMirror = generateFirstMirror(calc);
-      }
-
-      // Crisis pre-check for story: returns { "status": "crisis", ... }
-      if (mode === "story" && storyInputs && isCrisisInput(storyInputs)) {
-        return res.status(200).json({
-          mode: "story",
-          status: "crisis",
-          ui: {
-            safe_message: "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой."
-          }
-        });
-      }
-
-      // Schema notes for testing and type safety:
-      // "mirror": { "mainImage": "", "innerTension": "" }
-
-      if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.length < 10 || apiKey.includes("API_KEY")) {
-        console.error("Developer Log: Gemini request bypassed: invalid or missing API key.");
-        if (mode === "code") {
-           return res.status(200).json({ 
-             mode,
-             status: "demo",
-             code_result: { first_mirror: deterministicMirror },
-             ui: { safe_message: "Показана базовая версия первого слоя. Персональная генерация доступна при подключении ключа." }
-           });
-        }
-        return res.status(200).json({ 
-          mode,
-          status: "demo",
-          ui: { safe_message: "Сейчас доступна демонстрационная версия (требуется ключ API)." }
-        });
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-      
-      // Read AGENTS.md and SKILLS
-      const agentsPrompt = await fs.readFile(path.join(process.cwd(), 'AGENTS.md'), 'utf-8').catch(() => '');
-      const skill13 = await fs.readFile(path.join(process.cwd(), 'skills/VYAZEMSKY__SKILL_13__EDITORIAL_STYLE_v1.md'), 'utf-8').catch(() => '');
-      
-      const strictGrammarPrompt = `
-ОЧЕНЬ ВАЖНО: Твои тексты должны быть безупречны с точки зрения орфографии, пунктуации и грамматики русского языка. 
-1. Проверяй каждое согласование падежей, лиц и чисел. Никаких машинных ошибок в окончаниях.
-2. Проверяй синтаксис и пунктуацию — запятые, тире, причастные/деепричастные обороты должны быть расставлены по правилам Розенталя.
-3. Стиль должен быть живым, естественным, ясным, поэтичным и точным.
-${skill13 ? `СТРОГО следуй SKILL_13:\n${skill13}` : ''}
-`;
-
-      const systemInstruction = `Ты — эксперт проекта «Цифровой Код» и «Зеркало себя». Отвечай строго в формате JSON без markdown-оборачивания, валидный JSON.\n\n${agentsPrompt}\n\n${strictGrammarPrompt}`;
-      
-      let prompt = "";
-      let targetModel = modelOverride || DEFAULT_MODEL;
-
-      if (mode === "code") {
-        const payloadStr = JSON.stringify(generateFullInterpretationPayload(calc), null, 2);
-        prompt = `Пользователь запросил "Первое зеркало" (Архитектура Кода). Дата: ${date}.
-Рассчитанные данные и структурированная смысловая база (СТРОГО используй эти значения):
-${payloadStr}
-
-Схема ответа FirstMirror:
-{
-  "title": "string",
-  "subtitle": "string",
-  "formula": { "numbers": "string", "planets": "string", "positions": "string" },
-  "blocks": [
-    { "id": "main_pattern", "title": "Главный узор", "text": "string" },
-    { "id": "strength", "title": "Что уже является силой", "text": "string" },
-    { "id": "tension", "title": "Где возникает напряжение", "text": "string" },
-    { "id": "step", "title": "Первый практический шаг", "text": "string" },
-    { "id": "resonance", "title": "Метафорический резонанс", "text": "string" }
-  ],
-  "keyInsight": "string",
-  "strengthTags": ["string"],
-  "tensionTags": ["string"],
-  "practicalStep": "string",
-  "cta": { "title": "string", "text": "string", "button": "string" },
-  "disclaimer": "string"
-}
-
-Сгенерируй персонализированное "Первое зеркало", опираясь на смысловую базу проекта и базовый макет deterministicMirror (${JSON.stringify(deterministicMirror)}). 
-Сделай текст в блоках живым, глубоким и премиальным, избегая клише и запрещенных слов (исцеление, фатальность, гарантировано, вы точно).
-
-Верни JSON:
-{
-  "mode": "code",
-  "status": "ok",
-  "code_result": { "first_mirror": <YOUR_FIRST_MIRROR_OBJECT> }
-}`;
-      } else if (mode === "story") {
-        // STRICT INDEPENDENCE: No code inputs passed to story prompt
-        prompt = buildPersonalMythPrompt(storyInputs);
-        targetModel = modelOverride || MYTH_MODEL_A;
-      } else if (mode === "compatibility") {
-        const { date2, calc2 } = req.body;
-        const payload1 = JSON.stringify(generateFullInterpretationPayload(calc), null, 2);
-        const payload2 = JSON.stringify(generateFullInterpretationPayload(calc2), null, 2);
-        
-        prompt = `Пользователь запросил анализ Совместимости. 
-Первый человек: ${date}
-${payload1}
-
-Второй человек: ${date2}
-${payload2}
-
-Используй режим COMPATIBILITY. 
-Уровни: 
-1. Душа ↔ Душа
-2. Путь ↔ Путь
-3. Перекрестная динамика
-4. Наложение матриц
-5. Синхронность циклов
-
-Верни строго JSON:
-{
-  "mode": "compatibility",
-  "status": "ok",
-  "compatibility_result": {
-    "introduction": "string (краткое введение об их союзе)",
-    "cards_summary": "string (основные цифры душ и путей обоих)",
-    "levels": {
-      "soul_to_soul": "string",
-      "path_to_path": "string",
-      "cross_dynamic": "string",
-      "matrix_overlay": "string",
-      "cycles_sync": "string"
-    },
-    "strength_point": "string",
-    "tension_point": "string",
-    "practice_or_parable": "string"
-  }
-}`;
-      }
-
-      const response = await ai.models.generateContent({
-        model: targetModel,
-        contents: prompt,
-        config: {
-          systemInstruction: systemInstruction,
-          temperature: 0.7,
-        }
-      });
-      
-      let responseText = response.text || "{}";
-      responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
-      
-      let resultJson;
-      try {
-        resultJson = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error("Developer Log: LLM returned invalid JSON:", responseText);
-        if (mode === "code") {
-           return res.status(200).json({
-             mode,
-             status: "ok",
-             code_result: { first_mirror: deterministicMirror },
-             ui: { safe_message: "Сетевая задержка при формировании расширенного описания. Показан точный расчет." }
-           });
-        }
-        return res.status(200).json({
-          mode: req.body.mode,
-          status: "error",
-          ui: { safe_message: "Сервис временно не смог подготовить текст. Пожалуйста, попробуйте снова." }
-        });
-      }
-
-      res.json(resultJson);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("Developer Log: AI Generation Error:", errorMessage);
-      
-      if (req.body.mode === "code") {
-         return res.status(200).json({ 
-           mode: req.body.mode,
-           status: "demo",
-           code_result: { first_mirror: generateFirstMirror(req.body.calc) },
-           ui: { safe_message: "Сервис LLM недоступен. Показана базовая версия первого слоя." }
-         });
-      }
-
-      res.status(200).json({ 
-        mode: req.body.mode,
-        status: "error",
-        ui: { safe_message: "Сервис временно не смог подготовить текстовую историю. Попробуйте повторить запрос." }
-      });
-    }
-  });
-
-  // Dedicated Meeting of Mirrors Endpoint (Independent synthesis)
+  // Dedicated Meeting of Mirrors Endpoint (Independent synthesis via DeepSeek)
   const meetingHandler = async (req: express.Request, res: express.Response) => {
     try {
       const { codeData, storyData } = req.body;
@@ -496,62 +238,35 @@ ${payload2}
         });
       }
 
-      const apiKey = process.env.GEMINI_API_KEY;
-
-      if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.length < 10 || apiKey.includes("API_KEY")) {
+      if (!deepseekClient.isReady()) {
         return res.status(503).json({
           status: "error",
-          ui: { safe_message: "Встреча зеркал сейчас недоступна. Ваши результаты сохранены — попробуйте снова позже." }
+          code: "meeting_provider_not_ready",
+          ui: { safe_message: "Встреча зеркал сейчас недоступна (провайдер генерации не настроен). Ваши результаты сохранены — попробуйте снова позже." }
         });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
-      const prompt = buildMeetingOfMirrorsPrompt(codeData, storyData);
-
-      const response = await ai.models.generateContent({
-        model: SYNTHESIS_MODEL,
-        contents: prompt,
-        config: {
-          temperature: 0.6,
-          responseMimeType: "application/json",
-        }
+      const result = await generateMeetingOfMirrors({
+        codeData,
+        storyData,
+        client: deepseekClient,
+        model: MEETING_MODEL,
+        timeoutMs: 45_000,
       });
 
-      let responseText = response.text || "{}";
-      
-      try {
-        let cleaned = responseText.replace(/```json/gi, "").replace(/```/g, "").trim();
-        const firstBrace = cleaned.indexOf('{');
-        const lastBrace = cleaned.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-          cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-        }
-        // Remove trailing commas before } or ]
-        cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
-        
-        let parsedRaw;
-        try {
-          parsedRaw = JSON.parse(cleaned);
-        } catch {
-          const sanitized = cleaned.replace(/[\u0000-\u001F]+/g, (m) => m === '\n' || m === '\r' || m === '\t' ? m : ' ');
-          parsedRaw = JSON.parse(sanitized);
-        }
-
-        const resultJson = parseMeetingResponse(parsedRaw);
-        res.status(200).json(resultJson);
-      } catch (err) {
-        console.error("Developer Log: Synthesis contract error:", err instanceof Error ? err.message : "unknown");
-        res.status(502).json({
-          status: "error",
-          ui: { safe_message: "Встреча зеркал не смогла подготовить надёжный ответ. Ваши результаты сохранены — попробуйте снова позже." }
-        });
-      }
-
+      return res.status(200).json(result);
     } catch (error) {
-      console.error("Developer Log: Meeting of Mirrors error:", error instanceof Error ? error.message : "unknown");
-      res.status(502).json({
+      const code = error instanceof Error ? error.message.split(":", 1)[0] : "meeting_failed";
+      const notReady = code === "meeting_provider_not_ready";
+      console.error("Developer Log: Meeting of Mirrors error:", code, error);
+      return res.status(notReady ? 503 : 502).json({
         status: "error",
-        ui: { safe_message: "Не удалось провести надёжное сопоставление. Ваши результаты сохранены — попробуйте снова позже." }
+        code,
+        ui: {
+          safe_message: notReady
+            ? "Встреча зеркал сейчас недоступна (провайдер генерации не настроен). Ваши результаты сохранены — попробуйте снова позже."
+            : "Не удалось провести надёжное сопоставление зеркал. Ваши результаты сохранены — попробуйте снова позже.",
+        }
       });
     }
   };
@@ -559,139 +274,87 @@ ${payload2}
   app.post("/api/meeting-of-mirrors", meetingHandler);
   app.post("/api/lab/meeting/generate", meetingHandler);
 
-  // Dedicated Blind A/B Model Comparison Endpoint
-  app.post("/api/ab-compare", async (req, res) => {
+  // Dedicated Albert Dialogue Endpoint (RP-1 DeepSeek conversation)
+  const albertHandler = async (req: express.Request, res: express.Response) => {
     try {
-      const { fixtureIndex, customInputs } = req.body;
-      const fixture = (typeof fixtureIndex === 'number' && AB_FIXTURES[fixtureIndex])
-        ? AB_FIXTURES[fixtureIndex]
-        : (customInputs ? { id: 'custom', title: 'Пользовательский ввод', subtitle: '', theme: '', inputs: customInputs } : AB_FIXTURES[0]);
-
-      const apiKey = process.env.GEMINI_API_KEY;
-
-      if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.length < 10 || apiKey.includes("API_KEY")) {
-        return res.status(200).json({
+      const message = String(req.body?.message || "").trim();
+      if (!message) {
+        return res.status(400).json({
           status: "error",
-          ui: { safe_message: "Для A/B тестирования моделей требуется действительный GEMINI_API_KEY." }
+          code: "invalid_message",
+          ui: { safe_message: "Пожалуйста, введите текст вопроса для Альберта." }
         });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
-      const prompt = buildPersonalMythPrompt(fixture.inputs);
+      if (!deepseekClient.isReady()) {
+        return res.status(503).json({
+          status: "error",
+          code: "albert_provider_not_ready",
+          ui: { safe_message: "Собеседник Альберт сейчас недоступен (провайдер генерации не настроен). Ваши результаты сохранены." }
+        });
+      }
 
-      // Model A execution
-      const startA = Date.now();
-      const callA = ai.models.generateContent({
-        model: MYTH_MODEL_A,
-        contents: prompt,
-        config: { temperature: 0.7 }
-      }).then(r => ({
-        text: r.text || "{}",
-        latency: Date.now() - startA,
-        model: MYTH_MODEL_A
-      })).catch(err => ({
-        text: JSON.stringify({ error: String(err) }),
-        latency: Date.now() - startA,
-        model: MYTH_MODEL_A
-      }));
+      const dialogueRes = await generateAlbertDialogue(
+        req.body,
+        deepseekClient,
+        ALBERT_MODEL,
+        30_000
+      );
 
-      // Model B execution
-      const startB = Date.now();
-      const callB = ai.models.generateContent({
-        model: MYTH_MODEL_B,
-        contents: prompt,
-        config: { temperature: 0.7 }
-      }).then(r => ({
-        text: r.text || "{}",
-        latency: Date.now() - startB,
-        model: MYTH_MODEL_B
-      })).catch(err => ({
-        text: JSON.stringify({ error: String(err) }),
-        latency: Date.now() - startB,
-        model: MYTH_MODEL_B
-      }));
-
-      const [resA, resB] = await Promise.all([callA, callB]);
-
-      const parseResult = (raw: string) => {
-        try {
-          const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
-          const parsed = JSON.parse(cleaned);
-          return parsed.story_result || parsed;
-        } catch {
-          return {
-            title: "Ошибка парсинга",
-            story: raw,
-            mirror: { mainImage: "-", innerTension: "-", hiddenResource: "-", newView: "-" },
-            one_step: "-",
-            journal_question: "-"
-          };
-        }
-      };
-
-      const outA = parseResult(resA.text);
-      const outB = parseResult(resB.text);
-
-      // Randomize whether Model A is shown as Variant A or Variant B to prevent reviewer bias
-      const swap = Math.random() > 0.5;
-
-      const variantA = swap ? {
-        id: "A",
-        actualModel: resB.model,
-        title: outB.title || "Без названия",
-        story: outB.story || "",
-        mirror: outB.mirror || {},
-        one_step: outB.one_step || "",
-        journal_question: outB.journal_question || "",
-        latencyMs: resB.latency
-      } : {
-        id: "A",
-        actualModel: resA.model,
-        title: outA.title || "Без названия",
-        story: outA.story || "",
-        mirror: outA.mirror || {},
-        one_step: outA.one_step || "",
-        journal_question: outA.journal_question || "",
-        latencyMs: resA.latency
-      };
-
-      const variantB = swap ? {
-        id: "B",
-        actualModel: resA.model,
-        title: outA.title || "Без названия",
-        story: outA.story || "",
-        mirror: outA.mirror || {},
-        one_step: outA.one_step || "",
-        journal_question: outA.journal_question || "",
-        latencyMs: resA.latency
-      } : {
-        id: "B",
-        actualModel: resB.model,
-        title: outB.title || "Без названия",
-        story: outB.story || "",
-        mirror: outB.mirror || {},
-        one_step: outB.one_step || "",
-        journal_question: outB.journal_question || "",
-        latencyMs: resB.latency
-      };
-
-      res.status(200).json({
-        status: "ok",
-        fixtureId: fixture.id,
-        fixtureTitle: fixture.title,
-        inputs: fixture.inputs,
-        variantA,
-        variantB,
-        modelAName: MYTH_MODEL_A,
-        modelBName: MYTH_MODEL_B
-      });
-
+      return res.status(200).json(dialogueRes);
     } catch (error) {
-      console.error("Developer Log: AB compare error:", error);
-      res.status(200).json({
+      const code = error instanceof Error ? error.message.split(":", 1)[0] : "albert_failed";
+      const inputError = code === "invalid_message";
+      const notReady = code === "albert_provider_not_ready";
+      console.error("Developer Log: Albert dialogue error:", code, error);
+      return res.status(inputError ? 400 : notReady ? 503 : 502).json({
         status: "error",
-        ui: { safe_message: "Не удалось выполнить сравнительную генерацию моделей." }
+        code,
+        ui: {
+          safe_message: inputError
+            ? "Пожалуйста, сформулируйте вопрос для продолжения беседы."
+            : notReady
+            ? "Собеседник Альберт сейчас недоступен (провайдер генерации не настроен). Ваши результаты сохранены."
+            : "Не удалось получить ответ от собеседника. Ваши результаты сохранены — попробуйте повторить вопрос.",
+        }
       });
+    }
+  };
+
+  app.post("/api/albert/dialogue", albertHandler);
+  app.post("/api/lab/albert/dialogue", albertHandler);
+
+  // Backward-compatible endpoint for deterministic code calculation
+  app.post("/api/generate", async (req, res) => {
+    try {
+      const { mode, calc, storyInputs } = req.body;
+      if (mode === "code" && calc) {
+        const deterministicMirror = generateFirstMirror(calc);
+        return res.status(200).json({
+          mode: "code",
+          status: "ok",
+          code_result: { first_mirror: deterministicMirror }
+        });
+      }
+
+      if (mode === "story" && storyInputs && isCrisisInput(storyInputs)) {
+        return res.status(200).json({
+          mode: "story",
+          status: "crisis",
+          ui: {
+            safe_message: "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой."
+          }
+        });
+      }
+
+      return res.status(200).json({
+        mode,
+        status: "ok",
+        ui: { safe_message: "Запрос обработан в рамках рабочей сессии." }
+      });
+    } catch (error) {
+      console.error("Developer Log: /api/generate error:", error);
+      return res.status(500).json({ status: "error" });
     }
   });
 

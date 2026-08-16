@@ -209,43 +209,34 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
   }
 }
 
+import { DeepSeekClient } from "./deepseek";
+
 export class DeepSeekMythProvider implements PersonalMythProvider {
   readonly name = "deepseek";
   readonly model: string;
-  private readonly apiKey: string;
-  private readonly baseUrl: string;
+  private readonly client: DeepSeekClient;
 
-  constructor(env: NodeJS.ProcessEnv) {
-    this.apiKey = clean(env.DEEPSEEK_API_KEY);
+  constructor(env: NodeJS.ProcessEnv = process.env, client?: DeepSeekClient) {
     this.model = clean(env.PERSONAL_MYTH_MODEL || "deepseek-v4-pro");
-    this.baseUrl = clean(env.DEEPSEEK_BASE_URL || "https://api.deepseek.com").replace(/\/$/u, "");
+    this.client = client ?? new DeepSeekClient(env);
   }
 
   isReady(): boolean {
-    return this.apiKey.length >= 20 && this.model.length >= 3;
+    return this.client.isReady() && this.model.length >= 3;
   }
 
   async generate(prompt: string, timeoutMs: number): Promise<string> {
-    const response = await fetchWithTimeout(`${this.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          { role: "system", content: "Возвращай только валидный JSON без markdown." },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.72,
-        max_tokens: 5000,
-        response_format: { type: "json_object" },
-        thinking: { type: "disabled" },
-      }),
-    }, timeoutMs);
-    if (!response.ok) throw new Error(`provider_http_${response.status}`);
-    const payload = await response.json() as Record<string, any>;
-    const content = payload?.choices?.[0]?.message?.content;
-    if (typeof content !== "string" || !content.trim()) throw new Error("provider_empty_output");
-    return content;
+    return await this.client.call({
+      model: this.model,
+      messages: [
+        { role: "system", content: "Возвращай только валидный JSON без markdown." },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.72,
+      max_tokens: 5000,
+      response_format: { type: "json_object" },
+      timeoutMs,
+    });
   }
 }
 

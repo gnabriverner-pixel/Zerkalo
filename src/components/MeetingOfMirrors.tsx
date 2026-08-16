@@ -456,6 +456,8 @@ export function MeetingOfMirrors({
         isOpen={isAlbertOpen}
         onClose={() => setIsAlbertOpen(false)}
         calc={codeResult}
+        storyResult={storyResult}
+        meetingResult={meetingResult}
         initialTopic={albertTopic}
         theme="dark"
       />
