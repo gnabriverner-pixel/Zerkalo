@@ -13,6 +13,7 @@ import {
 import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, MeetingApiResponse } from '../types';
 import { Orb } from './Orb';
 import { AlbertDialogue } from './AlbertDialogue';
+import { TesterFeedbackWidget } from './TesterFeedbackWidget';
 
 interface MeetingOfMirrorsProps {
   codeResult: CalculationResult | null;
@@ -21,6 +22,15 @@ interface MeetingOfMirrorsProps {
   storyResult: ApiResponse['story_result'] | null;
   onOpenCode: () => void;
   onOpenMyth: () => void;
+}
+
+function pluralRu(value: number, one: string, few: string, many: string) {
+  const mod100 = value % 100;
+  const mod10 = value % 10;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
 }
 
 export function MeetingOfMirrors({
@@ -105,7 +115,7 @@ export function MeetingOfMirrors({
               transition={{ duration: 0.9 }}
               className="relative z-20"
             >
-              <Orb number={7} size="lg" glow={true} />
+              <Orb number={7} size="lg" showNumber={false} glow={true} />
             </motion.div>
           </div>
 
@@ -138,7 +148,7 @@ export function MeetingOfMirrors({
             }`}>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] uppercase tracking-widest text-[var(--color-antique-gold)] font-mono">
-                  Линза I · Цифровой Код
+                  Цифровой код
                 </span>
                 {hasCode ? (
                   <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-light">
@@ -180,7 +190,7 @@ export function MeetingOfMirrors({
             }`}>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] uppercase tracking-widest text-purple-300 font-mono">
-                  Линза II · Личный Миф
+                  Личный миф
                 </span>
                 {hasMyth ? (
                   <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-light">
@@ -193,7 +203,7 @@ export function MeetingOfMirrors({
 
               {hasMyth ? (
                 <div className="flex items-center gap-3">
-                  <Orb number={7} size="xs" glow={false} />
+                  <Orb number={7} size="xs" showNumber={false} glow={false} />
                   <div>
                     <div className="font-serif text-lg text-stone-100 italic">
                       «{storyResult.title}»
@@ -274,7 +284,7 @@ export function MeetingOfMirrors({
               <div className="bg-[#0D121D]/90 border border-[var(--color-antique-gold)]/40 p-8 sm:p-10 rounded-xs">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                   <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]">
-                    Итог сопоставления
+                    Итог · {meetingResult.parallels.length} {pluralRu(meetingResult.parallels.length, 'резонанс', 'резонанса', 'резонансов')} · {meetingResult.divergences.length} {pluralRu(meetingResult.divergences.length, 'расхождение', 'расхождения', 'расхождений')}
                   </span>
                   {meetingResult.confidenceNote && (
                     <span className="text-xs text-stone-400 italic font-light">
@@ -303,17 +313,17 @@ export function MeetingOfMirrors({
                         </h4>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                          <div className="p-4 bg-[#090D15] border border-amber-500/20 rounded-xs">
+                          <div className="p-4 bg-[#E8E0D4] border border-[#C8A45D]/35 rounded-xs text-[#2B241C]">
                             <span className="text-[10px] uppercase text-[var(--color-antique-gold)] font-mono block mb-1">
                               Линза Кода:
                             </span>
-                            <p className="text-stone-300 font-light leading-relaxed">{item.codeAnchor}</p>
+                            <p className="text-[#4D4338] font-normal leading-relaxed">{item.codeAnchor}</p>
                           </div>
-                          <div className="p-4 bg-[#090D15] border border-purple-500/20 rounded-xs">
-                            <span className="text-[10px] uppercase text-purple-300 font-mono block mb-1">
+                          <div className="p-4 bg-[#EFE5D3] border border-[#B89568]/35 rounded-xs text-[#282019]">
+                            <span className="text-[10px] uppercase text-[#7B6545] font-mono block mb-1">
                               Линза Мифа:
                             </span>
-                            <p className="text-stone-300 font-light leading-relaxed">{item.mythAnchor}</p>
+                            <p className="font-serif text-[#3A2D22] leading-relaxed">{item.mythAnchor}</p>
                           </div>
                         </div>
 
@@ -323,6 +333,14 @@ export function MeetingOfMirrors({
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {meetingResult.parallels.length === 0 && (
+                <div className="bg-[#0D121D]/60 border border-white/[0.08] p-8 sm:p-10 rounded-xs">
+                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-stone-400 block mb-3">Нулевая встреча — полноценный результат</span>
+                  <h3 className="font-serif text-2xl text-stone-100 mb-3">Сильных резонансов не найдено</h3>
+                  <p className="text-sm leading-relaxed text-stone-400">Две линзы показывают разные плоскости. Система не будет превращать отдельные похожие слова в доказательство связи.</p>
                 </div>
               )}
 
@@ -424,6 +442,8 @@ export function MeetingOfMirrors({
                   </button>
                 </div>
               </div>
+
+              <TesterFeedbackWidget />
 
             </motion.div>
           )}

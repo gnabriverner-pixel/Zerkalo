@@ -5,10 +5,6 @@ import {
   ChevronDown, 
   Loader2, 
   RotateCcw, 
-  Send, 
-  MessageSquare,
-  Sparkles,
-  CheckCircle2,
   Eye,
   Zap,
   Shield
@@ -19,19 +15,23 @@ import { generateFirstMirror } from '../services/interpretation';
 import { numberKnowledge } from '../data/numberKnowledge';
 import { PASSPORT_PRACTICES } from '../data/passportPractices';
 import { ArchetypeBasRelief, ARCHETYPE_VISUALS } from './ArchetypeBasRelief';
-import { AlbertDialogue } from './AlbertDialogue';
+import { validateBirthDate } from '../services/birthDate';
 
 interface AlabasterSanctuaryProps {
   initialDate?: string;
-  onCodeCalculated?: (calc: CalculationResult, reading?: FirstMirror) => void;
-  onSwitchToDark?: () => void;
+  onCodeCalculated?: (fullDate: string, calc: CalculationResult, reading?: FirstMirror) => void;
+  onBackToCollection?: () => void;
+  onContinue?: () => void;
+  continueLabel?: string;
   onOpenAbout?: () => void;
 }
 
 export function AlabasterSanctuary({
   initialDate = '',
   onCodeCalculated,
-  onSwitchToDark,
+  onBackToCollection,
+  onContinue,
+  continueLabel = 'Перейти к Личному мифу',
   onOpenAbout
 }: AlabasterSanctuaryProps) {
   const [day, setDay] = useState(initialDate ? initialDate.split('.')[0] || '' : '');
@@ -42,7 +42,6 @@ export function AlabasterSanctuary({
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [reading, setReading] = useState<FirstMirror | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isAlbertOpen, setIsAlbertOpen] = useState(false);
 
   // Section references for smooth 7-act editorial scroll
   const sectionAct1Ref = useRef<HTMLDivElement>(null);
@@ -65,6 +64,7 @@ export function AlabasterSanctuary({
 
   const executeCalculation = async (fullDate: string) => {
     const calc = calculateDigitalCode(fullDate);
+    let nextReading: FirstMirror | null = null;
     setResult(calc);
     setIsGenerating(true);
 
@@ -76,17 +76,18 @@ export function AlabasterSanctuary({
       });
       const data: ApiResponse = await res.json();
       if (data.status === 'ok' && data.code_result?.first_mirror) {
-        setReading(data.code_result.first_mirror);
+        nextReading = data.code_result.first_mirror;
       } else {
-        setReading(data.code_result?.first_mirror || generateFirstMirror(calc));
+        nextReading = data.code_result?.first_mirror || generateFirstMirror(calc);
       }
     } catch (err) {
       console.error(err);
-      setReading(generateFirstMirror(calc));
+      nextReading = generateFirstMirror(calc);
     } finally {
+      setReading(nextReading);
       setIsGenerating(false);
       if (onCodeCalculated) {
-        onCodeCalculated(calc, reading || undefined);
+        onCodeCalculated(fullDate, calc, nextReading || undefined);
       }
     }
   };
@@ -146,15 +147,12 @@ export function AlabasterSanctuary({
     if (e) e.preventDefault();
     setDateError('');
 
-    const d = parseInt(day, 10);
-    const m = parseInt(month, 10);
-    const y = parseInt(year, 10);
+    const validation = validateBirthDate(day, month, year);
 
-    if (day.length === 2 && month.length === 2 && year.length === 4 && d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2099) {
-      const fullDate = `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`;
-      executeCalculation(fullDate);
+    if (validation.valid) {
+      executeCalculation(validation.formatted);
     } else {
-      setDateError('Проверьте день, месяц и год (ДД.ММ.ГГГГ)');
+      setDateError('message' in validation ? validation.message : 'Проверьте дату рождения');
     }
   };
 
@@ -192,16 +190,16 @@ export function AlabasterSanctuary({
       <div className="w-full max-w-5xl px-6 py-4 flex items-center justify-between border-b border-[#1A1A1C]/5 text-xs text-[#63656C]">
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-[#C8A45D]">
           <span className="w-1.5 h-1.5 rounded-full bg-[#C8A45D]" />
-          <span>Alabaster Sanctuary · 2026 Canon</span>
+          <span>Цифровой код · Алебастровый архив</span>
         </div>
 
         <div className="flex items-center gap-4 text-[11px] font-mono uppercase tracking-wider">
-          {onSwitchToDark && (
+          {onBackToCollection && (
             <button
-              onClick={onSwitchToDark}
+              onClick={onBackToCollection}
               className="hover:text-[#1A1A1C] transition-colors cursor-pointer text-[#8C8E96]"
             >
-              Ночной режим
+              К зеркалам
             </button>
           )}
           {onOpenAbout && (
@@ -209,7 +207,7 @@ export function AlabasterSanctuary({
               onClick={onOpenAbout}
               className="hover:text-[#1A1A1C] transition-colors cursor-pointer text-[#8C8E96]"
             >
-              О каноне
+              О методе
             </button>
           )}
         </div>
@@ -788,39 +786,31 @@ export function AlabasterSanctuary({
               </div>
             </div>
 
-            {/* ALBERT BRIDGE & TELEGRAM CTA */}
+            {/* NEXT INDEPENDENT MIRROR */}
             <div className="w-full p-8 sm:p-14 rounded-xs bg-[#FCFAF7] border border-[#C8A45D]/40 shadow-sm space-y-8">
               <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[#C8A45D] block">
-                Осмысление · Проводник системы
+                Следующий зал · Независимое отражение
               </span>
 
               <div className="max-w-2xl mx-auto space-y-3">
                 <h3 className="font-serif text-3xl sm:text-5xl text-[#1A1A1C] font-light">
-                  Диалог с Альбертом Вяземским
+                  Личный миф
                 </h3>
                 <p className="text-[16px] text-[#63656C] font-light leading-relaxed">
-                  Вы можете сохранить контекст вашего разбора и продолжить глубокое обсуждение чисел в Telegram или прямо здесь.
+                  Код возник из даты. Второе зеркало складывается только из ваших образов — дата и числа в него не передаются.
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-                <a
-                  href="https://t.me/digitalcodesystem_bot"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-8 py-3.5 bg-[#1A1A1C] text-[#F8F6F1] uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#2C2C30] transition-all flex items-center gap-2 shadow-sm cursor-pointer"
-                >
-                  <Send size={14} className="text-[#C8A45D]" />
-                  <span>Открыть в Telegram</span>
-                </a>
-
-                <button
-                  onClick={() => setIsAlbertOpen(true)}
-                  className="px-8 py-3.5 border border-[#1A1A1C]/20 text-[#1A1A1C] hover:border-[#1A1A1C] uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center gap-2 cursor-pointer"
-                >
-                  <MessageSquare size={14} className="text-[#C8A45D]" />
-                  <span>Диалог на сайте</span>
-                </button>
+                {onContinue && (
+                  <button
+                    onClick={onContinue}
+                    className="px-8 py-3.5 bg-[#1A1A1C] text-[#F8F6F1] uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#2C2C30] transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+                  >
+                    <span>{continueLabel}</span>
+                    <ArrowRight size={14} className="text-[#C8A45D]" />
+                  </button>
+                )}
 
                 <button
                   onClick={handleReset}
@@ -837,15 +827,6 @@ export function AlabasterSanctuary({
 
         </div>
       )}
-
-      {/* Albert Web Dialogue Modal */}
-      <AlbertDialogue
-        isOpen={isAlbertOpen}
-        onClose={() => setIsAlbertOpen(false)}
-        calc={result}
-        initialTopic={result ? `Разбор даты ${day}.${month}.${year} (Душа ${soulNum}, Путь ${pathNum}, Выражение ${exprNum})` : ''}
-        theme="light"
-      />
 
     </div>
   );

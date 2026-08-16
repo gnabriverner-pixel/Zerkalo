@@ -5,6 +5,8 @@ import { ApiResponse, StoryInputs } from '../types';
 import { Orb } from './Orb';
 
 interface PersonalMythProps {
+  initialInputs?: StoryInputs | null;
+  initialResult?: ApiResponse['story_result'] | null;
   onOpenAbout?: () => void;
   onMythCompleted?: (inputs: StoryInputs, result: ApiResponse['story_result']) => void;
   onNavigateToMeeting?: () => void;
@@ -12,18 +14,21 @@ interface PersonalMythProps {
 }
 
 export default function PersonalMyth({ 
+  initialInputs,
+  initialResult,
   onOpenAbout,
   onMythCompleted,
   onNavigateToMeeting,
   hasCodeResult 
 }: PersonalMythProps = {}) {
   // 0 = Intro, 1-4 = questions, 5 = generating, 6 = result
-  const [step, setStep] = useState(0);
-  const [inputs, setInputs] = useState<StoryInputs>({ q1: '', q2: '', q3: '', q4: '' });
-  const [result, setResult] = useState<ApiResponse['story_result'] | null>(null);
+  const [step, setStep] = useState(initialResult ? 6 : 0);
+  const [inputs, setInputs] = useState<StoryInputs>(initialInputs || { q1: '', q2: '', q3: '', q4: '' });
+  const [result, setResult] = useState<ApiResponse['story_result'] | null>(initialResult || null);
   const [errorText, setErrorText] = useState('');
   const [journalNote, setJournalNote] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
+  const requestIdRef = useRef(`myth_${crypto.randomUUID().replace(/-/g, '')}`);
 
   const stepMeta = [
     {
@@ -68,10 +73,14 @@ export default function PersonalMyth({
     setStep(5);
     setErrorText('');
     try {
-      const res = await fetch('/api/generate', {
+      const res = await fetch('/api/personal-myth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'story', storyInputs: inputs })
+        body: JSON.stringify({
+          request_id: requestIdRef.current,
+          consent_version: 'personal-myth-v1.1-rc',
+          answers: inputs,
+        })
       });
       
       const data: ApiResponse = await res.json();
@@ -124,11 +133,11 @@ export default function PersonalMyth({
               className="text-center w-full max-w-2xl mx-auto py-8"
             >
               <div className="flex justify-center mb-8">
-                <Orb number={7} size="lg" glow={true} />
+                <Orb number={7} size="lg" showNumber={false} glow={true} />
               </div>
 
               <span className="text-[11px] uppercase tracking-[0.3em] text-purple-300/80 font-mono block mb-3">
-                Линза I · Личный Миф
+                Независимое зеркало · Личный миф
               </span>
 
               <h1 className="font-serif text-4xl sm:text-6xl text-stone-100 mb-4 font-normal tracking-tight leading-tight">
@@ -259,7 +268,7 @@ export default function PersonalMyth({
               exit={{ opacity: 0 }}
               className="w-full flex flex-col items-center justify-center py-24 text-center max-w-lg mx-auto"
             >
-              <Orb number={7} size="lg" glow={true} className="mb-8" />
+              <Orb number={7} size="lg" showNumber={false} glow={true} className="mb-8" />
               <Loader2 className="w-6 h-6 text-[var(--color-antique-gold)] animate-spin mb-6" />
               <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 mb-3 font-light">
                 Вплетаем нити ваших символов...
@@ -282,7 +291,7 @@ export default function PersonalMyth({
             >
               {/* Header Title */}
               <div className="text-center w-full max-w-2xl mx-auto pt-4">
-                <Orb number={7} size="sm" glow={true} className="mx-auto mb-6" />
+                <Orb number={7} size="sm" showNumber={false} glow={true} className="mx-auto mb-6" />
                 
                 <span className="text-[10px] tracking-[0.3em] uppercase text-purple-300/80 font-mono block mb-3">
                   Личный Миф · Сказка
@@ -320,13 +329,17 @@ export default function PersonalMyth({
               </div>
 
               {/* EDITORIAL STORY TEXT (High Leading, Book Chapter) */}
-              <div className="w-full bg-[#0D121D]/50 border border-white/[0.08] p-8 sm:p-12 rounded-xs">
-                <div className="font-serif text-lg sm:text-[21px] leading-[2] text-[#E0E4EC] space-y-8 font-light max-w-2xl mx-auto tracking-wide">
+              <article className="w-full bg-[#EFE5D3] border border-[#D1B98D]/50 p-8 sm:p-12 rounded-xs shadow-[0_28px_80px_rgba(0,0,0,0.3)]">
+                <div className="mb-8 flex items-center justify-between border-b border-[#7B6545]/20 pb-4 text-[10px] uppercase tracking-[0.25em] text-[#7B6545] font-mono">
+                  <span>Личный миф</span>
+                  <span>Чернила · ваши четыре образа</span>
+                </div>
+                <div className="font-serif text-lg sm:text-[21px] leading-[2] text-[#282019] space-y-8 font-normal max-w-2xl mx-auto tracking-[0.015em]">
                   {result.story.split('\n\n').map((paragraph, idx) => (
                     <p key={idx}>{paragraph}</p>
                   ))}
                 </div>
-              </div>
+              </article>
 
               {/* LIVING QUESTION FOR REFLECTION */}
               <div className="w-full bg-[#0D121D]/90 border border-[var(--color-antique-gold)]/20 p-8 sm:p-10 rounded-xs text-center">
@@ -351,15 +364,15 @@ export default function PersonalMyth({
               <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-10 rounded-xs text-center space-y-6">
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
-                    Второе зеркало
+                    Следующее зеркало
                   </span>
                   <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
-                    Цифровой Код вашей природы
+                    {hasCodeResult ? 'Встреча двух зеркал' : 'Цифровой код вашей природы'}
                   </h3>
                   <p className="text-xs sm:text-sm text-stone-400 font-light max-w-md mx-auto leading-relaxed">
                     {hasCodeResult 
                       ? 'Ваш код уже рассчитан. Вы можете перейти к синтезу двух независимых отражений.'
-                      : 'Откройте вторую линзу через дату рождения, чтобы получить пять ключей и сопоставить их со сказкой.'}
+                      : 'Откройте независимую линзу через дату рождения, чтобы получить пять ключей и сопоставить их с мифом.'}
                   </p>
                 </div>
 
@@ -369,7 +382,7 @@ export default function PersonalMyth({
                       onClick={onNavigateToMeeting}
                       className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 cursor-pointer shadow-md"
                     >
-                      <span>{hasCodeResult ? 'Открыть Встречу Зеркал' : 'Открыть второе зеркало (Цифровой код)'}</span>
+                      <span>{hasCodeResult ? 'Открыть Встречу зеркал' : 'Открыть Цифровой код'}</span>
                       <ArrowRight size={14} />
                     </button>
                   )}
@@ -379,6 +392,7 @@ export default function PersonalMyth({
                       setStep(0);
                       setInputs({ q1: '', q2: '', q3: '', q4: '' });
                       setResult(null);
+                      requestIdRef.current = `myth_${crypto.randomUUID().replace(/-/g, '')}`;
                     }}
                     className="px-5 py-3 text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1.5 transition-colors cursor-pointer"
                   >

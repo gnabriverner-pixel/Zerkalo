@@ -120,6 +120,21 @@ h1, h2, h3, .font-serif {
 .animate-veil      { animation: veil 9s ease-in-out infinite; }
 .animate-pulse-gentle { animation: pulse-gentle 5s ease-in-out infinite; }
 
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
@@ -142,4 +157,3 @@ h1, h2, h3, .font-serif {
 .theme-alabaster ::-webkit-scrollbar-thumb {
   background: oklch(0.74 0.09 75 / 30%);
 }
-

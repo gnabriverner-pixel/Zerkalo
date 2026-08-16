@@ -6,9 +6,16 @@ import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
 import { generateFullInterpretationPayload, generateFirstMirror } from "./src/services/interpretation";
 import { buildPersonalMythPrompt, buildMeetingOfMirrorsPrompt } from "./src/services/mythPrompts";
-import { generateDeterministicMeeting } from "./src/services/meetingOfMirrors";
+import { parseMeetingResponse } from "./src/services/meetingContract";
 import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
+import {
+  DeepSeekMythProvider,
+  PERSONAL_MYTH_WRITER_VERSION,
+  containsCrisisLanguage,
+  generatePersonalMyth,
+  parsePersonalMythRequest,
+} from "./server/myth";
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const MYTH_MODEL_A = process.env.MYTH_MODEL_A || "gemini-2.5-flash";
@@ -34,6 +41,10 @@ function isCrisisInput(inputs: StoryInputs): boolean {
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
+  const mythProvider = new DeepSeekMythProvider(process.env);
+  const personalMythTimeoutMs = Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 45_000));
+  const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
+  const mythRate = new Map<string, { windowStartedAt: number; count: number }>();
 
   app.use(express.json({ limit: "5mb" }));
 
@@ -46,8 +57,23 @@ async function startServer() {
         default: DEFAULT_MODEL,
         mythA: MYTH_MODEL_A,
         mythB: MYTH_MODEL_B,
-        synthesis: SYNTHESIS_MODEL
+        synthesis: SYNTHESIS_MODEL,
+        personalMyth: mythProvider.model,
       }
+    });
+  });
+
+  app.get("/health/ready", (req, res) => {
+    const mythReady = mythProvider.isReady();
+    const meetingReady = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.length >= 10);
+    const ready = mythReady && meetingReady;
+    res.status(ready ? 200 : 503).json({
+      status: ready ? "ready" : "not_ready",
+      service: "zerkalo",
+      features: {
+        personal_myth: { ready: mythReady, provider: mythProvider.name, model: mythProvider.model, writer: PERSONAL_MYTH_WRITER_VERSION },
+        meeting: { ready: meetingReady, model: SYNTHESIS_MODEL },
+      },
     });
   });
 
@@ -62,10 +88,20 @@ async function startServer() {
   // Tester Feedback submission
   app.post("/api/feedback", async (req, res) => {
     try {
+      const score = Number(req.body?.score);
+      if (!Number.isInteger(score) || score < 0 || score > 10) {
+        return res.status(400).json({ status: "error", ui: { safe_message: "Выберите оценку от 0 до 10." } });
+      }
+      const bounded = (value: unknown, limit: number) => String(value ?? "").trim().slice(0, limit);
       const feedback = {
         id: `fb_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
         timestamp: new Date().toISOString(),
-        ...req.body
+        score,
+        recognizeMotifs: bounded(req.body?.recognizeMotifs, 120),
+        helpedSeeDifferently: bounded(req.body?.helpedSeeDifferently, 120),
+        feelsPersonalOrGeneric: bounded(req.body?.feelsPersonalOrGeneric, 120),
+        wantsContinuation: bounded(req.body?.wantsContinuation, 120),
+        comment: bounded(req.body?.comment, 1200),
       };
 
       const feedbackFilePath = path.join(process.cwd(), 'feedback.json');
@@ -86,9 +122,9 @@ async function startServer() {
       });
     } catch (error) {
       console.error("Developer Log: Failed to save feedback:", error);
-      res.status(200).json({
-        status: "ok",
-        message: "Отзыв принят."
+      res.status(500).json({
+        status: "error",
+        ui: { safe_message: "Не удалось сохранить отклик. Попробуйте ещё раз позже." }
       });
     }
   });
@@ -177,6 +213,77 @@ async function startServer() {
   });
 
   // Core generation endpoint
+  app.post("/api/personal-myth", async (req, res) => {
+    if (!mythProvider.isReady()) {
+      return res.status(503).json({
+        mode: "story",
+        status: "error",
+        code: "personal_myth_provider_not_ready",
+        ui: { safe_message: "Личный миф сейчас недоступен. Ваши ответы сохранены в этом браузере — попробуйте снова позже." },
+      });
+    }
+
+    const now = Date.now();
+    const clientKey = req.ip || "unknown";
+    const currentRate = mythRate.get(clientKey);
+    if (!currentRate || now - currentRate.windowStartedAt > 10 * 60_000) {
+      mythRate.set(clientKey, { windowStartedAt: now, count: 1 });
+    } else if (currentRate.count >= 5) {
+      return res.status(429).json({
+        mode: "story",
+        status: "error",
+        code: "rate_limited",
+        ui: { safe_message: "Слишком много попыток подряд. Вернитесь к истории через несколько минут." },
+      });
+    } else {
+      currentRate.count += 1;
+    }
+
+    try {
+      const request = parsePersonalMythRequest(req.body);
+      const cached = mythCache.get(request.request_id);
+      if (cached && cached.expiresAt > now) return res.status(200).json(cached.payload);
+
+      if (containsCrisisLanguage(request.answers)) {
+        return res.status(200).json({
+          mode: "story",
+          status: "crisis",
+          ui: {
+            safe_message: "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой.",
+          },
+        });
+      }
+
+      const generated = await generatePersonalMyth(request, mythProvider, personalMythTimeoutMs);
+      const payload = {
+        mode: "story",
+        status: "ok",
+        request_id: request.request_id,
+        writer_version: PERSONAL_MYTH_WRITER_VERSION,
+        provider: mythProvider.name,
+        model: mythProvider.model,
+        story_result: generated.result,
+        qa: { passed: generated.quality.passed, word_count: generated.quality.word_count, repaired: generated.repaired },
+      };
+      mythCache.set(request.request_id, { expiresAt: now + 30 * 60_000, payload });
+      return res.status(200).json(payload);
+    } catch (error) {
+      const code = error instanceof Error ? error.message.split(":", 1)[0] : "personal_myth_failed";
+      const inputError = code.startsWith("invalid_");
+      console.error("Personal Myth generation failed:", code);
+      return res.status(inputError ? 400 : 502).json({
+        mode: "story",
+        status: "error",
+        code,
+        ui: {
+          safe_message: inputError
+            ? "Проверьте, что на все четыре вопроса есть короткий ответ."
+            : "Историю не удалось собрать достаточно точно. Ответы сохранены — можно повторить попытку.",
+        },
+      });
+    }
+  });
+
   app.post("/api/generate", async (req, res) => {
     try {
       const { mode, date, calc, storyInputs, modelOverride } = req.body;
@@ -388,17 +495,9 @@ ${payload2}
       const apiKey = process.env.GEMINI_API_KEY;
 
       if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.length < 10 || apiKey.includes("API_KEY")) {
-        console.log("SERVER LOG: Generating deterministic Meeting of Mirrors fallback.");
-        const fallbackResult = generateDeterministicMeeting(
-          codeData.calc,
-          codeData.firstMirror,
-          storyData.storyInputs,
-          storyData.storyResult
-        );
-        return res.status(200).json({
-          status: "ok",
-          result: fallbackResult,
-          ui: { safe_message: "Синтез выполнен по базовой модели сопоставления." }
+        return res.status(503).json({
+          status: "error",
+          ui: { safe_message: "Встреча зеркал сейчас недоступна. Ваши результаты сохранены — попробуйте снова позже." }
         });
       }
 
@@ -417,43 +516,21 @@ ${payload2}
       responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
 
       try {
-        const resultJson = JSON.parse(responseText);
+        const resultJson = parseMeetingResponse(JSON.parse(responseText));
         res.status(200).json(resultJson);
       } catch (err) {
-        console.error("Developer Log: Synthesis JSON parse error:", responseText);
-        const fallbackResult = generateDeterministicMeeting(
-          codeData.calc,
-          codeData.firstMirror,
-          storyData.storyInputs,
-          storyData.storyResult
-        );
-        res.status(200).json({
-          status: "ok",
-          result: fallbackResult,
-          ui: { safe_message: "При формировании синтеза использована резервная схема сопоставления." }
+        console.error("Developer Log: Synthesis contract error:", err instanceof Error ? err.message : "unknown");
+        res.status(502).json({
+          status: "error",
+          ui: { safe_message: "Встреча зеркал не смогла подготовить надёжный ответ. Ваши результаты сохранены — попробуйте снова позже." }
         });
       }
 
     } catch (error) {
-      console.error("Developer Log: Meeting of Mirrors error:", error);
-      const { codeData, storyData } = req.body;
-      if (codeData?.calc && storyData?.storyInputs) {
-        const fallbackResult = generateDeterministicMeeting(
-          codeData.calc,
-          codeData.firstMirror,
-          storyData.storyInputs,
-          storyData.storyResult
-        );
-        return res.status(200).json({
-          status: "ok",
-          result: fallbackResult,
-          ui: { safe_message: "Использована резервная модель сопоставления." }
-        });
-      }
-
-      res.status(200).json({
+      console.error("Developer Log: Meeting of Mirrors error:", error instanceof Error ? error.message : "unknown");
+      res.status(502).json({
         status: "error",
-        ui: { safe_message: "Не удалось провести сопоставление. Пожалуйста, повторите попытку." }
+        ui: { safe_message: "Не удалось провести надёжное сопоставление. Ваши результаты сохранены — попробуйте снова позже." }
       });
     }
   };

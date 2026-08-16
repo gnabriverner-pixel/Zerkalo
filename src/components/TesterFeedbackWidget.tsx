@@ -17,12 +17,14 @@ export function TesterFeedbackWidget({ onFeedbackSubmitted }: TesterFeedbackWidg
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (score === null) return;
 
     setIsSubmitting(true);
+    setSubmitError('');
     const feedbackPayload: TesterFeedback = {
       score,
       recognizeMotifs,
@@ -34,16 +36,18 @@ export function TesterFeedbackWidget({ onFeedbackSubmitted }: TesterFeedbackWidg
     };
 
     try {
-      await fetch('/api/feedback', {
+      const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(feedbackPayload)
       });
+      const data = await response.json();
+      if (!response.ok || data.status !== 'ok') throw new Error('feedback_not_saved');
       setSubmitted(true);
       if (onFeedbackSubmitted) onFeedbackSubmitted(feedbackPayload);
     } catch (err) {
       console.error(err);
-      setSubmitted(true);
+      setSubmitError('Не удалось сохранить отклик. Попробуйте ещё раз позже.');
     } finally {
       setIsSubmitting(false);
     }
@@ -65,13 +69,13 @@ export function TesterFeedbackWidget({ onFeedbackSubmitted }: TesterFeedbackWidg
     <div className="w-full bg-[#111A16] border border-[#2A3B33] p-6 sm:p-8 rounded-xs mt-12 text-left">
       <div className="flex items-center gap-2 mb-2">
         <Sparkles size={14} className="text-[#A3B8AD]" />
-        <span className="text-[11px] uppercase tracking-widest text-[#A3B8AD]">Обратная связь исследователя</span>
+        <span className="text-[11px] uppercase tracking-widest text-[#A3B8AD]">Необязательный отклик после опыта</span>
       </div>
       <h3 className="font-serif text-xl text-[#F4F4F4] mb-2">
-        Насколько это ощущается как история именно про вас?
+        Насколько Встреча зеркал оказалась про вас?
       </h3>
       <p className="text-xs text-gray-400 mb-6">
-        Оцените точность резонанса по шкале от 0 (совсем чужой текст) до 10 (точное узнавание себя):
+        Это post-release evidence, а не условие доступа к продукту. Оцените от 0 (совсем мимо) до 10 (точное узнавание):
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -220,6 +224,7 @@ export function TesterFeedbackWidget({ onFeedbackSubmitted }: TesterFeedbackWidg
                 <Send size={13} />
                 <span>{isSubmitting ? 'Отправка...' : 'Отправить отклик'}</span>
               </button>
+              {submitError && <p role="alert" className="text-xs text-red-300">{submitError}</p>}
             </motion.div>
           )}
         </AnimatePresence>
