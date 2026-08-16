@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 
-const screenshotDir = path.resolve(__dirname, '../docs/evidence/g2-owner-acceptance/screenshots');
+const evidenceDir = path.resolve(__dirname, '../docs/evidence/g2-live-acceptance');
+const screenshotDir = path.join(evidenceDir, 'screenshots');
 fs.mkdirSync(screenshotDir, { recursive: true });
 
 test.use({
@@ -20,12 +21,12 @@ test.describe('G2 Live Acceptance Pass', () => {
     await page.goto('http://localhost:3005');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('h1')).toContainText('Зеркало себя');
-    await page.screenshot({ path: path.join(screenshotDir, '01_threshold.png'), fullPage: false });
+    await page.screenshot({ path: path.join(screenshotDir, '01_threshold_live.png'), fullPage: false });
 
     // 2. Collection choice (Two equal gates)
     const collectionSec = page.locator('#collection');
     await collectionSec.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: path.join(screenshotDir, '02_two_lenses_choice.png'), fullPage: false });
+    await page.screenshot({ path: path.join(screenshotDir, '02_two_lenses_choice_live.png'), fullPage: false });
 
     // 3. Journey 1: Open Personal Myth
     const mythCard = page.locator('text=Сказка про вас').first();
@@ -42,37 +43,37 @@ test.describe('G2 Live Acceptance Pass', () => {
     // Question 1
     await expect(page.locator('text=01 / 04')).toBeVisible();
     await page.locator('textarea').fill('Тяжесть в плечах, как будто несу чужой рюкзак.');
-    await page.screenshot({ path: path.join(screenshotDir, '03_myth_questions.png'), fullPage: false });
-    await page.locator('button:has-text("Дальше")').click();
+    await page.screenshot({ path: path.join(screenshotDir, '03_myth_questions_live.png'), fullPage: false });
+    await page.locator('button:has-text("Продолжить")').click();
     await page.waitForTimeout(400);
 
     // Question 2
     await expect(page.locator('text=02 / 04')).toBeVisible();
     await page.locator('textarea').fill('Старая кирпичная арка во дворе, заросшая плющом.');
-    await page.locator('button:has-text("Дальше")').click();
+    await page.locator('button:has-text("Продолжить")').click();
     await page.waitForTimeout(400);
 
     // Question 3
     await expect(page.locator('text=03 / 04')).toBeVisible();
     await page.locator('textarea').fill('Как отец молча положил руку на плечо, когда я не поступил.');
-    await page.locator('button:has-text("Дальше")').click();
+    await page.locator('button:has-text("Продолжить")').click();
     await page.waitForTimeout(400);
 
     // Question 4
     await expect(page.locator('text=04 / 04')).toBeVisible();
-    await page.locator('textarea').fill('Устойчивость.');
+    await page.locator('textarea').fill('Устойчивость и внутренняя тишина.');
     
     // Generate Myth (calls DeepSeek)
-    const generateBtn = page.locator('button:has-text("Собрать сказку")');
+    const generateBtn = page.locator('button:has-text("Сплести историю")');
     await generateBtn.click();
 
     // Wait for generation result
-    await page.waitForSelector('text=История', { timeout: 90000 });
+    await page.waitForSelector('article', { timeout: 90000 });
     await page.waitForTimeout(1000);
-    await page.screenshot({ path: path.join(screenshotDir, '04_myth_result.png'), fullPage: false });
+    await page.screenshot({ path: path.join(screenshotDir, '04_myth_result_live.png'), fullPage: false });
 
     // Navigate to second lens (Digital Code)
-    const toCodeBtn = page.locator('button:has-text("Перейти ко второй линзе")').or(page.locator('button:has-text("Перейти к Цифровому Коду")')).or(page.locator('nav button:has-text("Код")'));
+    const toCodeBtn = page.locator('button:has-text("Открыть Цифровой код")').or(page.locator('button:has-text("Перейти ко второй линзе")'));
     await toCodeBtn.first().click();
     await page.waitForTimeout(800);
 
@@ -85,14 +86,14 @@ test.describe('G2 Live Acceptance Pass', () => {
       await dayInput.fill('15');
       await monthInput.fill('08');
       await yearInput.fill('1990');
-      const calcBtn = page.locator('button:has-text("Рассчитать код")').or(page.locator('button:has-text("Рассчитать карту")')).or(page.locator('button:has-text("Войти в святилище")'));
+      const calcBtn = page.locator('button:has-text("Открыть свой код")').or(page.locator('button:has-text("Рассчитать код")'));
       await calcBtn.first().click();
     }
 
     // Wait for Code calculation reveal
     await page.waitForSelector('text=Число души', { timeout: 30000 });
     await page.waitForTimeout(800);
-    await page.screenshot({ path: path.join(screenshotDir, '05_code_reveal.png'), fullPage: false });
+    await page.screenshot({ path: path.join(screenshotDir, '05_code_reveal_live.png'), fullPage: false });
 
     // Open Meeting of Mirrors
     const toMeetingBtn = page.locator('button:has-text("Открыть Встречу зеркал")').or(page.locator('nav button:has-text("Встреча")'));
@@ -100,29 +101,29 @@ test.describe('G2 Live Acceptance Pass', () => {
     await page.waitForTimeout(800);
 
     // Click Run Synthesis
-    const runMeetingBtn = page.locator('button:has-text("Запустить Встречу Зеркал")').or(page.locator('button:has-text("Провести встречу")'));
+    const runMeetingBtn = page.locator('button:has-text("Провести Встречу Зеркал")');
     if (await runMeetingBtn.isVisible()) {
       await runMeetingBtn.click();
     }
 
     // Wait for synthesis result
-    await page.waitForSelector('text=Сходство').or(page.locator('text=Расхождение')).or(page.locator('text=В этой встрече')).first().waitFor({ timeout: 60000 });
+    await page.waitForSelector('text=Итог', { timeout: 60000 });
     await page.waitForTimeout(1000);
 
     // Screenshot meeting state
-    await page.screenshot({ path: path.join(screenshotDir, '06_meeting_resonances.png'), fullPage: false });
-
-    // Scroll to reflective question & divergences
-    const albertPromptArea = page.locator('text=Вопрос для дневника').or(page.locator('text=Продолжить разговор с Альбертом')).or(page.locator('text=Расхождение'));
-    await albertPromptArea.first().scrollIntoViewIfNeeded();
-    await page.screenshot({ path: path.join(screenshotDir, '07_meeting_divergence_zero.png'), fullPage: false });
+    await page.screenshot({ path: path.join(screenshotDir, '06_meeting_resonances_live.png'), fullPage: false });
 
     // Open Albert Dialogue
-    const albertBtn = page.locator('button:has-text("Продолжить разговор с Альбертом")');
+    const albertBtn = page.locator('button:has-text("Диалог на сайте")');
     if (await albertBtn.isVisible()) {
       await albertBtn.click();
       await page.waitForTimeout(600);
-      await page.screenshot({ path: path.join(screenshotDir, '08_albert_transition.png'), fullPage: false });
+      const promptBtn = page.locator('button.text-left').first();
+      if (await promptBtn.isVisible()) {
+        await promptBtn.click();
+        await page.waitForTimeout(1200);
+      }
+      await page.screenshot({ path: path.join(screenshotDir, '07_albert_dialogue_live.png'), fullPage: false });
     }
   });
 
@@ -145,6 +146,7 @@ test.describe('G2 Live Acceptance Pass', () => {
     // Verify Alabaster Code Room opens
     await page.waitForSelector('text=Число души', { timeout: 30000 });
     expect(await page.locator('text=Число души').isVisible()).toBeTruthy();
+    await page.screenshot({ path: path.join(screenshotDir, '08_route_b_code_first_live.png'), fullPage: false });
 
     // Continue to Myth
     const toMythBtn = page.locator('button:has-text("Перейти к Личному мифу")');
@@ -158,34 +160,35 @@ test.describe('G2 Live Acceptance Pass', () => {
     }
 
     // Fill 4 questions
-    await page.locator('textarea').fill('Ощущение, что застрял в цикле повторяющихся задач.');
-    await page.locator('button:has-text("Дальше")').click();
-    await page.locator('textarea').fill('Часовой механизм с выпавшей шестерёнкой.');
-    await page.locator('button:has-text("Дальше")').click();
-    await page.locator('textarea').fill('Ночной костёр в горах, когда вокруг была полная тишина.');
-    await page.locator('button:has-text("Дальше")').click();
-    await page.locator('textarea').fill('Ясность приоритетов.');
-    await page.locator('button:has-text("Собрать сказку")').click();
+    await page.locator('textarea').fill('Развилка дорог в густом сосновом бору.');
+    await page.locator('button:has-text("Продолжить")').click();
+    await page.locator('textarea').fill('Старинный медный компас с треснувшим стеклом.');
+    await page.locator('button:has-text("Продолжить")').click();
+    await page.locator('textarea').fill('Запах хвои после сильной грозы.');
+    await page.locator('button:has-text("Продолжить")').click();
+    await page.locator('textarea').fill('Верность собственному курсу.');
+    await page.locator('button:has-text("Сплести историю")').click();
 
     // Wait for myth result
-    await page.waitForSelector('text=История', { timeout: 90000 });
+    await page.waitForSelector('article', { timeout: 90000 });
+    await page.screenshot({ path: path.join(screenshotDir, '09_route_b_myth_live.png'), fullPage: false });
 
     // Open Meeting of Mirrors
     const toMeetingBtn = page.locator('button:has-text("Открыть Встречу зеркал")').or(page.locator('nav button:has-text("Встреча")'));
     await toMeetingBtn.first().click();
     await page.waitForTimeout(600);
 
-    const runMeetingBtn = page.locator('button:has-text("Запустить Встречу Зеркал")');
+    const runMeetingBtn = page.locator('button:has-text("Провести Встречу Зеркал")');
     if (await runMeetingBtn.isVisible()) {
       await runMeetingBtn.click();
     }
 
     // Synthesis should complete
-    await page.waitForSelector('text=Сходство').or(page.locator('text=Расхождение')).or(page.locator('text=В этой встрече')).first().waitFor({ timeout: 60000 });
-    expect(await page.locator('text=Встреча двух отражений').isVisible()).toBeTruthy();
+    await page.waitForSelector('text=Итог', { timeout: 60000 });
+    await page.screenshot({ path: path.join(screenshotDir, '10_route_b_meeting_live.png'), fullPage: false });
   });
 
-  test('Crisis Intervention & Error Handling', async ({ page }) => {
+  test('Crisis Intervention & Safety Interception', async ({ page }) => {
     test.setTimeout(60000);
     await page.goto('http://localhost:3005');
     
@@ -198,17 +201,17 @@ test.describe('G2 Live Acceptance Pass', () => {
 
     // Fill crisis phrase in Question 1
     await page.locator('textarea').fill('Я хочу умереть и покончить с собой.');
-    await page.locator('button:has-text("Дальше")').click();
+    await page.locator('button:has-text("Продолжить")').click();
     await page.locator('textarea').fill('Темнота.');
-    await page.locator('button:has-text("Дальше")').click();
+    await page.locator('button:has-text("Продолжить")').click();
     await page.locator('textarea').fill('Ничего.');
-    await page.locator('button:has-text("Дальше")').click();
+    await page.locator('button:has-text("Продолжить")').click();
     await page.locator('textarea').fill('Пустота.');
-    await page.locator('button:has-text("Собрать сказку")').click();
+    await page.locator('button:has-text("Сплести историю")').click();
 
     // Wait for crisis safety message
     await page.waitForSelector('text=живая поддержка', { timeout: 15000 });
-    await page.screenshot({ path: path.join(screenshotDir, '09_provider_failure.png'), fullPage: false });
+    await page.screenshot({ path: path.join(screenshotDir, '19_crisis_safety_intercept.png'), fullPage: false });
     expect(await page.locator('text=живая поддержка').isVisible()).toBeTruthy();
   });
 });

@@ -47,7 +47,7 @@ const FORBIDDEN_PUBLIC_LANGUAGE = [
   /исцел\w*/iu,
   /предсказ\w*/iu,
   /магическ\w*/iu,
-  /карм\w*/iu,
+  /(?:^|\s)карм(?:а|ы|е|у|ой|ах|ам|ами|ическ\w*)(?:$|\s|[.,!?;:])/iu,
   /(?:^|\s)вы\s+(?:точно|обязательно|должны)(?:$|\s|[.,!?;:])/iu,
   /вс[её]\s+будет\s+хорошо/iu,
 ];
@@ -122,6 +122,7 @@ ${JSON.stringify(request.answers)}
 - Варьируй форму: не используй обязательную цепочку «утро → странный предмет → воспоминание → названное качество → ритуал». Можно начать с диалога, действия, середины сцены, смены времени или наблюдения.
 - Не закрывай конфликт аккуратной развязкой. Оставь честный остаток неопределённости; малое действие меняет внимание, а не обещает внутреннюю перемену.
 - Избегай серийных формул «впервые за долгое время», «не X, а Y», обязательных окна, чая, воды, света, дыхания и ритуала на 5–15 минут.
+- Запрещены слова и корни: терапия, лечение, лечить, диагноз, исцеление, исцелять, предсказание, магия, магический, карма, кармический, гипноз, нлп, фразы «всё будет хорошо», «вы точно должны».
 - Язык — конкретный, сильный и естественный. Двигайся сценами, материей и жестом без псевдоглубины, морали и канцеляризмов.
 - Если данных недостаточно для честной связи, верни status=error и safe_message вместо заполнения пробелов универсальным текстом.
 - История 350–700 слов. Вопрос открыт и не содержит подсказанного ответа.${repair}
@@ -187,7 +188,11 @@ export function validatePersonalMythResult(result: PersonalMythResult): Personal
     result.one_step,
     result.journal_question,
   ].join(" ");
-  if (FORBIDDEN_PUBLIC_LANGUAGE.some((pattern) => pattern.test(publicText))) blockers.push("forbidden_public_language");
+  const matchedForbidden = FORBIDDEN_PUBLIC_LANGUAGE.filter((pattern) => pattern.test(publicText));
+  if (matchedForbidden.length > 0) {
+    console.warn(`[Forbidden Language Matched]:`, matchedForbidden.map((r) => r.source));
+    blockers.push("forbidden_public_language");
+  }
   if (SERIAL_FINGERPRINTS.some((pattern) => pattern.test(publicText))) blockers.push("template_fingerprint");
   const mirrorText = Object.values(result.mirror).join(" ");
   if (UNSUPPORTED_CERTAINTY.some((pattern) => pattern.test(mirrorText))) blockers.push("unsupported_certainty");
@@ -251,15 +256,16 @@ export async function generatePersonalMyth(
 ): Promise<{ result: PersonalMythResult; quality: PersonalMythQualityReport; repaired: boolean }> {
   if (!provider.isReady()) throw new Error("personal_myth_provider_not_ready");
   let blockers: string[] = [];
-  for (let editorialAttempt = 0; editorialAttempt < 2; editorialAttempt += 1) {
+  for (let editorialAttempt = 0; editorialAttempt < 3; editorialAttempt += 1) {
     const prompt = buildPersonalMythPromptV11(request, blockers);
     let lastTransportError: unknown;
     for (let transportAttempt = 0; transportAttempt < 2; transportAttempt += 1) {
       try {
         const result = parsePersonalMythResult(await provider.generate(prompt, timeoutMs));
         const quality = validatePersonalMythResult(result);
-        if (quality.passed) return { result, quality, repaired: editorialAttempt === 1 };
+        if (quality.passed) return { result, quality, repaired: editorialAttempt > 0 };
         blockers = quality.blockers;
+        console.warn(`[PersonalMyth Quality Check] attempt ${editorialAttempt + 1} failed with blockers:`, blockers);
         lastTransportError = undefined;
         break;
       } catch (error) {

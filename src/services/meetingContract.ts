@@ -23,11 +23,12 @@ function parallel(value: unknown, index: number): MeetingParallel {
 
 function divergence(value: unknown, index: number): MeetingDivergence {
   if (!isRecord(value)) throw new Error(`meeting_invalid_divergence_${index}`);
+  const refl = value.reflection || value.synthesis || value.note;
   return {
     theme: text(value.theme, `divergence_${index}_theme`, 240),
     codeAspect: text(value.codeAspect, `divergence_${index}_code_aspect`),
     mythAspect: text(value.mythAspect, `divergence_${index}_myth_aspect`),
-    reflection: text(value.reflection, `divergence_${index}_reflection`),
+    reflection: text(refl, `divergence_${index}_reflection`),
   };
 }
 

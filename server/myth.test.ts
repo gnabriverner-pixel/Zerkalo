@@ -69,7 +69,9 @@ describe("Personal Myth v1.1 release contract", () => {
   it("validates a complete result and forbidden language", () => {
     const result = parsePersonalMythResult(JSON.stringify(validPayload()));
     expect(validatePersonalMythResult(result).passed).toBe(true);
-    result.story += " исцеление";
+    result.story += " Он положил компас в карман пальто.";
+    expect(validatePersonalMythResult(result).passed).toBe(true);
+    result.story += " карма";
     expect(validatePersonalMythResult(result).blockers).toContain("forbidden_public_language");
   });
 
