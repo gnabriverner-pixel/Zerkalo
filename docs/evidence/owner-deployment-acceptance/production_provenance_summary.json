@@ -1,0 +1,78 @@
+{
+  "testStartTime": "2026-08-17T12:00:01.903Z",
+  "targetUrl": "https://zerkalosebya.ru",
+  "healthData": {
+    "status": "ok",
+    "service": "zerkalo",
+    "version": "1.0.0-lab",
+    "models": {
+      "personalMyth": "deepseek-v4-pro",
+      "meeting": "deepseek-v4-pro",
+      "albert": "deepseek-v4-pro"
+    },
+    "google_production_dependency": "none"
+  },
+  "readyData": {
+    "status": "ready",
+    "service": "zerkalo",
+    "providers": {
+      "personal_myth": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "writer": "personal-myth-v1.1-rc"
+      },
+      "meeting": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro"
+      },
+      "albert": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro"
+      }
+    },
+    "google_production_dependency": "none"
+  },
+  "recordedProvenance": {
+    "myth": {
+      "status": "ok",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "title": "Маяк и грозовой фронт",
+      "mainImage": "Каменный маяк на скале перед грозой: неподвижная структура, встроенная в стихию, но не сливающаяся с ней."
+    },
+    "meeting": {
+      "status": "ok",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "summary": "Два зеркала встретились: одно — строгий расчёт чисел, другое — живые образы, выбранные человеком. Оба отражают поиск равновесия между внутренней структурой и внешней стихией, но с разных ракурсов.",
+      "parallelsCount": 4,
+      "divergencesCount": 2
+    },
+    "albert": {
+      "status": "ok",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "contractValid": true,
+      "wordCount": 157,
+      "messagePreview": "Главная точка опоры между вашим кодом и мифом, как она видится из сопоставления,"
+    },
+    "restoredAlbert": {
+      "status": "ok",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "contractValid": true,
+      "wordCount": 143,
+      "hasMeetingSummaryInContext": true,
+      "hasCodeAnchorsInContext": true,
+      "hasMythAnchorsInContext": true,
+      "messagePreview": "Практическое применение этих выводов начинается с простого различения двух режим"
+    }
+  },
+  "consoleErrors": [],
+  "unexpectedErrors": [],
+  "consoleErrorClassification": "NO_UNEXPECTED_PRODUCT_CONSOLE_ERRORS (raw count: 0)",
+  "productionLogs": ""
+}
