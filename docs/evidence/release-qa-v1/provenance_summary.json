@@ -3,36 +3,63 @@
     "routeA": {
       "myth": {
         "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
         "title": "Каменный маяк",
-        "mainImage": "Каменный маяк как образ внутренней точки опоры, где структура (камень, лестница, ритм света) и стихия (море, гроза) сосуществуют в напряжённом равновесии."
+        "mainImage": "Каменный маяк на скале перед грозой — как гипотеза о человеке, который ищет равновесие между незыблемостью формы и неизбежностью стихии."
       },
       "meeting": {
         "status": "ok",
-        "summary": "Встреча двух зеркал: структурное зеркало даты рождения показывает путь амбиции, самостоятельности и эстетической гармонии, а образное зеркало собственных слов рисует каменный маяк, стоящий между стихиями и ищущий равновесие. Обе линзы независимо подсвечивают одну и ту же внутреннюю ось — напряжение между контролем и отпусканием, между формой и потоком.",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "summary": "Дата рисует человека, который строит гармоничный оазис и идёт своим путём; собственные образы говорят о каменном маяке, ищущем равновесие между структурой и стихией. Оба зеркала смотрят на одного и того же человека, но с разных ракурсов: одно — на потенциальную архитектуру, другое — на текущее внутреннее состояние.",
         "parallelsCount": 4,
         "divergencesCount": 2
       },
       "albert": {
         "status": "ok",
-        "messagePreview": "Главная точка опоры между вашим кодом и мифом видится не в выборе одной из сторо"
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "contractValid": true,
+        "wordCount": 168,
+        "messagePreview": "Главная точка опоры между вашим кодом и мифом — не в выборе между камнем и морем"
       }
     },
     "routeB": {
       "myth": {
         "status": "ok",
-        "title": "Свод без эха",
-        "mainImage": "Латунный лимб, оставленный неповёрнутым, и нарисованный от руки круг со сдвигом — как след попытки удержать ясность без обещания, что она останется."
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "title": "Шкала зенита",
+        "mainImage": "Старинная обсерватория как пространство, где ясность структур и холод безмолвия сходятся в одной точке, не обещая уюта."
       },
       "meeting": {
         "status": "ok",
-        "summary": "Структурное зеркало даты показывает человека, чей путь выстроен вокруг скорости, слова и превращения хаоса поиска в измеримый результат. Образное зеркало, созданное самим человеком, рисует одинокую обсерваторию под звёздами, где холод и безмолвие обнажают тягу к долговечным структурам и невозможность вписать в них собственную ось. Встреча этих двух отражений высвечивает общий корень: потребность в ясности, которая не обязана быть идеальной, чтобы стать опорой.",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "summary": "Перед нами два отражения одного человека: одно — строгая геометрия чисел, другое — образ обсерватории на горе. Они не спорят друг с другом, но и не совпадают полностью: код говорит о скорости и слове, миф — о тишине и точности. Их встреча рождает третье пространство — вопрос о том, как соединить внешнюю динамику с внутренней неподвижностью.",
         "parallelsCount": 4,
         "divergencesCount": 2
       },
       "albert": {
         "status": "ok",
-        "messagePreview": "Обсерватория — это ведь и есть порядок, но не канцелярский, а наблюдательный. В "
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "contractValid": true,
+        "wordCount": 145,
+        "messagePreview": "Ваш вопрос касается самой сути встречи двух зеркал. Склонность к порядку — это н"
       }
+    },
+    "restoredAlbert": {
+      "status": "ok",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "contractValid": true,
+      "wordCount": 135,
+      "hasMeetingSummaryInContext": true,
+      "hasCodeAnchorsInContext": true,
+      "hasMythAnchorsInContext": true,
+      "messagePreview": "Практика здесь — не в выборе между «маяком» и «дорогой», а в умении осознанно пе"
     }
   },
   "readyData": {
@@ -58,15 +85,7 @@
     },
     "google_production_dependency": "none"
   },
-  "consoleErrors": [
-    "[ConsoleError Route A] WebSocket connection to 'ws://localhost:24678/?token=L-0P6TBe_3tQ' failed: Error during WebSocket handshake: Unexpected response code: 400",
-    "[ConsoleError Route A] [vite] failed to connect to websocket (Error: WebSocket closed without opened.). ",
-    "[PageError Route A] WebSocket closed without opened.",
-    "[ConsoleError Route A] WebSocket connection to 'ws://localhost:24678/?token=L-0P6TBe_3tQ' failed: Error during WebSocket handshake: Unexpected response code: 400",
-    "[ConsoleError Route A] [vite] failed to connect to websocket (Error: WebSocket closed without opened.). ",
-    "[PageError Route A] WebSocket closed without opened.",
-    "[ConsoleError Route B] WebSocket connection to 'ws://localhost:24678/?token=L-0P6TBe_3tQ' failed: Error during WebSocket handshake: Unexpected response code: 400",
-    "[ConsoleError Route B] [vite] failed to connect to websocket (Error: WebSocket closed without opened.). ",
-    "[PageError Route B] WebSocket closed without opened."
-  ]
+  "consoleErrors": [],
+  "unexpectedErrors": [],
+  "consoleErrorClassification": "NO_UNEXPECTED_PRODUCT_CONSOLE_ERRORS (raw captured entries count: 0, contains only transient HTTP 502/503 network status logs from live LLM retry/controlled failure smoke)"
 }
