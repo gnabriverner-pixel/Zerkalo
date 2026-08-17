@@ -79,6 +79,7 @@
   top: 7%;
   width: 62%;
   height: 62%;
+  filter: url(#zk-deboss);
 }
 
 .zk-plate-obsidian .zk-reflect-svg {

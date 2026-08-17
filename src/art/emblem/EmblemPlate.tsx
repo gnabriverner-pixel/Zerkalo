@@ -24,18 +24,39 @@ export const EmblemPlate: React.FC<EmblemPlateProps> = ({
   className = '',
   style = {},
 }) => {
-  const pNum = Math.min(9, Math.max(1, Math.floor(Number(planet) || 1)));
-  const GeometryComponent = PLANETARY_GEOMETRIES[pNum] || PLANETARY_GEOMETRIES[1];
-  const metadata = PLANETARY_METADATA[pNum] || PLANETARY_METADATA[1];
+  const [sweepKey, setSweepKey] = React.useState(0);
+  const pNum = Number(planet);
+  const isValidPlanet = Number.isInteger(pNum) && pNum >= 1 && pNum <= 9;
+
+  const sizeStyle: React.CSSProperties = size
+    ? { width: typeof size === 'number' ? `${size}px` : size, height: typeof size === 'number' ? `${size}px` : size }
+    : {};
+
+  if (!isValidPlanet) {
+    return (
+      <div
+        className={`zk-plate-invalid rounded-xl sm:rounded-2xl border border-stone-800/60 bg-[#0A0C10] flex items-center justify-center text-stone-500 font-mono text-[10px] uppercase tracking-wider aspect-square ${className}`}
+        style={{ ...sizeStyle, ...style }}
+        aria-label="Неверный архетип"
+      >
+        <span>—</span>
+      </div>
+    );
+  }
+
+  const GeometryComponent = PLANETARY_GEOMETRIES[pNum];
+  const metadata = PLANETARY_METADATA[pNum];
 
   const plateRef = useRakingLight<HTMLDivElement>({
     enabled: interactive && variant === 'alabaster',
     maxOffsetPx: 12,
   });
 
-  const sizeStyle: React.CSSProperties = size
-    ? { width: typeof size === 'number' ? `${size}px` : size, height: typeof size === 'number' ? `${size}px` : size }
-    : {};
+  const handleTap = () => {
+    if (variant === 'alabaster') {
+      setSweepKey((prev) => prev + 1);
+    }
+  };
 
   if (variant === 'obsidian') {
     return (
@@ -91,7 +112,8 @@ export const EmblemPlate: React.FC<EmblemPlateProps> = ({
   return (
     <div
       ref={plateRef}
-      className={`zk-plate-alabaster rounded-xl sm:rounded-2xl ${className}`}
+      onClick={handleTap}
+      className={`zk-plate-alabaster rounded-xl sm:rounded-2xl cursor-pointer ${className}`}
       style={{ ...sizeStyle, ...style }}
     >
       {/* Bas-Relief Carved SVG */}
@@ -102,8 +124,8 @@ export const EmblemPlate: React.FC<EmblemPlateProps> = ({
         <GeometryComponent accentColor="#C8A45D" />
       </svg>
 
-      {/* Entry Sweep Light */}
-      <div className="zk-sweep-light" />
+      {/* Entry Sweep Light (Re-triggered on tap / mount) */}
+      <div key={sweepKey} className="zk-sweep-light" />
 
       {/* Top-Left Planet Number */}
       {showNumber && (

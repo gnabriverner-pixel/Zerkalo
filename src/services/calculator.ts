@@ -55,7 +55,8 @@ export function calculateDigitalCode(dateString: string): CalculationResult {
   const [dayStr, monthStr, yearStr] = parts;
   const validation = validateBirthDate(dayStr, monthStr, yearStr);
   if (!validation.valid) {
-    throw new Error(`Invalid birth date "${dateString}": ${validation.message}`);
+    const msg = 'message' in validation ? validation.message : 'Invalid birth date';
+    throw new Error(`Invalid birth date "${dateString}": ${msg}`);
   }
 
   const day = parseInt(dayStr, 10);

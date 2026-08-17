@@ -212,19 +212,22 @@ export default function PersonalMyth({
                 {currentQuestion.title}
               </h2>
               
-              <div className="relative w-full mb-10">
+              <div className="relative w-full mb-6">
                 <textarea 
                   autoFocus
                   rows={3}
                   value={currentInputValue}
-                  onChange={(e) => setInputs({ ...inputs, [currentQuestion.id]: e.target.value })}
+                  onChange={(e) => {
+                    setErrorText(null);
+                    setInputs({ ...inputs, [currentQuestion.id]: e.target.value });
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey && currentInputValue.trim().length >= 3) {
                       e.preventDefault();
                       handleNext();
                     }
                   }}
-                  placeholder="Опишите образ несколькими словами или предложением..."
+                  placeholder="Опиши образ несколькими словами или фразой..."
                   className="w-full bg-transparent border-b border-stone-600 focus:border-[var(--color-antique-gold)] px-2 py-3 text-lg sm:text-xl text-stone-100 placeholder:text-stone-600 focus:outline-none transition-colors resize-none font-serif leading-relaxed text-center"
                 />
                 
@@ -233,6 +236,22 @@ export default function PersonalMyth({
                   <span>{currentInputValue.length} знаков</span>
                 </div>
               </div>
+
+              {errorText && (
+                <div className="w-full max-w-xl mx-auto mb-6 p-4 bg-red-950/40 border border-red-500/30 rounded-xs text-center text-sm text-red-200">
+                  <p className="mb-3 text-xs sm:text-sm font-light">{errorText}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorText(null);
+                      handleGenerate();
+                    }}
+                    className="px-4 py-2 bg-red-900/60 hover:bg-red-800 text-xs font-mono uppercase tracking-wider text-red-100 rounded-xs transition-colors cursor-pointer"
+                  >
+                    Попробовать снова
+                  </button>
+                </div>
+              )}
 
               <div className="flex flex-col items-center gap-4">
                 <button
@@ -247,7 +266,7 @@ export default function PersonalMyth({
                   <span>{step === 4 ? 'Соткать историю' : 'Далее'}</span>
                   <ArrowRight size={14} />
                 </button>
-                <span className="text-[10px] text-stone-500 font-mono">или нажмите Enter</span>
+                <span className="text-[10px] text-stone-500 font-mono">или нажми Enter</span>
               </div>
             </motion.div>
           )}
@@ -346,7 +365,7 @@ export default function PersonalMyth({
                   rows={2}
                   value={journalNote}
                   onChange={(e) => setJournalNote(e.target.value)}
-                  placeholder="Запишите здесь свой отклик или мысль..."
+                  placeholder="Запиши здесь свой отклик или мысль..."
                   className="w-full max-w-xl mx-auto bg-transparent border-0 border-b border-white/20 focus:border-[var(--color-antique-gold)] text-sm text-center py-2 outline-none transition-colors text-stone-100 placeholder:text-stone-600 font-light resize-none block"
                 />
               </div>
@@ -358,12 +377,12 @@ export default function PersonalMyth({
                     Следующее зеркало
                   </span>
                   <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
-                    {hasCodeResult ? 'Встреча двух зеркал' : 'Цифровой код вашей природы'}
+                    {hasCodeResult ? 'Встреча двух зеркал' : 'Цифровой код твоей природы'}
                   </h3>
                   <p className="text-xs sm:text-sm text-stone-400 font-light max-w-md mx-auto leading-relaxed">
                     {hasCodeResult 
-                      ? 'Ваш код уже рассчитан. Вы можете перейти к синтезу двух независимых отражений.'
-                      : 'Откройте независимую линзу через дату рождения, чтобы получить пять ключей и сопоставить их с мифом.'}
+                      ? 'Твой код уже рассчитан. Можно перейти к синтезу двух независимых отражений.'
+                      : 'Открой независимую линзу через дату рождения, чтобы получить пять ключей и сопоставить их с мифом.'}
                   </p>
                 </div>
 

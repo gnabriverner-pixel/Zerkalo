@@ -58,16 +58,22 @@ The implementation lives cleanly in \`src/art/emblem/\`:
 - Light coordinates default to static \`--zk-lx: 0px\`, \`--zk-ly: 0px\`.
 - Tap interaction triggers a single 1000ms sweep reveal without dragging or scroll stutter.
 
-### 4.3. Accessibility & \`prefers-reduced-motion\`
-- All animations (\`zk-rise\`, \`zk-sweep\`, \`zk-spec\`) immediately resolve to final static state when \`prefers-reduced-motion: reduce\` is detected.
+### 4.3. Accessibility & `prefers-reduced-motion`
+- All animations (`zk-rise`, `zk-sweep`, `zk-spec`) immediately resolve to final static state when `prefers-reduced-motion: reduce` is detected.
 - Light source locks to the canonical 135° azimuth.
 
 ---
 
-## 5. Integration Points
+## 5. Integration Points & Visual Evidence
 
-1. **\`src/App.tsx\`**: \`<EmblemDefs />\` mounted at root container, ensuring SVG filters are globally available across routes.
-2. **\`src/components/ArchetypeBasRelief.tsx\`**: Fully refactored to delegate to \`<EmblemPlate variant="alabaster" />\`.
-3. **\`src/components/Orb.tsx\`**: Refactored to delegate to \`<EmblemPlate variant="obsidian" />\`.
-4. **\`src/components/PersonalMyth.tsx\`**: Steps 0, 1–4, 5, and 6 render clean Alabaster plates.
-5. **\`src/components/MeetingOfMirrors.tsx\`**: Renders the Obsidian Code medallion on the left and the Alabaster Myth medallion on the right.
+1. **`src/App.tsx`**: `<EmblemDefs />` mounted at root container, ensuring SVG filters (`#zk-carve` and `#zk-deboss`) are globally available across routes.
+2. **`src/components/ArchetypeBasRelief.tsx`**: Fully refactored to delegate to `<EmblemPlate variant="alabaster" />`.
+3. **`src/components/Orb.tsx`**: Refactored to delegate to `<EmblemPlate variant="obsidian" />`.
+4. **`src/components/PersonalMyth.tsx`**: Steps 0, 1–4, 5, and 6 render clean Alabaster plates with responsive scale.
+5. **`src/components/MeetingOfMirrors.tsx`**: Renders the Obsidian Code medallion on the left and the Alabaster Myth medallion on the right.
+6. **Mobile Touch & Specular Tap**: Alabaster plates trigger specular sweep on tap via `handleTap` and key reset.
+
+### Visual Evidence Artifacts
+- **Alabaster Medallion (`#zk-carve`):** `docs/evidence/v1_1-final/screenshots/03_gipsoteka_emblem_alabaster.png`
+- **Obsidian Medallion (`#zk-deboss`):** `docs/evidence/v1_1-final/screenshots/04_gipsoteka_emblem_obsidian.png`
+- **Reduced Motion Rendering:** `docs/evidence/v1_1-final/screenshots/12_reduced_motion_desktop.png`

@@ -14,11 +14,10 @@ export function useRakingLight<T extends HTMLElement = HTMLDivElement>(
   useEffect(() => {
     if (!enabled || typeof window === 'undefined') return;
 
-    // Check prefers-reduced-motion and touch device (hover: none)
+    // Check prefers-reduced-motion
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const isTouchOnly = window.matchMedia('(hover: none)').matches;
 
-    if (prefersReducedMotion || isTouchOnly) {
+    if (prefersReducedMotion) {
       if (elementRef.current) {
         elementRef.current.style.setProperty('--zk-lx', '0px');
         elementRef.current.style.setProperty('--zk-ly', '0px');

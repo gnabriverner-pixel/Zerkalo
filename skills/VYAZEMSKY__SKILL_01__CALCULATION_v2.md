@@ -4,7 +4,7 @@ VYAZEMSKY__SKILL_01__CALCULATION_v2.md
 
 > [!WARNING]
 > **SUPERSEDED / DEPRECATED CALCULATION DOCUMENT**
-> Current authoritative canon is **Protocol Calculation v1** implemented in `src/services/calculator.ts`:
+> Current authoritative canon is **Protocol Calculation v1** documented in `docs/canon/PROTOCOL_CALCULATION_V1.md` and implemented in `src/services/calculator.ts`:
 > 1. All primary numbers reduce strictly to 1..9 while preserving reduction histories.
 > 2. ЧУ: raw day -> reduce.
 > 3. ЧВ: sum digits day + sum digits month -> reduce.

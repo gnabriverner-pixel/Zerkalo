@@ -10,6 +10,7 @@ import {
   MY_MIRROR_STORAGE_KEY 
 } from './myMirrorStorage';
 import { PLANETARY_GEOMETRIES, PLANETARY_METADATA } from '../art/emblem/geometry';
+import { MeetingOfMirrorsResult } from '../types';
 
 describe('Zerkalo V1.1 Full Product Regression Test Suite', () => {
   beforeEach(() => {
@@ -98,15 +99,17 @@ describe('Zerkalo V1.1 Full Product Regression Test Suite', () => {
         disclaimer: 'Не является предсказанием.'
       };
 
-      const sampleMeetingResult = {
+      const sampleMeetingResult: MeetingOfMirrorsResult = {
         summary: 'Итоговое сопоставление',
-        confidenceNote: 'Карта является гипотезой.',
+        hasStrongParallels: true,
+        confidenceNote: 'Высокая степень созвучия',
         parallels: [
-          { codeAspect: 'Душа 6', storyImage: 'Берег', meaning: 'Творческое созидание' }
+          { theme: 'Творчество', codeAnchor: 'Душа 6', mythAnchor: 'Берег', synthesis: 'Творческое созидание' }
         ],
         divergences: [],
         reflectiveQuestion: 'Что откликается сильнее всего?',
-        albertInsight: 'Вопрос для диалога'
+        albertInsight: 'Вопрос для диалога',
+        disclaimer: 'Образный формат для саморефлексии.'
       };
 
       const saved = saveMyMirrorSnapshot({

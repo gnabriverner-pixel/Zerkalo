@@ -4,7 +4,7 @@ VYAZEMSKY__SKILL_04__MATRIX_v2.md
 
 > [!WARNING]
 > **SUPERSEDED / DEPRECATED MATRIX DOCUMENT**
-> Current canonical matrix calculation conforms to **Protocol Calculation v1** (`src/services/calculator.ts`):
+> Current canonical matrix calculation conforms to **Protocol Calculation v1** documented in `docs/canon/PROTOCOL_CALCULATION_V1.md` and implemented in `src/services/calculator.ts`:
 > - Simple Matrix: counts digits 1..9 from date of birth (0 excluded).
 > - Detailed Matrix: Simple Matrix + digits of composite ЧД + composite ЧР + composite ЧИ (0 excluded).
 > The historical working numbers (РЧ1..РЧ4) algorithm is superseded in production Zerkalo V1.1.

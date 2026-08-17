@@ -37,7 +37,7 @@ export function Orb({
   glow?: boolean;
   className?: string;
 }) {
-  const num = Math.max(1, Math.min(9, Math.round(number) || 1));
+  const num = Number(number);
   const pxSize = typeof size === 'number' ? size : (SIZE_MAP[size] || 140);
 
   return (

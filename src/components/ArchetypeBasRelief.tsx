@@ -110,15 +110,15 @@ export function ArchetypeBasRelief({
   variant = 'alabaster',
   className = ""
 }: ArchetypeBasReliefProps) {
-  const num = Math.max(1, Math.min(9, Math.round(number) || 1));
-  const meta = ARCHETYPE_VISUALS[num] || ARCHETYPE_VISUALS[1];
+  const num = Number(number);
+  const meta = ARCHETYPE_VISUALS[num];
   const pxSize = typeof size === 'number' ? size : (SIZE_MAP[size] || 200);
 
   return (
     <div
       className={`relative shrink-0 flex flex-col items-center justify-center select-none ${className}`}
       style={{ width: pxSize, height: pxSize }}
-      aria-label={`Архетип ${meta.title} (${num})`}
+      aria-label={meta ? `Архетип ${meta.title} (${num})` : 'Архетип'}
     >
       <EmblemPlate
         planet={num}

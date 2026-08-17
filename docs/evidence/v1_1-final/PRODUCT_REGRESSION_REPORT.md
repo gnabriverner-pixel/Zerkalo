@@ -63,9 +63,9 @@ This report documents the end-to-end regression validation of the Zerkalo V1.1 p
 | :--- | :--- | :---: | :---: | :--- |
 | **Birth Date Validation** | `src/services/birthDate.test.ts` | 2 | `PASS` | Calendar leap year rules, format checks |
 | **Calculation Engine** | `src/services/calculator.test.ts` | 33 | `PASS` | Protocol Calculation v1, zero exclusion, composite chains |
-| **Knowledge Base** | `src/data/knowledge.test.ts` | 7 | `PASS` | Invariant enforcement in `getNumberKnowledge` |
+| **Knowledge Base** | `src/data/knowledge.test.ts` | 8 | `PASS` | Invariant enforcement in `getNumberKnowledge` & Unicode script safety |
 | **Interpretation** | `src/services/interpretation.test.ts` | 1 | `PASS` | FirstMirror synthesis generation |
-| **Personal Myth Server** | `server/myth.test.ts` | 16 | `PASS` | Length contract, paragraphs, `ты` register, 1-repair loop |
+| **Personal Myth Server** | `server/myth.test.ts` | 19 | `PASS` | Length contract, paragraphs, `ты` register, 1-repair loop, protagonist drift |
 | **DeepSeek Transport** | `server/deepseek.test.ts` | 4 | `PASS` | 1-retry transient failure boundary |
 | **Albert Dialogue Server** | `server/albert.test.ts` | 11 | `PASS` | Context handling, format repair, safe messages |
 | **Meeting Contract** | `src/services/meetingContract.test.ts` | 4 | `PASS` | Synthesis contract invariants |
@@ -75,29 +75,59 @@ This report documents the end-to-end regression validation of the Zerkalo V1.1 p
 | **Consolidation Security**| `server/consolidation_security.test.ts` | 2 | `PASS` | Fail-closed security boundaries |
 | **My Mirror Storage** | `src/services/myMirrorStorage.test.ts` | 6 | `PASS` | Strict schema validation, versioning |
 | **Full Product Regression**| `src/services/product_regression.test.ts` | 7 | `PASS` | End-to-end multi-route regression suite |
-| **TOTAL** | **14 test files** | **113 tests** | **100% PASS** | Zero failures, zero regressions |
+| **TOTAL** | **14 test files** | **117 tests** | **100% PASS** | Zero failures, zero regressions |
 
 ---
 
-## 4. Build & Production Assets Verification
+## 4. Live Corpus & Browser Smoke Evidence
+
+### 4.1. Personal Myth 42-Case Live Evaluation (DeepSeek `deepseek-v4-pro`)
+- **Total Cases:** 42
+- **Successful Outputs:** **41 / 42 (97.6%)** (exceeds the >= 40 contract threshold)
+- **Initial Validation Failures:** 12
+- **Repairs Attempted & Succeeded:** 11 / 12 repaired
+- **Final Unrecovered Defects:** 1
+- **Register Defects (`ты`/`вы`):** 0
+- **Paragraph Defects (3..6 paragraphs):** 0
+- **Unicode Script Defects:** 0
+- **Invented Biography Defects:** 0
+- **Full Corpus Artifacts:** `docs/evidence/v1_1-final/myth_real_corpus_42_results.json`, `docs/evidence/v1_1-final/MYTH_CORPUS_REPORT.md`
+
+### 4.2. Browser Automation Screenshots (`docs/evidence/v1_1-final/screenshots/`)
+1. `01_code_desktop_1440x900.png` — Alabaster Sanctuary Digital Code manuscript (Desktop 1440×900)
+2. `02_code_mobile_390x844.png` — Digital Code manuscript (Mobile 390×844)
+3. `03_gipsoteka_emblem_alabaster.png` — Alabaster medallion with `#zk-carve` filter
+4. `04_gipsoteka_emblem_obsidian.png` — Obsidian medallion with `#zk-deboss` filter
+5. `05_myth_step4_mobile_390x844.png` — Personal Myth Q4 step view on Mobile 390×844
+6. `06_myth_result_desktop_1440x900.png` — Personal Myth generated story & provenance view (Desktop 1440×900)
+7. `07_meeting_synthesis_desktop_1440x900.png` — Meeting of Two Mirrors synthesis (Desktop 1440×900)
+8. `08_meeting_synthesis_mobile_390x844.png` — Meeting of Two Mirrors synthesis (Mobile 390×844)
+9. `10_my_mirror_dashboard_desktop_1440x900.png` — My Mirror local snapshot dashboard (Desktop 1440×900)
+10. `11_my_mirror_mobile_390x844.png` — My Mirror local snapshot dashboard (Mobile 390×844)
+11. `12_reduced_motion_desktop.png` — Static non-animated mode (`prefers-reduced-motion: reduce`)
+
+---
+
+## 5. Build & Production Assets Verification
 
 - **Command:** `npm run build`
 - **Output:**
   - `dist/index.html`: `0.79 kB`
-  - `dist/assets/index.css`: `91.52 kB` (includes `emblem.css` and font imports)
-  - `dist/assets/index.js`: `615.11 kB`
-- **Build Duration:** `1.66s`
+  - `dist/assets/index.css`: `92.53 kB` (includes `emblem.css` and font imports)
+  - `dist/assets/index.js`: `611.69 kB`
 - **Asset Integrity:** All SVG filters (`#zk-carve`, `#zk-deboss`) and planetary emblem geometries bundled without missing dependencies.
 
 ---
 
-## 5. Architectural Invariants Sign-off
+## 6. Architectural Invariants Sign-off
 
 - [x] Zero (0) strictly excluded from `baseMatrix` and `detailedMatrix`.
 - [x] Date of birth input rejects non-existent dates (`29.02.1900`, `31.02.2024`, future dates).
-- [x] `getNumberKnowledge(n)` throws Invariant Violation on any non-1..9 input.
-- [x] Personal Myth enforces second-person singular (`ты`) and rejects formal `вы` in story prose.
-- [x] Personal Myth length contract strictly 300–800 words and 3–6 paragraphs (`\n\n`).
+- [x] `getNumberKnowledge(n)` throws Invariant Violation on any non-1..9 input (`11/22/33`, `0`, `10`, `-1`, `NaN`).
+- [x] Calculation canon documented in `docs/canon/PROTOCOL_CALCULATION_V1.md` with 25/25 golden dates verified.
+- [x] Personal Myth enforces second-person singular (`ты`) and dialogue-stripping protagonist check across narrative body.
+- [x] Personal Myth length contract strictly 400–600 words and 3–6 paragraphs (`\n\n`).
 - [x] LLM pipeline bounded to at most 1 targeted editorial repair (maximum 2 calls total).
-- [x] «Гипсотека» Planetary Emblem Art System fully integrated in Alabaster and Obsidian modes.
-- [x] Legacy spinning canvas/SVG pulse animations completely removed.
+- [x] User-facing UI displays visible error and retry state on generation failure.
+- [x] «Гипсотека» Planetary Emblem Art System fully integrated in Alabaster and Obsidian modes with tap sweeps and `#zk-deboss`.
+- [x] Static text cleanup executed (zero Bengali or foreign Unicode glyphs, zero pseudo-AI hype copy).

@@ -117,9 +117,16 @@ async function run() {
       const res = generated.result;
       const quality = generated.quality;
 
-      if (generated.repaired) {
-        repairsUsed += 1;
+      const initialPassed = generated.initialPassed;
+      const initialBlockers = generated.initialBlockers;
+      const repairAttempted = generated.repairAttempted;
+      const repairPassed = generated.repaired;
+
+      if (!initialPassed) {
         initialValidationFailures += 1;
+      }
+      if (repairAttempted) {
+        repairsUsed += 1;
       }
 
       const words = res.story.split(/\s+/u).filter(Boolean);
@@ -151,7 +158,7 @@ async function run() {
         }
       }
 
-      console.log(`  ✓ Success in ${latencyMs}ms | Words: ${wordCount} | Paragraphs: ${paragraphCount} | Repaired: ${generated.repaired}`);
+      console.log(`  ✓ Success in ${latencyMs}ms | Words: ${wordCount} | Paragraphs: ${paragraphCount} | Initial Passed: ${initialPassed} | Repaired: ${repairPassed}`);
       console.log(`    Title: «${res.title}»`);
 
       results.push({
@@ -159,9 +166,9 @@ async function run() {
         category: item.category || "general",
         inputs: item.inputs,
         latencyMs,
-        repairsUsed: generated.repaired ? 1 : 0,
-        initialValidationPassed: !generated.repaired,
-        initialBlockers: generated.repaired ? ["repaired_in_editorial_step"] : [],
+        repairsUsed: repairAttempted ? 1 : 0,
+        initialValidationPassed: initialPassed,
+        initialBlockers,
         finalValidationPassed: quality.passed,
         finalBlockers: quality.blockers,
         wordCount,
@@ -177,13 +184,22 @@ async function run() {
       const latencyMs = Date.now() - start;
       const errMsg = err?.message || String(err);
       console.error(`  ✗ Failed in ${latencyMs}ms: ${errMsg}`);
+      initialValidationFailures += 1;
+      repairsUsed += 1; // repair attempted before terminal quality fail
+      finalUnrecoveredDefects += 1;
+
       if (errMsg.includes("503") || errMsg.includes("500") || errMsg.includes("502") || errMsg.includes("fetch")) {
         transportFailures += 1;
       } else if (errMsg.includes("429")) {
         rateLimitFailures += 1;
-      } else {
-        finalUnrecoveredDefects += 1;
       }
+
+      const initBlockers = Array.isArray(err?.initialBlockers) && err.initialBlockers.length > 0 
+        ? err.initialBlockers 
+        : ["initial_quality_or_parse_failed"];
+      const finBlockers = Array.isArray(err?.repairBlockers) && err.repairBlockers.length > 0 
+        ? err.repairBlockers 
+        : [errMsg];
 
       results.push({
         id: item.id,
@@ -192,9 +208,9 @@ async function run() {
         latencyMs,
         repairsUsed: 1,
         initialValidationPassed: false,
-        initialBlockers: ["generation_failed"],
+        initialBlockers: initBlockers,
         finalValidationPassed: false,
-        finalBlockers: [errMsg],
+        finalBlockers: finBlockers,
         wordCount: 0,
         paragraphCount: 0,
         hasRegisterDefect: false,
@@ -256,6 +272,10 @@ async function run() {
     console.log(`  - ${key.padEnd(16)}: ${count} / ${successfulOutputs} (${((count / (successfulOutputs || 1)) * 100).toFixed(1)}%)`);
   }
   console.log("=======================================================\n");
+
+  // Automatically trigger report generation
+  const { execSync } = await import("child_process");
+  execSync("npx tsx scripts/generate_myth_report.ts", { stdio: "inherit" });
 }
 
 run().catch((e) => {
