@@ -1,59 +1,40 @@
 # My Mirror V0 — Minimal Local Persistence Bridge Report (Issue #20)
 
 ## 1. Metadata
-- **START_SHA**: `83de45900d87c4107d89a5b14210ee73e7b5b830`
-- **TESTED_HEAD**: `b1b95e8f858a848d84c6352b85ed1744faa127f6`
-- **Scope Contract**: GitHub Issue #20 + OWNER REVIEW (BOUNDED_CORRECTION_REQUIRED)
+- **START_SHA**: `7ca8b94c0cf3a2d44083ac1062612007f42fdc8b`
+- **TESTED_HEAD**: `97dbbce888aa75a6a4fb47aca0476c06b17870d5`
+- **Scope Contract**: GitHub Issue #20 + OWNER REVIEW 2 (BOUNDED_CORRECTION_REQUIRED_2)
 - **Status**: COMPLETE & VERIFIED
 
 ---
 
 ## 2. Bounded Correction Architecture & Integrity Fixes
 
-### A. Derived Meeting Invalidation on Source Lens Changes
-1. **New Code Calculation**:
-   - When a new Code is calculated (`onCodeCalculated`), `App.tsx` sets the new `codeDate`, `codeResult`, `firstMirror` (`reading || null`), and explicitly resets active `meetingResult` to `null` and `meetingUserNote` to `''`.
-2. **New Personal Myth Completion**:
-   - When a new Personal Myth is completed (`onMythCompleted`), `App.tsx` sets the new `storyInputs` and `storyResult`, and explicitly resets active `meetingResult` to `null` and `meetingUserNote` to `''`.
-3. **DOB Change on Entry**:
-   - When entry submits a new DOB via `onSelectMode('code', initialDate)`, if `initialDate` differs from active `codeDate`, `codeResult`, `firstMirror`, `meetingResult`, and `meetingUserNote` are immediately invalidated before entering Code calculation.
+### A. Unconditional User Note Replacement on Restore
+- In `App.tsx`, `handleRestoreSavedMirror()` assigns `meetingUserNote` unconditionally via:
+  ```ts
+  setMeetingUserNote(snapshot.meetingUserNote ?? '');
+  ```
+- If an active session has an unsaved note B and the restored snapshot A contains no note, the active note is cleanly cleared to `''`, preventing cross-session note leakage.
 
-### B. Persistent Local Snapshot Preservation
-- In-memory invalidations do **not** delete or touch the `localStorage` key `zerkalo.myMirror.v1`.
-- The previously saved snapshot remains safe and restorable via "Открыть сохранённое" on the threshold entry view until the user explicitly deletes or overwrites it.
+### B. Truthful Full V1 Session Matcher (`isSnapshotMatchingCurrentSession`)
+- The matcher validates the exact persisted V1 payload against the active in-memory session:
+  - `codeDate` & `codeResult` (soul, path, expression, direction, result)
+  - `firstMirror` (title, keyInsight, practicalStep)
+  - `storyInputs` (all 4 questionnaire inputs: `q1`, `q2`, `q3`, `q4`)
+  - `storyResult` (title, story)
+  - `meetingResult` (summary, confidenceNote, reflectiveQuestion, albertInsight, hasStrongParallels, parallels array item-by-item, divergences array item-by-item)
+  - `meetingUserNote` (normalized trimming comparison)
+- Returns `false` whenever any field differs, preventing false-positive save badges.
 
-### C. Session-Truthful Save Badge
-- In `MeetingOfMirrors.tsx`, the save status (`savedAt`) is determined via `isSnapshotMatchingCurrentSession()`.
-- If an active Meeting does not match the stored snapshot (e.g. following a recalculation or new synthesis), `savedAt` evaluates to `null` and the UI shows `Сохранить в «Моё зеркало»` and `Сохранить на этом устройстве`, preventing false positive save badges.
-- After explicit Save, `isSnapshotMatchingCurrentSession()` evaluates to `true` and the badge `✓ Сохранено в этом браузере` is displayed.
-
----
-
-## 3. Storage Schema V1 & Constraints
-
-### Storage Key
-`zerkalo.myMirror.v1`
-
-### Exact Persisted Fields
-- `version: 1`
-- `savedAt: string` (ISO timestamp)
-- `codeDate: string` (DOB)
-- `codeResult: CalculationResult` (Vedic numerology calculation)
-- `firstMirror: FirstMirror` (Formula-level synthesis reading)
-- `storyInputs: StoryInputs` (The 4 user answers: `q1`, `q2`, `q3`, `q4`)
-- `storyResult: ApiResponse['story_result']` (Personal Myth result)
-- `meetingResult: MeetingOfMirrorsResult` (Synthesis summary, parallels, divergences, albertInsight, reflectiveQuestion, disclaimer)
-- `meetingUserNote?: string` (Optional user reflective notes)
-
-### Explicitly Excluded Fields
-- API keys, env vars, provider credentials
-- Albert conversation chat history
-- Feedback records, telemetry, A/B testing state
-- System prompts, identity tokens, tracking cookies
+### C. Live Note Edit Invalidation in UI
+- In `MeetingOfMirrors.tsx`, `userNote` is included in `checkCurrentSaveStatus` and the re-evaluation `useEffect` dependencies.
+- Modifying the reflective note immediately invalidates the saved badge (`Сохранено в этом браузере` disappears).
+- Clicking "Сохранить на этом устройстве" / "Обновить сохранённое" persists the updated note and restores the saved badge.
 
 ---
 
-## 4. Verification & Regression Results
+## 3. Verification & Regression Results
 
 ### Targeted Session Integrity Regression Suite (`src/services/sessionIntegrity.test.ts`)
 1. **Meeting A exists → new Code calculation**: Active `meetingResult === null`, note cleared. Passed.
@@ -61,18 +42,21 @@
 3. **Different DOB entry**: In-memory Code, FirstMirror, and Meeting invalidated. Passed.
 4. **localStorage snapshot preservation**: Snapshot survives in-memory invalidation intact. Passed.
 5. **Restoration after invalidation**: Saved snapshot explicitly restored cleanly without data loss. Passed.
-6. **Save badge session specificity**: False for active Meeting B when snapshot A exists. Passed.
-7. **Explicit Save activation**: Makes save badge true for current session. Passed.
+6. **Restore snapshot without note**: Clears existing active note to `''`, never leaks note from previous session. Passed.
+7. **Save Meeting A with note X**: Save badge evaluates to `true`. Passed.
+8. **Edit note X → Y without saving**: Save badge immediately becomes `false`. Passed.
+9. **Explicit Save/Update with Y**: Save badge evaluates to `true` again. Passed.
+10. **Full payload truthfulness**: Helper returns `false` when internal synthesis payload differs. Passed.
 
 ### Test Results
-- **Vitest Unit & Integration**: 13 test files passed, 64 tests passed.
+- **Vitest Unit & Integration**: 13 test files passed, 67 tests passed.
 - **TypeScript Typecheck (`tsc --noEmit`)**: 0 errors.
-- **Production Build (`vite build`)**: Clean production bundle generated in 2.92s.
-- **Automated Playwright Regression Runner (`scripts/run_my_mirror_correction_regression.cjs`)**: 100% passed with zero errors.
+- **Production Build (`vite build`)**: Clean production bundle generated in 3.17s.
+- **Automated Playwright Regression Runner (`scripts/run_my_mirror_correction_regression.cjs`)**: 7/7 end-to-end integration steps passed with zero errors.
 
 ---
 
-## 5. Phone-First (390×844) Screenshots
+## 4. Phone-First (390×844) Screenshots
 
 1. `01-save-my-mirror-after-meeting-390x844.png` [SYNTHETIC_UI_STATE]: Completed Meeting with Web Albert primary CTA, secondary Telegram link, and truthful device-local save UI card.
 2. `02-save-confirmation-390x844.png`: Restrained confirmation `✓ Сохранено в этом браузере` and update/delete actions.
@@ -83,17 +67,17 @@
 
 ---
 
-## 6. Changed Files in Correction
-- `src/App.tsx`: Added invalidation of derived `meetingResult` and `meetingUserNote` on Code/Myth change and DOB switch.
-- `src/components/MeetingOfMirrors.tsx`: Wired `isSnapshotMatchingCurrentSession` for truthful session-specific save badge.
-- `src/services/myMirrorStorage.ts`: Added `isSnapshotMatchingCurrentSession` comparison helper.
-- `src/services/sessionIntegrity.test.ts`: Added 7 comprehensive regression tests.
-- `scripts/run_my_mirror_correction_regression.cjs`: Added automated end-to-end regression runner.
-- `docs/evidence/my-mirror-v0/MY_MIRROR_V0_REPORT.md`: Updated evidence report.
+## 5. Changed Files in Correction 2
+- `src/App.tsx`: Unconditionally reset `meetingUserNote` to `snapshot.meetingUserNote ?? ''` in `handleRestoreSavedMirror`.
+- `src/components/MeetingOfMirrors.tsx`: Pass full session payload (`firstMirror`, `storyInputs`, `userNote`) to matcher; track `userNote` in `useEffect`.
+- `src/services/myMirrorStorage.ts`: Comprehensive field-by-field matching in `isSnapshotMatchingCurrentSession()`.
+- `src/services/sessionIntegrity.test.ts`: Added 10 unit tests covering note restoration, live edit invalidation, update, and exact payload matching.
+- `scripts/run_my_mirror_correction_regression.cjs`: Added Playwright UI assertions for note edit invalidation, explicit update, and empty note restoration.
+- `docs/evidence/my-mirror-v0/MY_MIRROR_V0_REPORT.md`: Updated evidence report with correction 2 findings.
 
 ---
 
-## 7. Quality Gate Audit
+## 6. Quality Gate Audit
 - **BLOCKERS**: NONE
 - **MAJORS**: NONE
 - **MINORS_NOT_FIXED**: NONE
