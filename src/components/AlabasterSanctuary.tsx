@@ -5,10 +5,6 @@ import {
   ChevronDown, 
   Loader2, 
   RotateCcw, 
-  Send, 
-  MessageSquare,
-  Sparkles,
-  CheckCircle2,
   Eye,
   Zap,
   Shield
@@ -19,19 +15,23 @@ import { generateFirstMirror } from '../services/interpretation';
 import { numberKnowledge } from '../data/numberKnowledge';
 import { PASSPORT_PRACTICES } from '../data/passportPractices';
 import { ArchetypeBasRelief, ARCHETYPE_VISUALS } from './ArchetypeBasRelief';
-import { AlbertDialogue } from './AlbertDialogue';
+import { validateBirthDate } from '../services/birthDate';
 
 interface AlabasterSanctuaryProps {
   initialDate?: string;
-  onCodeCalculated?: (calc: CalculationResult, reading?: FirstMirror) => void;
-  onSwitchToDark?: () => void;
+  onCodeCalculated?: (fullDate: string, calc: CalculationResult, reading?: FirstMirror) => void;
+  onBackToCollection?: () => void;
+  onContinue?: () => void;
+  continueLabel?: string;
   onOpenAbout?: () => void;
 }
 
 export function AlabasterSanctuary({
   initialDate = '',
   onCodeCalculated,
-  onSwitchToDark,
+  onBackToCollection,
+  onContinue,
+  continueLabel = 'Перейти к Личному мифу',
   onOpenAbout
 }: AlabasterSanctuaryProps) {
   const [day, setDay] = useState(initialDate ? initialDate.split('.')[0] || '' : '');
@@ -42,7 +42,6 @@ export function AlabasterSanctuary({
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [reading, setReading] = useState<FirstMirror | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isAlbertOpen, setIsAlbertOpen] = useState(false);
 
   // Section references for smooth 7-act editorial scroll
   const sectionAct1Ref = useRef<HTMLDivElement>(null);
@@ -65,6 +64,7 @@ export function AlabasterSanctuary({
 
   const executeCalculation = async (fullDate: string) => {
     const calc = calculateDigitalCode(fullDate);
+    let nextReading: FirstMirror | null = null;
     setResult(calc);
     setIsGenerating(true);
 
@@ -76,17 +76,18 @@ export function AlabasterSanctuary({
       });
       const data: ApiResponse = await res.json();
       if (data.status === 'ok' && data.code_result?.first_mirror) {
-        setReading(data.code_result.first_mirror);
+        nextReading = data.code_result.first_mirror;
       } else {
-        setReading(data.code_result?.first_mirror || generateFirstMirror(calc));
+        nextReading = data.code_result?.first_mirror || generateFirstMirror(calc);
       }
     } catch (err) {
       console.error(err);
-      setReading(generateFirstMirror(calc));
+      nextReading = generateFirstMirror(calc);
     } finally {
+      setReading(nextReading);
       setIsGenerating(false);
       if (onCodeCalculated) {
-        onCodeCalculated(calc, reading || undefined);
+        onCodeCalculated(fullDate, calc, nextReading || undefined);
       }
     }
   };
@@ -146,15 +147,12 @@ export function AlabasterSanctuary({
     if (e) e.preventDefault();
     setDateError('');
 
-    const d = parseInt(day, 10);
-    const m = parseInt(month, 10);
-    const y = parseInt(year, 10);
+    const validation = validateBirthDate(day, month, year);
 
-    if (day.length === 2 && month.length === 2 && year.length === 4 && d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2099) {
-      const fullDate = `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`;
-      executeCalculation(fullDate);
+    if (validation.valid) {
+      executeCalculation(validation.formatted);
     } else {
-      setDateError('Проверьте день, месяц и год (ДД.ММ.ГГГГ)');
+      setDateError('message' in validation ? validation.message : 'Проверьте дату рождения');
     }
   };
 
@@ -192,16 +190,16 @@ export function AlabasterSanctuary({
       <div className="w-full max-w-5xl px-6 py-4 flex items-center justify-between border-b border-[#1A1A1C]/5 text-xs text-[#63656C]">
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-[#C8A45D]">
           <span className="w-1.5 h-1.5 rounded-full bg-[#C8A45D]" />
-          <span>Alabaster Sanctuary · 2026 Canon</span>
+          <span>Цифровой код · Алебастровый архив</span>
         </div>
 
         <div className="flex items-center gap-4 text-[11px] font-mono uppercase tracking-wider">
-          {onSwitchToDark && (
+          {onBackToCollection && (
             <button
-              onClick={onSwitchToDark}
+              onClick={onBackToCollection}
               className="hover:text-[#1A1A1C] transition-colors cursor-pointer text-[#8C8E96]"
             >
-              Ночной режим
+              К зеркалам
             </button>
           )}
           {onOpenAbout && (
@@ -209,7 +207,7 @@ export function AlabasterSanctuary({
               onClick={onOpenAbout}
               className="hover:text-[#1A1A1C] transition-colors cursor-pointer text-[#8C8E96]"
             >
-              О каноне
+              О методе
             </button>
           )}
         </div>
@@ -334,9 +332,36 @@ export function AlabasterSanctuary({
               {`${day}.${month}.${year}`}
             </h1>
 
-            <p className="font-serif italic text-xl sm:text-2xl text-[#63656C] max-w-xl mx-auto leading-relaxed font-light mb-12">
+            <p className="font-serif italic text-xl sm:text-2xl text-[#63656C] max-w-xl mx-auto leading-relaxed font-light mb-8">
               «Числа не предопределяют судьбу. Они называют силы, которые уже действуют в вашей жизни.»
             </p>
+
+            {/* 5 KEYS ROW — РАННЯЯ НАГРАДА */}
+            <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-10">
+              {[
+                { key: 'Душа', num: soulNum, comp: result.soulComposite, title: 'Ядро' },
+                { key: 'Выражение', num: exprNum, comp: result.expressionComposite, title: 'Форма' },
+                { key: 'Путь', num: pathNum, comp: result.pathComposite, title: 'Маршрут' },
+                { key: 'Направление', num: dirNum, comp: result.directionComposite, title: 'Вектор' },
+                { key: 'Результат', num: resNum, comp: result.resultComposite, title: 'Итог' }
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-5 sm:p-6 bg-[#FCFAF7] border border-[#1A1A1C]/8 rounded-xs flex flex-col items-center text-center shadow-xs"
+                >
+                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#8C8E96] mb-3">
+                    {item.key}
+                  </span>
+                  <ArchetypeBasRelief number={item.num} size={54} showNumber={false} className="mb-2" />
+                  <span className="font-serif text-2xl text-[#1A1A1C] font-light">
+                    {item.num}
+                  </span>
+                  <span className="text-[10px] text-[#8C8E96] font-mono mt-1">
+                    {item.comp !== item.num.toString() ? item.comp : item.title}
+                  </span>
+                </div>
+              ))}
+            </div>
 
             <button
               onClick={() => scrollTo(sectionAct2Ref)}
@@ -619,10 +644,6 @@ export function AlabasterSanctuary({
                 </p>
               </div>
 
-              <p className="text-sm text-[#4A4B50] font-light leading-relaxed border-t border-[#1A1A1C]/8 pt-4">
-                {soulInfo.positions.soul.tension}
-              </p>
-
               <div className="border-t border-[#1A1A1C]/8 pt-4 flex items-center gap-3">
                 <span className="text-[10px] uppercase font-mono text-[#C8A45D] tracking-wider font-semibold">
                   Ключ к равновесию:
@@ -658,32 +679,70 @@ export function AlabasterSanctuary({
               </h2>
             </div>
 
-            {/* 5 KEYS ROW */}
-            <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              {[
-                { key: 'Душа', num: soulNum, comp: result.soulComposite, title: 'Ядро' },
-                { key: 'Выражение', num: exprNum, comp: result.expressionComposite, title: 'Форма' },
-                { key: 'Путь', num: pathNum, comp: result.pathComposite, title: 'Маршрут' },
-                { key: 'Направление', num: dirNum, comp: result.directionComposite, title: 'Вектор' },
-                { key: 'Результат', num: resNum, comp: result.resultComposite, title: 'Итог' }
-              ].map((item, idx) => (
-                <div
-                  key={idx}
-                  className="p-6 bg-[#FCFAF7] border border-[#1A1A1C]/8 rounded-xs flex flex-col items-center text-center shadow-xs"
-                >
-                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#8C8E96] mb-3">
-                    {item.key}
+            {/* FIRST MIRROR / MEETING EVIDENCE SYNTHESIS BLOCK */}
+            {reading && (
+              <div className="w-full bg-[#FCFAF7] border border-[#C8A45D]/40 p-8 sm:p-10 rounded-xs text-left shadow-xs space-y-6">
+                <div className="space-y-2 text-center sm:text-left">
+                  <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[#C8A45D] block font-medium">
+                    Смысловой узор Кода · Материал для Встречи зеркал
                   </span>
-                  <ArchetypeBasRelief number={item.num} size={54} showNumber={false} className="mb-2" />
-                  <span className="font-serif text-2xl text-[#1A1A1C] font-light">
-                    {item.num}
-                  </span>
-                  <span className="text-[10px] text-[#8C8E96] font-mono mt-1">
-                    {item.comp !== item.num.toString() ? item.comp : item.title}
-                  </span>
+                  <h3 className="font-serif text-2xl sm:text-3xl text-[#1A1A1C] font-light">
+                    {reading.title || 'Синтез формулы'}
+                  </h3>
+                  {reading.keyInsight && (
+                    <p className="font-serif italic text-base sm:text-lg text-[#4A4B50] font-light pt-1">
+                      «{reading.keyInsight}»
+                    </p>
+                  )}
                 </div>
-              ))}
-            </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                  {reading.blocks?.find(b => b.id === 'main_pattern') && (
+                    <div className="p-5 rounded-xs bg-[#F8F6F1] border border-[#1A1A1C]/8 space-y-2">
+                      <span className="text-[10px] uppercase font-mono tracking-wider text-[#8C8E96] block font-medium">
+                        Главный узор
+                      </span>
+                      <p className="text-xs text-[#4A4B50] font-light leading-relaxed">
+                        {reading.blocks.find(b => b.id === 'main_pattern')?.text}
+                      </p>
+                    </div>
+                  )}
+
+                  {reading.blocks?.find(b => b.id === 'strength') && (
+                    <div className="p-5 rounded-xs bg-[#F8F6F1] border border-[#1A1A1C]/8 space-y-2">
+                      <span className="text-[10px] uppercase font-mono tracking-wider text-emerald-800 block font-medium">
+                        Зона силы
+                      </span>
+                      <p className="text-xs text-[#4A4B50] font-light leading-relaxed">
+                        {reading.blocks.find(b => b.id === 'strength')?.text}
+                      </p>
+                    </div>
+                  )}
+
+                  {reading.blocks?.find(b => b.id === 'tension') && (
+                    <div className="p-5 rounded-xs bg-[#F8F6F1] border border-[#1A1A1C]/8 space-y-2">
+                      <span className="text-[10px] uppercase font-mono tracking-wider text-[#9E6A1B] block font-medium">
+                        Зона напряжения
+                      </span>
+                      <p className="text-xs text-[#4A4B50] font-light leading-relaxed">
+                        {reading.blocks.find(b => b.id === 'tension')?.text}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {reading.practicalStep && (
+                  <div className="border-t border-[#1A1A1C]/8 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <span className="text-[10px] uppercase font-mono text-[#C8A45D] tracking-wider font-semibold">
+                      Рекомендованный шаг:
+                    </span>
+                    <span className="text-[#4A4B50] font-light">
+                      {reading.practicalStep}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 3x3 MATRIX */}
             <div className="w-full bg-[#FCFAF7] border border-[#1A1A1C]/8 p-8 sm:p-12 rounded-xs text-center shadow-xs">
@@ -788,39 +847,31 @@ export function AlabasterSanctuary({
               </div>
             </div>
 
-            {/* ALBERT BRIDGE & TELEGRAM CTA */}
+            {/* NEXT INDEPENDENT MIRROR */}
             <div className="w-full p-8 sm:p-14 rounded-xs bg-[#FCFAF7] border border-[#C8A45D]/40 shadow-sm space-y-8">
               <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[#C8A45D] block">
-                Осмысление · Проводник системы
+                Следующий зал · Независимое отражение
               </span>
 
               <div className="max-w-2xl mx-auto space-y-3">
                 <h3 className="font-serif text-3xl sm:text-5xl text-[#1A1A1C] font-light">
-                  Диалог с Альбертом Вяземским
+                  Личный миф
                 </h3>
                 <p className="text-[16px] text-[#63656C] font-light leading-relaxed">
-                  Вы можете сохранить контекст вашего разбора и продолжить глубокое обсуждение чисел в Telegram или прямо здесь.
+                  Код возник из даты. Второе зеркало складывается только из ваших образов — дата и числа в него не передаются.
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-                <a
-                  href="https://t.me/digitalcodesystem_bot"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-8 py-3.5 bg-[#1A1A1C] text-[#F8F6F1] uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#2C2C30] transition-all flex items-center gap-2 shadow-sm cursor-pointer"
-                >
-                  <Send size={14} className="text-[#C8A45D]" />
-                  <span>Открыть в Telegram</span>
-                </a>
-
-                <button
-                  onClick={() => setIsAlbertOpen(true)}
-                  className="px-8 py-3.5 border border-[#1A1A1C]/20 text-[#1A1A1C] hover:border-[#1A1A1C] uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center gap-2 cursor-pointer"
-                >
-                  <MessageSquare size={14} className="text-[#C8A45D]" />
-                  <span>Диалог на сайте</span>
-                </button>
+                {onContinue && (
+                  <button
+                    onClick={onContinue}
+                    className="px-8 py-3.5 bg-[#1A1A1C] text-[#F8F6F1] uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#2C2C30] transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+                  >
+                    <span>{continueLabel}</span>
+                    <ArrowRight size={14} className="text-[#C8A45D]" />
+                  </button>
+                )}
 
                 <button
                   onClick={handleReset}
@@ -837,15 +888,6 @@ export function AlabasterSanctuary({
 
         </div>
       )}
-
-      {/* Albert Web Dialogue Modal */}
-      <AlbertDialogue
-        isOpen={isAlbertOpen}
-        onClose={() => setIsAlbertOpen(false)}
-        calc={result}
-        initialTopic={result ? `Разбор даты ${day}.${month}.${year} (Душа ${soulNum}, Путь ${pathNum}, Выражение ${exprNum})` : ''}
-        theme="light"
-      />
 
     </div>
   );

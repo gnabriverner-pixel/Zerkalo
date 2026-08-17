@@ -1,0 +1,91 @@
+{
+  "recordedProvenance": {
+    "routeA": {
+      "myth": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "title": "Каменный маяк",
+        "mainImage": "Каменный маяк на скале перед грозой — как гипотеза о человеке, который ищет равновесие между незыблемостью формы и неизбежностью стихии."
+      },
+      "meeting": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "summary": "Дата рисует человека, который строит гармоничный оазис и идёт своим путём; собственные образы говорят о каменном маяке, ищущем равновесие между структурой и стихией. Оба зеркала смотрят на одного и того же человека, но с разных ракурсов: одно — на потенциальную архитектуру, другое — на текущее внутреннее состояние.",
+        "parallelsCount": 4,
+        "divergencesCount": 2
+      },
+      "albert": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "contractValid": true,
+        "wordCount": 168,
+        "messagePreview": "Главная точка опоры между вашим кодом и мифом — не в выборе между камнем и морем"
+      }
+    },
+    "routeB": {
+      "myth": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "title": "Шкала зенита",
+        "mainImage": "Старинная обсерватория как пространство, где ясность структур и холод безмолвия сходятся в одной точке, не обещая уюта."
+      },
+      "meeting": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "summary": "Перед нами два отражения одного человека: одно — строгая геометрия чисел, другое — образ обсерватории на горе. Они не спорят друг с другом, но и не совпадают полностью: код говорит о скорости и слове, миф — о тишине и точности. Их встреча рождает третье пространство — вопрос о том, как соединить внешнюю динамику с внутренней неподвижностью.",
+        "parallelsCount": 4,
+        "divergencesCount": 2
+      },
+      "albert": {
+        "status": "ok",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "contractValid": true,
+        "wordCount": 145,
+        "messagePreview": "Ваш вопрос касается самой сути встречи двух зеркал. Склонность к порядку — это н"
+      }
+    },
+    "restoredAlbert": {
+      "status": "ok",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "contractValid": true,
+      "wordCount": 135,
+      "hasMeetingSummaryInContext": true,
+      "hasCodeAnchorsInContext": true,
+      "hasMythAnchorsInContext": true,
+      "messagePreview": "Практика здесь — не в выборе между «маяком» и «дорогой», а в умении осознанно пе"
+    }
+  },
+  "readyData": {
+    "status": "ready",
+    "service": "zerkalo",
+    "providers": {
+      "personal_myth": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "writer": "personal-myth-v1.1-rc"
+      },
+      "meeting": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro"
+      },
+      "albert": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro"
+      }
+    },
+    "google_production_dependency": "none"
+  },
+  "consoleErrors": [],
+  "unexpectedErrors": [],
+  "consoleErrorClassification": "NO_UNEXPECTED_PRODUCT_CONSOLE_ERRORS (raw captured entries count: 0, contains only transient HTTP 502/503 network status logs from live LLM retry/controlled failure smoke)"
+}

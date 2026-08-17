@@ -1,23 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CalculationResult } from '../types';
+import { CalculationResult, MeetingOfMirrorsResult } from '../types';
 import { numberKnowledge } from '../data/numberKnowledge';
 import { 
   X, 
   Send, 
-  Sparkles, 
-  MessageSquare, 
   Loader2, 
   User, 
   Compass, 
-  ChevronRight,
-  BookOpen
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 
 interface AlbertDialogueProps {
   isOpen: boolean;
   onClose: () => void;
   calc?: CalculationResult | null;
+  storyResult?: any;
+  meetingResult?: MeetingOfMirrorsResult | null;
   initialTopic?: string;
   theme?: 'light' | 'dark';
 }
@@ -31,22 +31,26 @@ interface Message {
 
 const PRESET_QUESTIONS = [
   'Почему я всё время оказываюсь между двумя противоположными состояниями?',
-  'Как моя формула может проявляться в отношениях и близости?',
-  'Что мой цифровой код говорит о направлении реализации?',
-  'Какая часть моей природы сейчас может быть подавлена?',
-  'В чем скрытый ресурс моего составного числа?'
+  'Как сопоставление двух зеркал проявляется в отношениях и близости?',
+  'О чем говорит обнаруженное расхождение между кодом и образом мифа?',
+  'В чем скрытый ресурс точки встречи моих двух зеркал?',
+  'Какой один земной шаг лучше всего вытекает из увиденного сопоставления?'
 ];
 
 export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   isOpen,
   onClose,
   calc,
+  storyResult,
+  meetingResult,
   initialTopic = '',
   theme = 'light'
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState(initialTopic);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const soul = calc?.soul || 1;
@@ -54,7 +58,6 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   const dir = calc?.direction || 1;
   const expr = calc?.expression || 1;
   const res = calc?.result || 1;
-  const pathComposite = calc?.pathComposite;
 
   const soulInfo = numberKnowledge[soul];
   const pathInfo = numberKnowledge[path];
@@ -62,9 +65,14 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   // Initialize Albert greeting when opened
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      const greeting = calc
-        ? `Здравствуйте. Я вижу вашу формулу: Душа ${soul} (${soulInfo?.planet.split(' ')[0] || ''}), Путь ${path} (${pathInfo?.planet.split(' ')[0] || ''}), Направление ${dir} и Выражение ${expr}.\n\nКарта уже перед нами. О чем из увиденного вы хотели бы поговорить глубже? Вы можете выбрать вопрос или спросить о своей ситуации своими словами.`
-        : `Здравствуйте. Я готов обсудить с вами увиденное в зеркале и ответить на ваши вопросы о карте, формуле или образах мифа.\n\nО чем бы вы хотели поговорить?`;
+      let greeting = '';
+      if (meetingResult) {
+        greeting = `Здравствуйте. Я вижу сопоставление двух ваших зеркал — расчетной структуры и образного мифа.\n\n${meetingResult.summary}\n\nО чем из увиденного в зеркалах вы хотели бы поговорить глубже? Вы можете выбрать тему ниже или задать свой вопрос своими словами.`;
+      } else if (calc) {
+        greeting = `Здравствуйте. Я вижу вашу формулу: Душа ${soul} (${soulInfo?.planet.split(' ')[0] || ''}), Путь ${path} (${pathInfo?.planet.split(' ')[0] || ''}), Направление ${dir} и Выражение ${expr}.\n\nКарта уже перед нами. О чем из увиденного вы хотели бы поговорить глубже? Вы можете выбрать вопрос или спросить о своей ситуации своими словами.`;
+      } else {
+        greeting = `Здравствуйте. Я готов обсудить с вами увиденное в зеркале и ответить на ваши вопросы о карте, формуле или образах мифа.\n\nО чем бы вы хотели поговорить?`;
+      }
       setMessages([
         {
           id: '1',
@@ -74,7 +82,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         }
       ]);
     }
-  }, [isOpen, soul, path, dir, expr, soulInfo, pathInfo]);
+  }, [isOpen, meetingResult, calc, soul, path, dir, expr, soulInfo, pathInfo]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -83,51 +91,107 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   if (!isOpen) return null;
 
   const handleSend = async (questionText?: string) => {
-    const text = questionText || inputValue;
-    if (!text.trim() || isLoading) return;
+    const text = (questionText || inputValue).trim();
+    if (!text || isLoading) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
       sender: 'user',
-      text: text.trim(),
+      text,
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
     setIsLoading(true);
+    setErrorText(null);
+    setLastFailedMessage(null);
 
     try {
-      // Local generative response synthesizing the formula and question in Albert's authentic voice
-      setTimeout(() => {
-        let answer = '';
-        const qLower = text.toLowerCase();
+      const historyPayload = messages.map(m => ({
+        sender: m.sender,
+        text: m.text
+      }));
 
-        if (qLower.includes('противоположн') || qLower.includes('двумя') || qLower.includes('состояни')) {
-          answer = `Это один из ключевых узлов вашей формулы. Ваша Душа (${soul} — ${soulInfo?.planet}) ищет ${soulInfo?.gift.toLowerCase()}, в то время как Число Пути (${path} — ${pathInfo?.planet}) требует ${pathInfo?.task.toLowerCase()}.\n\nКогда эти полярности не осознаются, возникает качели: либо уход в абсолютную автономность, либо попытка жестко зафиксировать контроль. Решение кроется не в подавлении одной из сторон, а в том, чтобы дать Душе чувство вдохновения, а Пути — четкую структуру действий.`;
-        } else if (qLower.includes('отношен') || qLower.includes('близост')) {
-          answer = `В отношениях Число Души (${soul}) определяет ваш язык чувств и способ принятия другого человека. Для вас критически важно, чтобы партнер признавал вашу внутреннюю ${soulInfo?.keywords.slice(0, 2).join(' и ')}.\n\nОднако при напряжении может проявляться теневая сторона (${soulInfo?.shadow}), когда возникает страх потерять себя. Помните: ваша зрелость в союзе раскрывается через Число Выражения (${expr}), когда диалог строится без ультиматумов, на языке взаимного уважения.`;
-        } else if (qLower.includes('реализац') || qLower.includes('направлен') || qLower.includes('дело')) {
-          answer = `Ваш вектор реализации опирается на Число Направления ${dir} и формулу ${pathComposite}.\n\nДля вас губительна механическая рутина, где нет пространства для ${soulInfo?.gift.toLowerCase()}. Ваша естественная среда — это проекты, требующие соединения качества формы и стратегического масштаба. Не соглашайтесь на половинчатые компромиссы: формула требует авторского присутствия в том, что вы создаете.`;
-        } else if (qLower.includes('подавлен') || qLower.includes('свобод') || qLower.includes('тень')) {
-          answer = `Чаще всего у формул с Числом Души ${soul} вытесняется право на ошибку и естественную уязвимость. Под давлением внешних обстоятельств вы можете включать режим повышенной защиты (${pathInfo?.shadow}).\n\nСпросите себя прямо сейчас: «Где я действую из чувства долга, а не из природного импульса?» Ответ на этот вопрос покажет, куда утекает энергия.`;
-        } else {
-          answer = `Ваш вопрос затрагивает самую сердцевину кода. Сочетание ${soul} и ${path} говорит о том, что вам важно не просто находить ответы умом, а проживать их через телесный и смысловой отклик.\n\nОбратите внимание на Число Итога (${res}): оно напоминает, что любая сложность в текущем периоде — это приглашение к переходу на новый уровень зрелости. Какая мысль первой пришла вам в голову, когда вы прочитали это?`;
-        }
-
-        const albertMsg: Message = {
-          id: (Date.now() + 1).toString(),
-          sender: 'albert',
-          text: answer,
-          timestamp: new Date()
+      const contextPayload: Record<string, unknown> = {};
+      if (meetingResult) {
+        contextPayload.meetingSummary = meetingResult.summary;
+        contextPayload.confidenceNote = meetingResult.confidenceNote;
+        contextPayload.centralQuestion = meetingResult.reflectiveQuestion;
+        contextPayload.albertInsight = meetingResult.albertInsight;
+        contextPayload.resonances = meetingResult.parallels;
+        contextPayload.divergences = meetingResult.divergences;
+      }
+      if (calc) {
+        contextPayload.codeAnchors = {
+          numbers: {
+            soul: calc.soul,
+            path: calc.path,
+            direction: calc.direction,
+            expression: calc.expression,
+            result: calc.result
+          }
         };
+      }
+      if (storyResult) {
+        contextPayload.mythAnchors = {
+          title: storyResult.title,
+          mainImage: storyResult.mirror?.mainImage,
+          innerTension: storyResult.mirror?.innerTension,
+          hiddenResource: storyResult.mirror?.hiddenResource,
+          newView: storyResult.mirror?.newView,
+          oneStep: storyResult.one_step
+        };
+      }
 
-        setMessages(prev => [...prev, albertMsg]);
+      const res = await fetch('/api/albert/dialogue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          history: historyPayload,
+          context: contextPayload
+        })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        const safeMessage = errJson?.ui?.safe_message || 'Собеседник временно недоступен. Ваши вопросы и результаты сохранены — попробуйте повторить запрос.';
+        setErrorText(safeMessage);
+        setLastFailedMessage(text);
         setIsLoading(false);
-      }, 700);
-    } catch (err) {
-      console.error(err);
+        return;
+      }
+
+      const data = await res.json();
+      if (data.status !== 'ok' || !data.message) {
+        const safeMessage = data?.ui?.safe_message || 'Не удалось получить ответ. Ваши результаты сохранены — попробуйте повторить запрос.';
+        setErrorText(safeMessage);
+        setLastFailedMessage(text);
+        setIsLoading(false);
+        return;
+      }
+
+      const albertMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        sender: 'albert',
+        text: data.message,
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, albertMsg]);
       setIsLoading(false);
+    } catch (err) {
+      console.error("Albert dialogue request failed:", err);
+      setErrorText("Собеседник временно недоступен. Ваши результаты встречи зеркал сохранены — попробуйте повторить запрос.");
+      setLastFailedMessage(text);
+      setIsLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    if (lastFailedMessage) {
+      handleSend(lastFailedMessage);
     }
   };
 
@@ -184,14 +248,16 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
           </div>
 
           {/* Formula Context Strip */}
-          <div className={`px-6 py-2 border-b flex items-center justify-between text-xs font-sans tracking-widest uppercase opacity-80 ${
-            isDark ? 'border-[#2A3B33] bg-[#111A16] text-[#A3B8AD]' : 'border-[#EAE3D2] bg-white text-[var(--color-muted)]'
-          }`}>
-            <span>Душа: {soul} ({soulInfo?.planet.split(' ')[0]})</span>
-            <span>Путь: {calc.pathComposite || calc.path}</span>
-            <span>Направление: {dir}</span>
-            <span>Итог: {res}</span>
-          </div>
+          {calc && (
+            <div className={`px-6 py-2 border-b flex items-center justify-between text-xs font-sans tracking-widest uppercase opacity-80 ${
+              isDark ? 'border-[#2A3B33] bg-[#111A16] text-[#A3B8AD]' : 'border-[#EAE3D2] bg-white text-[var(--color-muted)]'
+            }`}>
+              <span>Душа: {soul} ({soulInfo?.planet.split(' ')[0] || ''})</span>
+              <span>Путь: {calc.pathComposite || calc.path}</span>
+              <span>Направление: {dir}</span>
+              <span>Итог: {res}</span>
+            </div>
+          )}
 
           {/* Messages Container */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -231,9 +297,30 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
             {isLoading && (
               <div className="flex items-center gap-3 text-xs tracking-wider uppercase font-sans text-[var(--color-antique-gold)]">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Альберт сверяется с узлами формулы...</span>
+                <span>Альберт сверяется со смысловыми узлами зеркал...</span>
               </div>
             )}
+
+            {errorText && (
+              <div className={`p-4 rounded-sm border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm ${
+                isDark ? 'bg-amber-950/30 border-amber-800/50 text-amber-200' : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}>
+                <div className="flex items-center gap-2.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-[var(--color-antique-gold)]" />
+                  <span>{errorText}</span>
+                </div>
+                {lastFailedMessage && (
+                  <button
+                    onClick={handleRetry}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans uppercase tracking-wider rounded-sm bg-[var(--color-antique-gold)]/20 hover:bg-[var(--color-antique-gold)]/30 text-[var(--color-antique-gold)] border border-[var(--color-antique-gold)]/40 transition-colors shrink-0"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Повторить</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
@@ -245,7 +332,8 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
               <button
                 key={idx}
                 onClick={() => handleSend(q)}
-                className={`text-xs px-3 py-1.5 rounded-full border whitespace-nowrap transition-all text-left ${
+                disabled={isLoading}
+                className={`text-xs px-3 py-1.5 rounded-full border whitespace-nowrap transition-all text-left disabled:opacity-50 ${
                   isDark 
                     ? 'border-[#2A3B33] text-[#A3B8AD] hover:border-[var(--color-antique-gold)] hover:text-white' 
                     : 'border-[#EAE3D2] text-stone-600 hover:border-[var(--color-antique-gold)] hover:text-stone-900 bg-white'
@@ -271,7 +359,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Задайте вопрос Альберту о вашей карте..."
+                placeholder="Задайте вопрос Альберту о вашей карте и встрече зеркал..."
                 className={`flex-1 px-4 py-3 rounded-sm border font-sans text-sm outline-none transition-colors ${
                   isDark
                     ? 'bg-[#0F1412] border-[#2A3B33] text-white placeholder-stone-600 focus:border-[var(--color-antique-gold)]'

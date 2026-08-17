@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import CodeArchitecture from './components/CodeArchitecture';
 import PersonalMyth from './components/PersonalMyth';
 import { MeetingOfMirrors } from './components/MeetingOfMirrors';
 import { ModelComparisonHarness } from './components/ModelComparisonHarness';
@@ -8,10 +7,11 @@ import { LabEntryView } from './components/LabEntryView';
 import { MetaphorLibrary } from './components/MetaphorLibrary';
 import { AboutMethod } from './components/AboutMethod';
 import { AlabasterSanctuary } from './components/AlabasterSanctuary';
-import { CalculationResult, FirstMirror, StoryInputs, ApiResponse } from './types';
+import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult } from './types';
+import { loadMyMirrorSnapshot, deleteMyMirrorSnapshot, MyMirrorSnapshotV1 } from './services/myMirrorStorage';
 
 export default function App() {
-  const [mode, setMode] = useState<'entry' | 'code' | 'myth' | 'meeting' | 'alabaster' | 'ab-test'>('alabaster');
+  const [mode, setMode] = useState<'entry' | 'myth' | 'meeting' | 'alabaster' | 'ab-test'>('entry');
   const [showLibrary, setShowLibrary] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
 
@@ -21,6 +21,38 @@ export default function App() {
   const [firstMirror, setFirstMirror] = useState<FirstMirror | null>(null);
   const [storyInputs, setStoryInputs] = useState<StoryInputs | null>(null);
   const [storyResult, setStoryResult] = useState<ApiResponse['story_result'] | null>(null);
+  const [meetingResult, setMeetingResult] = useState<MeetingOfMirrorsResult | null>(null);
+  const [meetingUserNote, setMeetingUserNote] = useState<string>('');
+  const [savedSnapshot, setSavedSnapshot] = useState<MyMirrorSnapshotV1 | null>(() => {
+    return loadMyMirrorSnapshot();
+  });
+
+  const refreshSavedSnapshot = () => {
+    setSavedSnapshot(loadMyMirrorSnapshot());
+  };
+
+  useEffect(() => {
+    refreshSavedSnapshot();
+  }, [mode]);
+
+  const handleRestoreSavedMirror = () => {
+    const snapshot = loadMyMirrorSnapshot();
+    if (!snapshot) return;
+
+    setCodeDate(snapshot.codeDate);
+    setCodeResult(snapshot.codeResult);
+    setFirstMirror(snapshot.firstMirror);
+    setStoryInputs(snapshot.storyInputs);
+    setStoryResult(snapshot.storyResult);
+    setMeetingResult(snapshot.meetingResult);
+    setMeetingUserNote(snapshot.meetingUserNote ?? '');
+    setMode('meeting');
+  };
+
+  const handleDeleteSavedMirror = () => {
+    deleteMyMirrorSnapshot();
+    setSavedSnapshot(null);
+  };
 
   const hasCode = !!codeResult;
   const hasMyth = !!storyResult;
@@ -32,11 +64,16 @@ export default function App() {
       <div className="w-full min-h-screen">
         <AlabasterSanctuary
           initialDate={codeDate}
-          onCodeCalculated={(calc, reading) => {
+          onCodeCalculated={(fullDate, calc, reading) => {
+            setCodeDate(fullDate);
             setCodeResult(calc);
-            if (reading) setFirstMirror(reading);
+            setFirstMirror(reading || null);
+            setMeetingResult(null);
+            setMeetingUserNote('');
           }}
-          onSwitchToDark={() => setMode('code')}
+          onBackToCollection={() => setMode('entry')}
+          onContinue={() => setMode(hasMyth ? 'meeting' : 'myth')}
+          continueLabel={hasMyth ? 'Открыть Встречу зеркал' : 'Перейти к Личному мифу'}
           onOpenAbout={() => setShowAbout(true)}
         />
         {/* Global Modals */}
@@ -60,7 +97,7 @@ export default function App() {
             title="Главная"
           >
             <span className="w-2 h-2 rounded-full bg-[var(--color-antique-gold)] shadow-[0_0_8px_rgba(200,164,93,0.6)] group-hover:scale-125 transition-transform" />
-            <span className="font-serif text-lg tracking-wide text-[#F4F4F4] group-hover:text-[var(--color-antique-gold)] transition-colors">
+            <span className="hidden sm:inline font-serif text-lg tracking-wide text-[#F4F4F4] group-hover:text-[var(--color-antique-gold)] transition-colors whitespace-nowrap">
               Зеркало себя
             </span>
           </button>
@@ -69,12 +106,13 @@ export default function App() {
         {/* Center: Quiet Lens Switcher */}
         <nav aria-label="Режимы исследования" className="flex items-center gap-1.5 p-1 bg-[#0D121D]/80 backdrop-blur-md rounded-full border border-white/5 pointer-events-auto shadow-sm">
           
-          {/* Alabaster Sanctuary Switch */}
+          {/* Digital Code */}
           <button
             onClick={() => setMode('alabaster')}
-            className="px-3.5 py-1.5 rounded-full text-[11px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 bg-[#C8A45D]/15 text-[#C8A45D] font-medium border border-[#C8A45D]/30 shadow-xs cursor-pointer"
+            className="px-3 py-1.5 rounded-full text-[10px] sm:text-[11px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 text-gray-400 hover:text-gray-200"
           >
-            <span>Алебастр 2026</span>
+            <span>Код</span>
+            {hasCode && <span className="w-1 h-1 rounded-full bg-[var(--color-antique-gold)]" />}
           </button>
 
           {/* Lens 1: Myth */}
@@ -86,21 +124,8 @@ export default function App() {
                 : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            <span>1. Миф</span>
+            <span>Миф</span>
             {hasMyth && <span className="w-1 h-1 rounded-full bg-[var(--color-antique-gold)]" />}
-          </button>
-
-          {/* Lens 2: Code */}
-          <button
-            onClick={() => setMode('code')}
-            className={`px-3.5 py-1.5 rounded-full text-[11px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 ${
-              mode === 'code'
-                ? 'bg-white/10 text-white font-medium shadow-xs'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            <span>2. Код</span>
-            {hasCode && <span className="w-1 h-1 rounded-full bg-[var(--color-antique-gold)]" />}
           </button>
 
           {/* Synthesis: Meeting */}
@@ -153,32 +178,21 @@ export default function App() {
               <LabEntryView
                 codeResult={codeResult}
                 storyResult={storyResult}
+                savedSnapshot={savedSnapshot}
+                onRestoreSavedMirror={handleRestoreSavedMirror}
+                onDeleteSavedMirror={handleDeleteSavedMirror}
                 onSelectMode={(m, initialDate) => {
-                  if (initialDate) setCodeDate(initialDate);
-                  setMode(m);
+                  if (initialDate && initialDate !== codeDate) {
+                    setCodeDate(initialDate);
+                    setCodeResult(null);
+                    setFirstMirror(null);
+                    setMeetingResult(null);
+                    setMeetingUserNote('');
+                  } else if (initialDate) {
+                    setCodeDate(initialDate);
+                  }
+                  setMode(m === 'code' ? 'alabaster' : m);
                 }}
-              />
-            </motion.div>
-          )}
-
-          {mode === 'code' && (
-            <motion.div
-              key="code"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="w-full"
-            >
-              <CodeArchitecture 
-                initialDate={codeDate}
-                onOpenAbout={() => setShowAbout(true)} 
-                onCodeCalculated={(calc, reading) => {
-                  setCodeResult(calc);
-                  if (reading) setFirstMirror(reading);
-                }}
-                onNavigateToMeeting={() => setMode('meeting')}
-                hasMythResult={hasMyth}
               />
             </motion.div>
           )}
@@ -193,12 +207,16 @@ export default function App() {
               className="w-full"
             >
               <PersonalMyth 
+                initialInputs={storyInputs}
+                initialResult={storyResult}
                 onOpenAbout={() => setShowAbout(true)}
                 onMythCompleted={(inputs, result) => {
                   setStoryInputs(inputs);
                   setStoryResult(result || null);
+                  setMeetingResult(null);
+                  setMeetingUserNote('');
                 }}
-                onNavigateToMeeting={() => setMode(hasCode ? 'meeting' : 'code')}
+                onNavigateToMeeting={() => setMode(hasCode ? 'meeting' : 'alabaster')}
                 hasCodeResult={hasCode}
               />
             </motion.div>
@@ -214,11 +232,21 @@ export default function App() {
               className="w-full"
             >
               <MeetingOfMirrors
+                codeDate={codeDate}
                 codeResult={codeResult}
                 firstMirror={firstMirror}
                 storyInputs={storyInputs}
                 storyResult={storyResult}
-                onOpenCode={() => setMode('code')}
+                initialMeetingResult={meetingResult}
+                onMeetingCompleted={(res) => {
+                  setMeetingResult(res);
+                  refreshSavedSnapshot();
+                }}
+                initialUserNote={meetingUserNote}
+                onUserNoteChange={setMeetingUserNote}
+                onSaveSnapshot={refreshSavedSnapshot}
+                onDeleteSnapshot={refreshSavedSnapshot}
+                onOpenCode={() => setMode('alabaster')}
                 onOpenMyth={() => setMode('myth')}
               />
             </motion.div>

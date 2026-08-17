@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle2, 
@@ -8,39 +8,137 @@ import {
   Send, 
   RefreshCw, 
   ChevronRight,
-  MessageSquare
+  MessageSquare,
+  Bookmark,
+  Check,
+  Trash2
 } from 'lucide-react';
 import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, MeetingApiResponse } from '../types';
 import { Orb } from './Orb';
 import { AlbertDialogue } from './AlbertDialogue';
+import { TesterFeedbackWidget } from './TesterFeedbackWidget';
+import { generateFirstMirror } from '../services/interpretation';
+import { 
+  saveMyMirrorSnapshot, 
+  loadMyMirrorSnapshot, 
+  deleteMyMirrorSnapshot,
+  isSnapshotMatchingCurrentSession
+} from '../services/myMirrorStorage';
 
-interface MeetingOfMirrorsProps {
+export interface MeetingOfMirrorsProps {
+  codeDate?: string;
   codeResult: CalculationResult | null;
   firstMirror: FirstMirror | null;
   storyInputs: StoryInputs | null;
   storyResult: ApiResponse['story_result'] | null;
+  initialMeetingResult?: MeetingOfMirrorsResult | null;
+  onMeetingCompleted?: (result: MeetingOfMirrorsResult) => void;
+  initialUserNote?: string;
+  onUserNoteChange?: (note: string) => void;
+  onSaveSnapshot?: () => void;
+  onDeleteSnapshot?: () => void;
   onOpenCode: () => void;
   onOpenMyth: () => void;
 }
 
+export function pluralRu(value: number, one: string, few: string, many: string) {
+  const mod100 = value % 100;
+  const mod10 = value % 10;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
+
 export function MeetingOfMirrors({
+  codeDate,
   codeResult,
   firstMirror,
   storyInputs,
   storyResult,
+  initialMeetingResult,
+  onMeetingCompleted,
+  initialUserNote,
+  onUserNoteChange,
+  onSaveSnapshot,
+  onDeleteSnapshot,
   onOpenCode,
   onOpenMyth
 }: MeetingOfMirrorsProps) {
-  const [meetingResult, setMeetingResult] = useState<MeetingOfMirrorsResult | null>(null);
+  const [meetingResult, setMeetingResult] = useState<MeetingOfMirrorsResult | null>(initialMeetingResult || null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isAlbertOpen, setIsAlbertOpen] = useState(false);
   const [albertTopic, setAlbertTopic] = useState('');
-  const [userNote, setUserNote] = useState('');
+  const [userNote, setUserNote] = useState(initialUserNote || '');
+
+  const checkCurrentSaveStatus = (): string | null => {
+    const current = loadMyMirrorSnapshot();
+    if (!current) return null;
+    const effectiveFirstMirror = firstMirror || (codeResult ? generateFirstMirror(codeResult) : null);
+    const matches = isSnapshotMatchingCurrentSession(current, {
+      codeDate,
+      codeResult,
+      firstMirror: effectiveFirstMirror,
+      storyInputs,
+      storyResult,
+      meetingResult,
+      meetingUserNote: userNote
+    });
+    return matches ? current.savedAt : null;
+  };
+
+  const [savedAt, setSavedAt] = useState<string | null>(() => checkCurrentSaveStatus());
+
+  useEffect(() => {
+    if (initialMeetingResult) {
+      setMeetingResult(initialMeetingResult);
+    }
+  }, [initialMeetingResult]);
+
+  useEffect(() => {
+    if (initialUserNote !== undefined) {
+      setUserNote(initialUserNote);
+    }
+  }, [initialUserNote]);
+
+  useEffect(() => {
+    setSavedAt(checkCurrentSaveStatus());
+  }, [codeDate, codeResult, firstMirror, storyInputs, storyResult, meetingResult, userNote]);
 
   const hasCode = !!codeResult;
   const hasMyth = !!storyResult && !!storyInputs;
   const isReadyForSynthesis = hasCode && hasMyth;
+
+  const handleUserNoteChange = (val: string) => {
+    setUserNote(val);
+    if (onUserNoteChange) onUserNoteChange(val);
+  };
+
+  const handleSave = () => {
+    if (!codeResult || !storyInputs || !storyResult || !meetingResult) return;
+    const effectiveFirstMirror = firstMirror || generateFirstMirror(codeResult);
+    const success = saveMyMirrorSnapshot({
+      codeDate: codeDate || `${codeResult.soul}.${codeResult.expression}.${codeResult.path}`,
+      codeResult,
+      firstMirror: effectiveFirstMirror,
+      storyInputs,
+      storyResult,
+      meetingResult,
+      meetingUserNote: userNote || undefined
+    });
+    if (success) {
+      const loaded = loadMyMirrorSnapshot();
+      setSavedAt(loaded?.savedAt || new Date().toISOString());
+      if (onSaveSnapshot) onSaveSnapshot();
+    }
+  };
+
+  const handleDelete = () => {
+    deleteMyMirrorSnapshot();
+    setSavedAt(null);
+    if (onDeleteSnapshot) onDeleteSnapshot();
+  };
 
   const handleRunSynthesis = async () => {
     if (!isReadyForSynthesis) return;
@@ -68,6 +166,9 @@ export function MeetingOfMirrors({
 
       if (data.status === 'ok' && data.result) {
         setMeetingResult(data.result);
+        if (onMeetingCompleted) {
+          onMeetingCompleted(data.result);
+        }
       } else {
         setErrorMessage(data.ui?.safe_message || 'Не удалось сформировать встречу зеркал. Попробуйте еще раз.');
       }
@@ -105,162 +206,146 @@ export function MeetingOfMirrors({
               transition={{ duration: 0.9 }}
               className="relative z-20"
             >
-              <Orb number={7} size="lg" glow={true} />
+              <Orb number={7} size="lg" showNumber={false} glow={true} />
             </motion.div>
           </div>
 
-          <span className="text-[11px] uppercase tracking-[0.3em] text-[var(--color-antique-gold)] font-mono block mb-3">
-            Синтез · Встреча Зеркал
+          <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] mb-3">
+            Синтез двух зеркал · Встреча
           </span>
 
-          <h1 className="font-serif text-4xl sm:text-6xl text-stone-100 mb-4 font-light tracking-tight leading-tight">
-            Встреча двух отражений
+          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-light text-stone-100 mb-4 tracking-tight">
+            Встреча Зеркал
           </h1>
 
-          {/* Central Architectural Frame */}
-          <div className="w-full max-w-2xl bg-[#0D121D]/80 border border-white/[0.08] p-6 sm:p-8 rounded-xs mt-4">
-            <p className="font-serif italic text-base sm:text-lg text-[#C9C0AE] leading-relaxed font-light">
-              «Эти две версии появились независимо. Одна — из даты. Другая — из ваших образов. Совпадения ничего не доказывают, но дают повод присмотреться к себе.»
-            </p>
-          </div>
-
+          <p className="text-sm sm:text-base text-stone-300 font-light max-w-xl mx-auto leading-relaxed">
+            Сопоставление расчетного цифрового кода и метафорического мифа.
+          </p>
         </div>
 
         {/* ========================================================= */}
-        {/* STATUS OF INITIAL MIRRORS */}
+        {/* PRE-MEETING STATUS & CARDS */}
         {/* ========================================================= */}
-        <div className="w-full bg-[#0D121D]/60 border border-white/[0.06] p-6 sm:p-8 mb-10 rounded-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            
-            {/* Mirror 1: Digital Code */}
-            <div className={`p-5 rounded-xs border transition-all ${
-              hasCode ? 'bg-[#101726]/80 border-[var(--color-antique-gold)]/40' : 'bg-[#0B0F18]/50 border-white/[0.04] opacity-60'
-            }`}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] uppercase tracking-widest text-[var(--color-antique-gold)] font-mono">
-                  Линза I · Цифровой Код
-                </span>
-                {hasCode ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-light">
-                    <CheckCircle2 size={14} /> Рассчитан
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-stone-500 uppercase font-mono">Не рассчитан</span>
-                )}
-              </div>
-
-              {hasCode ? (
-                <div className="flex items-center gap-3">
-                  <Orb number={codeResult.soul} size="xs" glow={false} />
-                  <div>
-                    <div className="font-serif text-lg text-stone-100">
-                      Душа {codeResult.soul} · Путь {codeResult.path}
-                    </div>
-                    <div className="text-xs text-stone-400 font-mono">
-                      Выражение {codeResult.expression}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-stone-400 flex flex-col items-start gap-2">
-                  <span>Введите дату рождения для формирования первой линзы.</span>
-                  <button 
-                    onClick={onOpenCode}
-                    className="text-[11px] text-[var(--color-antique-gold)] hover:underline uppercase tracking-wider flex items-center gap-1 font-medium"
-                  >
-                    Перейти к коду <ChevronRight size={12} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Mirror 2: Personal Myth */}
-            <div className={`p-5 rounded-xs border transition-all ${
-              hasMyth ? 'bg-[#101726]/80 border-purple-500/40' : 'bg-[#0B0F18]/50 border-white/[0.04] opacity-60'
-            }`}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] uppercase tracking-widest text-purple-300 font-mono">
-                  Линза II · Личный Миф
-                </span>
-                {hasMyth ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-light">
-                    <CheckCircle2 size={14} /> Создан
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-stone-500 uppercase font-mono">Не пройден</span>
-                )}
-              </div>
-
-              {hasMyth ? (
-                <div className="flex items-center gap-3">
-                  <Orb number={7} size="xs" glow={false} />
-                  <div>
-                    <div className="font-serif text-lg text-stone-100 italic">
-                      «{storyResult.title}»
-                    </div>
-                    <div className="text-xs text-stone-400 font-mono truncate max-w-[200px]">
-                      Образ: {storyInputs.q2 || 'не назван'}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-stone-400 flex flex-col items-start gap-2">
-                  <span>Ответьте на 4 образных вопроса для создания сказки.</span>
-                  <button 
-                    onClick={onOpenMyth}
-                    className="text-[11px] text-purple-300 hover:underline uppercase tracking-wider flex items-center gap-1 font-medium"
-                  >
-                    Перейти к мифу <ChevronRight size={12} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-          </div>
-
-          {/* Trigger Synthesis Button */}
-          {!meetingResult && (
-            <div className="mt-8 pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4">
-              <span className="text-xs text-stone-400 text-center sm:text-left font-light">
-                {isReadyForSynthesis
-                  ? 'Оба зеркала сформированы. Запустите сопоставление параллелей и контрастов.'
-                  : 'Для проведения встречи завершите обе линзы.'}
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          
+          {/* Lens 1: Code */}
+          <div className={`p-6 rounded-xs border transition-all ${
+            hasCode 
+              ? 'bg-[#0D121D] border-white/10' 
+              : 'bg-[#0D121D]/40 border-dashed border-white/10'
+          }`}>
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-[10px] uppercase font-mono tracking-widest text-stone-400">
+                Линза 1 · Цифровой код
               </span>
+              {hasCode ? (
+                <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono">
+                  <CheckCircle2 size={13} />
+                  <span>Собрано</span>
+                </span>
+              ) : (
+                <span className="text-xs text-amber-400/80 font-mono">Не рассчитано</span>
+              )}
+            </div>
 
+            {hasCode ? (
+              <div>
+                <h3 className="font-serif text-xl text-stone-100 mb-1">
+                  Формула: {codeResult.soul} / {codeResult.expression} / {codeResult.path}
+                </h3>
+                <p className="text-xs text-stone-400 font-light line-clamp-2">
+                  {firstMirror?.keyInsight || `Число Души ${codeResult.soul}, Путь ${codeResult.path}`}
+                </p>
+              </div>
+            ) : (
               <button
-                disabled={!isReadyForSynthesis || isLoading}
-                onClick={handleRunSynthesis}
-                className={`w-full sm:w-auto px-8 py-3.5 rounded-xs uppercase tracking-[0.2em] text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
-                  isReadyForSynthesis
-                    ? 'bg-[var(--color-antique-gold)] text-gray-950 hover:bg-[#D9B770] shadow-[0_0_20px_rgba(200,164,93,0.3)] cursor-pointer'
-                    : 'bg-white/5 text-stone-500 cursor-not-allowed border border-white/[0.06]'
-                }`}
+                onClick={onOpenCode}
+                className="text-xs text-[var(--color-antique-gold)] hover:underline flex items-center gap-1 mt-2 cursor-pointer"
               >
-                {isLoading ? (
-                  <>
-                    <RefreshCw size={14} className="animate-spin" />
-                    <span>Синтезируем...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={14} />
-                    <span>Провести Встречу Зеркал</span>
-                  </>
-                )}
+                <span>Рассчитать код</span>
+                <ChevronRight size={14} />
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
-          {errorMessage && (
-            <div className="mt-4 p-3 bg-red-950/30 border border-red-500/20 text-red-300 text-xs rounded-xs flex items-center gap-2">
-              <AlertCircle size={14} className="shrink-0" />
-              <span>{errorMessage}</span>
+          {/* Lens 2: Myth */}
+          <div className={`p-6 rounded-xs border transition-all ${
+            hasMyth 
+              ? 'bg-[#0D121D] border-white/10' 
+              : 'bg-[#0D121D]/40 border-dashed border-white/10'
+          }`}>
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-[10px] uppercase font-mono tracking-widest text-stone-400">
+                Линза 2 · Личный миф
+              </span>
+              {hasMyth ? (
+                <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono">
+                  <CheckCircle2 size={13} />
+                  <span>Сотворено</span>
+                </span>
+              ) : (
+                <span className="text-xs text-amber-400/80 font-mono">Не создано</span>
+              )}
             </div>
-          )}
+
+            {hasMyth ? (
+              <div>
+                <h3 className="font-serif text-xl text-stone-100 mb-1">
+                  «{storyResult.title}»
+                </h3>
+                <p className="text-xs text-stone-400 font-light line-clamp-2">
+                  {storyResult.story}
+                </p>
+              </div>
+            ) : (
+              <button
+                onClick={onOpenMyth}
+                className="text-xs text-[var(--color-antique-gold)] hover:underline flex items-center gap-1 mt-2 cursor-pointer"
+              >
+                <span>Создать Личный миф</span>
+                <ChevronRight size={14} />
+              </button>
+            )}
+          </div>
+
         </div>
 
+        {/* Synthesis Action Button */}
+        {!meetingResult && (
+          <div className="flex flex-col items-center mb-12">
+            <button
+              onClick={handleRunSynthesis}
+              disabled={!isReadyForSynthesis || isLoading}
+              className={`w-full sm:w-auto px-8 py-3.5 rounded-xs uppercase tracking-[0.2em] text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+                isReadyForSynthesis && !isLoading
+                  ? 'bg-[var(--color-antique-gold)] text-gray-950 hover:bg-[#D9B770] cursor-pointer shadow-md'
+                  : 'bg-white/5 text-stone-500 cursor-not-allowed border border-white/[0.06]'
+              }`}
+            >
+              {isLoading ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin text-stone-400" />
+                  <span>Сопоставляем отражения...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} />
+                  <span>Провести Встречу зеркал</span>
+                </>
+              )}
+            </button>
+
+            {errorMessage && (
+              <p className="mt-3 text-xs text-red-300 flex items-center gap-1.5">
+                <AlertCircle size={13} />
+                <span>{errorMessage}</span>
+              </p>
+            )}
+          </div>
+        )}
+
         {/* ========================================================= */}
-        {/* SYNTHESIS RESULT CONTENT */}
+        {/* SYNTHESIS RESULTS DISPLAY */}
         {/* ========================================================= */}
         <AnimatePresence>
           {meetingResult && (
@@ -268,92 +353,129 @@ export function MeetingOfMirrors({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
-              className="w-full space-y-10"
+              className="w-full space-y-8"
             >
-              {/* Summary */}
-              <div className="bg-[#0D121D]/90 border border-[var(--color-antique-gold)]/40 p-8 sm:p-10 rounded-xs">
-                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]">
-                    Итог сопоставления
+              {/* Summary & Confidence Header */}
+              <div className="bg-[#0D121D] border border-[var(--color-border-gold)] p-8 sm:p-10 rounded-xs text-left relative overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
+                    Итог · {meetingResult.parallels.length} {pluralRu(meetingResult.parallels.length, 'резонанс', 'резонанса', 'резонансов')} · {meetingResult.divergences.length} {pluralRu(meetingResult.divergences.length, 'расхождение', 'расхождения', 'расхождений')}
                   </span>
-                  {meetingResult.confidenceNote && (
-                    <span className="text-xs text-stone-400 italic font-light">
-                      {meetingResult.confidenceNote}
-                    </span>
-                  )}
+                  <span className="text-[11px] font-serif italic text-stone-400">
+                    {meetingResult.confidenceNote}
+                  </span>
                 </div>
 
-                <p className="font-serif text-xl sm:text-2xl text-stone-100 leading-relaxed font-light">
+                <p className="font-serif text-xl sm:text-2xl text-stone-100 font-light leading-relaxed mb-6">
                   {meetingResult.summary}
                 </p>
               </div>
 
-              {/* 2-3 Parallels */}
-              {meetingResult.parallels && meetingResult.parallels.length > 0 && (
-                <div className="space-y-4">
+              {/* Zero-resonance state banner if parallels is empty */}
+              {meetingResult.parallels.length === 0 && (
+                <div className="bg-[#0D121D] border border-white/[0.08] p-8 sm:p-10 rounded-xs text-left space-y-4">
                   <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
-                    Точки смыслового пересечения
+                    Нулевая встреча — полноценный результат
+                  </span>
+                  <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
+                    Сильных резонансов не найдено
+                  </h3>
+                  <p className="text-sm text-stone-300 font-light leading-relaxed max-w-2xl">
+                    Две линзы показывают разные плоскости. Система не будет превращать отдельные похожие слова в доказательство связи.
+                  </p>
+                </div>
+              )}
+
+              {/* Parallels Section */}
+              {meetingResult.parallels.length > 0 && (
+                <div className="space-y-4 text-left">
+                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
+                    Смысловые резонансы (где зеркала сходятся)
                   </span>
 
-                  <div className="space-y-4">
-                    {meetingResult.parallels.map((item, idx) => (
-                      <div key={idx} className="bg-[#0D121D]/60 border border-white/[0.08] p-6 sm:p-8 rounded-xs space-y-4">
+                  <div className="grid grid-cols-1 gap-6">
+                    {meetingResult.parallels.map((p, idx) => (
+                      <div 
+                        key={idx}
+                        className="bg-[#0D121D] border border-white/[0.08] p-6 sm:p-8 rounded-xs space-y-4"
+                      >
                         <h4 className="font-serif text-xl sm:text-2xl text-stone-100 font-light">
-                          {item.theme}
+                          {p.theme}
                         </h4>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                          <div className="p-4 bg-[#090D15] border border-amber-500/20 rounded-xs">
-                            <span className="text-[10px] uppercase text-[var(--color-antique-gold)] font-mono block mb-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="bg-[#E8E0D4] border border-[#C8A45D]/35 p-4 rounded-xs text-[#2B241C]">
+                            <span className="text-[9px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Кода:
                             </span>
-                            <p className="text-stone-300 font-light leading-relaxed">{item.codeAnchor}</p>
+                            <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#2B241C]">
+                              {p.codeAnchor}
+                            </p>
                           </div>
-                          <div className="p-4 bg-[#090D15] border border-purple-500/20 rounded-xs">
-                            <span className="text-[10px] uppercase text-purple-300 font-mono block mb-1">
+
+                          <div className="bg-[#EFE5D3] border border-[#B89568]/35 p-4 rounded-xs text-[#282019]">
+                            <span className="text-[9px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Мифа:
                             </span>
-                            <p className="text-stone-300 font-light leading-relaxed">{item.mythAnchor}</p>
+                            <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#282019]">
+                              {p.mythAnchor}
+                            </p>
                           </div>
                         </div>
 
-                        <p className="text-sm text-stone-300 border-t border-white/[0.06] pt-4 font-serif italic leading-relaxed">
-                          «{item.synthesis}»
-                        </p>
+                        <div className="pt-2 border-t border-white/[0.06]">
+                          <p className="text-sm text-stone-300 font-serif italic">
+                            «{p.synthesis}»
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Divergence / Contrast */}
-              {meetingResult.divergences && meetingResult.divergences.length > 0 && (
-                <div className="space-y-4">
-                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-stone-400 block">
+              {/* Divergences Section */}
+              {meetingResult.divergences.length > 0 && (
+                <div className="space-y-4 text-left">
+                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                     Различия ракурсов (где зеркала расходятся)
                   </span>
 
-                  <div className="space-y-4">
-                    {meetingResult.divergences.map((div, idx) => (
-                      <div key={idx} className="bg-[#0D121D]/60 border border-white/[0.08] p-6 sm:p-8 rounded-xs space-y-3">
-                        <h4 className="font-serif text-lg text-stone-200 font-light">
-                          {div.theme}
+                  <div className="grid grid-cols-1 gap-6">
+                    {meetingResult.divergences.map((d, idx) => (
+                      <div 
+                        key={idx}
+                        className="bg-[#0D121D] border border-white/[0.08] p-6 sm:p-8 rounded-xs space-y-4"
+                      >
+                        <h4 className="font-serif text-xl sm:text-2xl text-stone-100 font-light">
+                          {d.theme}
                         </h4>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                          <div className="p-3 bg-[#090D15] border border-white/[0.06] text-stone-400 rounded-xs">
-                            <span className="text-[10px] uppercase text-stone-500 font-mono block mb-1">В Коде:</span>
-                            {div.codeAspect}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="bg-[#E8E0D4] border border-[#C8A45D]/35 p-4 rounded-xs text-[#2B241C]">
+                            <span className="text-[9px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
+                              Линза Кода:
+                            </span>
+                            <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#2B241C]">
+                              {d.codeAspect}
+                            </p>
                           </div>
-                          <div className="p-3 bg-[#090D15] border border-white/[0.06] text-stone-400 rounded-xs">
-                            <span className="text-[10px] uppercase text-stone-500 font-mono block mb-1">В Мифе:</span>
-                            {div.mythAspect}
+
+                          <div className="bg-[#EFE5D3] border border-[#B89568]/35 p-4 rounded-xs text-[#282019]">
+                            <span className="text-[9px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
+                              Линза Мифа:
+                            </span>
+                            <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#282019]">
+                              {d.mythAspect}
+                            </p>
                           </div>
                         </div>
 
-                        <p className="text-xs text-stone-400 italic font-light pt-1">
-                          {div.reflection}
-                        </p>
+                        <div className="pt-2 border-t border-white/[0.06]">
+                          <p className="text-sm text-stone-300 font-serif italic">
+                            «{d.reflection}»
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -361,7 +483,7 @@ export function MeetingOfMirrors({
               )}
 
               {/* Albert's Synthesis Insight & Living Question */}
-              <div className="bg-[#0D121D]/90 border border-white/[0.08] p-8 sm:p-10 rounded-xs space-y-6">
+              <div className="bg-[#0D121D] border border-white/[0.08] p-8 sm:p-10 rounded-xs space-y-6 text-left">
                 <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                   Взгляд Альберта Вяземского
                 </span>
@@ -380,50 +502,103 @@ export function MeetingOfMirrors({
                   <textarea
                     rows={2}
                     value={userNote}
-                    onChange={(e) => setUserNote(e.target.value)}
+                    onChange={(e) => handleUserNoteChange(e.target.value)}
                     placeholder="Запишите мысли или инсайты от этой встречи..."
                     className="w-full bg-[#080C14] border-0 border-b border-white/20 text-sm text-stone-200 py-3 outline-none focus:border-[var(--color-antique-gold)] resize-none font-light"
                   />
                 </div>
               </div>
 
-              {/* TELEGRAM CTA: ОБСУДИТЬ С АЛЬБЕРТОМ В TELEGRAM */}
-              <div className="bg-[#0D121D]/80 border border-[var(--color-antique-gold)]/40 p-8 sm:p-10 rounded-xs text-center space-y-5">
+              {/* ALBERT CONTINUATION CTA */}
+              <div className="bg-[#0D121D] border border-[var(--color-antique-gold)]/40 p-8 sm:p-10 rounded-xs text-center space-y-5">
                 <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                   Продолжение исследования
                 </span>
                 
                 <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
-                  Обсудить с Альбертом в Telegram
+                  Исследовать синтез с Альбертом
                 </h3>
                 
-                <p className="text-xs sm:text-sm text-stone-400 font-light max-w-md mx-auto leading-relaxed">
-                  Проводник Альберт Вяземский доступен в Telegram для сохранения контекста, разбора ваших чисел и глубокого диалога.
+                <p className="text-xs sm:text-sm text-stone-300 font-light max-w-lg mx-auto leading-relaxed">
+                  Задайте вопрос Альберту прямо на сайте: он удерживает структуру вашего Кода, образы Мифа и найденные параллели.
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-2">
-                  <a
-                    href="https://t.me/digitalcodesystem_bot" 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 shadow-md cursor-pointer"
-                  >
-                    <Send size={14} />
-                    <span>Обсудить в Telegram</span>
-                  </a>
-
                   <button
                     onClick={() => {
                       setAlbertTopic(`Обсуждение синтеза: Душа ${codeResult?.soul}, Путь ${codeResult?.path}, Миф "${storyResult?.title}".`);
                       setIsAlbertOpen(true);
                     }}
-                    className="px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center gap-2 cursor-pointer"
+                    className="w-full sm:w-auto px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   >
                     <MessageSquare size={14} />
                     <span>Диалог на сайте</span>
                   </button>
+
+                  <a
+                    href="https://t.me/digitalcodesystem_bot" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Send size={14} />
+                    <span>Открыть в Telegram</span>
+                  </a>
                 </div>
               </div>
+
+              {/* LOCAL PERSISTENCE BRIDGE (MY MIRROR V0) */}
+              <div className="bg-[#0D121D]/90 border border-white/[0.08] p-6 sm:p-8 rounded-xs space-y-4 text-left">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
+                  <div className="flex items-center gap-2">
+                    <Bookmark size={14} className="text-[var(--color-antique-gold)]" />
+                    <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]">
+                      Моё зеркало · Локальное сохранение
+                    </span>
+                  </div>
+                  {savedAt && (
+                    <span className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5">
+                      <Check size={12} />
+                      <span>Сохранено в этом браузере</span>
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="font-serif text-lg sm:text-xl text-stone-100 font-light mb-1">
+                    {savedAt ? 'Зеркало сохранено на этом устройстве' : 'Сохранить в «Моё зеркало»'}
+                  </h4>
+                  <p className="text-xs text-stone-400 font-light leading-relaxed max-w-xl">
+                    Код, ваши 4 ответа, Личный миф и Встреча сохранятся только в этом браузере на этом устройстве. Нового серверного хранения не создаётся.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <button
+                    onClick={handleSave}
+                    className={`px-5 py-2.5 rounded-xs uppercase tracking-[0.2em] text-[11px] font-medium transition-all flex items-center gap-2 cursor-pointer ${
+                      savedAt
+                        ? 'bg-white/10 text-stone-200 hover:bg-white/15 border border-white/20'
+                        : 'border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)]'
+                    }`}
+                  >
+                    <Bookmark size={13} />
+                    <span>{savedAt ? 'Обновить сохранённое' : 'Сохранить на этом устройстве'}</span>
+                  </button>
+
+                  {savedAt && (
+                    <button
+                      onClick={handleDelete}
+                      className="px-4 py-2.5 text-stone-400 hover:text-red-300 uppercase tracking-[0.18em] text-[10px] font-mono transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Trash2 size={12} />
+                      <span>Удалить сохранённое</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <TesterFeedbackWidget />
 
             </motion.div>
           )}
@@ -436,6 +611,8 @@ export function MeetingOfMirrors({
         isOpen={isAlbertOpen}
         onClose={() => setIsAlbertOpen(false)}
         calc={codeResult}
+        storyResult={storyResult}
+        meetingResult={meetingResult}
         initialTopic={albertTopic}
         theme="dark"
       />

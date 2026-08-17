@@ -1,8 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
+import { Bookmark, Trash2, ChevronRight } from 'lucide-react';
 import { Orb } from './Orb';
 import { PantheonModal } from './PantheonModal';
 import { CalculationResult, ApiResponse } from '../types';
+import { validateBirthDate } from '../services/birthDate';
+import { MyMirrorSnapshotV1 } from '../services/myMirrorStorage';
+import mirrorHero from '../assets/mirror-hero.jpg';
 
 interface LabEntryViewProps {
   onSelectMyth?: () => void;
@@ -14,6 +18,18 @@ interface LabEntryViewProps {
   hasMythResult?: boolean;
   codeResult?: CalculationResult | null;
   storyResult?: ApiResponse['story_result'] | null;
+  savedSnapshot?: MyMirrorSnapshotV1 | null;
+  onRestoreSavedMirror?: () => void;
+  onDeleteSavedMirror?: () => void;
+}
+
+function pluralRu(value: number, one: string, few: string, many: string) {
+  const mod100 = value % 100;
+  const mod10 = value % 10;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
 }
 
 export function LabEntryView({
@@ -26,6 +42,9 @@ export function LabEntryView({
   hasMythResult,
   codeResult,
   storyResult,
+  savedSnapshot,
+  onRestoreSavedMirror,
+  onDeleteSavedMirror,
 }: LabEntryViewProps) {
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
@@ -82,16 +101,13 @@ export function LabEntryView({
 
   const handleCodeSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const d = parseInt(day, 10);
-    const m = parseInt(month, 10);
-    const y = parseInt(year, 10);
+    const validation = validateBirthDate(day, month, year);
 
-    if (day.length === 2 && month.length === 2 && year.length === 4 && d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2099) {
-      const fullDate = `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`;
+    if (validation.valid) {
       if (onSelectCode) {
-        onSelectCode(fullDate);
+        onSelectCode(validation.formatted);
       } else if (onSelectMode) {
-        onSelectMode('code', fullDate);
+        onSelectMode('code', validation.formatted);
       }
     } else {
       if (!day || !month || !year) {
@@ -99,7 +115,7 @@ export function LabEntryView({
         if (onSelectCode) onSelectCode();
         else if (onSelectMode) onSelectMode('code');
       } else {
-        setDateError('Проверьте день, месяц и год (ДД.ММ.ГГГГ)');
+        setDateError('message' in validation ? validation.message : 'Проверьте дату рождения');
       }
     }
   };
@@ -120,10 +136,15 @@ export function LabEntryView({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] py-16 px-4 sm:px-6 lg:px-8 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4 sm:px-6 lg:px-8 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
+      <div className="absolute inset-x-0 top-0 h-[900px] overflow-hidden pointer-events-none" aria-hidden="true">
+        <img src={mirrorHero} alt="" className="h-full w-full object-cover opacity-55" />
+        <div className="absolute inset-0 bg-[radial-gradient(70%_58%_at_50%_38%,transparent_0%,rgba(9,13,21,0.3)_48%,#090D15_92%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-[#090D15]" />
+      </div>
       
       {/* Central Content */}
-      <div className="w-full max-w-5xl flex flex-col items-center relative z-10 my-auto text-center space-y-24">
+      <div className="w-full max-w-5xl flex flex-col items-center relative z-10 my-auto text-center space-y-24 pb-24">
         
         {/* ========================================================= */}
         {/* 1. HERO HEADER */}
@@ -132,10 +153,10 @@ export function LabEntryView({
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9 }}
-          className="space-y-6 max-w-3xl mx-auto"
+          className="min-h-[78svh] flex flex-col items-center justify-center space-y-6 max-w-3xl mx-auto pt-12"
         >
           <span className="text-[11px] uppercase tracking-[0.35em] text-[var(--color-antique-gold)] font-mono block opacity-90">
-            Интерактивное зеркало человека
+            Личная коллекция отражений
           </span>
 
           <h1 className="font-serif text-6xl sm:text-7xl lg:text-[88px] text-[var(--color-text-primary)] font-light tracking-tight leading-[0.95]">
@@ -143,14 +164,80 @@ export function LabEntryView({
           </h1>
 
           <p className="text-[var(--color-text-secondary)] font-light text-[17px] sm:text-[18px] max-w-2xl mx-auto leading-[1.7] pt-2">
-            У каждого человека есть свой числовой рисунок. Два независимых пути к пониманию собственной природы: через 4 вопроса о вашем восприятии или через дату рождения.
+            Иногда себя легче увидеть не напрямую. Здесь два независимых зеркала: одно возникает из даты рождения, другое — из ваших собственных образов.
           </p>
+
+          <a href="#collection" className="mt-7 inline-flex min-h-12 items-center justify-center border border-[var(--color-border-gold)] bg-[#111723]/80 px-9 py-3 text-[11px] uppercase tracking-[0.28em] text-[var(--color-antique-gold)] transition-colors hover:bg-[#18202e]">
+            Войти в коллекцию
+          </a>
+          <p className="text-xs text-[var(--color-text-muted)]">Начните с любого зеркала. Встреча откроется только после обоих.</p>
         </motion.div>
 
         {/* ========================================================= */}
         {/* 2. THE TWO GATES (ДВЕ НЕЗАВИСИМЫЕ ДВЕРИ) */}
         {/* ========================================================= */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <section id="collection" className="w-full max-w-4xl mx-auto scroll-mt-24">
+          <div className="mx-auto mb-12 max-w-2xl text-center">
+            <span className="text-[10px] uppercase tracking-[0.32em] text-[var(--color-antique-gold)] font-mono">Коллекция зеркал</span>
+            <h2 className="mt-5 font-serif text-4xl sm:text-5xl font-light">Два самостоятельных взгляда</h2>
+            <p className="mt-4 text-sm leading-relaxed text-[var(--color-text-secondary)]">Система не смешивает дату с ответами и не придумывает сходство заранее.</p>
+          </div>
+
+          {/* ========================================================= */}
+          {/* SAVED LOCAL MIRROR ENTRY (MY MIRROR V0) */}
+          {/* ========================================================= */}
+          {savedSnapshot && (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7 }}
+              className="w-full mb-10 p-6 sm:p-8 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)] shadow-[0_0_30px_rgba(200,164,93,0.1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)] shrink-0 mt-0.5">
+                  <Bookmark size={20} className="text-[var(--color-antique-gold)]" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
+                      Моё зеркало · Сохранено локально
+                    </span>
+                    <span className="text-[10px] font-mono text-stone-400">
+                      ({new Date(savedSnapshot.savedAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })})
+                    </span>
+                  </div>
+                  <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
+                    Сохранённая встреча зеркал
+                  </h3>
+                  <p className="text-xs text-stone-300 font-light leading-relaxed max-w-lg">
+                    Код {savedSnapshot.codeDate} · Миф «{savedSnapshot.storyResult.title}» · {savedSnapshot.meetingResult.parallels.length} {pluralRu(savedSnapshot.meetingResult.parallels.length, 'резонанс', 'резонанса', 'резонансов')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
+                <button
+                  onClick={onRestoreSavedMirror}
+                  className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                >
+                  <span>Открыть сохранённое</span>
+                  <ChevronRight size={14} />
+                </button>
+                {onDeleteSavedMirror && (
+                  <button
+                    onClick={onDeleteSavedMirror}
+                    title="Удалить сохранённое зеркало из браузера"
+                    className="px-3 py-3 text-stone-400 hover:text-red-300 uppercase tracking-widest text-[10px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 size={13} />
+                    <span className="sm:hidden">Удалить сохранённое</span>
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8">
           
           {/* DOOR 1: PERSONAL MYTH */}
           <motion.div
@@ -158,15 +245,23 @@ export function LabEntryView({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.15 }}
             onClick={handleMyth}
-            className="group relative flex flex-col items-center justify-between p-10 sm:p-12 rounded-xs bg-[var(--color-bg-surface)] backdrop-blur-md border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-700 cursor-pointer text-center"
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                handleMyth();
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            className="group relative flex flex-col items-center justify-between p-10 sm:p-12 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 cursor-pointer text-center"
           >
             <div className="flex flex-col items-center w-full">
               <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
-                Дверь 1 · Личный миф
+                Независимое зеркало · Личный миф
               </span>
 
               <div className="my-3 transition-transform duration-700 group-hover:scale-105">
-                <Orb number={7} size={150} glow={true} />
+                <Orb number={7} size={150} showNumber={false} glow={true} />
               </div>
 
               <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-8 mb-3">
@@ -190,11 +285,11 @@ export function LabEntryView({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.25 }}
-            className="group relative flex flex-col items-center justify-between p-10 sm:p-12 rounded-xs bg-[var(--color-bg-surface)] backdrop-blur-md border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-700 text-center"
+            className="group relative flex flex-col items-center justify-between p-10 sm:p-12 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 text-center"
           >
             <div className="flex flex-col items-center w-full">
               <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
-                Дверь 2 · Цифровой код
+                Независимое зеркало · Цифровой код
               </span>
 
               <div className="my-3 transition-transform duration-700 group-hover:scale-105">
@@ -278,7 +373,8 @@ export function LabEntryView({
             </div>
           </motion.div>
 
-        </div>
+          </div>
+        </section>
 
         {/* ========================================================= */}
         {/* 3. SYNTHESIS BANNER (MEETING OF MIRRORS) */}
