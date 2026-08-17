@@ -26,14 +26,10 @@ export function determineKeyInsight(soul: number, path: number, result: number):
 
 export function generateFirstMirror(calc: CalculationResult): FirstMirror {
   const soul = numberKnowledge[calc.soul] || numberKnowledge[1];
-  const pathNum = calc.path === 11 ? 11 : calc.path;
-  const path = numberKnowledge[pathNum] || numberKnowledge[1];
-  const expressionNum = calc.expression === 11 ? 11 : calc.expression;
-  const expression = numberKnowledge[expressionNum] || numberKnowledge[1];
-  const directionNum = calc.direction === 11 ? 11 : calc.direction;
-  const direction = numberKnowledge[directionNum] || numberKnowledge[1];
-  const resultNum = calc.result === 11 ? 11 : calc.result;
-  const result = numberKnowledge[resultNum] || numberKnowledge[1];
+  const path = numberKnowledge[calc.path] || numberKnowledge[1];
+  const expression = numberKnowledge[calc.expression] || numberKnowledge[1];
+  const direction = numberKnowledge[calc.direction] || numberKnowledge[1];
+  const result = numberKnowledge[calc.result] || numberKnowledge[1];
   
   const compoundPath = calc.pathComposite && calc.pathComposite.includes('/') 
     ? getCompoundKnowledge(calc.pathComposite.split('/')[0])
