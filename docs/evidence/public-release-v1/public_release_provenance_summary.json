@@ -1,0 +1,80 @@
+{
+  "testStartTime": "2026-08-17T15:50:43.381Z",
+  "targetUrl": "https://zerkalosebya.ru",
+  "healthData": {
+    "status": "ok",
+    "service": "zerkalo",
+    "version": "1.0.0-lab",
+    "models": {
+      "personalMyth": "deepseek-v4-pro",
+      "meeting": "deepseek-v4-pro",
+      "albert": "deepseek-v4-pro"
+    },
+    "google_production_dependency": "none"
+  },
+  "readyData": {
+    "status": "ready",
+    "service": "zerkalo",
+    "providers": {
+      "personal_myth": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "writer": "personal-myth-v1.1-rc"
+      },
+      "meeting": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro"
+      },
+      "albert": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro"
+      }
+    },
+    "google_production_dependency": "none"
+  },
+  "recordedProvenance": {
+    "myth": {
+      "status": "ok",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "title": "Маяк и гроза",
+      "mainImage": "Маяк на скале, зажигающий свет в надвигающейся грозе, — образ внутренней структуры, которая не противостоит стихии, а вступает с ней в диалог."
+    },
+    "meeting": {
+      "status": "ok",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "summary": "Встреча двух зеркал: одно — математическая структура даты, другое — образная ткань ваших собственных слов. Они не спорят, а подсвечивают друг друга, как каменный маяк и его отражение в тёмной воде.",
+      "parallelsCount": 4,
+      "divergencesCount": 2
+    },
+    "albert": {
+      "status": "ok",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "contractValid": true,
+      "wordCount": 156,
+      "messagePreview": "Главная точка опоры между вашим кодом и мифом — не в совпадении качеств, а в общ"
+    },
+    "restoredAlbert": {
+      "status": "ok",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "contractValid": true,
+      "wordCount": 159,
+      "hasMeetingSummaryInContext": true,
+      "hasCodeAnchorsInContext": true,
+      "hasMythAnchorsInContext": true,
+      "messagePreview": "Практическое применение этих выводов возможно через несколько простых шагов, кот"
+    }
+  },
+  "consoleErrors": [
+    "[ConsoleError] Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+  ],
+  "unexpectedErrors": [],
+  "consoleErrorClassification": "NO_UNEXPECTED_PRODUCT_CONSOLE_ERRORS (raw count: 1)",
+  "productionLogs": "Aug 08 00:43:47 ssinslmyje systemd[1]: Stopping zerkalo.service - Zerkalo Digital Code Web App...\nAug 08 00:43:47 ssinslmyje systemd[1]: zerkalo.service: Deactivated successfully.\nAug 08 00:43:47 ssinslmyje systemd[1]: Stopped zerkalo.service - Zerkalo Digital Code Web App.\nAug 08 00:43:47 ssinslmyje systemd[1]: zerkalo.service: Consumed 2.468s CPU time.\nAug 08 00:43:47 ssinslmyje systemd[1]: Started zerkalo.service - Zerkalo Digital Code Web App.\nAug 08 00:43:49 ssinslmyje start-zerkalo.sh[1875]: Server running on http://localhost:3001\nAug 08 00:44:24 ssinslmyje systemd[1]: Stopping zerkalo.service - Zerkalo Digital Code Web App...\nAug 08 00:44:24 ssinslmyje systemd[1]: zerkalo.service: Deactivated successfully.\nAug 08 00:44:24 ssinslmyje systemd[1]: Stopped zerkalo.service - Zerkalo Digital Code Web App.\nAug 08 00:44:24 ssinslmyje systemd[1]: zerkalo.service: Consumed 2.514s CPU time.\nAug 08 00:44:24 ssinslmyje systemd[1]: Started zerkalo.service - Zerkalo Digital Code Web App.\nAug 08 00:44:26 ssinslmyje start-zerkalo.sh[1987]: Server running on http://localhost:3001\nAug 08 00:50:25 ssinslmyje systemd[1]: Stopping zerkalo.service - Zerkalo Digital Code Web App...\nAug 08 00:50:25 ssinslmyje systemd[1]: zerkalo.service: Deactivated successfully.\nAug 08 00:50:25 ssinslmyje systemd[1]: Stopped zerkalo.service - Zerkalo Digital Code Web App.\nAug 08 00:50:25 ssinslmyje systemd[1]: zerkalo.service: Consumed 2.637s CPU time.\nAug 08 00:50:25 ssinslmyje systemd[1]: Started zerkalo.service - Zerkalo Digital Code Web App.\nAug 08 00:50:27 ssinslmyje start-zerkalo.sh[2209]: Server running on http://localhost:3001\nAug 17 11:59:15 ssinslmyje systemd[1]: Stopping zerkalo.service - Zerkalo Digital Code Web App...\nAug 17 11:59:15 ssinslmyje systemd[1]: zerkalo.service: Deactivated successfully.\nAug 17 11:59:15 ssinslmyje systemd[1]: Stopped zerkalo.service - Zerkalo Digital Code Web App.\nAug 17 11:59:15 ssinslmyje systemd[1]: zerkalo.service: Consumed 11.760s CPU time.\nAug 17 11:59:16 ssinslmyje systemd[1]: Started zerkalo.service - Zerkalo Digital Code Web App.\nAug 17 11:59:16 ssinslmyje start-zerkalo.sh[111018]: grep: /etc/zerkalo/production.env: Permission denied\nAug 17 11:59:16 ssinslmyje start-zerkalo.sh[111010]: declare -x INVOCATION_ID=\"07c19ae40d4146edbb384149cf47ad42\"\nAug 17 11:59:16 ssinslmyje start-zerkalo.sh[111010]: declare -x JOURNAL_STREAM=\"8:1713173\"\nAug 17 11:59:16 ssinslmyje start-zerkalo.sh[111010]: declare -x LANG=\"en_US.UTF-8\"\nAug 17 11:59:16 ssinslmyje start-zerkalo.sh[111010]: declare -x OLDPWD=\"/\"\nAug 17 11:59:16 ssinslmyje start-zerkalo.sh[111010]: declare -x PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"\nAug 17 11:59:16 ssinslmyje start-zerkalo.sh[111010]: declare -x PWD=\"/opt/zerkalo-releases/current\"\nAug 17 11:59:16 ssinslmyje start-zerkalo.sh[111010]: declare -x SHLVL=\"1\"\nAug 17 11:59:16 ssinslmyje start-zerkalo.sh[111010]: declare -x SYSTEMD_EXEC_PID=\"111010\"\nAug 17 11:59:18 ssinslmyje start-zerkalo.sh[111044]: Server running on http://localhost:3000\nAug 17 11:59:28 ssinslmyje systemd[1]: Stopping zerkalo.service - Zerkalo Digital Code Web App...\nAug 17 11:59:28 ssinslmyje systemd[1]: zerkalo.service: Deactivated successfully.\nAug 17 11:59:28 ssinslmyje systemd[1]: Stopped zerkalo.service - Zerkalo Digital Code Web App.\nAug 17 11:59:28 ssinslmyje systemd[1]: zerkalo.service: Consumed 2.865s CPU time.\nAug 17 11:59:28 ssinslmyje systemd[1]: Started zerkalo.service - Zerkalo Digital Code Web App.\nAug 17 11:59:29 ssinslmyje start-zerkalo.sh[111110]: Server running on http://localhost:3001\nAug 17 12:00:42 ssinslmyje start-zerkalo.sh[111110]: [Forbidden Language Matched]: [ 'предсказ\\\\w*' ]\nAug 17 12:00:42 ssinslmyje start-zerkalo.sh[111110]: [PersonalMyth Quality Check] attempt 1 failed with blockers: [ 'forbidden_public_language', 'template_fingerprint' ]\nAug 17 12:01:49 ssinslmyje start-zerkalo.sh[111110]: [Albert Dialogue Validation] Initial response failed format checks: [ 'multiple_questions' ]\nAug 17 12:31:14 ssinslmyje start-zerkalo.sh[111110]: [Albert Dialogue Validation] Initial response failed format checks: [ 'multiple_questions' ]\nAug 17 15:52:06 ssinslmyje start-zerkalo.sh[111110]: [Albert Dialogue Validation] Initial response failed format checks: [ 'multiple_questions' ]\nAug 17 15:52:10 ssinslmyje start-zerkalo.sh[111110]: [Albert Dialogue Validation] Repair attempt also failed format checks: [ 'missing_question', 'does_not_end_with_question' ]\nAug 17 15:52:10 ssinslmyje start-zerkalo.sh[111110]: Developer Log: Albert dialogue error: albert_contract_violation Error: albert_contract_violation:missing_question|does_not_end_with_question\nAug 17 15:52:10 ssinslmyje start-zerkalo.sh[111110]:     at generateAlbertDialogue (/opt/zerkalo-releases/f4a73769893bdad3ff47d02271cf4e547dd0fbbf/server/albert.ts:246:9)\nAug 17 15:52:10 ssinslmyje start-zerkalo.sh[111110]:     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\nAug 17 15:52:10 ssinslmyje start-zerkalo.sh[111110]:     at async albertHandler (/opt/zerkalo-releases/f4a73769893bdad3ff47d02271cf4e547dd0fbbf/server.ts:297:27)\nAug 17 15:52:19 ssinslmyje start-zerkalo.sh[111110]: [Albert Dialogue Validation] Initial response failed format checks: [ 'multiple_questions' ]\n"
+}
