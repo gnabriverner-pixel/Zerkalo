@@ -150,6 +150,26 @@ async function runRegressionProof() {
     await savedBadge.waitFor({ state: "visible", timeout: 5000 });
     console.log("  ✓ Save badge is truthful (active Meeting A matches saved snapshot)");
 
+    // 2b. Edit Note -> Save badge must immediately become unsaved
+    console.log("[2b] Editing user note without saving -> badge must become unsaved...");
+    const noteTextarea = page.locator('textarea[placeholder*="заметки"], textarea').first();
+    await noteTextarea.scrollIntoViewIfNeeded();
+    await noteTextarea.fill("Личная заметка A (отредактирована, но не сохранена)");
+    await page.waitForTimeout(400);
+
+    const savedBadgeCountAfterEdit = await page.locator('text=Сохранено в этом браузере').count();
+    if (savedBadgeCountAfterEdit > 0) {
+      throw new Error("Save badge stayed visible after modifying user note!");
+    }
+    console.log("  ✓ Save badge correctly became unsaved upon note edit");
+
+    // 2c. Explicit Save -> Save badge becomes saved again
+    console.log("[2c] Clicking Save/Update with new note -> badge becomes saved again...");
+    const updateBtn = page.locator('button:has-text("Сохранить на этом устройстве"), button:has-text("Обновить сохранённое")').first();
+    await updateBtn.click();
+    await page.waitForSelector('text=Сохранено в этом браузере', { timeout: 5000 });
+    console.log("  ✓ Save badge restored to saved state after explicit save");
+
     // 3. User calculates a NEW code with a different DOB
     console.log("[3] Calculating new Code with different DOB (05.05.1985)...");
     const navCode = page.locator('nav button:has-text("Код")').first();
@@ -221,6 +241,30 @@ async function runRegressionProof() {
     await restoreAgainBtn.click();
     await page.waitForSelector('text=Meeting A', { timeout: 10000 });
     console.log("  ✓ Meeting A restored cleanly again from preserved snapshot");
+
+    // 7. Inject snapshot WITHOUT note and restore when active session has note
+    console.log("[7] Testing restore of snapshot without note -> active note must be cleared...");
+    const sampleSnapshotNoNote = {
+      ...sampleSnapshotA,
+      meetingUserNote: undefined
+    };
+    await page.evaluate((snap) => {
+      localStorage.setItem("zerkalo.myMirror.v1", JSON.stringify(snap));
+    }, sampleSnapshotNoNote);
+
+    await navLogo.click({ force: true });
+    await page.waitForTimeout(600);
+
+    const restoreNoNoteBtn = page.locator('button:has-text("Открыть сохранённое")').first();
+    await restoreNoNoteBtn.scrollIntoViewIfNeeded();
+    await restoreNoNoteBtn.click();
+    await page.waitForSelector('text=Meeting A', { timeout: 10000 });
+
+    const noteVal = await page.locator('textarea[placeholder*="заметки"], textarea').first().inputValue();
+    if (noteVal !== "") {
+      throw new Error(`Expected note to be empty string after restoring note-less snapshot, but found: "${noteVal}"`);
+    }
+    console.log("  ✓ Note correctly cleared to empty string on restoring snapshot without note");
 
     console.log("\n====================================================================");
     console.log("=== ALL SESSION INTEGRITY REGRESSION PROOFS PASSED SUCCESSFULLY ===");

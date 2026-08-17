@@ -45,9 +45,7 @@ export default function App() {
     setStoryInputs(snapshot.storyInputs);
     setStoryResult(snapshot.storyResult);
     setMeetingResult(snapshot.meetingResult);
-    if (snapshot.meetingUserNote) {
-      setMeetingUserNote(snapshot.meetingUserNote);
-    }
+    setMeetingUserNote(snapshot.meetingUserNote ?? '');
     setMode('meeting');
   };
 

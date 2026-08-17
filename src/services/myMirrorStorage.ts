@@ -163,20 +163,30 @@ export function hasMyMirrorSnapshot(): boolean {
   return loadMyMirrorSnapshot() !== null;
 }
 
+export interface CurrentSessionPayload {
+  codeDate?: string;
+  codeResult?: CalculationResult | null;
+  firstMirror?: FirstMirror | null;
+  storyInputs?: StoryInputs | null;
+  storyResult?: ApiResponse['story_result'] | null;
+  meetingResult?: MeetingOfMirrorsResult | null;
+  meetingUserNote?: string;
+}
+
 /**
  * Compares a loaded V1 snapshot against the currently active session payload.
  * Returns true if the snapshot represents the exact current session, false otherwise.
  */
 export function isSnapshotMatchingCurrentSession(
   snapshot: MyMirrorSnapshotV1 | null,
-  current: {
-    codeDate?: string;
-    codeResult?: CalculationResult | null;
-    storyResult?: ApiResponse['story_result'] | null;
-    meetingResult?: MeetingOfMirrorsResult | null;
-  }
+  current: CurrentSessionPayload
 ): boolean {
-  if (!snapshot || !current.codeResult || !current.storyResult || !current.meetingResult) {
+  if (
+    !snapshot ||
+    !current.codeResult ||
+    !current.storyResult ||
+    !current.meetingResult
+  ) {
     return false;
   }
 
@@ -194,7 +204,30 @@ export function isSnapshotMatchingCurrentSession(
     return false;
   }
 
-  // 2. Myth match
+  // 2. FirstMirror match (if provided in current session)
+  if (current.firstMirror) {
+    if (
+      snapshot.firstMirror.title !== current.firstMirror.title ||
+      snapshot.firstMirror.keyInsight !== current.firstMirror.keyInsight ||
+      snapshot.firstMirror.practicalStep !== current.firstMirror.practicalStep
+    ) {
+      return false;
+    }
+  }
+
+  // 3. Story inputs match (if provided in current session)
+  if (current.storyInputs) {
+    if (
+      snapshot.storyInputs.q1 !== current.storyInputs.q1 ||
+      snapshot.storyInputs.q2 !== current.storyInputs.q2 ||
+      snapshot.storyInputs.q3 !== current.storyInputs.q3 ||
+      snapshot.storyInputs.q4 !== current.storyInputs.q4
+    ) {
+      return false;
+    }
+  }
+
+  // 4. Myth match
   if (
     snapshot.storyResult.title !== current.storyResult.title ||
     snapshot.storyResult.story !== current.storyResult.story
@@ -202,13 +235,51 @@ export function isSnapshotMatchingCurrentSession(
     return false;
   }
 
-  // 3. Meeting match
+  // 5. Meeting result match (exact fields)
   if (
     snapshot.meetingResult.summary !== current.meetingResult.summary ||
+    snapshot.meetingResult.confidenceNote !== current.meetingResult.confidenceNote ||
     snapshot.meetingResult.reflectiveQuestion !== current.meetingResult.reflectiveQuestion ||
+    snapshot.meetingResult.albertInsight !== current.meetingResult.albertInsight ||
+    snapshot.meetingResult.hasStrongParallels !== current.meetingResult.hasStrongParallels ||
     snapshot.meetingResult.parallels.length !== current.meetingResult.parallels.length ||
     snapshot.meetingResult.divergences.length !== current.meetingResult.divergences.length
   ) {
+    return false;
+  }
+
+  // Check parallels items
+  for (let i = 0; i < snapshot.meetingResult.parallels.length; i++) {
+    const p1 = snapshot.meetingResult.parallels[i];
+    const p2 = current.meetingResult.parallels[i];
+    if (
+      p1.theme !== p2.theme ||
+      p1.codeAnchor !== p2.codeAnchor ||
+      p1.mythAnchor !== p2.mythAnchor ||
+      p1.synthesis !== p2.synthesis
+    ) {
+      return false;
+    }
+  }
+
+  // Check divergences items
+  for (let i = 0; i < snapshot.meetingResult.divergences.length; i++) {
+    const d1 = snapshot.meetingResult.divergences[i];
+    const d2 = current.meetingResult.divergences[i];
+    if (
+      d1.theme !== d2.theme ||
+      d1.codeAspect !== d2.codeAspect ||
+      d1.mythAspect !== d2.mythAspect ||
+      d1.reflection !== d2.reflection
+    ) {
+      return false;
+    }
+  }
+
+  // 6. User note match (normalize undefined / empty string)
+  const snapshotNote = (snapshot.meetingUserNote || '').trim();
+  const currentNote = (current.meetingUserNote || '').trim();
+  if (snapshotNote !== currentNote) {
     return false;
   }
 

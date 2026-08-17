@@ -95,7 +95,7 @@ const sampleInputsA: StoryInputs = {
   q4: 'спокойная глубина'
 };
 
-describe('Session Integrity & Invalidation Contract (Issue #20 Correction)', () => {
+describe('Session Integrity & Invalidation Contract (Issue #20 Corrections)', () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
@@ -138,7 +138,7 @@ describe('Session Integrity & Invalidation Contract (Issue #20 Correction)', () 
       }
     }
 
-    // Restore from saved snapshot
+    // Restore from saved snapshot (unconditionally replaces note)
     restoreSnapshot() {
       const snapshot = loadMyMirrorSnapshot();
       if (!snapshot) return;
@@ -148,7 +148,7 @@ describe('Session Integrity & Invalidation Contract (Issue #20 Correction)', () 
       this.storyInputs = snapshot.storyInputs;
       this.storyResult = snapshot.storyResult;
       this.meetingResult = snapshot.meetingResult;
-      if (snapshot.meetingUserNote) this.meetingUserNote = snapshot.meetingUserNote;
+      this.meetingUserNote = snapshot.meetingUserNote ?? '';
     }
   }
 
@@ -223,14 +223,11 @@ describe('Session Integrity & Invalidation Contract (Issue #20 Correction)', () 
     expect(saved).toBe(true);
 
     const session = new AppSessionState();
-    // Simulate user entering a different DOB and calculating a new code
     session.onSelectModeWithDate('02.02.1995');
     session.onCodeCalculated('02.02.1995', { ...sampleCalculationA, soul: 2 }, null);
 
-    // Assert in-memory meeting is invalidated
     expect(session.meetingResult).toBeNull();
 
-    // Assert localStorage snapshot was NOT deleted or corrupted
     const stored = loadMyMirrorSnapshot();
     expect(stored).not.toBeNull();
     expect(stored?.codeDate).toBe('15.08.1990');
@@ -255,7 +252,6 @@ describe('Session Integrity & Invalidation Contract (Issue #20 Correction)', () 
     expect(session.codeDate).toBe('05.05.1980');
     expect(session.meetingResult).toBeNull();
 
-    // User clicks "Открыть сохранённое"
     session.restoreSnapshot();
 
     expect(session.codeDate).toBe('15.08.1990');
@@ -266,8 +262,111 @@ describe('Session Integrity & Invalidation Contract (Issue #20 Correction)', () 
     expect(session.meetingUserNote).toBe('Личная заметка A');
   });
 
-  it('6. current-session save badge is false for a different active Meeting even when another snapshot exists', () => {
-    // Save Meeting A to localStorage
+  it('6. current note B + restore snapshot A with no note -> restored note is empty string, never B', () => {
+    // Snapshot A without any user note
+    saveMyMirrorSnapshot({
+      codeDate: '15.08.1990',
+      codeResult: sampleCalculationA,
+      firstMirror: sampleFirstMirrorA,
+      storyInputs: sampleInputsA,
+      storyResult: sampleMythA,
+      meetingResult: sampleMeetingA
+      // meetingUserNote omitted
+    });
+
+    const session = new AppSessionState();
+    // Active session has a different note B
+    session.meetingUserNote = 'Активная заметка сессии B';
+
+    // Restore snapshot A
+    session.restoreSnapshot();
+
+    // Must be cleared to ''
+    expect(session.meetingUserNote).toBe('');
+  });
+
+  it('7. save Meeting A with note X -> badge true', () => {
+    saveMyMirrorSnapshot({
+      codeDate: '15.08.1990',
+      codeResult: sampleCalculationA,
+      firstMirror: sampleFirstMirrorA,
+      storyInputs: sampleInputsA,
+      storyResult: sampleMythA,
+      meetingResult: sampleMeetingA,
+      meetingUserNote: 'Заметка X'
+    });
+
+    const snapshot = loadMyMirrorSnapshot();
+    expect(snapshot).not.toBeNull();
+
+    const isMatch = isSnapshotMatchingCurrentSession(snapshot, {
+      codeDate: '15.08.1990',
+      codeResult: sampleCalculationA,
+      firstMirror: sampleFirstMirrorA,
+      storyInputs: sampleInputsA,
+      storyResult: sampleMythA,
+      meetingResult: sampleMeetingA,
+      meetingUserNote: 'Заметка X'
+    });
+
+    expect(isMatch).toBe(true);
+  });
+
+  it('8. edit note X -> Y without Save -> badge false', () => {
+    // Stored with 'Заметка X'
+    saveMyMirrorSnapshot({
+      codeDate: '15.08.1990',
+      codeResult: sampleCalculationA,
+      firstMirror: sampleFirstMirrorA,
+      storyInputs: sampleInputsA,
+      storyResult: sampleMythA,
+      meetingResult: sampleMeetingA,
+      meetingUserNote: 'Заметка X'
+    });
+
+    const snapshot = loadMyMirrorSnapshot();
+
+    // User modified the input field to 'Заметка Y' in the UI without clicking Save
+    const isMatch = isSnapshotMatchingCurrentSession(snapshot, {
+      codeDate: '15.08.1990',
+      codeResult: sampleCalculationA,
+      firstMirror: sampleFirstMirrorA,
+      storyInputs: sampleInputsA,
+      storyResult: sampleMythA,
+      meetingResult: sampleMeetingA,
+      meetingUserNote: 'Заметка Y'
+    });
+
+    expect(isMatch).toBe(false);
+  });
+
+  it('9. explicit Save/Update with Y -> badge true again', () => {
+    // User clicks Save/Update
+    saveMyMirrorSnapshot({
+      codeDate: '15.08.1990',
+      codeResult: sampleCalculationA,
+      firstMirror: sampleFirstMirrorA,
+      storyInputs: sampleInputsA,
+      storyResult: sampleMythA,
+      meetingResult: sampleMeetingA,
+      meetingUserNote: 'Заметка Y'
+    });
+
+    const snapshot = loadMyMirrorSnapshot();
+    const isMatch = isSnapshotMatchingCurrentSession(snapshot, {
+      codeDate: '15.08.1990',
+      codeResult: sampleCalculationA,
+      firstMirror: sampleFirstMirrorA,
+      storyInputs: sampleInputsA,
+      storyResult: sampleMythA,
+      meetingResult: sampleMeetingA,
+      meetingUserNote: 'Заметка Y'
+    });
+
+    expect(isMatch).toBe(true);
+  });
+
+  it('10. matching helper returns false when any persisted Meeting payload differs even if summary/question/counts match', () => {
     saveMyMirrorSnapshot({
       codeDate: '15.08.1990',
       codeResult: sampleCalculationA,
@@ -278,57 +377,27 @@ describe('Session Integrity & Invalidation Contract (Issue #20 Correction)', () 
     });
 
     const snapshot = loadMyMirrorSnapshot();
-    expect(snapshot).not.toBeNull();
 
-    // Meeting B (new active session)
-    const newMeetingB: MeetingOfMirrorsResult = {
+    // Meeting with modified synthesis text inside parallels but same summary and counts
+    const modifiedParallelsMeeting: MeetingOfMirrorsResult = {
       ...sampleMeetingA,
-      summary: 'Совершенно новый синтез B для других зеркал.'
+      parallels: [
+        {
+          ...sampleMeetingA.parallels[0],
+          synthesis: 'Измененный текст синтеза...'
+        }
+      ]
     };
 
     const isMatch = isSnapshotMatchingCurrentSession(snapshot, {
       codeDate: '15.08.1990',
       codeResult: sampleCalculationA,
-      storyResult: sampleMythA,
-      meetingResult: newMeetingB
-    });
-
-    // Must be false! The active meeting is not the saved one!
-    expect(isMatch).toBe(false);
-  });
-
-  it('7. explicit Save makes current-session badge true', () => {
-    const newMeetingB: MeetingOfMirrorsResult = {
-      ...sampleMeetingA,
-      summary: 'Совершенно новый синтез B для других зеркал.'
-    };
-
-    // Before save
-    let snapshot = loadMyMirrorSnapshot();
-    expect(isSnapshotMatchingCurrentSession(snapshot, {
-      codeDate: '15.08.1990',
-      codeResult: sampleCalculationA,
-      storyResult: sampleMythA,
-      meetingResult: newMeetingB
-    })).toBe(false);
-
-    // Explicit save
-    saveMyMirrorSnapshot({
-      codeDate: '15.08.1990',
-      codeResult: sampleCalculationA,
       firstMirror: sampleFirstMirrorA,
       storyInputs: sampleInputsA,
       storyResult: sampleMythA,
-      meetingResult: newMeetingB
+      meetingResult: modifiedParallelsMeeting
     });
 
-    // After save
-    snapshot = loadMyMirrorSnapshot();
-    expect(isSnapshotMatchingCurrentSession(snapshot, {
-      codeDate: '15.08.1990',
-      codeResult: sampleCalculationA,
-      storyResult: sampleMythA,
-      meetingResult: newMeetingB
-    })).toBe(true);
+    expect(isMatch).toBe(false);
   });
 });

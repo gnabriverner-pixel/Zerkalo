@@ -75,11 +75,15 @@ export function MeetingOfMirrors({
   const checkCurrentSaveStatus = (): string | null => {
     const current = loadMyMirrorSnapshot();
     if (!current) return null;
+    const effectiveFirstMirror = firstMirror || (codeResult ? generateFirstMirror(codeResult) : null);
     const matches = isSnapshotMatchingCurrentSession(current, {
       codeDate,
       codeResult,
+      firstMirror: effectiveFirstMirror,
+      storyInputs,
       storyResult,
-      meetingResult
+      meetingResult,
+      meetingUserNote: userNote
     });
     return matches ? current.savedAt : null;
   };
@@ -100,7 +104,7 @@ export function MeetingOfMirrors({
 
   useEffect(() => {
     setSavedAt(checkCurrentSaveStatus());
-  }, [codeDate, codeResult, storyResult, meetingResult]);
+  }, [codeDate, codeResult, firstMirror, storyInputs, storyResult, meetingResult, userNote]);
 
   const hasCode = !!codeResult;
   const hasMyth = !!storyResult && !!storyInputs;
