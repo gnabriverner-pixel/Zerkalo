@@ -1,0 +1,72 @@
+{
+  "recordedProvenance": {
+    "routeA": {
+      "myth": {
+        "status": "ok",
+        "title": "Каменный маяк",
+        "mainImage": "Каменный маяк как образ внутренней точки опоры, где структура (камень, лестница, ритм света) и стихия (море, гроза) сосуществуют в напряжённом равновесии."
+      },
+      "meeting": {
+        "status": "ok",
+        "summary": "Встреча двух зеркал: структурное зеркало даты рождения показывает путь амбиции, самостоятельности и эстетической гармонии, а образное зеркало собственных слов рисует каменный маяк, стоящий между стихиями и ищущий равновесие. Обе линзы независимо подсвечивают одну и ту же внутреннюю ось — напряжение между контролем и отпусканием, между формой и потоком.",
+        "parallelsCount": 4,
+        "divergencesCount": 2
+      },
+      "albert": {
+        "status": "ok",
+        "messagePreview": "Главная точка опоры между вашим кодом и мифом видится не в выборе одной из сторо"
+      }
+    },
+    "routeB": {
+      "myth": {
+        "status": "ok",
+        "title": "Свод без эха",
+        "mainImage": "Латунный лимб, оставленный неповёрнутым, и нарисованный от руки круг со сдвигом — как след попытки удержать ясность без обещания, что она останется."
+      },
+      "meeting": {
+        "status": "ok",
+        "summary": "Структурное зеркало даты показывает человека, чей путь выстроен вокруг скорости, слова и превращения хаоса поиска в измеримый результат. Образное зеркало, созданное самим человеком, рисует одинокую обсерваторию под звёздами, где холод и безмолвие обнажают тягу к долговечным структурам и невозможность вписать в них собственную ось. Встреча этих двух отражений высвечивает общий корень: потребность в ясности, которая не обязана быть идеальной, чтобы стать опорой.",
+        "parallelsCount": 4,
+        "divergencesCount": 2
+      },
+      "albert": {
+        "status": "ok",
+        "messagePreview": "Обсерватория — это ведь и есть порядок, но не канцелярский, а наблюдательный. В "
+      }
+    }
+  },
+  "readyData": {
+    "status": "ready",
+    "service": "zerkalo",
+    "providers": {
+      "personal_myth": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "writer": "personal-myth-v1.1-rc"
+      },
+      "meeting": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro"
+      },
+      "albert": {
+        "ready": true,
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro"
+      }
+    },
+    "google_production_dependency": "none"
+  },
+  "consoleErrors": [
+    "[ConsoleError Route A] WebSocket connection to 'ws://localhost:24678/?token=L-0P6TBe_3tQ' failed: Error during WebSocket handshake: Unexpected response code: 400",
+    "[ConsoleError Route A] [vite] failed to connect to websocket (Error: WebSocket closed without opened.). ",
+    "[PageError Route A] WebSocket closed without opened.",
+    "[ConsoleError Route A] WebSocket connection to 'ws://localhost:24678/?token=L-0P6TBe_3tQ' failed: Error during WebSocket handshake: Unexpected response code: 400",
+    "[ConsoleError Route A] [vite] failed to connect to websocket (Error: WebSocket closed without opened.). ",
+    "[PageError Route A] WebSocket closed without opened.",
+    "[ConsoleError Route B] WebSocket connection to 'ws://localhost:24678/?token=L-0P6TBe_3tQ' failed: Error during WebSocket handshake: Unexpected response code: 400",
+    "[ConsoleError Route B] [vite] failed to connect to websocket (Error: WebSocket closed without opened.). ",
+    "[PageError Route B] WebSocket closed without opened."
+  ]
+}
