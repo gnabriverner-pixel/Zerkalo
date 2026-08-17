@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import PersonalMyth from './components/PersonalMyth';
 import { MeetingOfMirrors } from './components/MeetingOfMirrors';
@@ -7,7 +7,8 @@ import { LabEntryView } from './components/LabEntryView';
 import { MetaphorLibrary } from './components/MetaphorLibrary';
 import { AboutMethod } from './components/AboutMethod';
 import { AlabasterSanctuary } from './components/AlabasterSanctuary';
-import { CalculationResult, FirstMirror, StoryInputs, ApiResponse } from './types';
+import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult } from './types';
+import { loadMyMirrorSnapshot, deleteMyMirrorSnapshot, MyMirrorSnapshotV1 } from './services/myMirrorStorage';
 
 export default function App() {
   const [mode, setMode] = useState<'entry' | 'myth' | 'meeting' | 'alabaster' | 'ab-test'>('entry');
@@ -20,6 +21,40 @@ export default function App() {
   const [firstMirror, setFirstMirror] = useState<FirstMirror | null>(null);
   const [storyInputs, setStoryInputs] = useState<StoryInputs | null>(null);
   const [storyResult, setStoryResult] = useState<ApiResponse['story_result'] | null>(null);
+  const [meetingResult, setMeetingResult] = useState<MeetingOfMirrorsResult | null>(null);
+  const [meetingUserNote, setMeetingUserNote] = useState<string>('');
+  const [savedSnapshot, setSavedSnapshot] = useState<MyMirrorSnapshotV1 | null>(() => {
+    return loadMyMirrorSnapshot();
+  });
+
+  const refreshSavedSnapshot = () => {
+    setSavedSnapshot(loadMyMirrorSnapshot());
+  };
+
+  useEffect(() => {
+    refreshSavedSnapshot();
+  }, [mode]);
+
+  const handleRestoreSavedMirror = () => {
+    const snapshot = loadMyMirrorSnapshot();
+    if (!snapshot) return;
+
+    setCodeDate(snapshot.codeDate);
+    setCodeResult(snapshot.codeResult);
+    setFirstMirror(snapshot.firstMirror);
+    setStoryInputs(snapshot.storyInputs);
+    setStoryResult(snapshot.storyResult);
+    setMeetingResult(snapshot.meetingResult);
+    if (snapshot.meetingUserNote) {
+      setMeetingUserNote(snapshot.meetingUserNote);
+    }
+    setMode('meeting');
+  };
+
+  const handleDeleteSavedMirror = () => {
+    deleteMyMirrorSnapshot();
+    setSavedSnapshot(null);
+  };
 
   const hasCode = !!codeResult;
   const hasMyth = !!storyResult;
@@ -143,6 +178,9 @@ export default function App() {
               <LabEntryView
                 codeResult={codeResult}
                 storyResult={storyResult}
+                savedSnapshot={savedSnapshot}
+                onRestoreSavedMirror={handleRestoreSavedMirror}
+                onDeleteSavedMirror={handleDeleteSavedMirror}
                 onSelectMode={(m, initialDate) => {
                   if (initialDate) setCodeDate(initialDate);
                   setMode(m === 'code' ? 'alabaster' : m);
@@ -184,10 +222,20 @@ export default function App() {
               className="w-full"
             >
               <MeetingOfMirrors
+                codeDate={codeDate}
                 codeResult={codeResult}
                 firstMirror={firstMirror}
                 storyInputs={storyInputs}
                 storyResult={storyResult}
+                initialMeetingResult={meetingResult}
+                onMeetingCompleted={(res) => {
+                  setMeetingResult(res);
+                  refreshSavedSnapshot();
+                }}
+                initialUserNote={meetingUserNote}
+                onUserNoteChange={setMeetingUserNote}
+                onSaveSnapshot={refreshSavedSnapshot}
+                onDeleteSnapshot={refreshSavedSnapshot}
                 onOpenCode={() => setMode('alabaster')}
                 onOpenMyth={() => setMode('myth')}
               />

@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
+import { Bookmark, Trash2, ChevronRight } from 'lucide-react';
 import { Orb } from './Orb';
 import { PantheonModal } from './PantheonModal';
 import { CalculationResult, ApiResponse } from '../types';
 import { validateBirthDate } from '../services/birthDate';
+import { MyMirrorSnapshotV1 } from '../services/myMirrorStorage';
 import mirrorHero from '../assets/mirror-hero.jpg';
 
 interface LabEntryViewProps {
@@ -16,6 +18,18 @@ interface LabEntryViewProps {
   hasMythResult?: boolean;
   codeResult?: CalculationResult | null;
   storyResult?: ApiResponse['story_result'] | null;
+  savedSnapshot?: MyMirrorSnapshotV1 | null;
+  onRestoreSavedMirror?: () => void;
+  onDeleteSavedMirror?: () => void;
+}
+
+function pluralRu(value: number, one: string, few: string, many: string) {
+  const mod100 = value % 100;
+  const mod10 = value % 10;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
 }
 
 export function LabEntryView({
@@ -28,6 +42,9 @@ export function LabEntryView({
   hasMythResult,
   codeResult,
   storyResult,
+  savedSnapshot,
+  onRestoreSavedMirror,
+  onDeleteSavedMirror,
 }: LabEntryViewProps) {
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
@@ -165,6 +182,61 @@ export function LabEntryView({
             <h2 className="mt-5 font-serif text-4xl sm:text-5xl font-light">Два самостоятельных взгляда</h2>
             <p className="mt-4 text-sm leading-relaxed text-[var(--color-text-secondary)]">Система не смешивает дату с ответами и не придумывает сходство заранее.</p>
           </div>
+
+          {/* ========================================================= */}
+          {/* SAVED LOCAL MIRROR ENTRY (MY MIRROR V0) */}
+          {/* ========================================================= */}
+          {savedSnapshot && (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7 }}
+              className="w-full mb-10 p-6 sm:p-8 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)] shadow-[0_0_30px_rgba(200,164,93,0.1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)] shrink-0 mt-0.5">
+                  <Bookmark size={20} className="text-[var(--color-antique-gold)]" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
+                      Моё зеркало · Сохранено локально
+                    </span>
+                    <span className="text-[10px] font-mono text-stone-400">
+                      ({new Date(savedSnapshot.savedAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })})
+                    </span>
+                  </div>
+                  <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
+                    Сохранённая встреча зеркал
+                  </h3>
+                  <p className="text-xs text-stone-300 font-light leading-relaxed max-w-lg">
+                    Код {savedSnapshot.codeDate} · Миф «{savedSnapshot.storyResult.title}» · {savedSnapshot.meetingResult.parallels.length} {pluralRu(savedSnapshot.meetingResult.parallels.length, 'резонанс', 'резонанса', 'резонансов')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
+                <button
+                  onClick={onRestoreSavedMirror}
+                  className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                >
+                  <span>Открыть сохранённое</span>
+                  <ChevronRight size={14} />
+                </button>
+                {onDeleteSavedMirror && (
+                  <button
+                    onClick={onDeleteSavedMirror}
+                    title="Удалить сохранённое зеркало из браузера"
+                    className="px-3 py-3 text-stone-400 hover:text-red-300 uppercase tracking-widest text-[10px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 size={13} />
+                    <span className="sm:hidden">Удалить сохранённое</span>
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+
           <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8">
           
           {/* DOOR 1: PERSONAL MYTH */}
