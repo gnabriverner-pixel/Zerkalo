@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { numberKnowledge } from '../data/numberKnowledge';
+import { numberKnowledge, getNumberKnowledge } from '../data/numberKnowledge';
 import { compoundKnowledge } from '../data/compoundKnowledge';
 import fs from 'fs';
 import path from 'path';
@@ -22,6 +22,20 @@ describe('numberKnowledge', () => {
       expect(data.core).toBeDefined();
       expect(data.positions).toBeDefined();
     });
+  });
+
+  it('getNumberKnowledge returns correct archetype for valid 1..9 and throws on invalid numbers', () => {
+    for (let i = 1; i <= 9; i++) {
+      const k = getNumberKnowledge(i);
+      expect(k.number).toBe(i);
+      expect(k.planet).toBeDefined();
+    }
+
+    expect(() => getNumberKnowledge(0)).toThrow(/Invariant Violation/);
+    expect(() => getNumberKnowledge(10)).toThrow(/Invariant Violation/);
+    expect(() => getNumberKnowledge(-1)).toThrow(/Invariant Violation/);
+    expect(() => getNumberKnowledge(NaN)).toThrow(/Invariant Violation/);
+    expect(() => getNumberKnowledge(1.5)).toThrow(/Invariant Violation/);
   });
 
   it('does not contain forbidden words', () => {

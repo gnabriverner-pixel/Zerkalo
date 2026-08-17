@@ -2,6 +2,7 @@
 // The Core Mathematical Engine for the Vedic Numerology System (Protocol Calculation v1)
 
 import { CalculationResult } from '../types';
+import { validateBirthDate } from './birthDate';
 
 /**
  * Verbose reduction of a number to a single digit (1..9), preserving reduction history.
@@ -37,15 +38,29 @@ export function reduceVerbously(num: number): { value: number; composite: string
  * Calculates the 5 Main Numbers (ЧУ, ЧВ, ЧД, ЧР, ЧИ) and the Matrices (Базовая и Детальная)
  * strictly conforming to Protocol Calculation v1.
  * 
- * @param dateString Format: "DD.MM.YYYY"
+ * @param dateString Format: "DD.MM.YYYY" (must be valid calendar date, 1900..today)
+ * @throws Error on invalid or malformed dates (no silent fallbacks to 01.01.2000)
  */
 export function calculateDigitalCode(dateString: string): CalculationResult {
-  const safeDateStr = typeof dateString === 'string' ? dateString : '';
-  const [dayStr = '01', monthStr = '01', yearStr = '2000'] = safeDateStr.split('.');
+  if (typeof dateString !== 'string' || !dateString.trim()) {
+    throw new Error(`Invalid birth date: empty or non-string input. Expected DD.MM.YYYY.`);
+  }
 
-  const day = parseInt(dayStr, 10) || 1;
-  const month = parseInt(monthStr, 10) || 1;
-  const year = parseInt(yearStr, 10) || 2000;
+  const trimmed = dateString.trim();
+  const parts = trimmed.split('.');
+  if (parts.length !== 3 || parts[0].length !== 2 || parts[1].length !== 2 || parts[2].length !== 4) {
+    throw new Error(`Invalid birth date format: "${dateString}". Expected DD.MM.YYYY.`);
+  }
+
+  const [dayStr, monthStr, yearStr] = parts;
+  const validation = validateBirthDate(dayStr, monthStr, yearStr);
+  if (!validation.valid) {
+    throw new Error(`Invalid birth date "${dateString}": ${validation.message}`);
+  }
+
+  const day = parseInt(dayStr, 10);
+  const month = parseInt(monthStr, 10);
+  const year = parseInt(yearStr, 10);
 
   // 1. Число Души / Число Ума (ЧДш / ЧУ)
   // Formula: Исходный день рождения, свернутый до 1..9
@@ -54,19 +69,19 @@ export function calculateDigitalCode(dateString: string): CalculationResult {
 
   // 2. Число Выражения (ЧВ)
   // Formula: сумма ЦИФР дня + сумма ЦИФР месяца -> сведение до 1..9
-  const dayDigitsSum = dayStr.split('').reduce((acc, d) => acc + (parseInt(d, 10) || 0), 0);
-  const monthDigitsSum = monthStr.split('').reduce((acc, d) => acc + (parseInt(d, 10) || 0), 0);
+  const dayDigitsSum = dayStr.split('').reduce((acc, d) => acc + parseInt(d, 10), 0);
+  const monthDigitsSum = monthStr.split('').reduce((acc, d) => acc + parseInt(d, 10), 0);
   const expressionFull = dayDigitsSum + monthDigitsSum;
   const expressionCalc = reduceVerbously(expressionFull);
 
   // 3. Число Пути / Число Действия (ЧП / ЧД)
   // Formula: сумма ВСЕХ цифр даты рождения
-  const allDobDigits = safeDateStr
+  const allDobDigits = trimmed
     .replace(/\./g, '')
     .split('')
     .map((d) => parseInt(d, 10))
     .filter((n) => !isNaN(n));
-  const actionFull = allDobDigits.reduce((acc, digit) => acc + digit, 0) || 1;
+  const actionFull = allDobDigits.reduce((acc, digit) => acc + digit, 0);
   const actionCalc = reduceVerbously(actionFull);
 
   // 4. Число Направления / Число Реализации (ЧН / ЧР)
@@ -80,23 +95,23 @@ export function calculateDigitalCode(dateString: string): CalculationResult {
   const outcomeCalc = reduceVerbously(outcomeFull);
 
   // 6. Базовая Матрица (Simple Matrix)
-  // Подсчёт цифр 1..9 из даты рождения (без 0)
+  // Подсчёт цифр 1..9 из даты рождения (0 строго исключен)
   const baseMatrix: Record<string, number> = {
-    '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0, '0': 0
+    '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0
   };
   for (const digit of allDobDigits) {
-    const key = digit.toString();
-    if (baseMatrix[key] !== undefined) {
+    if (digit >= 1 && digit <= 9) {
+      const key = digit.toString();
       baseMatrix[key]++;
     }
   }
 
   // 7. Детальная Матрица (Detailed Matrix)
-  // Simple matrix + цифры composite ЧД (actionFull) + composite ЧР (realizationFull) + composite ЧИ (outcomeFull) без 0
+  // Simple matrix + цифры composite ЧД (actionFull) + composite ЧР (realizationFull) + composite ЧИ (outcomeFull) (0 строго исключен)
   const detailedMatrix: Record<string, number> = { ...baseMatrix };
   const extraDigitsStr = `${actionFull}${realizationFull}${outcomeFull}`;
   for (const char of extraDigitsStr) {
-    if (char !== '0' && detailedMatrix[char] !== undefined) {
+    if (char >= '1' && char <= '9') {
       detailedMatrix[char]++;
     }
   }

@@ -1,5 +1,5 @@
 import { CalculationResult, FirstMirror } from '../types';
-import { numberKnowledge } from '../data/numberKnowledge';
+import { getNumberKnowledge } from '../data/numberKnowledge';
 import { getCompoundKnowledge } from '../data/compoundKnowledge';
 
 export function determineKeyInsight(soul: number, path: number, result: number): string {
@@ -25,11 +25,11 @@ export function determineKeyInsight(soul: number, path: number, result: number):
 }
 
 export function generateFirstMirror(calc: CalculationResult): FirstMirror {
-  const soul = numberKnowledge[calc.soul] || numberKnowledge[1];
-  const path = numberKnowledge[calc.path] || numberKnowledge[1];
-  const expression = numberKnowledge[calc.expression] || numberKnowledge[1];
-  const direction = numberKnowledge[calc.direction] || numberKnowledge[1];
-  const result = numberKnowledge[calc.result] || numberKnowledge[1];
+  const soul = getNumberKnowledge(calc.soul);
+  const path = getNumberKnowledge(calc.path);
+  const expression = getNumberKnowledge(calc.expression);
+  const direction = getNumberKnowledge(calc.direction);
+  const result = getNumberKnowledge(calc.result);
   
   const compoundPath = calc.pathComposite && calc.pathComposite.includes('/') 
     ? getCompoundKnowledge(calc.pathComposite.split('/')[0])
@@ -116,11 +116,11 @@ export function generateFullInterpretationPayload(calc: CalculationResult): obje
   return {
     calc,
     positionMeanings: {
-      soul: numberKnowledge[calc.soul],
-      path: numberKnowledge[calc.path === 11 ? 11 : calc.path],
-      direction: numberKnowledge[calc.direction === 11 ? 11 : calc.direction],
-      expression: numberKnowledge[calc.expression === 11 ? 11 : calc.expression],
-      result: numberKnowledge[calc.result === 11 ? 11 : calc.result],
+      soul: getNumberKnowledge(calc.soul),
+      path: getNumberKnowledge(calc.path),
+      direction: getNumberKnowledge(calc.direction),
+      expression: getNumberKnowledge(calc.expression),
+      result: getNumberKnowledge(calc.result),
     },
     compoundMeanings: {
       path: getCompSafe(calc.pathComposite),

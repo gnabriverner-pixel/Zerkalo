@@ -101,13 +101,41 @@ describe('Vedic Numerology Canonical Calculation Engine (Protocol Calculation v1
       });
     });
 
-    it('handles malformed date inputs safely with fallbacks', () => {
-      const emptyRes = calculateDigitalCode('');
-      expect(emptyRes.soul).toBe(1);
-      expect(emptyRes.path).toBeGreaterThanOrEqual(1);
+    it('strictly rejects invalid, malformed, impossible, and future dates', () => {
+      expect(() => calculateDigitalCode('')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('invalid.date')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('1.1.2000')).toThrow(/Invalid birth date format/);
+      expect(() => calculateDigitalCode('31.02.2020')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('29.02.2001')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('32.01.1990')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('15.13.1990')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('01.01.1899')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('01.01.2099')).toThrow(/Invalid birth date/);
+    });
 
-      const invalidRes = calculateDigitalCode('invalid.date');
-      expect(invalidRes.soul).toBe(1);
+    it('successfully accepts valid leap year dates like 29.02.2000 and 29.02.2024', () => {
+      const res2000 = calculateDigitalCode('29.02.2000');
+      expect(res2000.soul).toBe(2);
+      expect(res2000.soulComposite).toBe('29/11/2');
+
+      const res2024 = calculateDigitalCode('29.02.2024');
+      expect(res2024.soul).toBe(2);
+      expect(res2024.soulComposite).toBe('29/11/2');
+    });
+
+    it('strictly excludes zero from base and detailed matrix keys and values', () => {
+      propertyDates.forEach((dob) => {
+        const res = calculateDigitalCode(dob);
+        expect(res.baseMatrix['0']).toBeUndefined();
+        expect(res.detailedMatrix['0']).toBeUndefined();
+
+        const baseKeys = Object.keys(res.baseMatrix);
+        expect(baseKeys).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+
+        const detailedKeys = Object.keys(res.detailedMatrix);
+        expect(detailedKeys).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+      });
     });
   });
 });
+

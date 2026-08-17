@@ -528,3 +528,18 @@ export const numberKnowledge: Record<number, NumberKnowledge> = {
     }
   }
 };
+
+/**
+ * Canonical getter for archetype number knowledge.
+ * Invariant: only numbers 1..9 (and compound 11 if present in knowledge base) are allowed.
+ * Throws an explicit Invariant Violation if an invalid number is requested.
+ * NEVER silently substitutes fallback archetypes (e.g. Sun 1).
+ */
+export function getNumberKnowledge(num: number): NumberKnowledge {
+  const n = Number(num);
+  if (!Number.isInteger(n) || n < 1 || !numberKnowledge[n]) {
+    throw new Error(`[Invariant Violation] Invalid archetype number: ${num}. Expected integer 1..9.`);
+  }
+  return numberKnowledge[n];
+}
+

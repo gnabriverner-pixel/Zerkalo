@@ -1,6 +1,19 @@
 VYAZEMSKY__SKILL_01__CALCULATION_v2.md
-Версия: 3.0 (Система "Цифровой код" / "Канон")
+Версия: 3.0 (LEGACY / SUPERSEDED BY PROTOCOL CALCULATION V1 CANON)
 Назначение: 5 главных чисел, формулы, составные числа
+
+> [!WARNING]
+> **SUPERSEDED / DEPRECATED CALCULATION DOCUMENT**
+> Current authoritative canon is **Protocol Calculation v1** implemented in `src/services/calculator.ts`:
+> 1. All primary numbers reduce strictly to 1..9 while preserving reduction histories.
+> 2. ЧУ: raw day -> reduce.
+> 3. ЧВ: sum digits day + sum digits month -> reduce.
+> 4. ЧД: sum of all DOB digits -> reduce.
+> 5. ЧР: composite ЧУ + composite ЧД -> reduce.
+> 6. ЧИ: composite ЧУ + composite ЧД + composite ЧР -> reduce.
+> 7. Simple matrix: DOB digits 1..9 (zeros excluded).
+> 8. Detailed matrix: Simple + digits of composite ЧД + ЧР + ЧИ (zeros excluded).
+> Legacy RC1/RC2/RC3/RC4 algorithm is deprecated.
 
 RETRIEVAL_HINT
 Вызывать при ЛЮБОМ расчёте. Это фундамент системы "Цифровой код".
