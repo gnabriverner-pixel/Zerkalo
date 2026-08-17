@@ -69,7 +69,9 @@ export default function App() {
           onCodeCalculated={(fullDate, calc, reading) => {
             setCodeDate(fullDate);
             setCodeResult(calc);
-            if (reading) setFirstMirror(reading);
+            setFirstMirror(reading || null);
+            setMeetingResult(null);
+            setMeetingUserNote('');
           }}
           onBackToCollection={() => setMode('entry')}
           onContinue={() => setMode(hasMyth ? 'meeting' : 'myth')}
@@ -182,7 +184,15 @@ export default function App() {
                 onRestoreSavedMirror={handleRestoreSavedMirror}
                 onDeleteSavedMirror={handleDeleteSavedMirror}
                 onSelectMode={(m, initialDate) => {
-                  if (initialDate) setCodeDate(initialDate);
+                  if (initialDate && initialDate !== codeDate) {
+                    setCodeDate(initialDate);
+                    setCodeResult(null);
+                    setFirstMirror(null);
+                    setMeetingResult(null);
+                    setMeetingUserNote('');
+                  } else if (initialDate) {
+                    setCodeDate(initialDate);
+                  }
                   setMode(m === 'code' ? 'alabaster' : m);
                 }}
               />
@@ -205,6 +215,8 @@ export default function App() {
                 onMythCompleted={(inputs, result) => {
                   setStoryInputs(inputs);
                   setStoryResult(result || null);
+                  setMeetingResult(null);
+                  setMeetingUserNote('');
                 }}
                 onNavigateToMeeting={() => setMode(hasCode ? 'meeting' : 'alabaster')}
                 hasCodeResult={hasCode}

@@ -162,3 +162,55 @@ export function deleteMyMirrorSnapshot(): boolean {
 export function hasMyMirrorSnapshot(): boolean {
   return loadMyMirrorSnapshot() !== null;
 }
+
+/**
+ * Compares a loaded V1 snapshot against the currently active session payload.
+ * Returns true if the snapshot represents the exact current session, false otherwise.
+ */
+export function isSnapshotMatchingCurrentSession(
+  snapshot: MyMirrorSnapshotV1 | null,
+  current: {
+    codeDate?: string;
+    codeResult?: CalculationResult | null;
+    storyResult?: ApiResponse['story_result'] | null;
+    meetingResult?: MeetingOfMirrorsResult | null;
+  }
+): boolean {
+  if (!snapshot || !current.codeResult || !current.storyResult || !current.meetingResult) {
+    return false;
+  }
+
+  // 1. Code match
+  if (current.codeDate && snapshot.codeDate !== current.codeDate) {
+    return false;
+  }
+  if (
+    snapshot.codeResult.soul !== current.codeResult.soul ||
+    snapshot.codeResult.path !== current.codeResult.path ||
+    snapshot.codeResult.expression !== current.codeResult.expression ||
+    snapshot.codeResult.direction !== current.codeResult.direction ||
+    snapshot.codeResult.result !== current.codeResult.result
+  ) {
+    return false;
+  }
+
+  // 2. Myth match
+  if (
+    snapshot.storyResult.title !== current.storyResult.title ||
+    snapshot.storyResult.story !== current.storyResult.story
+  ) {
+    return false;
+  }
+
+  // 3. Meeting match
+  if (
+    snapshot.meetingResult.summary !== current.meetingResult.summary ||
+    snapshot.meetingResult.reflectiveQuestion !== current.meetingResult.reflectiveQuestion ||
+    snapshot.meetingResult.parallels.length !== current.meetingResult.parallels.length ||
+    snapshot.meetingResult.divergences.length !== current.meetingResult.divergences.length
+  ) {
+    return false;
+  }
+
+  return true;
+}

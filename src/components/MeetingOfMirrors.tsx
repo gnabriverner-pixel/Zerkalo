@@ -21,7 +21,8 @@ import { generateFirstMirror } from '../services/interpretation';
 import { 
   saveMyMirrorSnapshot, 
   loadMyMirrorSnapshot, 
-  deleteMyMirrorSnapshot 
+  deleteMyMirrorSnapshot,
+  isSnapshotMatchingCurrentSession
 } from '../services/myMirrorStorage';
 
 export interface MeetingOfMirrorsProps {
@@ -70,10 +71,20 @@ export function MeetingOfMirrors({
   const [isAlbertOpen, setIsAlbertOpen] = useState(false);
   const [albertTopic, setAlbertTopic] = useState('');
   const [userNote, setUserNote] = useState(initialUserNote || '');
-  const [savedAt, setSavedAt] = useState<string | null>(() => {
+
+  const checkCurrentSaveStatus = (): string | null => {
     const current = loadMyMirrorSnapshot();
-    return current?.savedAt || null;
-  });
+    if (!current) return null;
+    const matches = isSnapshotMatchingCurrentSession(current, {
+      codeDate,
+      codeResult,
+      storyResult,
+      meetingResult
+    });
+    return matches ? current.savedAt : null;
+  };
+
+  const [savedAt, setSavedAt] = useState<string | null>(() => checkCurrentSaveStatus());
 
   useEffect(() => {
     if (initialMeetingResult) {
@@ -88,9 +99,8 @@ export function MeetingOfMirrors({
   }, [initialUserNote]);
 
   useEffect(() => {
-    const current = loadMyMirrorSnapshot();
-    setSavedAt(current?.savedAt || null);
-  }, [meetingResult]);
+    setSavedAt(checkCurrentSaveStatus());
+  }, [codeDate, codeResult, storyResult, meetingResult]);
 
   const hasCode = !!codeResult;
   const hasMyth = !!storyResult && !!storyInputs;
