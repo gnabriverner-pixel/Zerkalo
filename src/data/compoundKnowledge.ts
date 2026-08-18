@@ -374,39 +374,6 @@ export const compoundKnowledge: Record<string, CompoundKnowledge> = {
     risk: "Надрыв от попыток впихнуть огромные амбиции в жесткие правила повседневной жизни, что приводит к раздражительности и претензиям к близким людям.",
     recommendation: "Направьте свою огромную силу на создание гармонии. Постройте вокруг себя экосистему, где уют, красота и порядок подпитывают ваши амбиции."
   },
-  "28": {
-    value: 28,
-    root: 1,
-    digits: [2, 8],
-    title: "28/10/1",
-    short: "Связка дипломатии и масштабного управления на пути к чистому лидерству.",
-    formula: "2 + 8 → 10 → 1",
-    accent: "Двойка дает понимание человеческих мотивов, а восьмерка — способность управлять ресурсами. В единице это переходит в зрелое, справедливое лидерство.",
-    risk: "Попытка угодить всем (2), совмещенная с авторитарным контролем (8), ведущая к перегрузке.",
-    recommendation: "Принимать решения автономно, опираясь на стратегическое чутье и не пытаясь быть удобным для каждого."
-  },
-  "43": {
-    value: 43,
-    root: 7,
-    digits: [4, 3],
-    title: "43/7",
-    short: "Нестандартное мышление и фундаментальные знания ведут к исследовательской глубине.",
-    formula: "4 + 3 → 7",
-    accent: "Четверка приносит визионерство и прорыв шаблонов, а тройка — системную логику. Вместе они формируют семерку как глубокого аналитика.",
-    risk: "Застревание в бесконечном анализе концепций без выхода в практическую реализацию.",
-    recommendation: "Проверять гипотезы быстрыми практическими тестами, сохраняя баланс между теорией и действием."
-  },
-  "86": {
-    value: 86,
-    root: 5,
-    digits: [8, 6],
-    title: "86/14/5",
-    short: "Масштаб управления и эстетическая гармония синтезируются в гибкую адаптивность.",
-    formula: "8 + 6 → 14 → 5",
-    accent: "Восьмерка задает структурный масштаб, шестерка — качество и баланс отношений, а пятерка обеспечивает быструю реакцию на изменения рынка и среды.",
-    risk: "Распыление между стремлением к идеальному контролю (8) и комфорту (6), снижающее скорость маневра.",
-    recommendation: "Выстраивать гибкую систему делегирования, сохраняя за собой контроль ключевых узлов и свободу выбора."
-  },
   "128": {
     value: 128,
     root: 11,
@@ -420,33 +387,11 @@ export const compoundKnowledge: Record<string, CompoundKnowledge> = {
   },
 };
 
-export function getCompoundFallback(value: number): CompoundKnowledge {
-  const digits = value.toString().split('').map(v => parseInt(v, 10));
-  let sum = digits.reduce((acc, curr) => acc + curr, 0);
-  let root = sum;
-  let formulaStr = digits.join(' + ') + ' → ' + sum;
-  if (sum > 9 && sum !== 11) {
-    const sumDigits = sum.toString().split('').map(v => parseInt(v, 10));
-    root = sumDigits.reduce((acc, curr) => acc + curr, 0);
-    formulaStr += ' → ' + root;
-  }
-  return {
-    value,
-    root,
-    digits,
-    title: value + "/" + root,
-    short: `Скрытый сценарий ${value}/${root}`,
-    formula: formulaStr,
-    accent: `Составное число ${value} соединяет качества цифр ${digits.join(' и ')} с итоговой траекторией числа ${root}.`,
-    risk: `Внутреннее напряжение при согласовании качеств цифр ${digits.join(' и ')} на пути к реализации числа ${root}.`,
-    recommendation: `Опираться на сильные стороны цифры ${digits[0]}, направляя их в созидательное выражение числа ${root}.`
-  };
-}
-
-export function getCompoundKnowledge(compoundStr: string): CompoundKnowledge {
+export function getCompoundKnowledge(compoundStr: string): CompoundKnowledge | null {
+  if (!compoundStr) return null;
   const baseVal = parseInt(compoundStr.split('/')[0], 10);
   if (compoundKnowledge[baseVal]) {
     return compoundKnowledge[baseVal];
   }
-  return getCompoundFallback(baseVal);
+  return null;
 }
