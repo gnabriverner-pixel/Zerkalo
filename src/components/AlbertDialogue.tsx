@@ -241,7 +241,8 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
 
             <button
               onClick={onClose}
-              className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              aria-label="Закрыть диалог"
+              className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
             >
               <X className="w-6 h-6" />
             </button>

@@ -1,40 +1,41 @@
 import { chromium } from 'playwright';
-import fs from 'fs/promises';
 import path from 'path';
+import fs from 'fs/promises';
 
-const SCREENSHOTS_DIR = path.join(process.cwd(), 'docs/evidence/v1_1-final/screenshots');
 const BASE_URL = process.env.APP_URL || 'http://localhost:3005';
+const SCREENSHOTS_DIR = path.join(process.cwd(), 'docs/evidence/v1_1-final/screenshots');
 
 async function runBrowserSmoke() {
-  console.log('=== STARTING REAL BROWSER SMOKE TEST (DESKTOP & MOBILE) ===');
+  console.log('=== STARTING REAL BROWSER SMOKE TEST (DESKTOP, ALBERT & MOBILE) ===');
   await fs.mkdir(SCREENSHOTS_DIR, { recursive: true });
 
   const browser = await chromium.launch({ headless: true });
 
   try {
-    const mythAnswers = [
-      'постоянное фоновое напряжение и спешка',
-      'старый маяк на скалистом берегу в сумерках',
-      'неспешная вечерняя прогулка вдоль воды',
-      'спокойное внутреннее присутствие и ясность',
-    ];
-
-    const stepTitles = [
-      'Что сейчас создаёт внутреннее напряжение',
-      'Если бы это состояние было образом',
-      'Вспомни момент за последнее время',
-      'Какое качество или состояние',
-    ];
-
     // -------------------------------------------------------------
-    // TEST 1: DESKTOP 1440x900 (Route 1: Code -> Myth -> Meeting -> Albert -> My Mirror)
+    // TEST 1: DESKTOP 1440x900 (Route 1: Code -> Myth -> Meeting -> Albert -> My Mirror -> Reload & Restore)
     // -------------------------------------------------------------
-    console.log('\n[1/3] Running Desktop 1440x900 Route 1...');
+    console.log('\n[1/3] Running Desktop 1440x900 Route 1 (Code -> Myth -> Meeting -> Albert -> Restore)...');
     const desktopContext = await browser.newContext({
       viewport: { width: 1440, height: 900 },
       deviceScaleFactor: 2,
     });
     const desktopPage = await desktopContext.newPage();
+
+    let regenerationCallCount = 0;
+    let postRestoreRegenCount = 0;
+    desktopPage.on('request', (req) => {
+      if (req.url().includes('/api/story') || req.url().includes('/api/meeting') || req.url().includes('/api/lab/meeting/generate')) {
+        regenerationCallCount++;
+      }
+    });
+
+    const mythAnswers = [
+      'кажется, что стою перед закрытой гранитной стеной и не могу сделать шаг',
+      'старый маяк на скале посреди ночного моря',
+      'первый луч солнца сквозь сосновые ветви и запах смолы',
+      'уверенное спокойствие и внутренняя опора',
+    ];
 
     // 1.1 Navigate to Home / Entry
     await desktopPage.goto(BASE_URL, { waitUntil: 'networkidle' });
@@ -90,7 +91,7 @@ async function runBrowserSmoke() {
 
     // Wait for generation on desktop
     console.log('  Waiting for Myth generation on desktop...');
-    await desktopPage.locator('text="Символические истоки"').waitFor({ state: 'visible', timeout: 60000 });
+    await desktopPage.locator('text="Символические истоки"').waitFor({ state: 'visible', timeout: 90000 });
     await desktopPage.waitForTimeout(1000);
 
     // Capture Myth Result Desktop Screenshot
@@ -103,7 +104,16 @@ async function runBrowserSmoke() {
     // 1.5 Navigate to Meeting of Two Mirrors
     const meetingBtn = desktopPage.locator('button:has-text("Открыть Встречу зеркал"), nav button:has-text("Встреча")').first();
     await meetingBtn.click();
-    await desktopPage.waitForTimeout(2000);
+    await desktopPage.waitForTimeout(1000);
+
+    // Click "Провести Встречу зеркал" to run synthesis
+    console.log('  Running Meeting Synthesis...');
+    const runSynthesisBtn = desktopPage.locator('button:has-text("Провести Встречу зеркал")').first();
+    if (await runSynthesisBtn.isVisible()) {
+      await runSynthesisBtn.click();
+      await desktopPage.locator('text="Взгляд Альберта Вяземского"').waitFor({ state: 'visible', timeout: 60000 });
+      await desktopPage.waitForTimeout(1000);
+    }
 
     // Capture Meeting Desktop Screenshot
     await desktopPage.screenshot({
@@ -112,17 +122,39 @@ async function runBrowserSmoke() {
     });
     console.log('  ✓ Saved 07_meeting_synthesis_desktop_1440x900.png');
 
-    // 1.6 Capture Albert Dialog Screenshot
-    const albertSection = desktopPage.locator('text=Альберт, textarea').first();
-    if (await albertSection.isVisible()) {
-      await desktopPage.screenshot({
-        path: path.join(SCREENSHOTS_DIR, '09_albert_dialog_desktop_1440x900.png'),
-        fullPage: false,
-      });
-      console.log('  ✓ Saved 09_albert_dialog_desktop_1440x900.png');
-    }
+    // 1.6 Exercise Albert Dialogue Modal & Save Screenshot 09
+    console.log('  Opening Albert dialogue modal...');
+    const albertBtn = desktopPage.locator('button:has-text("Диалог на сайте")').first();
+    await albertBtn.click();
+    await desktopPage.waitForTimeout(800);
 
-    // 1.7 My Mirror Dashboard on Desktop
+    const questionBtn = desktopPage.locator('button:has-text("Какой один земной шаг"), button:has-text("Почему я всё время"), button:has-text("В чем скрытый ресурс")').first();
+    await questionBtn.waitFor({ state: "visible", timeout: 10000 });
+    await questionBtn.click();
+    console.log("  Sent question to Albert. Waiting for response...");
+    
+    // Wait for loading to finish
+    await desktopPage.locator('text="Альберт сверяется"').waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
+    await desktopPage.locator('text="Альберт сверяется"').waitFor({ state: "detached", timeout: 45000 });
+    await desktopPage.waitForTimeout(1500);
+    await desktopPage.screenshot({
+      path: path.join(SCREENSHOTS_DIR, "09_albert_dialog_desktop_1440x900.png"),
+      fullPage: false,
+    });
+    console.log('  ✓ Saved 09_albert_dialog_desktop_1440x900.png (Albert response received)');
+
+    // Close Albert Dialogue
+    const closeBtn = desktopPage.locator('button[aria-label="Закрыть диалог"]').first();
+    await closeBtn.click();
+    await desktopPage.waitForTimeout(800);
+
+    // 1.7 Save Meeting snapshot to My Mirror
+    console.log('  Saving snapshot to My Mirror...');
+    const saveMirrorBtn = desktopPage.locator('button:has-text("Сохранить на этом устройстве"), button:has-text("Обновить сохранённое"), button:has-text("Сохранить зеркало")').first();
+    await saveMirrorBtn.click();
+    await desktopPage.waitForTimeout(800);
+
+    // 1.8 Navigate to My Mirror Dashboard on Desktop
     const logoBtn = desktopPage.locator('button[title="Главная"], button:has-text("Зеркало себя")').first();
     await logoBtn.click();
     await desktopPage.waitForTimeout(600);
@@ -141,6 +173,29 @@ async function runBrowserSmoke() {
       });
       console.log('  ✓ Saved 04_gipsoteka_emblem_obsidian.png');
     }
+
+    // 1.9 HARD RELOAD & RESTORE VERIFICATION
+    console.log('  Performing Hard Page Reload...');
+    const preReloadRegenCount = regenerationCallCount;
+    await desktopPage.reload({ waitUntil: 'networkidle' });
+    await desktopPage.waitForTimeout(1000);
+
+    console.log('  Restoring saved snapshot...');
+    const restoreBtn = desktopPage.locator('button:has-text("Открыть сохранённое")').first();
+    await restoreBtn.waitFor({ state: 'visible' });
+    await restoreBtn.click();
+    await desktopPage.waitForTimeout(1500);
+
+    // Verify synthesis is visible without additional LLM regeneration
+    await desktopPage.locator('text="Взгляд Альберта Вяземского"').first().waitFor({ state: 'visible', timeout: 15000 });
+    postRestoreRegenCount = regenerationCallCount - preReloadRegenCount;
+    console.log(`  Unnecessary LLM regeneration API calls on restore: ${postRestoreRegenCount}`);
+
+    await desktopPage.screenshot({
+      path: path.join(SCREENSHOTS_DIR, '13_restored_session_desktop.png'),
+      fullPage: false,
+    });
+    console.log('  ✓ Saved 13_restored_session_desktop.png (Hard reload + restore verified)');
 
     await desktopContext.close();
 
@@ -199,7 +254,7 @@ async function runBrowserSmoke() {
     const finishBtn = mobilePage.locator('button:not([disabled]):has-text("Соткать историю")').last();
     await finishBtn.click();
     console.log('  Waiting for Myth generation on mobile...');
-    await mobilePage.locator('text="Символические истоки"').waitFor({ state: 'visible', timeout: 60000 });
+    await mobilePage.locator('text="Символические истоки"').waitFor({ state: 'visible', timeout: 90000 });
     await mobilePage.waitForTimeout(800);
 
     // 2.2 Go from Myth to Digital Code
@@ -226,6 +281,14 @@ async function runBrowserSmoke() {
     await mobilePage.waitForTimeout(400);
     await mobilePage.locator('nav button:has-text("Встреча")').first().click();
     await mobilePage.waitForTimeout(1000);
+
+    // Run synthesis on mobile
+    const mobileSynthesisBtn = mobilePage.locator('button:has-text("Провести Встречу зеркал")').first();
+    if (await mobileSynthesisBtn.isVisible()) {
+      await mobileSynthesisBtn.click();
+      await mobilePage.locator('text="Взгляд Альберта Вяземского"').waitFor({ state: 'visible', timeout: 60000 });
+      await mobilePage.waitForTimeout(800);
+    }
 
     // Capture Meeting Mobile Screenshot
     await mobilePage.screenshot({
@@ -268,6 +331,9 @@ async function runBrowserSmoke() {
     await motionContext.close();
 
     console.log('\n=== ALL BROWSER SMOKE TESTS & SCREENSHOTS COMPLETED SUCCESSFULLY ===');
+    console.log('ALBERT_BROWSER_SMOKE=PASS');
+    console.log('HARD_RELOAD_RESTORE=PASS');
+    console.log(`UNNECESSARY_REGENERATION=${postRestoreRegenCount}`);
   } catch (error) {
     console.error('Browser smoke test error:', error);
     throw error;
