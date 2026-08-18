@@ -387,33 +387,11 @@ export const compoundKnowledge: Record<string, CompoundKnowledge> = {
   },
 };
 
-export function getCompoundFallback(value: number): CompoundKnowledge {
-  const digits = value.toString().split('').map(v => parseInt(v, 10));
-  let sum = digits.reduce((acc, curr) => acc + curr, 0);
-  let root = sum;
-  let formulaStr = digits.join(' + ') + ' → ' + sum;
-  if (sum > 9 && sum !== 11) {
-    const sumDigits = sum.toString().split('').map(v => parseInt(v, 10));
-    root = sumDigits.reduce((acc, curr) => acc + curr, 0);
-    formulaStr += ' → ' + root;
-  }
-  return {
-    value,
-    root,
-    digits,
-    title: value + "/" + root,
-    short: "Скрытый сценарий",
-    formula: formulaStr,
-    accent: "Это составное число действует на тонком плане, требуя выстраивания сложной архитектуры между " + digits.join(", ") + " и " + root + ". Детальный анализ позволяет распаковать этот алгоритм до конца.",
-    risk: "Внутренний конфликт между противоречивыми энергиями, образующими данную конфигурацию.",
-    recommendation: "Перевести противоречие в конструктивный синтез, который в деталях рассматривается в рамках расширенного исследования."
-  };
-}
-
-export function getCompoundKnowledge(compoundStr: string): CompoundKnowledge {
+export function getCompoundKnowledge(compoundStr: string): CompoundKnowledge | null {
+  if (!compoundStr) return null;
   const baseVal = parseInt(compoundStr.split('/')[0], 10);
   if (compoundKnowledge[baseVal]) {
     return compoundKnowledge[baseVal];
   }
-  return getCompoundFallback(baseVal);
+  return null;
 }

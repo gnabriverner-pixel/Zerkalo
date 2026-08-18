@@ -285,3 +285,72 @@ export function isSnapshotMatchingCurrentSession(
 
   return true;
 }
+
+export const TRANSIENT_DRAFT_KEY = 'zerkalo.transientDraft.v1';
+
+export interface TransientDraftV1 {
+  version: 1;
+  updatedAt: string;
+  mode?: 'entry' | 'alabaster' | 'myth' | 'meeting' | 'ab-test';
+  codeDate?: string;
+  codeResult?: CalculationResult | null;
+  firstMirror?: FirstMirror | null;
+  storyInputs?: StoryInputs | null;
+  storyResult?: NonNullable<ApiResponse['story_result']> | null;
+  meetingResult?: MeetingOfMirrorsResult | null;
+  meetingUserNote?: string;
+}
+
+export function isValidTransientDraftV1(data: unknown): data is TransientDraftV1 {
+  if (!data || typeof data !== 'object') return false;
+  const candidate = data as Record<string, unknown>;
+  if (candidate.version !== 1) return false;
+  if (typeof candidate.updatedAt !== 'string') return false;
+  return true;
+}
+
+export function saveTransientDraft(draft: Omit<TransientDraftV1, 'version' | 'updatedAt'>): boolean {
+  if (typeof window === 'undefined' || !window.sessionStorage) return false;
+  try {
+    const payload: TransientDraftV1 = {
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      ...draft
+    };
+    window.sessionStorage.setItem(TRANSIENT_DRAFT_KEY, JSON.stringify(payload));
+    return true;
+  } catch (err) {
+    console.warn('[MyMirrorStorage] Failed to save transient draft:', err);
+    return false;
+  }
+}
+
+export function loadTransientDraft(): TransientDraftV1 | null {
+  if (typeof window === 'undefined' || !window.sessionStorage) return null;
+  try {
+    const raw = window.sessionStorage.getItem(TRANSIENT_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isValidTransientDraftV1(parsed)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function clearTransientDraft(): boolean {
+  if (typeof window === 'undefined' || !window.sessionStorage) return false;
+  try {
+    window.sessionStorage.removeItem(TRANSIENT_DRAFT_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function hasMeaningfulDraft(draft: TransientDraftV1 | null): boolean {
+  if (!draft) return false;
+  const hasCode = !!(draft.codeResult || (draft.codeDate && draft.codeDate.trim().length > 0));
+  const hasMyth = !!(draft.storyResult || (draft.storyInputs && (draft.storyInputs.q1 || draft.storyInputs.q2 || draft.storyInputs.q3 || draft.storyInputs.q4)));
+  return hasCode || hasMyth;
+}

@@ -4,15 +4,42 @@ import { X, Trash2 } from 'lucide-react';
 
 export const MetaphorLibrary = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
   const [savedItems, setSavedItems] = useState<any[]>([]);
+  const previousActiveElementRef = React.useRef<HTMLElement | null>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const load = () => {
       setSavedItems(JSON.parse(localStorage.getItem('saved_metaphors') || '[]'));
     };
-    if (isOpen) load();
+    if (isOpen) {
+      load();
+      previousActiveElementRef.current = document.activeElement as HTMLElement;
+      const t = setTimeout(() => {
+        closeButtonRef.current?.focus();
+      }, 50);
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        clearTimeout(t);
+        window.removeEventListener('keydown', handleKeyDown);
+        if (previousActiveElementRef.current && typeof previousActiveElementRef.current.focus === 'function') {
+          previousActiveElementRef.current.focus();
+        }
+      };
+    }
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    const load = () => {
+      setSavedItems(JSON.parse(localStorage.getItem('saved_metaphors') || '[]'));
+    };
     window.addEventListener('metaphor_saved', load);
     return () => window.removeEventListener('metaphor_saved', load);
-  }, [isOpen]);
+  }, []);
 
   const remove = (id: string) => {
     const newSaved = savedItems.filter(item => item.id !== id);
@@ -37,11 +64,19 @@ export const MetaphorLibrary = ({ isOpen, onClose }: { isOpen: boolean, onClose:
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Мои заметки"
             className="fixed top-0 right-0 h-full w-full max-w-md bg-[#FAFAFA] bg-marble shadow-2xl z-[10000] overflow-y-auto border-l border-[var(--color-antique-gold)]/20 flex flex-col"
           >
             <div className="p-6 border-b border-[var(--color-antique-gold)]/20 flex justify-between items-center sticky top-0 bg-[#FAFAFA]/90 backdrop-blur-md z-10">
-              <h2 className="font-serif text-2xl text-[var(--color-ink)]">Библиотека Метафор</h2>
-              <button onClick={onClose} className="p-2 text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors">
+              <h2 className="font-serif text-2xl text-[var(--color-ink)]">Мои заметки</h2>
+              <button 
+                ref={closeButtonRef}
+                onClick={onClose} 
+                className="min-w-[44px] min-h-[44px] p-2 flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors cursor-pointer"
+                aria-label="Закрыть заметки"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -49,7 +84,7 @@ export const MetaphorLibrary = ({ isOpen, onClose }: { isOpen: boolean, onClose:
             <div className="p-6 flex-grow flex flex-col gap-6">
               {savedItems.length === 0 ? (
                 <div className="text-center text-[var(--color-muted)] font-sans text-sm mt-10 opacity-70">
-                  Ваша библиотека пока пуста.<br/>Сохраняйте цитаты и инсайты, чтобы возвращаться к ним.
+                  У вас пока нет сохранённых заметок.<br/>Сохраняйте важные формулировки и инсайты, чтобы возвращаться к ним.
                 </div>
               ) : (
                 savedItems.map(item => (
@@ -63,7 +98,9 @@ export const MetaphorLibrary = ({ isOpen, onClose }: { isOpen: boolean, onClose:
                   >
                     <button 
                       onClick={() => remove(item.id)}
-                      className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-muted)] hover:text-red-900/70"
+                      className="absolute top-3 right-3 min-w-[36px] min-h-[36px] flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity text-[var(--color-muted)] hover:text-red-900/80 cursor-pointer"
+                      title="Удалить заметку"
+                      aria-label="Удалить заметку"
                     >
                       <Trash2 size={16} />
                     </button>

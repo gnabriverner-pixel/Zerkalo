@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Compass, Shield, Eye, Zap } from 'lucide-react';
 import { Orb, PLANET_PALETTES } from './Orb';
@@ -13,6 +13,30 @@ interface PantheonModalProps {
 
 export function PantheonModal({ isOpen, onClose, initialSelectedNumber = 1 }: PantheonModalProps) {
   const [selectedNum, setSelectedNum] = useState<number>(initialSelectedNumber);
+  const previousActiveElementRef = React.useRef<HTMLElement | null>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      previousActiveElementRef.current = document.activeElement as HTMLElement;
+      const t = setTimeout(() => {
+        closeButtonRef.current?.focus();
+      }, 50);
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        clearTimeout(t);
+        window.removeEventListener('keydown', handleKeyDown);
+        if (previousActiveElementRef.current && typeof previousActiveElementRef.current.focus === 'function') {
+          previousActiveElementRef.current.focus();
+        }
+      };
+    }
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -34,6 +58,9 @@ export function PantheonModal({ isOpen, onClose, initialSelectedNumber = 1 }: Pa
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.96, opacity: 0, y: 20 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Пантеон девяти архетипов"
           className="relative w-full max-w-5xl bg-[#0D121D] border border-[var(--color-antique-gold)]/30 rounded-xs shadow-[0_24px_80px_rgba(0,0,0,0.8)] text-[#EAEAEA] p-6 sm:p-10 my-auto overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
@@ -53,8 +80,9 @@ export function PantheonModal({ isOpen, onClose, initialSelectedNumber = 1 }: Pa
             </div>
             
             <button 
+              ref={closeButtonRef}
               onClick={onClose}
-              className="p-2 rounded-full text-stone-400 hover:text-stone-100 hover:bg-white/10 transition-colors shrink-0"
+              className="min-w-[44px] min-h-[44px] p-2 rounded-full text-stone-400 hover:text-stone-100 hover:bg-white/10 transition-colors shrink-0 flex items-center justify-center cursor-pointer"
               aria-label="Закрыть"
             >
               <X size={20} />
