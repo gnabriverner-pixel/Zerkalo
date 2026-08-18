@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, ArrowRight, ChevronLeft, RotateCcw } from 'lucide-react';
-import { ApiResponse, StoryInputs } from '../types';
+import { StoryInputs, ApiResponse } from '../types';
+import { EmblemPlate } from '../art/emblem';
 import { Orb } from './Orb';
 
 interface PersonalMythProps {
@@ -61,14 +62,14 @@ export default function PersonalMyth({
       id: 'q3',
       tag: '03 / 04 · Точка живости',
       orbNumber: 5, // Mercury
-      title: 'Вспомните момент за последнее время, когда вы чувствовали себя по-настоящему живым.',
+      title: 'Вспомни момент за последнее время, когда ты чувствовал себя по-настоящему живым.',
       placeholder: 'Что там происходило? Утренний свет, холодная вода, открытый разговор, ясность решения...'
     },
     {
       id: 'q4',
       tag: '04 / 04 · Искомое качество',
       orbNumber: 6, // Venus
-      title: 'Какое качество или состояние вы сейчас больше всего ищете?',
+      title: 'Какое качество или состояние ты сейчас больше всего ищешь?',
       placeholder: 'Тишины, дерзости, мягкости, ясных границ, простора, опоры, тепла...'
     }
   ];
@@ -76,7 +77,7 @@ export default function PersonalMyth({
   const handleNext = () => {
     if (step < 4) {
       setStep(step + 1);
-    } else {
+    } else if (step === 4) {
       handleGenerate();
     }
   };
@@ -129,12 +130,10 @@ export default function PersonalMyth({
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-70px)] py-12 px-4 sm:px-6 lg:px-8 text-[#EAEAEA] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
       
-      {/* Container */}
       <div className="w-full max-w-3xl flex flex-col items-center relative z-10 my-auto">
 
         <AnimatePresence mode="wait">
           
-          {/* STEP 0: INTRO SCREEN */}
           {step === 0 && (
             <motion.div 
               key="intro"
@@ -145,7 +144,7 @@ export default function PersonalMyth({
               className="text-center w-full max-w-2xl mx-auto py-8"
             >
               <div className="flex justify-center mb-8">
-                <Orb number={7} size="lg" showNumber={false} glow={true} />
+                <EmblemPlate planet={7} variant="alabaster" size={140} showNumber={false} showLabel={false} />
               </div>
 
               <span className="text-[11px] uppercase tracking-[0.3em] text-purple-300/80 font-mono block mb-3">
@@ -153,11 +152,11 @@ export default function PersonalMyth({
               </span>
 
               <h1 className="font-serif text-4xl sm:text-6xl text-stone-100 mb-4 font-normal tracking-tight leading-tight">
-                Сказка про вас
+                Личный миф
               </h1>
 
               <p className="text-base sm:text-lg text-stone-300/80 leading-relaxed mb-10 max-w-lg mx-auto font-light">
-                Четыре образных вопроса. Никаких анкет и дат рождения — только живая история, рождающаяся из ваших собственных метафор.
+                Четыре образных вопроса. Никаких анкет и дат рождения — только живая история, рождающаяся из твоих собственных метафор.
               </p>
               
               <button 
@@ -171,11 +170,7 @@ export default function PersonalMyth({
               <div className="mt-14 text-xs text-stone-400/60 font-light tracking-wide flex items-center justify-center gap-2">
                  <span>Образный формат для внутренней тишины и саморефлексии.</span>
                  {onOpenAbout && (
-                   <button
-                     type="button"
-                     onClick={onOpenAbout}
-                     className="text-[var(--color-antique-gold)] hover:underline ml-1"
-                   >
+                   <button type="button" onClick={onOpenAbout} className="text-[var(--color-antique-gold)] hover:underline ml-1">
                      О методе
                    </button>
                  )}
@@ -183,7 +178,6 @@ export default function PersonalMyth({
             </motion.div>
           )}
 
-          {/* STEPS 1 TO 4: MEDITATIVE ONE QUESTION PER SCREEN */}
           {step >= 1 && step <= 4 && currentQuestion && (
             <motion.div
               key={`step-${step}`}
@@ -193,85 +187,90 @@ export default function PersonalMyth({
               transition={{ duration: 0.6 }}
               className="w-full flex flex-col items-center text-center max-w-2xl mx-auto py-6"
             >
-              {/* Header metadata */}
               <div className="flex items-center justify-between w-full mb-10">
                 <span className="text-xs uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono">
                   {currentQuestion.tag}
                 </span>
 
                 {step > 1 ? (
-                  <button 
-                    onClick={() => setStep(step - 1)} 
-                    className="text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1 transition-colors cursor-pointer"
-                  >
+                  <button onClick={() => setStep(step - 1)} className="text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1 transition-colors cursor-pointer">
                     <ChevronLeft size={14} />
                     <span>Назад</span>
                   </button>
                 ) : (
-                  <button 
-                    onClick={() => setStep(0)} 
-                    className="text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 transition-colors cursor-pointer"
-                  >
+                  <button onClick={() => setStep(0)} className="text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 transition-colors cursor-pointer">
                     Отмена
                   </button>
                 )}
               </div>
 
-              {/* Central Orb for current step */}
               <div className="mb-8">
-                <Orb number={currentQuestion.orbNumber} size="md" glow={true} />
+                <EmblemPlate planet={currentQuestion.orbNumber} variant="alabaster" size={100} showNumber={false} showLabel={false} />
               </div>
 
-              {/* Central Grand Question */}
               <h2 className="font-serif text-2xl sm:text-4xl text-stone-100 mb-10 leading-relaxed font-light max-w-xl">
                 {currentQuestion.title}
               </h2>
               
-              {/* Minimalist Input (Transparent with Bottom Line) */}
-              <div className="relative w-full mb-10">
+              <div className="relative w-full mb-6">
                 <textarea 
                   autoFocus
                   rows={3}
-                  className="w-full bg-transparent border-0 border-b border-white/20 focus:border-[var(--color-antique-gold)] text-stone-100 placeholder:text-stone-600 text-lg sm:text-2xl font-serif text-center py-4 px-2 outline-none transition-all duration-300 resize-none leading-relaxed"
-                  placeholder={currentQuestion.placeholder}
                   value={currentInputValue}
-                  onChange={(e) => setInputs({ ...inputs, [currentQuestion.id]: e.target.value })}
+                  onChange={(e) => {
+                    setErrorText(null);
+                    setInputs({ ...inputs, [currentQuestion.id]: e.target.value });
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey && currentInputValue.trim().length >= 3) {
                       e.preventDefault();
                       handleNext();
                     }
                   }}
+                  placeholder="Опиши образ несколькими словами или фразой..."
+                  className="w-full bg-transparent border-b border-stone-600 focus:border-[var(--color-antique-gold)] px-2 py-3 text-lg sm:text-xl text-stone-100 placeholder:text-stone-600 focus:outline-none transition-colors resize-none font-serif leading-relaxed text-center"
                 />
+                
+                <div className="flex justify-between items-center text-[10px] uppercase font-mono text-stone-500 mt-2 px-1">
+                  <span>Минимум 3 символа</span>
+                  <span>{currentInputValue.length} знаков</span>
+                </div>
               </div>
-              
-              {/* Error Message If Any */}
+
               {errorText && (
-                <div className="mb-8 text-xs text-red-300/90 max-w-md bg-red-950/30 border border-red-500/20 p-3 rounded-xs">
-                  {errorText}
+                <div className="w-full max-w-xl mx-auto mb-6 p-4 bg-red-950/40 border border-red-500/30 rounded-xs text-center text-sm text-red-200">
+                  <p className="mb-3 text-xs sm:text-sm font-light">{errorText}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorText(null);
+                      handleGenerate();
+                    }}
+                    className="px-4 py-2 bg-red-900/60 hover:bg-red-800 text-xs font-mono uppercase tracking-wider text-red-100 rounded-xs transition-colors cursor-pointer"
+                  >
+                    Попробовать снова
+                  </button>
                 </div>
               )}
 
-              {/* Action Controls */}
               <div className="flex flex-col items-center gap-4">
-                <button 
-                  onClick={handleNext}
+                <button
                   disabled={currentInputValue.trim().length < 3}
-                  className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 rounded-xs uppercase tracking-[0.2em] text-xs font-semibold hover:bg-[#D9B770] transition-all disabled:opacity-20 disabled:hover:bg-[var(--color-antique-gold)] disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer shadow-md"
+                  onClick={handleNext}
+                  className={`px-8 py-3.5 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs transition-all flex items-center gap-2 cursor-pointer ${
+                    currentInputValue.trim().length >= 3
+                      ? 'bg-[var(--color-antique-gold)] text-gray-950 hover:bg-[#D9B770] shadow-[0_0_20px_rgba(200,164,93,0.2)]'
+                      : 'bg-white/5 text-stone-600 border border-white/5 cursor-not-allowed'
+                  }`}
                 >
-                  <span>{step === 4 ? 'Сплести историю' : 'Продолжить'}</span>
+                  <span>{step === 4 ? 'Соткать историю' : 'Далее'}</span>
                   <ArrowRight size={14} />
                 </button>
-                
-                <span className="text-[11px] text-stone-500 font-light">
-                  {step === 4 ? 'Нажмите Enter для завершения' : 'Нажмите Enter для следующего шага'}
-                </span>
+                <span className="text-[10px] text-stone-500 font-mono">или нажми Enter</span>
               </div>
-
             </motion.div>
           )}
 
-          {/* STEP 5: GENERATING STATE */}
           {step === 5 && (
             <motion.div
               key="generating"
@@ -280,18 +279,17 @@ export default function PersonalMyth({
               exit={{ opacity: 0 }}
               className="w-full flex flex-col items-center justify-center py-24 text-center max-w-lg mx-auto"
             >
-              <Orb number={7} size="lg" showNumber={false} glow={true} className="mb-8" />
+              <EmblemPlate planet={7} variant="alabaster" size={140} showNumber={false} showLabel={false} className="mb-8" />
               <Loader2 className="w-6 h-6 text-[var(--color-antique-gold)] animate-spin mb-6" />
               <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 mb-3 font-light">
-                Вплетаем нити ваших символов...
+                Собираем метафорическую историю...
               </h3>
               <p className="text-xs text-stone-400 font-light max-w-sm leading-relaxed">
-                Сказка рождается строго из ваших четырех ответов, без домыслов и шаблонов.
+                Сказка рождается строго из твоих четырех ответов, без домыслов и шаблонов.
               </p>
             </motion.div>
           )}
 
-          {/* STEP 6: LITERARY RESULT SCREEN */}
           {step === 6 && result && (
             <motion.div
               key="result"
@@ -303,7 +301,7 @@ export default function PersonalMyth({
             >
               {/* Header Title */}
               <div className="text-center w-full max-w-2xl mx-auto pt-4">
-                <Orb number={7} size="sm" showNumber={false} glow={true} className="mx-auto mb-6" />
+                <EmblemPlate planet={7} variant="alabaster" size={64} showNumber={false} showLabel={false} className="mx-auto mb-6" />
                 
                 <span className="text-[10px] tracking-[0.3em] uppercase text-purple-300/80 font-mono block mb-3">
                   Личный Миф · Сказка
@@ -344,7 +342,7 @@ export default function PersonalMyth({
               <article className="w-full bg-[#EFE5D3] border border-[#D1B98D]/50 p-8 sm:p-12 rounded-xs shadow-[0_28px_80px_rgba(0,0,0,0.3)]">
                 <div className="mb-8 flex items-center justify-between border-b border-[#7B6545]/20 pb-4 text-[10px] uppercase tracking-[0.25em] text-[#7B6545] font-mono">
                   <span>Личный миф</span>
-                  <span>Чернила · ваши четыре образа</span>
+                  <span>Чернила · твои четыре образа</span>
                 </div>
                 <div className="font-serif text-lg sm:text-[21px] leading-[2] text-[#282019] space-y-8 font-normal max-w-2xl mx-auto tracking-[0.015em]">
                   {result.story.split('\n\n').map((paragraph, idx) => (
@@ -367,7 +365,7 @@ export default function PersonalMyth({
                   rows={2}
                   value={journalNote}
                   onChange={(e) => setJournalNote(e.target.value)}
-                  placeholder="Запишите здесь свой отклик или мысль..."
+                  placeholder="Запиши здесь свой отклик или мысль..."
                   className="w-full max-w-xl mx-auto bg-transparent border-0 border-b border-white/20 focus:border-[var(--color-antique-gold)] text-sm text-center py-2 outline-none transition-colors text-stone-100 placeholder:text-stone-600 font-light resize-none block"
                 />
               </div>
@@ -379,12 +377,12 @@ export default function PersonalMyth({
                     Следующее зеркало
                   </span>
                   <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
-                    {hasCodeResult ? 'Встреча двух зеркал' : 'Цифровой код вашей природы'}
+                    {hasCodeResult ? 'Встреча двух зеркал' : 'Цифровой код твоей природы'}
                   </h3>
                   <p className="text-xs sm:text-sm text-stone-400 font-light max-w-md mx-auto leading-relaxed">
                     {hasCodeResult 
-                      ? 'Ваш код уже рассчитан. Вы можете перейти к синтезу двух независимых отражений.'
-                      : 'Откройте независимую линзу через дату рождения, чтобы получить пять ключей и сопоставить их с мифом.'}
+                      ? 'Твой код уже рассчитан. Можно перейти к синтезу двух независимых отражений.'
+                      : 'Открой независимую линзу через дату рождения, чтобы получить пять ключей и сопоставить их с мифом.'}
                   </p>
                 </div>
 

@@ -9,6 +9,7 @@ import { AboutMethod } from './components/AboutMethod';
 import { AlabasterSanctuary } from './components/AlabasterSanctuary';
 import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult } from './types';
 import { loadMyMirrorSnapshot, deleteMyMirrorSnapshot, MyMirrorSnapshotV1 } from './services/myMirrorStorage';
+import { EmblemDefs } from './art/emblem';
 
 export default function App() {
   const [mode, setMode] = useState<'entry' | 'myth' | 'meeting' | 'alabaster' | 'ab-test'>('entry');
@@ -62,6 +63,7 @@ export default function App() {
   if (mode === 'alabaster') {
     return (
       <div className="w-full min-h-screen">
+        <EmblemDefs />
         <AlabasterSanctuary
           initialDate={codeDate}
           onCodeCalculated={(fullDate, calc, reading) => {
@@ -85,6 +87,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen w-full flex flex-col font-sans bg-[#090D15] text-[#EAEAEA] relative overflow-x-hidden selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
+      <EmblemDefs />
       
       {/* Quiet, Minimalist Header */}
       <header className="fixed top-0 left-0 w-full flex justify-between items-center z-50 py-3.5 px-4 sm:px-8 pointer-events-none bg-gradient-to-b from-[#090D15]/95 via-[#090D15]/80 to-transparent backdrop-blur-sm">

@@ -1,0 +1,117 @@
+/* ==========================================================================
+   ZERKALO GIPSOTEKA EMBLEM ART SYSTEM CSS (V1.1 FINAL)
+   ========================================================================== */
+
+@keyframes zk-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes zk-sweep {
+  from { transform: translateX(-115%); opacity: 0.9; }
+  to { transform: translateX(115%); opacity: 0; }
+}
+
+@keyframes zk-emerge {
+  from { opacity: 0; clip-path: inset(0 100% 0 0); }
+  to { opacity: 0.86; clip-path: inset(0 0 0 0); }
+}
+
+@keyframes zk-spec {
+  0% { transform: translateX(-140%); }
+  55% { transform: translateX(140%); }
+  100% { transform: translateX(140%); }
+}
+
+@keyframes zk-condense {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); filter: blur(3px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes zk-reflect {
+  from { opacity: 0; }
+  to { opacity: 0.2; }
+}
+
+/* Alabaster Plate */
+.zk-plate-alabaster {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: 1px solid rgba(26, 26, 28, 0.1);
+  background: radial-gradient(135% 135% at calc(28% + var(--zk-lx, 0px)) calc(22% + var(--zk-ly, 0px)), #FFFEFA 0%, #F4F1E9 56%, #E4DFD4 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -12px 26px rgba(26, 26, 28, 0.07), 0 20px 44px -28px rgba(0, 0, 0, 0.75);
+  transition: background 120ms ease-out;
+}
+
+.zk-plate-alabaster .zk-emblem-svg {
+  position: absolute;
+  left: 9%;
+  top: 9%;
+  width: 82%;
+  height: 82%;
+  color: #1A1A1C;
+  filter: url(#zk-carve);
+  opacity: 0.86;
+}
+
+.zk-plate-alabaster .zk-sweep-light {
+  position: absolute;
+  inset: -10%;
+  pointer-events: none;
+  background: linear-gradient(102deg, transparent 42%, rgba(255, 255, 255, 0.7) 50%, transparent 58%);
+  animation: zk-sweep 1000ms ease-out both;
+}
+
+/* Obsidian Plate */
+.zk-plate-obsidian {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: radial-gradient(120% 90% at 50% -14%, #262A38 0%, transparent 62%), linear-gradient(180deg, #14161E 0%, #090A0E 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -30px 60px rgba(0, 0, 0, 0.55), 0 22px 46px -28px #000;
+}
+
+.zk-plate-obsidian .zk-emblem-svg {
+  position: absolute;
+  left: 19%;
+  top: 7%;
+  width: 62%;
+  height: 62%;
+  filter: url(#zk-deboss);
+}
+
+.zk-plate-obsidian .zk-reflect-svg {
+  position: absolute;
+  left: 19%;
+  top: 71%;
+  width: 62%;
+  height: 62%;
+  transform: scaleY(-1);
+  opacity: 0.2;
+  -webkit-mask-image: linear-gradient(to top, transparent 8%, #000 72%);
+  mask-image: linear-gradient(to top, transparent 8%, #000 72%);
+}
+
+.zk-plate-obsidian .zk-spec-light {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: linear-gradient(100deg, transparent 44%, rgba(255, 248, 232, 0.16) 50%, transparent 56%);
+  animation: zk-spec 6s linear infinite;
+}
+
+/* Reduced Motion and Touch */
+@media (prefers-reduced-motion: reduce) {
+  .zk-plate-alabaster,
+  .zk-plate-obsidian,
+  .zk-sweep-light,
+  .zk-spec-light,
+  .zk-emblem-svg,
+  .zk-reflect-svg {
+    animation: none !important;
+    transition: none !important;
+  }
+}

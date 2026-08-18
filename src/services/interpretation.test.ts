@@ -13,7 +13,7 @@ describe('interpretation', () => {
     const textStr = JSON.stringify(mirror);
     expect(textStr).toContain('6');
     expect(textStr).toContain('8');
-    expect(textStr).toContain('11');
+    expect(textStr).toContain('2');
     expect(textStr).toContain('5');
     expect(textStr).toContain('1');
 

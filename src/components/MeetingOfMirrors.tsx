@@ -14,7 +14,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, MeetingApiResponse } from '../types';
-import { Orb } from './Orb';
+import { EmblemPlate } from '../art/emblem';
 import { AlbertDialogue } from './AlbertDialogue';
 import { TesterFeedbackWidget } from './TesterFeedbackWidget';
 import { generateFirstMirror } from '../services/interpretation';
@@ -197,7 +197,7 @@ export function MeetingOfMirrors({
               transition={{ duration: 0.9 }}
               className="relative z-10"
             >
-              <Orb number={codeResult?.soul || 1} size="lg" glow={true} />
+              <EmblemPlate planet={codeResult?.soul || 1} variant="obsidian" size={130} />
             </motion.div>
 
             <motion.div
@@ -206,7 +206,7 @@ export function MeetingOfMirrors({
               transition={{ duration: 0.9 }}
               className="relative z-20"
             >
-              <Orb number={7} size="lg" showNumber={false} glow={true} />
+              <EmblemPlate planet={7} variant="alabaster" size={130} showNumber={false} showLabel={false} />
             </motion.div>
           </div>
 

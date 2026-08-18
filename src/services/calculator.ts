@@ -1,117 +1,133 @@
 // src/services/calculator.ts
-// The Core Mathematical Engine for the Vyazemsky System
+// The Core Mathematical Engine for the Vedic Numerology System (Protocol Calculation v1)
 
 import { CalculationResult } from '../types';
+import { validateBirthDate } from './birthDate';
 
 /**
- * Reduces a number to a single digit, unless it's a master number (11, 22, 33).
- * Returns both the final digit and the composite string (e.g., "35/8").
+ * Verbose reduction of a number to a single digit (1..9), preserving reduction history.
+ * Example: 82 -> [82, 10, 1], composite: "82/10/1", value: 1
+ * Example: 29 -> [29, 11, 2], composite: "29/11/2", value: 2
+ * Example: 33 -> [33, 6], composite: "33/6", value: 6
  */
-function reduceNumber(num: number): { value: number; composite: string } {
-  if (num < 10) return { value: num, composite: num.toString() };
-  
-  let current = num;
-  let steps = [current];
-  
-  while (current >= 10 && current !== 11 && current !== 22 && current !== 33) {
-    const sum = current.toString().split('').reduce((acc, digit) => acc + parseInt(digit, 10), 0);
-    steps.push(sum);
-    current = sum;
+export function reduceVerbously(num: number): { value: number; composite: string; history: number[] } {
+  const safeNum = Math.max(0, Math.round(num) || 0);
+  if (safeNum === 0) {
+    return { value: 0, composite: '0', history: [0] };
   }
 
-  // If it reduced to 10, it goes to 1
-  if (current === 10) {
-    steps.push(1);
-    current = 1;
+  let current = safeNum;
+  const history: number[] = [current];
+
+  while (current > 9) {
+    current = current
+      .toString()
+      .split('')
+      .reduce((acc, digit) => acc + parseInt(digit, 10), 0);
+    history.push(current);
   }
 
   return {
     value: current,
-    composite: steps.join('/')
+    composite: history.join('/'),
+    history
   };
 }
 
 /**
- * Calculates the 5 Main Numbers and the Matrix based on the Vyazemsky System.
- * @param dateString Format: "DD.MM.YYYY"
+ * Calculates the 5 Main Numbers (ЧУ, ЧВ, ЧД, ЧР, ЧИ) and the Matrices (Базовая и Детальная)
+ * strictly conforming to Protocol Calculation v1.
+ * 
+ * @param dateString Format: "DD.MM.YYYY" (must be valid calendar date, 1900..today)
+ * @throws Error on invalid or malformed dates (no silent fallbacks to 01.01.2000)
  */
 export function calculateDigitalCode(dateString: string): CalculationResult {
-  const safeDateStr = typeof dateString === 'string' ? dateString : '';
-  const [dayStr = '01', monthStr = '01', yearStr = '2000'] = safeDateStr.split('.');
-  
-  const day = parseInt(dayStr, 10) || 1;
-  const month = parseInt(monthStr, 10) || 1;
-  const year = parseInt(yearStr, 10) || 2000;
+  if (typeof dateString !== 'string' || !dateString.trim()) {
+    throw new Error(`Invalid birth date: empty or non-string input. Expected DD.MM.YYYY.`);
+  }
 
-  // 1. Soul Number (ЧДш)
-  const soulCalc = reduceNumber(day);
+  const trimmed = dateString.trim();
+  const parts = trimmed.split('.');
+  if (parts.length !== 3 || parts[0].length !== 2 || parts[1].length !== 2 || parts[2].length !== 4) {
+    throw new Error(`Invalid birth date format: "${dateString}". Expected DD.MM.YYYY.`);
+  }
 
-  // 2. Path Number (ЧП)
-  const fullDateSum = safeDateStr.replace(/\./g, '').split('').reduce((acc, digit) => acc + (parseInt(digit, 10) || 0), 0) || 1;
-  const pathCalc = reduceNumber(fullDateSum);
+  const [dayStr, monthStr, yearStr] = parts;
+  const validation = validateBirthDate(dayStr, monthStr, yearStr);
+  if (!validation.valid) {
+    const msg = 'message' in validation ? validation.message : 'Invalid birth date';
+    throw new Error(`Invalid birth date "${dateString}": ${msg}`);
+  }
 
-  // 3. Direction Number (ЧН)
-  // Formula: Soul (Base) + Path (Composite/Full Sum)
-  const directionSum = soulCalc.value + fullDateSum;
-  const directionCalc = reduceNumber(directionSum);
+  const day = parseInt(dayStr, 10);
+  const month = parseInt(monthStr, 10);
+  const year = parseInt(yearStr, 10);
 
-  // 4. Expression Number (ЧВ)
-  // Formula: Day + Month
-  const expressionSum = day + month;
-  const expressionCalc = reduceNumber(expressionSum);
+  // 1. Число Души / Число Ума (ЧДш / ЧУ)
+  // Formula: Исходный день рождения, свернутый до 1..9
+  const mindFull = day;
+  const mindCalc = reduceVerbously(mindFull);
 
-  // 5. Result Number (ЧРз)
-  // Formula: Soul (Base) + Path (Composite) + Direction (Composite)
-  const resultSum = soulCalc.value + fullDateSum + directionSum;
-  const resultCalc = reduceNumber(resultSum);
+  // 2. Число Выражения (ЧВ)
+  // Formula: сумма ЦИФР дня + сумма ЦИФР месяца -> сведение до 1..9
+  const dayDigitsSum = dayStr.split('').reduce((acc, d) => acc + parseInt(d, 10), 0);
+  const monthDigitsSum = monthStr.split('').reduce((acc, d) => acc + parseInt(d, 10), 0);
+  const expressionFull = dayDigitsSum + monthDigitsSum;
+  const expressionCalc = reduceVerbously(expressionFull);
 
-  // Matrix Calculation
-  // RC1 = fullDateSum
-  // RC2 = sum of digits of RC1
-  const rc1 = fullDateSum;
-  const rc2 = rc1.toString().split('').reduce((acc, d) => acc + parseInt(d, 10), 0);
-  
-  // RC3 = RC1 - (first significant digit of day * 2)
-  const nonZeroDayDigits = dayStr.replace(/^0+/, '');
-  const firstSignificantDayDigit = parseInt(nonZeroDayDigits[0] || '1', 10) || 1;
-  const rc3 = rc1 - (firstSignificantDayDigit * 2);
-  
-  // RC4 = sum of digits of RC3
-  const rc4 = Math.abs(rc3).toString().split('').reduce((acc, d) => acc + parseInt(d, 10), 0);
+  // 3. Число Пути / Число Действия (ЧП / ЧД)
+  // Formula: сумма ВСЕХ цифр даты рождения
+  const allDobDigits = trimmed
+    .replace(/\./g, '')
+    .split('')
+    .map((d) => parseInt(d, 10))
+    .filter((n) => !isNaN(n));
+  const actionFull = allDobDigits.reduce((acc, digit) => acc + digit, 0);
+  const actionCalc = reduceVerbously(actionFull);
 
-  // Build Base Matrix (Only Date)
-  const baseMatrixStr = safeDateStr.replace(/\./g, '');
+  // 4. Число Направления / Число Реализации (ЧН / ЧР)
+  // Formula: composite ЧУ (mindFull) + composite ЧД (actionFull)
+  const realizationFull = mindFull + actionFull;
+  const realizationCalc = reduceVerbously(realizationFull);
+
+  // 5. Число Результата / Число Итога (ЧРз / ЧИ)
+  // Formula: composite ЧУ (mindFull) + composite ЧД (actionFull) + composite ЧР (realizationFull)
+  const outcomeFull = mindFull + actionFull + realizationFull;
+  const outcomeCalc = reduceVerbously(outcomeFull);
+
+  // 6. Базовая Матрица (Simple Matrix)
+  // Подсчёт цифр 1..9 из даты рождения (0 строго исключен)
   const baseMatrix: Record<string, number> = {
-    '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0, '0': 0
+    '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0
   };
-  for (const char of baseMatrixStr) {
-    if (baseMatrix[char] !== undefined) {
-      baseMatrix[char]++;
+  for (const digit of allDobDigits) {
+    if (digit >= 1 && digit <= 9) {
+      const key = digit.toString();
+      baseMatrix[key]++;
     }
   }
 
-  // Build Detailed Matrix (Date + RC1, RC2, RC3, RC4)
-  const detailedMatrixStr = `${safeDateStr.replace(/\./g, '')}${rc1}${rc2}${rc3}${rc4}`;
-  const detailedMatrix: Record<string, number> = {
-    '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0, '7': 0, '8': 0, '9': 0, '0': 0
-  };
-  for (const char of detailedMatrixStr) {
-    if (detailedMatrix[char] !== undefined) {
+  // 7. Детальная Матрица (Detailed Matrix)
+  // Simple matrix + цифры composite ЧД (actionFull) + composite ЧР (realizationFull) + composite ЧИ (outcomeFull) (0 строго исключен)
+  const detailedMatrix: Record<string, number> = { ...baseMatrix };
+  const extraDigitsStr = `${actionFull}${realizationFull}${outcomeFull}`;
+  for (const char of extraDigitsStr) {
+    if (char >= '1' && char <= '9') {
       detailedMatrix[char]++;
     }
   }
 
   return {
-    soul: soulCalc.value,
-    soulComposite: soulCalc.composite,
-    path: pathCalc.value,
-    pathComposite: pathCalc.composite,
-    direction: directionCalc.value,
-    directionComposite: directionCalc.composite,
+    soul: mindCalc.value,
+    soulComposite: mindCalc.composite,
+    path: actionCalc.value,
+    pathComposite: actionCalc.composite,
+    direction: realizationCalc.value,
+    directionComposite: realizationCalc.composite,
     expression: expressionCalc.value,
     expressionComposite: expressionCalc.composite,
-    result: resultCalc.value,
-    resultComposite: resultCalc.composite,
+    result: outcomeCalc.value,
+    resultComposite: outcomeCalc.composite,
     baseMatrix,
     detailedMatrix
   };

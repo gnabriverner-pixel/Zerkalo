@@ -1,29 +1,141 @@
+// src/services/calculator.test.ts
 import { describe, it, expect } from 'vitest';
-import { calculateDigitalCode } from './calculator';
+import { calculateDigitalCode, reduceVerbously } from './calculator';
+import goldenSpec from '../../docs/evidence/v1_1-audit/canonical_golden_spec_25.json';
 
-describe('calculator', () => {
-  it('correctly calculates digital code for 06.05.1986', () => {
-    const calc = calculateDigitalCode("06.05.1986");
-    expect(calc).toBeDefined();
-    
-    // Soul: 6 -> 6
-    expect(calc.soul).toBe(6);
-    expect(calc.soulComposite).toBe("6");
-    
-    // Path: 0+6+0+5+1+9+8+6 = 35 -> 8
-    expect(calc.path).toBe(8);
-    expect(calc.pathComposite).toBe("35/8");
-    
-    // Direction: Soul (6) + Path Sum (35) = 41 -> 5
-    expect(calc.direction).toBe(5);
-    expect(calc.directionComposite).toBe("41/5");
-    
-    // Expression: Day (6) + Month (5) = 11 -> 11
-    expect(calc.expression).toBe(11);
-    expect(calc.expressionComposite).toBe("11");
-    
-    // Result: Soul (6) + Path (35) + Direction (41) = 82 -> 10 -> 1
-    expect(calc.result).toBe(1);
-    expect(calc.resultComposite).toBe("82/10/1");
+describe('Vedic Numerology Canonical Calculation Engine (Protocol Calculation v1)', () => {
+  describe('reduceVerbously', () => {
+    it('correctly reduces single digit numbers', () => {
+      expect(reduceVerbously(6)).toEqual({ value: 6, composite: '6', history: [6] });
+      expect(reduceVerbously(1)).toEqual({ value: 1, composite: '1', history: [1] });
+      expect(reduceVerbously(9)).toEqual({ value: 9, composite: '9', history: [9] });
+    });
+
+    it('correctly reduces 2-step compound numbers', () => {
+      expect(reduceVerbously(15)).toEqual({ value: 6, composite: '15/6', history: [15, 6] });
+      expect(reduceVerbously(35)).toEqual({ value: 8, composite: '35/8', history: [35, 8] });
+      expect(reduceVerbously(33)).toEqual({ value: 6, composite: '33/6', history: [33, 6] });
+    });
+
+    it('correctly reduces 3-step compound numbers (including 29, 28, 82)', () => {
+      expect(reduceVerbously(29)).toEqual({ value: 2, composite: '29/11/2', history: [29, 11, 2] });
+      expect(reduceVerbously(28)).toEqual({ value: 1, composite: '28/10/1', history: [28, 10, 1] });
+      expect(reduceVerbously(82)).toEqual({ value: 1, composite: '82/10/1', history: [82, 10, 1] });
+      expect(reduceVerbously(96)).toEqual({ value: 6, composite: '96/15/6', history: [96, 15, 6] });
+    });
+  });
+
+  describe('25 Golden DOB Parity Suite', () => {
+    for (const [dob, expected] of Object.entries<any>(goldenSpec)) {
+      it(`matches canonical golden spec for DOB: ${dob}`, () => {
+        const result = calculateDigitalCode(dob);
+
+        // 1. Soul (ЧУ)
+        expect(result.soul, `Soul digit for ${dob}`).toBe(expected.mind.digit);
+        expect(result.soulComposite, `Soul composite for ${dob}`).toBe(expected.mind.composite);
+
+        // 2. Expression (ЧВ)
+        expect(result.expression, `Expression digit for ${dob}`).toBe(expected.expression.digit);
+        expect(result.expressionComposite, `Expression composite for ${dob}`).toBe(expected.expression.composite);
+
+        // 3. Path (ЧД)
+        expect(result.path, `Path digit for ${dob}`).toBe(expected.action.digit);
+        expect(result.pathComposite, `Path composite for ${dob}`).toBe(expected.action.composite);
+
+        // 4. Direction (ЧР)
+        expect(result.direction, `Direction digit for ${dob}`).toBe(expected.realization.digit);
+        expect(result.directionComposite, `Direction composite for ${dob}`).toBe(expected.realization.composite);
+
+        // 5. Result (ЧИ)
+        expect(result.result, `Result digit for ${dob}`).toBe(expected.outcome.digit);
+        expect(result.resultComposite, `Result composite for ${dob}`).toBe(expected.outcome.composite);
+
+        // 6. Base Matrix (1..9)
+        for (let i = 1; i <= 9; i++) {
+          const key = i.toString();
+          expect(result.baseMatrix[key], `Base matrix [${key}] for ${dob}`).toBe(expected.simple_matrix[key]);
+        }
+
+        // 7. Detailed Matrix (1..9)
+        for (let i = 1; i <= 9; i++) {
+          const key = i.toString();
+          expect(result.detailedMatrix[key], `Detailed matrix [${key}] for ${dob}`).toBe(expected.detailed_matrix[key]);
+        }
+      });
+    }
+  });
+
+  describe('Property & Invariant Tests', () => {
+    const propertyDates = [
+      '01.01.1970', '15.08.1990', '29.02.2000', '31.12.1999', '28.09.1994',
+      '11.11.2011', '22.02.2022', '07.07.1977', '19.10.1991', '24.06.1985'
+    ];
+
+    it('always reduces all 5 main numbers to single digits 1..9', () => {
+      propertyDates.forEach((dob) => {
+        const res = calculateDigitalCode(dob);
+        expect(res.soul).toBeGreaterThanOrEqual(1);
+        expect(res.soul).toBeLessThanOrEqual(9);
+
+        expect(res.expression).toBeGreaterThanOrEqual(1);
+        expect(res.expression).toBeLessThanOrEqual(9);
+
+        expect(res.path).toBeGreaterThanOrEqual(1);
+        expect(res.path).toBeLessThanOrEqual(9);
+
+        expect(res.direction).toBeGreaterThanOrEqual(1);
+        expect(res.direction).toBeLessThanOrEqual(9);
+
+        expect(res.result).toBeGreaterThanOrEqual(1);
+        expect(res.result).toBeLessThanOrEqual(9);
+      });
+    });
+
+    it('ensures detailed matrix counts are >= base matrix counts for all digits 1..9', () => {
+      propertyDates.forEach((dob) => {
+        const res = calculateDigitalCode(dob);
+        for (let i = 1; i <= 9; i++) {
+          const key = i.toString();
+          expect(res.detailedMatrix[key]).toBeGreaterThanOrEqual(res.baseMatrix[key]);
+        }
+      });
+    });
+
+    it('strictly rejects invalid, malformed, impossible, and future dates', () => {
+      expect(() => calculateDigitalCode('')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('invalid.date')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('1.1.2000')).toThrow(/Invalid birth date format/);
+      expect(() => calculateDigitalCode('31.02.2020')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('29.02.2001')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('32.01.1990')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('15.13.1990')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('01.01.1899')).toThrow(/Invalid birth date/);
+      expect(() => calculateDigitalCode('01.01.2099')).toThrow(/Invalid birth date/);
+    });
+
+    it('successfully accepts valid leap year dates like 29.02.2000 and 29.02.2024', () => {
+      const res2000 = calculateDigitalCode('29.02.2000');
+      expect(res2000.soul).toBe(2);
+      expect(res2000.soulComposite).toBe('29/11/2');
+
+      const res2024 = calculateDigitalCode('29.02.2024');
+      expect(res2024.soul).toBe(2);
+      expect(res2024.soulComposite).toBe('29/11/2');
+    });
+
+    it('strictly excludes zero from base and detailed matrix keys and values', () => {
+      propertyDates.forEach((dob) => {
+        const res = calculateDigitalCode(dob);
+        expect(res.baseMatrix['0']).toBeUndefined();
+        expect(res.detailedMatrix['0']).toBeUndefined();
+
+        const baseKeys = Object.keys(res.baseMatrix);
+        expect(baseKeys).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+
+        const detailedKeys = Object.keys(res.detailedMatrix);
+        expect(detailedKeys).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+      });
+    });
   });
 });
+

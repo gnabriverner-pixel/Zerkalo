@@ -1,0 +1,35 @@
+{
+  "total_findings": 2,
+  "voice_rules": {
+    "personal_myth": "ты/тебя (intimate, second-person singular)",
+    "digital_code": "вы/вас (respectful, architectural)",
+    "meeting_of_mirrors": "вы/вас (analytical synthesis)",
+    "web_albert": "вы/вас (intellectual guide, conversational)"
+  },
+  "findings": [
+    {
+      "id": "FIND-001",
+      "file": "src/components/AboutMethod.tsx",
+      "line": 420,
+      "surface": "About Method",
+      "type": "FORBIDDEN_VOCABULARY_OR_PREDICTION",
+      "severity": "P1",
+      "description": "Found esoteric/diagnostic vocabulary match: «предсказание».",
+      "rendered_phrase": "Не гадание и не предсказание будущего:",
+      "intended_voice": "вы",
+      "proposed_correction": "Replace with architectural/psychological/metaphorical terminology."
+    },
+    {
+      "id": "FIND-002",
+      "file": "src/components/AboutMethod.tsx",
+      "line": 424,
+      "surface": "About Method",
+      "type": "FORBIDDEN_VOCABULARY_OR_PREDICTION",
+      "severity": "P1",
+      "description": "Found esoteric/diagnostic vocabulary match: «диагноз».",
+      "rendered_phrase": "Не медицинский или психиатрический диагноз:",
+      "intended_voice": "вы",
+      "proposed_correction": "Replace with architectural/psychological/metaphorical terminology."
+    }
+  ]
+}
