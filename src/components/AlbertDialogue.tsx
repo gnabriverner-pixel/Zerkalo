@@ -156,7 +156,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        const safeMessage = errJson?.ui?.safe_message || 'Собеседник временно недоступен. Ваши вопросы и результаты сохранены — попробуйте повторить запрос.';
+        const safeMessage = errJson?.ui?.safe_message || 'Собеседник временно недоступен. Ваши результаты встречи зеркал сохранены — попробуйте повторить запрос.';
         setErrorText(safeMessage);
         setLastFailedMessage(text);
         setIsLoading(false);
@@ -215,6 +215,9 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 20 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Диалог с Альбертом Вяземским"
           className={`relative w-full max-w-3xl h-[85vh] flex flex-col rounded-sm shadow-2xl z-10 overflow-hidden border ${
             isDark 
               ? 'bg-[#0F1412] text-[#EAEAEA] border-[#2A3B33]' 
@@ -242,7 +245,11 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
             <button
               onClick={onClose}
               aria-label="Закрыть диалог"
-              className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              className={`min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
+                isDark 
+                  ? 'text-stone-400 hover:text-white hover:bg-[#1A2621]' 
+                  : 'text-stone-500 hover:text-stone-900 hover:bg-stone-200/60'
+              }`}
             >
               <X className="w-6 h-6" />
             </button>

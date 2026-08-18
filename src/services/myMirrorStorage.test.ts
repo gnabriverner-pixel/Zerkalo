@@ -7,7 +7,11 @@ import {
   loadMyMirrorSnapshot,
   deleteMyMirrorSnapshot,
   hasMyMirrorSnapshot,
-  isValidMyMirrorSnapshotV1
+  isValidMyMirrorSnapshotV1,
+  saveTransientDraft,
+  loadTransientDraft,
+  clearTransientDraft,
+  hasMeaningfulDraft
 } from './myMirrorStorage';
 
 const mockValidInput: SaveMyMirrorInput = {
@@ -198,5 +202,43 @@ describe('MyMirror Storage Service (V0 Contract)', () => {
     expect(parsed.serverTelemetry).toBeUndefined();
     expect(parsed.version).toBe(1);
     expect(parsed.codeDate).toBe('15.08.1990');
+  });
+
+  describe('Transient Draft (sessionStorage)', () => {
+    beforeEach(() => {
+      window.sessionStorage.clear();
+    });
+
+    it('saves and loads a valid transient draft from sessionStorage', () => {
+      const draft = {
+        mode: 'myth' as const,
+        codeDate: '06.05.1986',
+        storyInputs: { q1: 'образ', q2: 'маяк', q3: 'тишина', q4: 'сила' }
+      };
+
+      expect(saveTransientDraft(draft)).toBe(true);
+      const loaded = loadTransientDraft();
+      expect(loaded).not.toBeNull();
+      expect(loaded?.version).toBe(1);
+      expect(loaded?.mode).toBe('myth');
+      expect(loaded?.codeDate).toBe('06.05.1986');
+      expect(loaded?.storyInputs?.q2).toBe('маяк');
+      expect(hasMeaningfulDraft(loaded)).toBe(true);
+    });
+
+    it('clears transient draft from sessionStorage', () => {
+      saveTransientDraft({ codeDate: '06.05.1986' });
+      expect(loadTransientDraft()).not.toBeNull();
+
+      expect(clearTransientDraft()).toBe(true);
+      expect(loadTransientDraft()).toBeNull();
+    });
+
+    it('identifies meaningful vs empty drafts', () => {
+      expect(hasMeaningfulDraft(null)).toBe(false);
+      expect(hasMeaningfulDraft({ version: 1, updatedAt: new Date().toISOString() })).toBe(false);
+      expect(hasMeaningfulDraft({ version: 1, updatedAt: new Date().toISOString(), codeDate: '06.05.1986' })).toBe(true);
+      expect(hasMeaningfulDraft({ version: 1, updatedAt: new Date().toISOString(), storyInputs: { q1: 'test', q2: '', q3: '', q4: '' } })).toBe(true);
+    });
   });
 });

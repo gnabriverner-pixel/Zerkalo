@@ -1,6 +1,6 @@
 # Zerkalo V1.1 — Golden 25-Date Calculation Regression Report
 
-Generated: 2026-08-18T05:42:09.451Z  
+Generated: 2026-08-18T09:30:51.295Z  
 Target: Protocol Calculation v1 (`docs/canon/PROTOCOL_CALCULATION_V1.md`)  
 Implementation: `src/services/calculator.ts`
 

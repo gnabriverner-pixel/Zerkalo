@@ -49,6 +49,17 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
   const [activeTab, setActiveTab] = useState<'essence' | 'archetypes' | 'principles' | 'faq'>('essence');
   const [selectedArchetype, setSelectedArchetype] = useState<number>(1);
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const isDark = theme === 'dark';
@@ -71,6 +82,9 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 20 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="О методе Цифровой Код"
           className={`relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-sm shadow-2xl z-10 overflow-hidden border ${
             isDark 
               ? 'bg-[#0F1412] text-[#EAEAEA] border-[#2A3B33]' 
@@ -106,12 +120,13 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
 
             <button
               onClick={onClose}
-              className={`p-2 rounded-full transition-colors ${
+              className={`min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
                 isDark 
                   ? 'text-[#A3B8AD] hover:text-white hover:bg-[#1A2621]' 
                   : 'text-stone-500 hover:text-stone-900 hover:bg-stone-200/60'
               }`}
               title="Закрыть"
+              aria-label="Закрыть модальное окно"
             >
               <X className="w-6 h-6" />
             </button>

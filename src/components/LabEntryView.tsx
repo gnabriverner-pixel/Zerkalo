@@ -5,7 +5,8 @@ import { Orb } from './Orb';
 import { PantheonModal } from './PantheonModal';
 import { CalculationResult, ApiResponse } from '../types';
 import { validateBirthDate } from '../services/birthDate';
-import { MyMirrorSnapshotV1 } from '../services/myMirrorStorage';
+import { MyMirrorSnapshotV1, TransientDraftV1 } from '../services/myMirrorStorage';
+import { RotateCcw } from 'lucide-react';
 import mirrorHero from '../assets/mirror-hero.jpg';
 
 interface LabEntryViewProps {
@@ -21,6 +22,9 @@ interface LabEntryViewProps {
   savedSnapshot?: MyMirrorSnapshotV1 | null;
   onRestoreSavedMirror?: () => void;
   onDeleteSavedMirror?: () => void;
+  transientDraft?: TransientDraftV1 | null;
+  onRestoreDraft?: () => void;
+  onClearDraft?: () => void;
 }
 
 function pluralRu(value: number, one: string, few: string, many: string) {
@@ -45,6 +49,9 @@ export function LabEntryView({
   savedSnapshot,
   onRestoreSavedMirror,
   onDeleteSavedMirror,
+  transientDraft,
+  onRestoreDraft,
+  onClearDraft,
 }: LabEntryViewProps) {
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
@@ -184,8 +191,60 @@ export function LabEntryView({
           </div>
 
           {/* ========================================================= */}
-          {/* SAVED LOCAL MIRROR ENTRY (MY MIRROR V0) */}
+          {/* TRANSIENT UNFINISHED DRAFT RECOVERY */}
           {/* ========================================================= */}
+          {transientDraft && !savedSnapshot && (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7 }}
+              className="w-full mb-10 p-6 sm:p-8 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)]/60 shadow-[0_0_24px_rgba(200,164,93,0.08)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)]/50 shrink-0 mt-0.5">
+                  <RotateCcw size={20} className="text-[var(--color-antique-gold)]" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
+                      Черновик сессии · В процессе
+                    </span>
+                    <span className="text-[10px] font-mono text-stone-400">
+                      ({new Date(transientDraft.updatedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })})
+                    </span>
+                  </div>
+                  <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
+                    Найдено незавершённое зеркало
+                  </h3>
+                  <p className="text-xs text-stone-300 font-light leading-relaxed max-w-lg">
+                    {transientDraft.codeDate ? `Код: ${transientDraft.codeDate}` : ''}
+                    {transientDraft.codeDate && (transientDraft.storyResult || transientDraft.storyInputs?.q1) ? ' · ' : ''}
+                    {transientDraft.storyResult ? `Миф: «${transientDraft.storyResult.title}»` : (transientDraft.storyInputs?.q1 ? 'Ответы на вопросы мифа сохранены' : '')}
+                    {transientDraft.meetingResult ? ' · Встреча зеркал готова' : ''}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
+                <button
+                  onClick={onRestoreDraft}
+                  className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                >
+                  <span>Продолжить</span>
+                  <ChevronRight size={14} />
+                </button>
+                {onClearDraft && (
+                  <button
+                    onClick={onClearDraft}
+                    title="Сбросить незавершённый черновик"
+                    className="px-4 py-3 text-stone-400 hover:text-stone-200 uppercase tracking-widest text-[10px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Начать заново</span>
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
           {savedSnapshot && (
             <motion.div
               initial={{ opacity: 0, y: 15 }}

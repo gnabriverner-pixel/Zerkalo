@@ -24,6 +24,12 @@ export function determineKeyInsight(soul: number, path: number, result: number):
   return "Первый слой показывает плотную связку внутреннего желания, способа действия и зрелого результата: именно между ними возникает ваш главный жизненный алгоритм.";
 }
 
+function cleanSentence(text: string): string {
+  if (!text) return '';
+  const trimmed = text.trim();
+  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`;
+}
+
 export function generateFirstMirror(calc: CalculationResult): FirstMirror {
   const soul = getNumberKnowledge(calc.soul);
   const path = getNumberKnowledge(calc.path);
@@ -43,6 +49,42 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
     ? getCompoundKnowledge(calc.resultComposite.split('/')[0])
     : null;
 
+  const soulEssence = cleanSentence(soul.positions.soul.essence);
+  const pathEssence = cleanSentence(path.positions.path.essence);
+  const resultEssence = cleanSentence(result.positions.result.essence);
+
+  const soulStrength = cleanSentence(soul.positions.soul.strength);
+  const exprStrength = cleanSentence(expression.positions.expression.strength);
+
+  const dirTension = cleanSentence(direction.positions.direction.tension);
+  const pathTension = cleanSentence(path.positions.path.tension);
+
+  const tensionParts = [
+    `Зоны трения проявляются там, где выбранная стратегия (Путь ${path.number}) сталкивается с фокусом приложения практических усилий (Направление ${direction.number}).`,
+    `По линии Направления характерно следующее напряжение: ${dirTension}`,
+    `По линии Пути может проявляться: ${pathTension}`
+  ];
+  if (compoundPath && compoundPath.risk) {
+    tensionParts.push(`Скрытый сценарий перехода (${calc.pathComposite}): ${cleanSentence(compoundPath.risk)}`);
+  }
+  if (compoundDir && compoundDir.risk) {
+    tensionParts.push(`Векторный нюанс (${calc.directionComposite}): ${cleanSentence(compoundDir.risk)}`);
+  }
+
+  const dirRec = cleanSentence(direction.positions.direction.recommendation);
+  const resultRec = cleanSentence(result.positions.result.recommendation);
+
+  const stepParts = [
+    `Чтобы потенциал раскрывался без застревания, начните с точного применения энергии Направления (${direction.number}) с прицелом на смысловой Результат (${result.number}).`,
+    `Практический ориентир по Направлению: ${dirRec}`,
+    `Ориентир по линии Результата: ${resultRec}`
+  ];
+  if (compoundRes && compoundRes.recommendation) {
+    stepParts.push(`Дополнительный фокус (${calc.resultComposite}): ${cleanSentence(compoundRes.recommendation)}`);
+  }
+
+  const taleTitle = soul.tale ? soul.tale.title : 'Легенда начального порядка';
+
   return {
     title: "Ваш цифровой код собран",
     subtitle: "Архитектура Силы: короткий срез",
@@ -56,27 +98,27 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
       {
         id: "main_pattern",
         title: "Главный узор",
-        text: `Ядро вашей матрицы опирается на связку амбиции (Душа ${soul.number}), стратегии (Путь ${path.number}) и финальной цели (Результат ${result.number}). Изнутри вы чувствуете, что ${soul.positions.soul.essence.toLowerCase()} Внешний мир открывается, когда вы действуете по линии Пути: ${path.positions.path.essence.toLowerCase()} Этот способ двигаться неизбежно ведёт вас к финальной сборке: ${result.positions.result.essence.toLowerCase()}`
+        text: `Ядро вашей матрицы опирается на связку внутреннего импульса (Душа ${soul.number}), жизненной стратегии (Путь ${path.number}) и итоговой реализации (Результат ${result.number}).\n\nПозиция Души определяет внутреннюю мотивацию: ${soulEssence}\n\nТраектория Пути задаёт способ движения во внешнем мире: ${pathEssence}\n\nЭтот вектор ведёт к финальной сборке опыта: ${resultEssence}`
       },
       {
         id: "strength",
         title: "Что уже является силой",
-        text: `Ваша опора — это резонанс между внутренней потребностью (Душа ${soul.number}) и внешним стилем контакта с миром (Выражение ${expression.number}). У вас есть врожденная способность: ${soul.positions.soul.strength.toLowerCase()} И этот механизм усиливается в тот момент, когда через Выражение вы транслируете ${expression.positions.expression.strength.toLowerCase()} Это сочетание позволяет открывать двери, просто оставаясь собой.`
+        text: `Ваша опора — это резонанс между внутренней потребностью (Душа ${soul.number}) и внешним стилем контакта с миром (Выражение ${expression.number}).\n\nВнутренняя опора по числу Души: ${soulStrength}\n\nВнешний ресурс по числу Выражения: ${exprStrength}\n\nЭто сочетание позволяет открывать возможности, сохраняя верность своей природе.`
       },
       {
         id: "tension",
         title: "Где возникает напряжение",
-        text: `Сильная архитектура выявляет зоны трения там, где стратегия (Путь ${path.number}) сталкивается с фокусом приложения усилий (Направление ${direction.number}). Вы можете чувствовать сопротивление, когда вам нужно ${direction.positions.direction.tension.toLowerCase()}, в то время как ваш привычный метод требует ${path.positions.path.tension.toLowerCase()}${compoundPath ? ` Скрытый сценарий перехода (${calc.pathComposite}) добавляет нюанс: ${compoundPath.risk.toLowerCase()} ` : ''}${compoundDir ? ` А вектор (${calc.directionComposite}) уточняет: ${compoundDir.risk.toLowerCase()}` : ''}`
+        text: tensionParts.join('\n\n')
       },
       {
         id: "step",
         title: "Первый практический шаг",
-        text: `Чтобы ваш потенциал не замирал, начните с точного применения энергии Направления (${direction.number}) с прицелом на ваш смысловой Результат (${result.number}). Ваш шаг: ${direction.positions.direction.recommendation.toLowerCase()} Это не просто действие, это способ проложить дорогу к вашему итоговому смыслу, где вы сможете ${result.positions.result.recommendation.toLowerCase()}${compoundRes ? ` Дополнительно: ${compoundRes.recommendation.toLowerCase()}` : ''}`
+        text: stepParts.join('\n\n')
       },
       {
         id: "resonance",
         title: "Метафорический резонанс",
-        text: `"${soul.tale ? soul.tale.title : 'Легенда начального порядка'}". Ваше глубинное ядро (${soul.number}) требует реализации как ${soul.archetypeName.toLowerCase()}. Внутри вас живёт ${soul.core.toLowerCase()}. Если вы не используете этот дар (${soul.gift.toLowerCase()}), он превращается в тень (${soul.shadow.toLowerCase()}). Опирайтесь на планетарную энергию (${soul.planet}), чтобы выстроить свой маршрут.`
+        text: `«${taleTitle}».\n\nВаше глубинное ядро (Душа ${soul.number}) соотносится с архетипом «${soul.archetypeName}». Внутренняя основа характера: ${soul.core}. В созидательном проявлении этот потенциал раскрывается как ${soul.gift.toLowerCase()}. В теневом выражении он может проявляться как ${soul.shadow.toLowerCase()}. Планетарный ориентир архетипа — ${soul.planet}.`
       }
     ],
     strengthTags: [soul.gift.split(',')[0], path.gift.split(',')[0], expression.keywords[0], direction.keywords[1]],
