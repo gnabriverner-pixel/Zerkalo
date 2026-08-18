@@ -129,6 +129,14 @@ export default function App() {
   const handleClearDraft = () => {
     clearTransientDraft();
     setTransientDraft(null);
+    setCodeDate('');
+    setCodeResult(null);
+    setFirstMirror(null);
+    setStoryInputs(null);
+    setStoryResult(null);
+    setMeetingResult(null);
+    setMeetingUserNote('');
+    setMode('entry');
   };
 
   const hasCode = !!codeResult;
@@ -136,11 +144,19 @@ export default function App() {
   const hasBoth = hasCode && hasMyth;
 
   return (
-    <div className="min-h-screen w-full flex flex-col font-sans bg-[#090D15] text-[#EAEAEA] relative overflow-x-hidden selection:bg-[var(--color-antique-gold)]/20 selection:text-white transition-colors duration-300">
+    <div className={`min-h-screen w-full flex flex-col font-sans relative overflow-x-hidden transition-colors duration-300 ${
+      mode === 'alabaster' 
+        ? 'bg-[#FCFAF7] text-[#1A1A1C] selection:bg-[#C8A45D]/30 selection:text-[#1A1A1C]'
+        : 'bg-[#090D15] text-[#EAEAEA] selection:bg-[var(--color-antique-gold)]/20 selection:text-white'
+    }`}>
       <EmblemDefs />
       
       {/* Quiet, Minimalist Header */}
-      <header className="fixed top-0 left-0 w-full flex justify-between items-center z-50 py-2.5 sm:py-3.5 px-3 sm:px-8 pointer-events-none bg-gradient-to-b from-[#090D15]/95 via-[#090D15]/80 to-transparent backdrop-blur-sm">
+      <header className={`fixed top-0 left-0 w-full flex justify-between items-center z-50 py-2.5 sm:py-3.5 px-3 sm:px-8 pointer-events-none transition-all duration-300 ${
+        mode === 'alabaster'
+          ? 'bg-[#FCFAF7]/90 text-[#1A1A1C] border-b border-[#1A1A1C]/8 shadow-xs backdrop-blur-md'
+          : 'bg-gradient-to-b from-[#090D15]/95 via-[#090D15]/80 to-transparent text-[#EAEAEA] backdrop-blur-sm'
+      }`}>
         
         {/* Left: Minimal Logo with >=44px touch target */}
         <div className="pointer-events-auto flex items-center gap-3">
@@ -150,23 +166,31 @@ export default function App() {
             title="Главная"
             aria-label="Главная страница Зеркало Себя"
           >
-            <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-antique-gold)] shadow-[0_0_8px_rgba(200,164,93,0.6)] group-hover:scale-125 transition-transform" />
-            <span className="hidden sm:inline font-serif text-lg tracking-wide text-[#F4F4F4] group-hover:text-[var(--color-antique-gold)] transition-colors whitespace-nowrap">
+            <span className={`w-2.5 h-2.5 rounded-full bg-[var(--color-antique-gold)] shadow-[0_0_8px_rgba(200,164,93,0.6)] group-hover:scale-125 transition-transform`} />
+            <span className={`hidden sm:inline font-serif text-lg tracking-wide transition-colors whitespace-nowrap ${
+              mode === 'alabaster'
+                ? 'text-[#1A1A1C] group-hover:text-[var(--color-antique-gold)]'
+                : 'text-[#F4F4F4] group-hover:text-[var(--color-antique-gold)]'
+            }`}>
               Зеркало себя
             </span>
           </button>
         </div>
 
         {/* Center: Quiet Lens Switcher with comfortable tap targets */}
-        <nav aria-label="Режимы исследования" className="flex items-center gap-1 sm:gap-1.5 p-1 bg-[#0D121D]/85 backdrop-blur-md rounded-full border border-white/10 pointer-events-auto shadow-sm">
+        <nav aria-label="Режимы исследования" className={`flex items-center gap-1 sm:gap-1.5 p-1 rounded-full pointer-events-auto shadow-sm transition-colors duration-300 ${
+          mode === 'alabaster'
+            ? 'bg-[#EDEAE4]/90 border border-[#1A1A1C]/10 backdrop-blur-md text-[#63656C]'
+            : 'bg-[#0D121D]/85 border border-white/10 backdrop-blur-md text-gray-400'
+        }`}>
           
           {/* Digital Code */}
           <button
             onClick={() => setMode('alabaster')}
             className={`min-h-[40px] px-3.5 py-2 rounded-full text-[10px] sm:text-[11px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
               mode === 'alabaster'
-                ? 'bg-white/15 text-white font-medium shadow-xs'
-                : 'text-gray-400 hover:text-gray-200'
+                ? 'bg-[#1A1A1C] text-[#FCFAF7] font-medium shadow-xs'
+                : 'text-stone-400 hover:text-stone-200'
             }`}
           >
             <span>Код</span>
@@ -179,7 +203,9 @@ export default function App() {
             className={`min-h-[40px] px-3.5 py-2 rounded-full text-[10px] sm:text-[11px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
               mode === 'myth'
                 ? 'bg-white/15 text-white font-medium shadow-xs'
-                : 'text-gray-400 hover:text-gray-200'
+                : mode === 'alabaster'
+                  ? 'text-[#63656C] hover:text-[#1A1A1C]'
+                  : 'text-gray-400 hover:text-gray-200'
             }`}
           >
             <span>Миф</span>
@@ -194,7 +220,9 @@ export default function App() {
                 ? 'bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] font-medium border border-[var(--color-antique-gold)]/40 shadow-xs'
                 : hasBoth
                   ? 'text-[var(--color-antique-gold)] hover:text-amber-200'
-                  : 'text-gray-400 hover:text-gray-200'
+                  : mode === 'alabaster'
+                    ? 'text-[#63656C] hover:text-[#1A1A1C]'
+                    : 'text-gray-400 hover:text-gray-200'
             }`}
           >
             <span>Встреча</span>
@@ -203,17 +231,23 @@ export default function App() {
         </nav>
 
         {/* Right: Quiet About / Notes Links (Desktop & Mobile Accessible) */}
-        <div className="pointer-events-auto flex items-center gap-2 sm:gap-4 text-xs text-gray-400">
+        <div className={`pointer-events-auto flex items-center gap-2 sm:gap-4 text-xs transition-colors duration-300 ${
+          mode === 'alabaster' ? 'text-[#63656C]' : 'text-gray-400'
+        }`}>
           <button
             onClick={() => setShowAbout(true)}
-            className="min-h-[44px] px-2 py-2 hover:text-[var(--color-antique-gold)] tracking-wider uppercase text-[10px] sm:text-[11px] transition-colors cursor-pointer font-light"
+            className={`min-h-[44px] px-2 py-2 tracking-wider uppercase text-[10px] sm:text-[11px] transition-colors cursor-pointer font-light ${
+              mode === 'alabaster' ? 'hover:text-[#1A1A1C]' : 'hover:text-[var(--color-antique-gold)]'
+            }`}
           >
             О методе
           </button>
 
           <button
             onClick={() => setShowLibrary(true)}
-            className="min-h-[44px] px-2 py-2 hover:text-[var(--color-antique-gold)] tracking-wider uppercase text-[10px] sm:text-[11px] transition-colors cursor-pointer font-light"
+            className={`min-h-[44px] px-2 py-2 tracking-wider uppercase text-[10px] sm:text-[11px] transition-colors cursor-pointer font-light ${
+              mode === 'alabaster' ? 'hover:text-[#1A1A1C]' : 'hover:text-[var(--color-antique-gold)]'
+            }`}
           >
             <span className="hidden sm:inline">Мои заметки</span>
             <span className="sm:hidden">Заметки</span>
@@ -236,6 +270,8 @@ export default function App() {
             >
               <AlabasterSanctuary
                 initialDate={codeDate}
+                initialResult={codeResult}
+                initialReading={firstMirror}
                 onCodeCalculated={(fullDate, calc, reading) => {
                   setCodeDate(fullDate);
                   setCodeResult(calc);

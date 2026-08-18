@@ -48,16 +48,29 @@ const METHOD_STEPS = [
 export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme = 'light' }) => {
   const [activeTab, setActiveTab] = useState<'essence' | 'archetypes' | 'principles' | 'faq'>('essence');
   const [selectedArchetype, setSelectedArchetype] = useState<number>(1);
+  const previousActiveElementRef = React.useRef<HTMLElement | null>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
 
   React.useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    if (isOpen) {
+      previousActiveElementRef.current = document.activeElement as HTMLElement;
+      const t = setTimeout(() => {
+        closeButtonRef.current?.focus();
+      }, 50);
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        clearTimeout(t);
+        window.removeEventListener('keydown', handleKeyDown);
+        if (previousActiveElementRef.current && typeof previousActiveElementRef.current.focus === 'function') {
+          previousActiveElementRef.current.focus();
+        }
+      };
+    }
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -119,6 +132,7 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
             </div>
 
             <button
+              ref={closeButtonRef}
               onClick={onClose}
               className={`min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
                 isDark 

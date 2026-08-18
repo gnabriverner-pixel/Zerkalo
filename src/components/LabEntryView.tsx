@@ -193,7 +193,7 @@ export function LabEntryView({
           {/* ========================================================= */}
           {/* TRANSIENT UNFINISHED DRAFT RECOVERY */}
           {/* ========================================================= */}
-          {transientDraft && !savedSnapshot && (
+          {transientDraft && (
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}

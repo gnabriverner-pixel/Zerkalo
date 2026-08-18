@@ -19,6 +19,8 @@ import { validateBirthDate } from '../services/birthDate';
 
 interface AlabasterSanctuaryProps {
   initialDate?: string;
+  initialResult?: CalculationResult | null;
+  initialReading?: FirstMirror | null;
   onCodeCalculated?: (fullDate: string, calc: CalculationResult, reading?: FirstMirror) => void;
   onBackToCollection?: () => void;
   onContinue?: () => void;
@@ -28,6 +30,8 @@ interface AlabasterSanctuaryProps {
 
 export function AlabasterSanctuary({
   initialDate = '',
+  initialResult = null,
+  initialReading = null,
   onCodeCalculated,
   onBackToCollection,
   onContinue,
@@ -39,8 +43,17 @@ export function AlabasterSanctuary({
   const [year, setYear] = useState(initialDate ? initialDate.split('.')[2] || '' : '');
   const [dateError, setDateError] = useState('');
 
-  const [result, setResult] = useState<CalculationResult | null>(null);
-  const [reading, setReading] = useState<FirstMirror | null>(null);
+  const [result, setResult] = useState<CalculationResult | null>(() => {
+    if (initialResult) return initialResult;
+    if (initialDate && initialDate.length === 10) return calculateDigitalCode(initialDate);
+    return null;
+  });
+  const [reading, setReading] = useState<FirstMirror | null>(() => {
+    if (initialReading) return initialReading;
+    if (initialResult) return generateFirstMirror(initialResult);
+    if (initialDate && initialDate.length === 10) return generateFirstMirror(calculateDigitalCode(initialDate));
+    return null;
+  });
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Section references for smooth 7-act editorial scroll
@@ -62,47 +75,29 @@ export function AlabasterSanctuary({
     }
   };
 
-  const executeCalculation = async (fullDate: string) => {
+  const executeCalculation = (fullDate: string) => {
     const calc = calculateDigitalCode(fullDate);
-    let nextReading: FirstMirror | null = null;
+    const nextReading = generateFirstMirror(calc);
     setResult(calc);
-    setIsGenerating(true);
-
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'code', date: fullDate, calc })
-      });
-      const data: ApiResponse = await res.json();
-      if (data.status === 'ok' && data.code_result?.first_mirror) {
-        nextReading = data.code_result.first_mirror;
-      } else {
-        nextReading = data.code_result?.first_mirror || generateFirstMirror(calc);
-      }
-    } catch (err) {
-      console.error(err);
-      nextReading = generateFirstMirror(calc);
-    } finally {
-      setReading(nextReading);
-      setIsGenerating(false);
-      if (onCodeCalculated) {
-        onCodeCalculated(fullDate, calc, nextReading || undefined);
-      }
+    setReading(nextReading);
+    if (onCodeCalculated) {
+      onCodeCalculated(fullDate, calc, nextReading);
     }
   };
 
   useEffect(() => {
-    if (initialDate && initialDate.length === 10 && !result) {
+    if (initialDate && initialDate.length === 10) {
       const parts = initialDate.split('.');
       if (parts.length === 3) {
         setDay(parts[0]);
         setMonth(parts[1]);
         setYear(parts[2]);
-        executeCalculation(initialDate);
+        if (!result) {
+          executeCalculation(initialDate);
+        }
       }
     }
-  }, [initialDate]);
+  }, [initialDate, result]);
 
   const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, '').slice(0, 2);
@@ -185,34 +180,6 @@ export function AlabasterSanctuary({
 
   return (
     <div className="theme-alabaster min-h-screen w-full flex flex-col items-center selection:bg-[#C8A45D]/30 selection:text-[#1A1A1C] font-sans antialiased text-[#1A1A1C]">
-      
-      {/* Top Quiet Utility Bar */}
-      <div className="w-full max-w-5xl px-6 py-4 flex items-center justify-between border-b border-[#1A1A1C]/5 text-xs text-[#63656C]">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-[#C8A45D]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#C8A45D]" />
-          <span>Цифровой код · Алебастровый архив</span>
-        </div>
-
-        <div className="flex items-center gap-4 text-[11px] font-mono uppercase tracking-wider">
-          {onBackToCollection && (
-            <button
-              onClick={onBackToCollection}
-              className="hover:text-[#1A1A1C] transition-colors cursor-pointer text-[#8C8E96]"
-            >
-              К зеркалам
-            </button>
-          )}
-          {onOpenAbout && (
-            <button
-              onClick={onOpenAbout}
-              className="hover:text-[#1A1A1C] transition-colors cursor-pointer text-[#8C8E96]"
-            >
-              О методе
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* ========================================================= */}
       {/* 1. INITIAL FORM SCREEN (When no result yet) */}
       {/* ========================================================= */}

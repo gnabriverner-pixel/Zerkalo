@@ -30,6 +30,26 @@ function cleanSentence(text: string): string {
   return trimmed.endsWith('.') ? trimmed : `${trimmed}.`;
 }
 
+function normalizeTextForComparison(str: string): string {
+  return str.toLowerCase().replace(/[^а-яёa-z0-9]/g, '');
+}
+
+function appendUniqueParagraph(parts: string[], prefix: string, bodyText?: string) {
+  if (!bodyText) return;
+  const cleaned = cleanSentence(bodyText);
+  if (!cleaned) return;
+  const normCleaned = normalizeTextForComparison(cleaned);
+
+  const alreadyExists = parts.some(p => {
+    const normP = normalizeTextForComparison(p);
+    return normP === normCleaned || (normCleaned.length > 15 && (normP.includes(normCleaned) || normCleaned.includes(normP)));
+  });
+
+  if (!alreadyExists) {
+    parts.push(`${prefix}: ${cleaned}`);
+  }
+}
+
 export function generateFirstMirror(calc: CalculationResult): FirstMirror {
   const soul = getNumberKnowledge(calc.soul);
   const path = getNumberKnowledge(calc.path);
@@ -61,14 +81,14 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
 
   const tensionParts = [
     `Зоны трения проявляются там, где выбранная стратегия (Путь ${path.number}) сталкивается с фокусом приложения практических усилий (Направление ${direction.number}).`,
-    `По линии Направления характерно следующее напряжение: ${dirTension}`,
-    `По линии Пути может проявляться: ${pathTension}`
+    `По линии Направления характерно следующее напряжение: ${dirTension}`
   ];
+  appendUniqueParagraph(tensionParts, `По линии Пути может проявляться`, pathTension);
   if (compoundPath && compoundPath.risk) {
-    tensionParts.push(`Скрытый сценарий перехода (${calc.pathComposite}): ${cleanSentence(compoundPath.risk)}`);
+    appendUniqueParagraph(tensionParts, `Скрытый сценарий перехода (${calc.pathComposite})`, compoundPath.risk);
   }
   if (compoundDir && compoundDir.risk) {
-    tensionParts.push(`Векторный нюанс (${calc.directionComposite}): ${cleanSentence(compoundDir.risk)}`);
+    appendUniqueParagraph(tensionParts, `Векторный нюанс (${calc.directionComposite})`, compoundDir.risk);
   }
 
   const dirRec = cleanSentence(direction.positions.direction.recommendation);
@@ -76,11 +96,11 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
 
   const stepParts = [
     `Чтобы потенциал раскрывался без застревания, начните с точного применения энергии Направления (${direction.number}) с прицелом на смысловой Результат (${result.number}).`,
-    `Практический ориентир по Направлению: ${dirRec}`,
-    `Ориентир по линии Результата: ${resultRec}`
+    `Практический ориентир по Направлению: ${dirRec}`
   ];
+  appendUniqueParagraph(stepParts, `Ориентир по линии Результата`, resultRec);
   if (compoundRes && compoundRes.recommendation) {
-    stepParts.push(`Дополнительный фокус (${calc.resultComposite}): ${cleanSentence(compoundRes.recommendation)}`);
+    appendUniqueParagraph(stepParts, `Дополнительный фокус (${calc.resultComposite})`, compoundRes.recommendation);
   }
 
   const taleTitle = soul.tale ? soul.tale.title : 'Легенда начального порядка';

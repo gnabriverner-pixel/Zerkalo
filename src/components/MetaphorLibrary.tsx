@@ -4,6 +4,8 @@ import { X, Trash2 } from 'lucide-react';
 
 export const MetaphorLibrary = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
   const [savedItems, setSavedItems] = useState<any[]>([]);
+  const previousActiveElementRef = React.useRef<HTMLElement | null>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     const load = () => {
@@ -11,13 +13,23 @@ export const MetaphorLibrary = ({ isOpen, onClose }: { isOpen: boolean, onClose:
     };
     if (isOpen) {
       load();
+      previousActiveElementRef.current = document.activeElement as HTMLElement;
+      const t = setTimeout(() => {
+        closeButtonRef.current?.focus();
+      }, 50);
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
           onClose();
         }
       };
       window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
+      return () => {
+        clearTimeout(t);
+        window.removeEventListener('keydown', handleKeyDown);
+        if (previousActiveElementRef.current && typeof previousActiveElementRef.current.focus === 'function') {
+          previousActiveElementRef.current.focus();
+        }
+      };
     }
   }, [isOpen, onClose]);
 
@@ -60,6 +72,7 @@ export const MetaphorLibrary = ({ isOpen, onClose }: { isOpen: boolean, onClose:
             <div className="p-6 border-b border-[var(--color-antique-gold)]/20 flex justify-between items-center sticky top-0 bg-[#FAFAFA]/90 backdrop-blur-md z-10">
               <h2 className="font-serif text-2xl text-[var(--color-ink)]">Мои заметки</h2>
               <button 
+                ref={closeButtonRef}
                 onClick={onClose} 
                 className="min-w-[44px] min-h-[44px] p-2 flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors cursor-pointer"
                 aria-label="Закрыть заметки"

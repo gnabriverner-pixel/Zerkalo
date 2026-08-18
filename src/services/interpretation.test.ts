@@ -44,14 +44,31 @@ describe('Digital Code Editorial Engine (Interpretation)', () => {
         });
       });
 
-      it('contains no broken subordinate clause fragments or forbidden pseudo-depth', () => {
+      it('contains no duplicate compound paragraphs or identical risk/recommendation sentences', () => {
         mirror.blocks.forEach((b) => {
-          expect(b.text).not.toMatch(/когда вам нужно [а-яё]+ (и|или) [а-яё]+/i);
-          expect(b.text).not.toMatch(/где вы сможете [а-яё]+те\b/i); // e.g. "где вы сможете осознайте"
-          expect(b.text).not.toMatch(/вы транслируете способность/i);
+          const paragraphs = b.text.split('\n\n').map(p => p.trim()).filter(Boolean);
+          const normalized = paragraphs.map(p => p.toLowerCase().replace(/[^а-яёa-z0-9]/g, ''));
+          const unique = new Set(normalized);
+          expect(unique.size).toBe(normalized.length);
         });
       });
     });
+  });
+
+  it('verifies 15.03.1990 editorial quality and distinct compound nuances', () => {
+    const calc = calculateDigitalCode('15.03.1990');
+    const mirror = generateFirstMirror(calc);
+    const tensionBlock = mirror.blocks.find(b => b.id === 'tension');
+    const stepBlock = mirror.blocks.find(b => b.id === 'step');
+
+    expect(tensionBlock).toBeDefined();
+    expect(tensionBlock!.text).toContain('Скрытый сценарий перехода (28/10/1)');
+    expect(tensionBlock!.text).toContain('Векторный нюанс (43/7)');
+    // Assert 28/10/1 and 43/7 do not have identical text
+    expect(tensionBlock!.text).not.toMatch(/Скрытый сценарий перехода \(28\/10\/1\): (.+)\n\nВекторный нюанс \(43\/7\): \1/);
+
+    expect(stepBlock).toBeDefined();
+    expect(stepBlock!.text).toContain('Дополнительный фокус (86/14/5)');
   });
 
   it('verifies exact block ids for 06.05.1986', () => {

@@ -52,6 +52,8 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   const [errorText, setErrorText] = useState<string | null>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const soul = calc?.soul || 1;
   const path = calc?.path || 1;
@@ -61,6 +63,28 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
 
   const soulInfo = numberKnowledge[soul];
   const pathInfo = numberKnowledge[path];
+
+  useEffect(() => {
+    if (isOpen) {
+      previousActiveElementRef.current = document.activeElement as HTMLElement;
+      const t = setTimeout(() => {
+        closeButtonRef.current?.focus();
+      }, 50);
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        clearTimeout(t);
+        window.removeEventListener('keydown', handleKeyDown);
+        if (previousActiveElementRef.current && typeof previousActiveElementRef.current.focus === 'function') {
+          previousActiveElementRef.current.focus();
+        }
+      };
+    }
+  }, [isOpen, onClose]);
 
   // Initialize Albert greeting when opened
   useEffect(() => {
@@ -243,6 +267,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
             </div>
 
             <button
+              ref={closeButtonRef}
               onClick={onClose}
               aria-label="Закрыть диалог"
               className={`min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
