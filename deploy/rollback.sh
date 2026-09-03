@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_COMMIT="0fd2f21f8d8fdec48227a289bb87b113c96d49e5"
+BASE_COMMIT="${BASE_SHA:-83515cd3b2904e97cdff35cbd71c304cfa50058f}"
 MODE="${1:---help}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 

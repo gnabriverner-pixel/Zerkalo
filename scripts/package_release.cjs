@@ -4,7 +4,7 @@ const crypto = require("crypto");
 const child_process = require("child_process");
 
 const repoRoot = path.resolve(__dirname, "..");
-const baseSha = "0fd2f21f8d8fdec48227a289bb87b113c96d49e5";
+const baseSha = process.env.BASE_SHA || "83515cd3b2904e97cdff35cbd71c304cfa50058f";
 
 function getGitHeadSha() {
   if (process.env.RELEASE_SHA && process.env.RELEASE_SHA.length >= 7) {
