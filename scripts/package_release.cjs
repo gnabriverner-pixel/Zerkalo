@@ -78,6 +78,7 @@ function buildDeployableArchive(releaseSha, outDir) {
     "tsconfig.json",
     "scripts",
     "release.json",
+    "package_manifest.json",
   ];
 
   // Tar command creating deterministic archive
@@ -281,10 +282,11 @@ async function generatePackageManifest(targetOutDir) {
     file_inventory_count: Object.keys(fileInventory).length,
   };
 
-  // 1. Write release.json and package_manifest.json BEFORE archiving so they are packed inside dist/
+  // 1. Write release.json and package_manifest.json BEFORE archiving so they are packed inside dist/ and at root
   fs.writeFileSync(path.join(distDir, "release.json"), JSON.stringify(releaseJson, null, 2), "utf-8");
   fs.writeFileSync(path.join(distDir, "package_manifest.json"), JSON.stringify(manifestData, null, 2), "utf-8");
   fs.writeFileSync(path.join(repoRoot, "release.json"), JSON.stringify(releaseJson, null, 2), "utf-8");
+  fs.writeFileSync(path.join(repoRoot, "package_manifest.json"), JSON.stringify(manifestData, null, 2), "utf-8");
 
   // 2. Build the deployable tar.gz archive
   const { archiveName, archivePath, archiveSha256 } = buildDeployableArchive(releaseSha, outDir);
