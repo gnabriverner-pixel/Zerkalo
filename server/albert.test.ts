@@ -1,14 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  buildAlbertSystemPrompt,
-  formatAlbertDialogueMessages,
   generateAlbertDialogue,
-  validateAlbertResponse,
+  buildCanonicalEnvelopeFromWebContext,
   type AlbertDialogueRequest,
 } from "./albert";
-import { DeepSeekClient } from "./deepseek";
 
-describe("Albert Web Dialogue Server (RP-1 DeepSeek)", () => {
+describe("Albert Web Dialogue Canonical DTO Adapter (digital-code-system/telegram_v2.albert)", () => {
   const sampleRequest: AlbertDialogueRequest = {
     message: "Почему код и миф так по-разному видят мою энергию?",
     history: [
@@ -49,131 +46,54 @@ describe("Albert Web Dialogue Server (RP-1 DeepSeek)", () => {
     },
   };
 
-  it("constructs grounded RP-1 prompt incorporating Meeting and lens anchors", () => {
-    const prompt = buildAlbertSystemPrompt(sampleRequest.context);
+  it("buildCanonicalEnvelopeFromWebContext builds valid SharedContextEnvelopeV1 matching DCS schema", () => {
+    const envelope = buildCanonicalEnvelopeFromWebContext(sampleRequest.context, sampleRequest.history);
 
-    expect(prompt).toContain("Альберт Анатольевич Вяземский");
-    expect(prompt).toContain("LISTEN → REFLECT → GROUND → OPEN → MOVE");
-    expect(prompt).toContain("Обращайтесь к человеку строго на «вы»");
-    expect(prompt).toContain("Потребность в тишине");
-    expect(prompt).toContain("Число Души 7");
-    expect(prompt).toContain("Сад у воды");
-    expect(prompt).toContain("Внешний напор");
-    expect(prompt).toContain("Никакой терапии, диагнозов");
+    expect(envelope.schema_version).toBe("telegram_v2.context.v1");
+    expect(envelope.user_ref).toBeDefined();
+    expect(envelope.consent.core_state).toBe(true);
+    expect(envelope.retention.retention_class).toBe("standard");
+    expect(envelope.derived_code.components.length).toBe(5);
+    expect(envelope.experience_state.meeting_summary).toBe(sampleRequest.context!.meetingSummary);
+    expect(envelope.active_thread.current_question).toBe(sampleRequest.context!.centralQuestion);
+
+    // Verify parallels and divergences mapped into evidence
+    const claimSummaries = envelope.evidence.map((e: any) => e.claim_summary);
+    expect(claimSummaries.some((c: string) => c.includes("Потребность в тишине"))).toBe(true);
+    expect(claimSummaries.some((c: string) => c.includes("Внешний напор"))).toBe(true);
+
+    const parallelEv = envelope.evidence.find((e: any) => e.claim_summary.includes("Потребность в тишине"));
+    expect(parallelEv.status).toBe("confirmed");
+
+    const divergenceEv = envelope.evidence.find((e: any) => e.claim_summary.includes("Внешний напор"));
+    expect(divergenceEv.status).toBe("partial");
   });
 
-  it("formats bounded message history and user message", () => {
-    const messages = formatAlbertDialogueMessages(sampleRequest);
+  it("delegates to DCS canonical Albert orchestrator when bridge is up", async () => {
+    // When DCS bridge is running on port 39500
+    const resp = await generateAlbertDialogue(sampleRequest);
 
-    expect(messages[0].role).toBe("system");
-    expect(messages[1].role).toBe("user");
-    expect(messages[1].content).toBe("Здравствуйте, Альберт.");
-    expect(messages[2].role).toBe("assistant");
-    expect(messages[messages.length - 1].role).toBe("user");
-    expect(messages[messages.length - 1].content).toBe(sampleRequest.message);
+    expect(resp.status).toBe("ok");
+    expect(resp.authority).toBe("digital-code-system/telegram_v2.albert.orchestrator");
+    expect(resp.message).toBeDefined();
+    expect(resp.message.length).toBeGreaterThan(10);
+    expect(resp.next_open_loop).toBeDefined();
+    expect(resp.grounding_state).toBeDefined();
+  }, 45_000);
+
+  it("fails closed on invalid or oversized user messages", async () => {
+    await expect(generateAlbertDialogue({ message: "" })).rejects.toThrow(/invalid_message/);
+    await expect(generateAlbertDialogue({ message: "   " })).rejects.toThrow(/invalid_message/);
+    await expect(generateAlbertDialogue({ message: "a".repeat(2001) })).rejects.toThrow(/invalid_message/);
   });
 
-  it("generates real provider dialogue response", async () => {
-    const client = new DeepSeekClient({
-      DEEPSEEK_API_KEY: "sk-12345678901234567890",
-    });
-
-    vi.spyOn(client, "call").mockResolvedValue(
-      "Вы чувствуете этот контраст между динамикой и необходимостью тишины. Какое действие сегодня даст вам эту опору?"
-    );
-
-    const response = await generateAlbertDialogue(
-      sampleRequest,
-      client,
-      "deepseek-v4-pro"
-    );
-
-    expect(response.status).toBe("ok");
-    expect(response.provider).toBe("deepseek");
-    expect(response.model).toBe("deepseek-v4-pro");
-    expect(response.message).toContain("Вы чувствуете этот контраст");
-  });
-
-  it("throws albert_provider_not_ready when client is unconfigured", async () => {
-    const client = new DeepSeekClient({ DEEPSEEK_API_KEY: "" });
-
-    await expect(
-      generateAlbertDialogue(sampleRequest, client)
-    ).rejects.toThrow("albert_provider_not_ready");
-  });
-
-  it("rejects empty user message", async () => {
-    const client = new DeepSeekClient({
-      DEEPSEEK_API_KEY: "sk-12345678901234567890",
-    });
-
-    await expect(
-      generateAlbertDialogue({ message: "   " }, client)
-    ).rejects.toThrow("invalid_message");
-  });
-
-  describe("Mechanical Format Validation (validateAlbertResponse)", () => {
-    it("accepts valid concise response with single final question mark", () => {
-      const validText = "Вы обратили внимание на важное расхождение между ритмом действия и потребностью в покое. Что сейчас кажется вам более надежной опорой?";
-      const report = validateAlbertResponse(validText);
-      expect(report.valid).toBe(true);
-      expect(report.blockers).toHaveLength(0);
-      expect(report.questionCount).toBe(1);
-    });
-
-    it("rejects response with multiple question marks", () => {
-      const multiQ = "Почему это происходит? Вы чувствуете напряжение? Каков ваш следующий шаг?";
-      const report = validateAlbertResponse(multiQ);
-      expect(report.valid).toBe(false);
-      expect(report.blockers).toContain("multiple_questions");
-    });
-
-    it("rejects response not ending with a question mark", () => {
-      const noEndQ = "Вы чувствуете напряжение, но это нормально. Сделайте один шаг.";
-      const report = validateAlbertResponse(noEndQ);
-      expect(report.valid).toBe(false);
-      expect(report.blockers).toContain("missing_question");
-      expect(report.blockers).toContain("does_not_end_with_question");
-    });
-
-    it("rejects response exceeding 180 words", () => {
-      const longText = Array.from({ length: 190 }, (_, i) => `слово${i}`).join(" ") + "?";
-      const report = validateAlbertResponse(longText);
-      expect(report.valid).toBe(false);
-      expect(report.blockers).toContain("over_word_limit");
-    });
-  });
-
-  describe("Editorial Format Repair in generateAlbertDialogue", () => {
-    it("successfully repairs invalid response on second attempt", async () => {
-      const client = new DeepSeekClient({
-        DEEPSEEK_API_KEY: "sk-12345678901234567890",
-      });
-
-      // Attempt 1: fails (no question mark)
-      // Attempt 2 (repair): succeeds
-      const callSpy = vi.spyOn(client, "call")
-        .mockResolvedValueOnce("Вы чувствуете этот контраст между динамикой и покоем.")
-        .mockResolvedValueOnce("Вы чувствуете этот контраст между динамикой и покоем. Что сейчас дает вам уверенность?");
-
-      const response = await generateAlbertDialogue(sampleRequest, client, "deepseek-v4-pro");
-      expect(response.status).toBe("ok");
-      expect(response.message).toContain("Что сейчас дает вам уверенность?");
-      expect(callSpy).toHaveBeenCalledTimes(2);
-    });
-
-    it("fails closed when both initial and repair attempts violate format", async () => {
-      const client = new DeepSeekClient({
-        DEEPSEEK_API_KEY: "sk-12345678901234567890",
-      });
-
-      vi.spyOn(client, "call")
-        .mockResolvedValueOnce("Первый некорректный ответ.")
-        .mockResolvedValueOnce("Второй некорректный ответ тоже без вопроса.");
-
-      await expect(
-        generateAlbertDialogue(sampleRequest, client, "deepseek-v4-pro")
-      ).rejects.toThrow("albert_contract_violation");
-    });
+  it("fails closed when DCS bridge is down (never produces local independent prompt)", async () => {
+    const originalUrl = process.env.DCS_BRIDGE_URL;
+    try {
+      process.env.DCS_BRIDGE_URL = "http://127.0.0.1:49999";
+      await expect(generateAlbertDialogue(sampleRequest, undefined, "deepseek-v4-pro", 500)).rejects.toThrow();
+    } finally {
+      process.env.DCS_BRIDGE_URL = originalUrl;
+    }
   });
 });

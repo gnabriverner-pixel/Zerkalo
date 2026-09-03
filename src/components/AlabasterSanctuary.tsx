@@ -10,7 +10,6 @@ import {
   Shield
 } from 'lucide-react';
 import { CalculationResult, FirstMirror, ApiResponse } from '../types';
-import { calculateDigitalCode } from '../services/calculator';
 import { generateFirstMirror } from '../services/interpretation';
 import { numberKnowledge } from '../data/numberKnowledge';
 import { PASSPORT_PRACTICES } from '../data/passportPractices';
@@ -45,16 +44,15 @@ export function AlabasterSanctuary({
 
   const [result, setResult] = useState<CalculationResult | null>(() => {
     if (initialResult) return initialResult;
-    if (initialDate && initialDate.length === 10) return calculateDigitalCode(initialDate);
     return null;
   });
   const [reading, setReading] = useState<FirstMirror | null>(() => {
     if (initialReading) return initialReading;
     if (initialResult) return generateFirstMirror(initialResult);
-    if (initialDate && initialDate.length === 10) return generateFirstMirror(calculateDigitalCode(initialDate));
     return null;
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [calcError, setCalcError] = useState<string | null>(null);
 
   // Section references for smooth 7-act editorial scroll
   const sectionAct1Ref = useRef<HTMLDivElement>(null);
@@ -75,13 +73,43 @@ export function AlabasterSanctuary({
     }
   };
 
-  const executeCalculation = (fullDate: string) => {
-    const calc = calculateDigitalCode(fullDate);
-    const nextReading = generateFirstMirror(calc);
-    setResult(calc);
-    setReading(nextReading);
-    if (onCodeCalculated) {
-      onCodeCalculated(fullDate, calc, nextReading);
+  const executeCalculation = async (fullDate: string) => {
+    setIsGenerating(true);
+    setCalcError(null);
+    setDateError('');
+
+    try {
+      const resp = await fetch('/api/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dob: fullDate }),
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.message || 'Сервис расчёта временно недоступен. Попробуйте позже.');
+      }
+
+      const data = await resp.json();
+      if (!data || data.status !== 'ok' || !data.result) {
+        throw new Error('Не удалось получить канонический расчёт.');
+      }
+
+      const calc: CalculationResult = data.result;
+      const nextReading = generateFirstMirror(calc);
+      setResult(calc);
+      setReading(nextReading);
+      if (onCodeCalculated) {
+        onCodeCalculated(fullDate, calc, nextReading);
+      }
+    } catch (err: any) {
+      console.error('[AlabasterSanctuary] Canonical calculation error:', err);
+      // FAIL CLOSED: Never produce TS calculation on failure. Never falsely label TS as DCS.
+      setResult(null);
+      setReading(null);
+      setCalcError(err?.message || 'Сервис расчёта временно недоступен. Попробуйте позже.');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -249,8 +277,8 @@ export function AlabasterSanctuary({
               />
             </div>
 
-            {dateError && (
-              <p className="text-xs text-red-700 font-light">{dateError}</p>
+            {(dateError || calcError) && (
+              <p className="text-xs text-red-700 font-light">{dateError || calcError}</p>
             )}
 
             <button

@@ -41,9 +41,84 @@ export function verifyClaimSignature(claimId: string, expiresAt: string, provide
   return crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(providedSig));
 }
 
+export interface ValidatedMeetingHandoffDto {
+  summary: string;
+  reflectiveQuestion: string;
+  openLoop?: string;
+  hasStrongParallels: boolean;
+  confidenceNote?: string;
+  parallels: Array<{
+    theme: string;
+    codeAnchor?: string;
+    mythAnchor?: string;
+    synthesis?: string;
+  }>;
+  divergences: Array<{
+    theme: string;
+    codeAspect?: string;
+    mythAspect?: string;
+    reflection?: string;
+  }>;
+  albertInsight?: string;
+}
+
+export function extractAndValidateMeetingDto(rawMeeting: any): ValidatedMeetingHandoffDto {
+  if (!rawMeeting || typeof rawMeeting !== "object") {
+    throw new Error("invalid_meeting_dto:missing_meeting_data");
+  }
+
+  // Support direct MeetingOfMirrorsResult, nested { result: { synthesis: ... } }, or wrapped { result: ... }
+  let target = rawMeeting;
+  if (rawMeeting.result && typeof rawMeeting.result === "object") {
+    target = rawMeeting.result.synthesis && typeof rawMeeting.result.synthesis === "object"
+      ? rawMeeting.result.synthesis
+      : rawMeeting.result;
+  } else if (rawMeeting.synthesis && typeof rawMeeting.synthesis === "object") {
+    target = rawMeeting.synthesis;
+  }
+
+  const summary = String(target.summary || "").trim();
+  if (!summary) {
+    throw new Error("invalid_meeting_dto:missing_required_summary");
+  }
+
+  const reflectiveQuestion = String(target.reflectiveQuestion || target.centralQuestion || "").trim();
+  if (!reflectiveQuestion) {
+    throw new Error("invalid_meeting_dto:missing_required_reflective_question");
+  }
+
+  const openLoop = target.openLoop || target.next_open_loop ? String(target.openLoop || target.next_open_loop).trim() : undefined;
+
+  const parallels = Array.isArray(target.parallels)
+    ? target.parallels
+    : Array.isArray(target.resonances)
+    ? target.resonances
+    : [];
+
+  const divergences = Array.isArray(target.divergences)
+    ? target.divergences
+    : [];
+
+  const albertInsight = target.albertInsight ? String(target.albertInsight).trim() : undefined;
+  const confidenceNote = target.confidenceNote ? String(target.confidenceNote).trim() : undefined;
+  const hasStrongParallels = Boolean(target.hasStrongParallels ?? (parallels.length > 0));
+
+  return {
+    summary,
+    reflectiveQuestion,
+    openLoop,
+    hasStrongParallels,
+    confidenceNote,
+    parallels,
+    divergences,
+    albertInsight,
+  };
+}
+
 /**
  * Builds canonical SharedContextEnvelopeV1 from Web journey results.
  * Strictly guarantees NO PII, NO raw DOB, NO raw 4 myth answers, NO secrets.
+ * Fails closed if Meeting data is invalid or missing required fields.
  */
 export function buildSharedContextEnvelope(
   codeResult: CalculationResult,
@@ -67,14 +142,14 @@ export function buildSharedContextEnvelope(
   const mirror = storyResult?.mirror || {};
   const mythSummary = [mirror.mainImage, mirror.innerTension].filter(Boolean).join(" | ").slice(0, 300) || "Символический миф";
 
-  // 3. Bounded meeting synthesis
-  const synthesis = meetingResult?.result?.synthesis || meetingResult?.synthesis || {};
-  const meetingSummary = (synthesis.summary || "Встреча зеркал завершена").slice(0, 500);
-  const livingQuestion = (synthesis.centralQuestion || synthesis.reflectiveQuestion || "В чем ваша главная опора сейчас?").slice(0, 300);
-  const nextOpenLoop = (synthesis.openLoop || livingQuestion).slice(0, 300);
+  // 3. Bounded meeting synthesis - typed and strictly validated
+  const meeting = extractAndValidateMeetingDto(meetingResult);
+  const meetingSummary = meeting.summary.slice(0, 500);
+  const livingQuestion = meeting.reflectiveQuestion.slice(0, 300);
+  const nextOpenLoop = (meeting.openLoop || livingQuestion).slice(0, 300);
 
-  // 4. Evidence (Confirmed observations from completed journey)
-  const evidence = [
+  // 4. Evidence (Confirmed observations and contrasts from completed journey)
+  const evidence: Array<{ status: string; claim_summary: string; recorded_at: string }> = [
     {
       status: "confirmed",
       claim_summary: `Число Сознания ${codeResult.soul}, Число Действия ${codeResult.path}`,
@@ -87,10 +162,32 @@ export function buildSharedContextEnvelope(
     },
     {
       status: "confirmed",
-      claim_summary: `Встреча: ${meetingSummary.slice(0, 100)}`,
+      claim_summary: `Встреча: ${meetingSummary.slice(0, 150)}`,
       recorded_at: now,
     },
   ];
+
+  // Map each parallel as confirmed resonance
+  for (const p of meeting.parallels) {
+    if (p.theme) {
+      evidence.push({
+        status: "confirmed",
+        claim_summary: `Резонанс [${p.theme}]: ${(p.synthesis || p.codeAnchor || "").slice(0, 120)}`,
+        recorded_at: now,
+      });
+    }
+  }
+
+  // Map each divergence as partial/contrast
+  for (const d of meeting.divergences) {
+    if (d.theme) {
+      evidence.push({
+        status: "partial",
+        claim_summary: `Контраст [${d.theme}]: ${(d.reflection || d.codeAspect || "").slice(0, 120)}`,
+        recorded_at: now,
+      });
+    }
+  }
 
   // 5. Seven-day retention with standard class
   const expiresAt = new Date(Date.now() + 7 * 86400_000).toISOString();
@@ -126,7 +223,7 @@ export function buildSharedContextEnvelope(
       current_question: livingQuestion,
       opened_at: now,
       next_open_loop: nextOpenLoop,
-      topic_summary: "Встреча зеркал: Код и Личный миф",
+      topic_summary: meeting.albertInsight ? meeting.albertInsight.slice(0, 100) : "Встреча зеркал: Код и Личный миф",
     },
     memory_summary: {
       summary: `Завершена Встреча зеркал. Код: ${codeResult.soul}-${codeResult.path}-${codeResult.result}. Миф: ${mythSummary}.`,

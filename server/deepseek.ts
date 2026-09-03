@@ -80,7 +80,9 @@ export class DeepSeekClient {
       }
 
       const controller = new AbortController();
+      let timeoutFired = false;
       const timer = setTimeout(() => {
+        timeoutFired = true;
         controller.abort();
       }, attemptTimeout);
 
@@ -107,8 +109,6 @@ export class DeepSeekClient {
           signal: controller.signal,
         });
 
-        clearTimeout(timer);
-
         if (!response.ok) {
           const status = response.status;
           let errBody = "";
@@ -125,7 +125,7 @@ export class DeepSeekClient {
           const backoffMs = 100;
           const remainingForRetry = retryCtx ? retryCtx.deadlineMs - Date.now() : Infinity;
           const canRetry = retryCtx
-            ? isTransient && retryCtx.retriesRemaining > 0 && remainingForRetry > (backoffMs + 10)
+            ? isTransient && retryCtx.retriesRemaining > 0 && remainingForRetry > (backoffMs + 50)
             : isTransient && attempt < 2;
 
           if (canRetry) {
@@ -134,6 +134,7 @@ export class DeepSeekClient {
             }
             attempt += 1;
             console.warn(`[DeepSeekClient] Transient HTTP ${status}. Retrying (remaining retries: ${retryCtx ? retryCtx.retriesRemaining : 0})...`);
+            clearTimeout(timer);
             await new Promise((r) => setTimeout(r, backoffMs));
             continue;
           }
@@ -142,7 +143,11 @@ export class DeepSeekClient {
           throw err;
         }
 
-        const payload = (await response.json()) as Record<string, any>;
+        // Keep timer active while reading full response body
+        const rawBody = await response.text();
+        clearTimeout(timer);
+
+        const payload = JSON.parse(rawBody) as Record<string, any>;
         const content = payload?.choices?.[0]?.message?.content;
         if (typeof content !== "string" || !content.trim()) {
           throw new Error("provider_empty_output");
@@ -152,8 +157,13 @@ export class DeepSeekClient {
       } catch (err: any) {
         clearTimeout(timer);
 
-        const isTimeoutError = err.name === "AbortError" || (err.message && err.message.includes("abort"));
-        if (isTimeoutError && retryCtx && retryCtx.deadlineMs - Date.now() <= 10) {
+        const isTimeoutError =
+          timeoutFired ||
+          err.name === "AbortError" ||
+          (err.message && err.message.toLowerCase().includes("abort")) ||
+          (retryCtx && Date.now() >= retryCtx.deadlineMs);
+
+        if (isTimeoutError) {
           throw new Error("provider_call_timeout:request_deadline_exhausted");
         }
 
@@ -161,7 +171,7 @@ export class DeepSeekClient {
         const backoffMs = 100;
         const remainingForRetry = retryCtx ? retryCtx.deadlineMs - Date.now() : Infinity;
         const canRetry = retryCtx
-          ? isTransient && retryCtx.retriesRemaining > 0 && remainingForRetry > (backoffMs + 10)
+          ? isTransient && retryCtx.retriesRemaining > 0 && remainingForRetry > (backoffMs + 50)
           : isTransient && attempt < 2;
 
         if (canRetry) {
@@ -169,12 +179,13 @@ export class DeepSeekClient {
             retryCtx.retriesRemaining -= 1;
           }
           attempt += 1;
-          console.warn(`[DeepSeekClient] Transient error (${err.message}). Retrying (remaining retries: ${retryCtx ? retryCtx.retriesRemaining : 0})...`);
+          console.warn(`[DeepSeekClient] Transient transport error: ${err.message}. Retrying (remaining retries: ${retryCtx ? retryCtx.retriesRemaining : 0})...`);
           await new Promise((r) => setTimeout(r, backoffMs));
           continue;
         }
 
-        throw err instanceof Error ? err : new Error(String(err));
+        // Terminal or unhandled failure
+        throw err;
       }
     }
   }

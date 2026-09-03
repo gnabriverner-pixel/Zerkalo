@@ -129,4 +129,76 @@ describe("Web -> Telegram V2 Continuation Claim Contract", () => {
       })
     ).rejects.toThrow(/age_requirement_not_met/);
   });
+
+  it("preserves exact production MeetingOfMirrorsResult sentinel fingerprints in SharedContextEnvelope", () => {
+    const sentinelSummary = "SENTINEL_SUMMARY_RESONANCE_ALPHA_987654";
+    const sentinelQuestion = "SENTINEL_LIVING_QUESTION_OMEGA_123456?";
+    const sentinelParallelTheme = "SENTINEL_PARALLEL_THEME_777";
+    const sentinelDivergenceTheme = "SENTINEL_DIVERGENCE_THEME_888";
+    const sentinelAlbertInsight = "SENTINEL_ALBERT_INSIGHT_555";
+
+    const productionMeeting = {
+      summary: sentinelSummary,
+      hasStrongParallels: true,
+      confidenceNote: "Высокая согласованность",
+      parallels: [
+        {
+          theme: sentinelParallelTheme,
+          codeAnchor: "Число Действия 8",
+          mythAnchor: "Остров в тумане",
+          synthesis: "Сатурнианская опора подтверждается островным рубежом",
+        },
+      ],
+      divergences: [
+        {
+          theme: sentinelDivergenceTheme,
+          codeAspect: "Число Сознания 6",
+          mythAspect: "Каменная стена",
+          reflection: "Защита не должна превращаться в глухой затвор",
+        },
+      ],
+      albertInsight: sentinelAlbertInsight,
+      reflectiveQuestion: sentinelQuestion,
+      disclaimer: "Инструмент самонаблюдения",
+    };
+
+    const envelope = buildSharedContextEnvelope(dummyCode, dummyStory, productionMeeting);
+
+    // 1. Exact meeting summary preserved
+    expect(envelope.experience_state.meeting_summary).toBe(sentinelSummary);
+
+    // 2. Exact living question preserved in active_thread
+    expect(envelope.active_thread.current_question).toBe(sentinelQuestion);
+    expect(envelope.active_thread.next_open_loop).toBe(sentinelQuestion);
+    expect(envelope.active_thread.topic_summary).toBe(sentinelAlbertInsight);
+
+    // 3. Evidence contains both parallels (confirmed) and divergences (partial/contrast)
+    const claimSummaries = envelope.evidence.map((e: any) => e.claim_summary);
+    expect(claimSummaries.some((c: string) => c.includes(sentinelSummary.slice(0, 50)))).toBe(true);
+    expect(claimSummaries.some((c: string) => c.includes(sentinelParallelTheme))).toBe(true);
+    expect(claimSummaries.some((c: string) => c.includes(sentinelDivergenceTheme))).toBe(true);
+
+    const parallelEv = envelope.evidence.find((e: any) => e.claim_summary.includes(sentinelParallelTheme));
+    expect(parallelEv.status).toBe("confirmed");
+
+    const divergenceEv = envelope.evidence.find((e: any) => e.claim_summary.includes(sentinelDivergenceTheme));
+    expect(divergenceEv.status).toBe("partial");
+  });
+
+  it("fails closed when meeting context is invalid or missing required fields (no silent generic defaults)", () => {
+    // Missing meeting entirely
+    expect(() => buildSharedContextEnvelope(dummyCode, dummyStory, null)).toThrow(/invalid_meeting_dto/);
+    expect(() => buildSharedContextEnvelope(dummyCode, dummyStory, undefined)).toThrow(/invalid_meeting_dto/);
+    expect(() => buildSharedContextEnvelope(dummyCode, dummyStory, {})).toThrow(/invalid_meeting_dto:missing_required_summary/);
+
+    // Missing summary
+    expect(() => buildSharedContextEnvelope(dummyCode, dummyStory, {
+      reflectiveQuestion: "Куда ведет этот путь?",
+    })).toThrow(/invalid_meeting_dto:missing_required_summary/);
+
+    // Missing reflective question
+    expect(() => buildSharedContextEnvelope(dummyCode, dummyStory, {
+      summary: "Обнаружен явный резонанс формы и содержания.",
+    })).toThrow(/invalid_meeting_dto:missing_required_reflective_question/);
+  });
 });

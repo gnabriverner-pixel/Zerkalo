@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
+import nodeFs from "fs";
 import "dotenv/config";
 import { generateFullInterpretationPayload, generateFirstMirror } from "./src/services/interpretation";
 import { buildPersonalMythPrompt } from "./src/services/mythPrompts";
@@ -54,12 +55,50 @@ async function startServer() {
   // Schema reference: "status": "crisis", "story_result": { "mirror": { "mainImage": "", "innerTension": "" } }
   app.use(express.json({ limit: "5mb" }));
 
+  function getPackageReleaseInfo(): Record<string, any> | null {
+    const cwd = process.cwd();
+    const candidates = [
+      path.resolve(cwd, "dist", "release.json"),
+      path.resolve(cwd, "release.json"),
+      path.resolve(cwd, "dist", "package_manifest.json"),
+      path.resolve(cwd, "package_manifest.json"),
+    ];
+    for (const p of candidates) {
+      if (nodeFs.existsSync(p)) {
+        try {
+          const data = JSON.parse(nodeFs.readFileSync(p, "utf-8"));
+          if (data && (data.release_sha || data.releaseSha)) {
+            return data;
+          }
+        } catch {}
+      }
+    }
+    return null;
+  }
+
   app.get("/health", (req, res) => {
+    const releaseInfo = getPackageReleaseInfo();
+    const candidateSha =
+      process.env.RELEASE_SHA ||
+      process.env.APP_GIT_SHA ||
+      releaseInfo?.release_sha ||
+      releaseInfo?.releaseSha ||
+      "u1-candidate-dev";
+    const isDirty = releaseInfo?.dirty ?? false;
+
     res.json({
       status: "ok",
       service: "zerkalo",
-      version: "1.0.0-lab",
-      release_sha: process.env.RELEASE_SHA || process.env.APP_GIT_SHA || "u1-candidate-dev",
+      version: releaseInfo?.target_version || releaseInfo?.version || "1.0.0-u1",
+      release_sha: candidateSha,
+      releaseSha: candidateSha,
+      dirty: isDirty,
+      components: {
+        web: "active",
+        dcs_bridge: "active",
+        albert: "digital-code-system/telegram_v2.albert.orchestrator",
+        telegram_v2_continuity: "SharedContextEnvelopeV1",
+      },
       models: {
         personalMyth: PERSONAL_MYTH_MODEL,
         meeting: MEETING_MODEL,
@@ -288,7 +327,12 @@ async function startServer() {
       const result = await calculateCanonicalDigitalCode(dob);
       return res.status(200).json({ status: "ok", result });
     } catch (err: any) {
-      return res.status(400).json({ status: "error", message: err.message });
+      const isUnavailable = err?.message?.includes("dcs_canonical_engine_unavailable");
+      return res.status(isUnavailable ? 503 : 400).json({
+        status: "error",
+        code: isUnavailable ? "dcs_canonical_engine_unavailable" : "invalid_input",
+        message: isUnavailable ? "Канонический сервис расчёта временно недоступен" : err.message,
+      });
     }
   });
 

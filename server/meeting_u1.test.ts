@@ -246,4 +246,55 @@ describe("Meeting of Mirrors U1 Acceptance Cases A-F", () => {
     expect(JSON.stringify(dummyCode)).toBe(codeSnapshot);
     expect(JSON.stringify(dummyStory)).toBe(storySnapshot);
   });
+
+  it("Adversarial Body-Delay Test: headers arrive immediately, body stalls beyond remaining deadline -> aborts within total deadline", async () => {
+    const http = await import("http");
+    let serverClosed = false;
+
+    // Create a server that writes headers immediately, then stalls the body
+    const server = http.createServer((req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.write('{"choices": [{"message": {"content": "part');
+      // Intentionally stall: do not end response for 10 seconds
+      const stallTimer = setTimeout(() => {
+        if (!res.writableEnded) {
+          res.end('ial"}}]}');
+        }
+      }, 10_000);
+      req.on("close", () => {
+        clearTimeout(stallTimer);
+      });
+    });
+
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address() as any;
+    const testPort = address.port;
+
+    const adversarialClient = new DeepSeekClient({
+      DEEPSEEK_API_KEY: "sk-test-adversarial-body-delay-key-at-least-20-chars",
+      DEEPSEEK_BASE_URL: `http://127.0.0.1:${testPort}`,
+      DEEPSEEK_MODEL: "deepseek-v4-pro",
+    });
+
+    const budgetMs = 600;
+    const startTime = Date.now();
+
+    try {
+      await expect(
+        generateMeetingOfMirrors({
+          codeData: dummyCode,
+          storyData: dummyStory,
+          client: adversarialClient,
+          totalBudgetMs: budgetMs,
+        })
+      ).rejects.toThrow(/meeting_timeout/);
+
+      const elapsed = Date.now() - startTime;
+      // Hard invariant: MUST abort within total deadline (+ tolerance), NOT wait for the 10s stall
+      expect(elapsed).toBeLessThan(budgetMs + 800);
+      expect(elapsed).toBeGreaterThanOrEqual(budgetMs - 100);
+    } finally {
+      server.close();
+    }
+  });
 });

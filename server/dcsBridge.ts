@@ -5,9 +5,13 @@ import type { CalculationResult } from "../src/types";
 
 const execFileAsync = promisify(execFile);
 
-const DCS_ROOT = process.env.DCS_ROOT || "/Users/artemkrysin/Documents/New project/digital-code-product-journey";
-const BRIDGE_SCRIPT = path.join(DCS_ROOT, "integration", "zerkalo_bridge.py");
-const PYTHON_BIN = process.env.PYTHON_BIN || "python3";
+function getDcsConfig() {
+  const root = process.env.DCS_ROOT || "/Users/artemkrysin/Documents/New project/digital-code-product-journey";
+  const bridgeScript = path.join(root, "integration", "zerkalo_bridge.py");
+  const pythonBin = process.env.PYTHON_BIN || "python3";
+  const url = process.env.DCS_BRIDGE_URL || "http://127.0.0.1:39500";
+  return { root, bridgeScript, pythonBin, url };
+}
 
 export interface CanonicalCalculationResult extends CalculationResult {
   missingNumbers?: number[];
@@ -46,43 +50,70 @@ export async function calculateCanonicalDigitalCode(dob: string): Promise<Canoni
     return cached;
   }
 
+  const { root, bridgeScript, pythonBin, url: dcsUrl } = getDcsConfig();
   try {
-    const { stdout } = await execFileAsync(PYTHON_BIN, [BRIDGE_SCRIPT, "calculate", "--dob", trimmed], {
-      timeout: 10_000,
-      env: { ...process.env, PYTHONPATH: DCS_ROOT },
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const response = await fetch(`${dcsUrl}/api/canonical/calculate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dob: trimmed, request_id: `calc_${Date.now()}` }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
-    const parsed = JSON.parse(stdout.trim());
-    if (parsed.error) {
-      throw new Error(`Canonical engine error: ${parsed.error}`);
+    if (response.ok) {
+      const data = (await response.json()) as any;
+      if (data.status === "ok" && data.result) {
+        const result: CanonicalCalculationResult = {
+          ...data.result,
+          canonicalAuthority: "digital-code-system/engine.py::full_analysis",
+        };
+        calculationCache.set(trimmed, result);
+        return result;
+      }
     }
+  } catch (httpErr: any) {
+    // If HTTP loopback service is down, try direct CLI bridge as backup process boundary
+    try {
+      const { stdout } = await execFileAsync(pythonBin, [bridgeScript, "calculate", "--dob", trimmed], {
+        timeout: 8_000,
+        env: { ...process.env, PYTHONPATH: root },
+      });
 
-    const result: CanonicalCalculationResult = {
-      soul: parsed.soul,
-      soulComposite: parsed.soulComposite,
-      path: parsed.path,
-      pathComposite: parsed.pathComposite,
-      direction: parsed.direction,
-      directionComposite: parsed.directionComposite,
-      expression: parsed.expression,
-      expressionComposite: parsed.expressionComposite,
-      result: parsed.result,
-      resultComposite: parsed.resultComposite,
-      baseMatrix: parsed.baseMatrix,
-      detailedMatrix: parsed.detailedMatrix,
-      missingNumbers: parsed.missingNumbers,
-      financialCode: parsed.financialCode,
-      tensionScore: parsed.tensionScore,
-      canonicalAuthority: "digital-code-system/engine.py::full_analysis",
-    };
+      const parsed = JSON.parse(stdout.trim());
+      if (parsed && !parsed.error && parsed.soul !== undefined) {
+        const result: CanonicalCalculationResult = {
+          soul: parsed.soul,
+          soulComposite: parsed.soulComposite,
+          path: parsed.path,
+          pathComposite: parsed.pathComposite,
+          direction: parsed.direction,
+          directionComposite: parsed.directionComposite,
+          expression: parsed.expression,
+          expressionComposite: parsed.expressionComposite,
+          result: parsed.result,
+          resultComposite: parsed.resultComposite,
+          baseMatrix: parsed.baseMatrix,
+          detailedMatrix: parsed.detailedMatrix,
+          missingNumbers: parsed.missingNumbers,
+          financialCode: parsed.financialCode,
+          tensionScore: parsed.tensionScore,
+          canonicalAuthority: "digital-code-system/engine.py::full_analysis",
+        };
 
-    calculationCache.set(trimmed, result);
-    return result;
-  } catch (err: any) {
-    // If external process execution fails (e.g. in test env), evaluate using pure canonical logic
-    console.warn(`[dcsBridge] Subprocess call to DCS failed (${err.message}). Falling back to canonical logic.`);
-    return computeCanonicalFallback(trimmed);
+        calculationCache.set(trimmed, result);
+        return result;
+      }
+    } catch (cliErr: any) {
+      // FAIL CLOSED: Never fallback to TS! Never label TS as engine.py!
+      console.error(`[dcsBridge] DCS Canonical Engine is unavailable. HTTP err: ${httpErr?.message}, CLI err: ${cliErr?.message}`);
+      throw new Error("dcs_canonical_engine_unavailable");
+    }
   }
+
+  // FAIL CLOSED
+  throw new Error("dcs_canonical_engine_unavailable");
 }
 
 function sumDigits(n: number): number {
