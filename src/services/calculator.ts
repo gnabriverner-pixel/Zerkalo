@@ -36,7 +36,7 @@ export function reduceVerbously(num: number): { value: number; composite: string
 
 /**
  * Calculates the 5 Main Numbers (ЧУ, ЧВ, ЧД, ЧР, ЧИ) and the Matrices (Базовая и Детальная)
- * strictly conforming to Protocol Calculation v1.
+ * strictly conforming to canonical Digital Code System engine (engine.py::full_analysis).
  * 
  * @param dateString Format: "DD.MM.YYYY" (must be valid calendar date, 1900..today)
  * @throws Error on invalid or malformed dates (no silent fallbacks to 01.01.2000)
@@ -64,7 +64,7 @@ export function calculateDigitalCode(dateString: string): CalculationResult {
   const year = parseInt(yearStr, 10);
 
   // 1. Число Души / Число Ума (ЧДш / ЧУ)
-  // Formula: Исходный день рождения, свернутый до 1..9
+  // Authority: engine.py mind_full = day
   const mindFull = day;
   const mindCalc = reduceVerbously(mindFull);
 
@@ -76,7 +76,7 @@ export function calculateDigitalCode(dateString: string): CalculationResult {
   const expressionCalc = reduceVerbously(expressionFull);
 
   // 3. Число Пути / Число Действия (ЧП / ЧД)
-  // Formula: сумма ВСЕХ цифр даты рождения
+  // Authority: engine.py action_full = sum(digits)
   const allDobDigits = trimmed
     .replace(/\./g, '')
     .split('')
@@ -86,12 +86,12 @@ export function calculateDigitalCode(dateString: string): CalculationResult {
   const actionCalc = reduceVerbously(actionFull);
 
   // 4. Число Направления / Число Реализации (ЧН / ЧР)
-  // Formula: composite ЧУ (mindFull) + composite ЧД (actionFull)
+  // Authority: engine.py realization_full = mind_full + action_full
   const realizationFull = mindFull + actionFull;
   const realizationCalc = reduceVerbously(realizationFull);
 
   // 5. Число Результата / Число Итога (ЧРз / ЧИ)
-  // Formula: composite ЧУ (mindFull) + composite ЧД (actionFull) + composite ЧР (realizationFull)
+  // Authority: engine.py outcome_full = mind_full + action_full + realization_full
   const outcomeFull = mindFull + actionFull + realizationFull;
   const outcomeCalc = reduceVerbously(outcomeFull);
 
@@ -131,4 +131,12 @@ export function calculateDigitalCode(dateString: string): CalculationResult {
     baseMatrix,
     detailedMatrix
   };
+}
+
+/**
+ * Legacy TypeScript calculation implementation (retained strictly for rollback / deprecation code).
+ * MUST NOT be the active authority in the final U1 path.
+ */
+export function legacyCalculateDigitalCodeTs(dateString: string): CalculationResult {
+  return calculateDigitalCode(dateString);
 }

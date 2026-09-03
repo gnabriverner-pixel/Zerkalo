@@ -92,12 +92,12 @@ export function AlabasterSanctuary({
         setDay(parts[0]);
         setMonth(parts[1]);
         setYear(parts[2]);
-        if (!result) {
+        if (!initialResult) {
           executeCalculation(initialDate);
         }
       }
     }
-  }, [initialDate, result]);
+  }, [initialDate, initialResult]);
 
   const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, '').slice(0, 2);

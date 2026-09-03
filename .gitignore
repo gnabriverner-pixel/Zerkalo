@@ -9,3 +9,12 @@ coverage/
 leads.json
 feedback.json
 test-results/
+data/events/*.jsonl
+data/feedback_qualitative/*.json
+data/claims/*.json
+data/*.json
+package_manifest.json
+release.json
+PUBLIC_RELEASE_EVIDENCE/
+generated/
+.release/

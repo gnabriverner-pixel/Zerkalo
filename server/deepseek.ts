@@ -3,6 +3,11 @@ export interface DeepSeekChatMessage {
   content: string;
 }
 
+export interface RequestRetryContext {
+  retriesRemaining: number;
+  deadlineMs: number;
+}
+
 export interface DeepSeekRequestOptions {
   messages: DeepSeekChatMessage[];
   model?: string;
@@ -10,6 +15,7 @@ export interface DeepSeekRequestOptions {
   max_tokens?: number;
   response_format?: { type: "json_object" | "text" };
   timeoutMs?: number;
+  retryContext?: RequestRetryContext;
 }
 
 export class DeepSeekClient {
@@ -56,16 +62,27 @@ export class DeepSeekClient {
     }
 
     const model = options.model || this.defaultModel;
-    const timeoutMs = options.timeoutMs ?? 45_000;
-    const maxAttempts = 2; // Initial attempt + at most 1 retry for transient failure
+    const retryCtx = options.retryContext;
+    const configuredTimeout = options.timeoutMs ?? 45_000;
 
-    let lastError: Error | null = null;
+    let attempt = 1;
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    while (true) {
+      // 1. Calculate remaining deadline budget dynamically before this exact attempt
+      const now = Date.now();
+      let attemptTimeout = configuredTimeout;
+      if (retryCtx) {
+        const remainingMs = retryCtx.deadlineMs - now;
+        if (remainingMs <= 10) {
+          throw new Error("provider_call_timeout:request_deadline_exhausted");
+        }
+        attemptTimeout = Math.min(attemptTimeout, remainingMs);
+      }
+
       const controller = new AbortController();
       const timer = setTimeout(() => {
         controller.abort();
-      }, timeoutMs);
+      }, attemptTimeout);
 
       try {
         const body: Record<string, unknown> = {
@@ -105,10 +122,19 @@ export class DeepSeekClient {
           const errorMsg = `provider_http_${status}:${errBody.slice(0, 150)}`;
           const err = new Error(errorMsg);
 
-          if (isTransient && attempt < maxAttempts) {
-            console.warn(`[DeepSeekClient] Transient HTTP ${status} on attempt ${attempt}. Retrying once...`);
-            lastError = err;
-            await new Promise((r) => setTimeout(r, 600));
+          const backoffMs = 100;
+          const remainingForRetry = retryCtx ? retryCtx.deadlineMs - Date.now() : Infinity;
+          const canRetry = retryCtx
+            ? isTransient && retryCtx.retriesRemaining > 0 && remainingForRetry > (backoffMs + 10)
+            : isTransient && attempt < 2;
+
+          if (canRetry) {
+            if (retryCtx) {
+              retryCtx.retriesRemaining -= 1;
+            }
+            attempt += 1;
+            console.warn(`[DeepSeekClient] Transient HTTP ${status}. Retrying (remaining retries: ${retryCtx ? retryCtx.retriesRemaining : 0})...`);
+            await new Promise((r) => setTimeout(r, backoffMs));
             continue;
           }
 
@@ -126,18 +152,30 @@ export class DeepSeekClient {
       } catch (err: any) {
         clearTimeout(timer);
 
+        const isTimeoutError = err.name === "AbortError" || (err.message && err.message.includes("abort"));
+        if (isTimeoutError && retryCtx && retryCtx.deadlineMs - Date.now() <= 10) {
+          throw new Error("provider_call_timeout:request_deadline_exhausted");
+        }
+
         const isTransient = this.isTransientError(err);
-        if (isTransient && attempt < maxAttempts) {
-          console.warn(`[DeepSeekClient] Transient error (${err.message}) on attempt ${attempt}. Retrying once...`);
-          lastError = err instanceof Error ? err : new Error(String(err));
-          await new Promise((r) => setTimeout(r, 600));
+        const backoffMs = 100;
+        const remainingForRetry = retryCtx ? retryCtx.deadlineMs - Date.now() : Infinity;
+        const canRetry = retryCtx
+          ? isTransient && retryCtx.retriesRemaining > 0 && remainingForRetry > (backoffMs + 10)
+          : isTransient && attempt < 2;
+
+        if (canRetry) {
+          if (retryCtx) {
+            retryCtx.retriesRemaining -= 1;
+          }
+          attempt += 1;
+          console.warn(`[DeepSeekClient] Transient error (${err.message}). Retrying (remaining retries: ${retryCtx ? retryCtx.retriesRemaining : 0})...`);
+          await new Promise((r) => setTimeout(r, backoffMs));
           continue;
         }
 
         throw err instanceof Error ? err : new Error(String(err));
       }
     }
-
-    throw lastError || new Error("provider_call_failed");
   }
 }

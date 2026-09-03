@@ -17,6 +17,10 @@ import {
 } from "./server/myth";
 import { generateMeetingOfMirrors } from "./server/meeting";
 import { generateAlbertDialogue } from "./server/albert";
+import crypto from "crypto";
+import { calculateCanonicalDigitalCode } from "./server/dcsBridge";
+import { createContinuationClaim } from "./server/handoff";
+import { registerDeletionScope, executeDataDeletion } from "./server/deletion";
 
 const PERSONAL_MYTH_MODEL = process.env.PERSONAL_MYTH_MODEL || "deepseek-v4-pro";
 const MEETING_MODEL = process.env.MEETING_MODEL || "deepseek-v4-pro";
@@ -55,9 +59,11 @@ async function startServer() {
       status: "ok",
       service: "zerkalo",
       version: "1.0.0-lab",
+      release_sha: process.env.RELEASE_SHA || process.env.APP_GIT_SHA || "u1-candidate-dev",
       models: {
         personalMyth: PERSONAL_MYTH_MODEL,
         meeting: MEETING_MODEL,
+        synthesis: MEETING_MODEL,
         albert: ALBERT_MODEL,
       },
       google_production_dependency: "none",
@@ -69,6 +75,7 @@ async function startServer() {
     res.status(ready ? 200 : 503).json({
       status: ready ? "ready" : "not_ready",
       service: "zerkalo",
+      release_sha: process.env.RELEASE_SHA || process.env.APP_GIT_SHA || "u1-candidate-dev",
       providers: {
         personal_myth: {
           ready,
@@ -251,7 +258,7 @@ async function startServer() {
         storyData,
         client: deepseekClient,
         model: MEETING_MODEL,
-        timeoutMs: 45_000,
+        totalBudgetMs: 48_000,
       });
 
       return res.status(200).json(result);
@@ -273,6 +280,63 @@ async function startServer() {
 
   app.post("/api/meeting-of-mirrors", meetingHandler);
   app.post("/api/lab/meeting/generate", meetingHandler);
+
+  // Canonical Calculation Endpoint (digital-code-system authority)
+  app.post("/api/calculate", async (req, res) => {
+    try {
+      const dob = String(req.body?.dob || "").trim();
+      const result = await calculateCanonicalDigitalCode(dob);
+      return res.status(200).json({ status: "ok", result });
+    } catch (err: any) {
+      return res.status(400).json({ status: "error", message: err.message });
+    }
+  });
+
+  // Continuation Claim Handoff Endpoint (Web -> Telegram V2)
+  app.post("/api/handoff/create-claim", async (req, res) => {
+    try {
+      const { codeResult, storyResult, meetingResult, consent, ageVerified } = req.body || {};
+      const claim = await createContinuationClaim({
+        codeResult,
+        storyResult,
+        meetingResult,
+        consent: Boolean(consent),
+        ageVerified: Boolean(ageVerified),
+      });
+      return res.status(200).json({ status: "ok", ...claim });
+    } catch (err: any) {
+      const msg = err?.message || "claim_creation_failed";
+      const isInput = msg.includes("consent_required") || msg.includes("age_requirement") || msg.includes("journey_incomplete");
+      return res.status(isInput ? 400 : 500).json({ status: "error", code: msg.split(":", 1)[0], message: msg });
+    }
+  });
+
+  // Privacy: Session Registration Endpoint
+  app.post("/api/privacy/register-session", (req, res) => {
+    try {
+      const token = req.body?.token || crypto.randomBytes(24).toString("hex");
+      const { anonymousId, sessionToken } = req.body || {};
+      registerDeletionScope(token, { anonymousId, sessionToken });
+      return res.status(200).json({ status: "ok", token });
+    } catch (err: any) {
+      return res.status(500).json({ status: "error", message: err.message });
+    }
+  });
+
+  // Privacy: Fail-closed Deletion Endpoint
+  app.post("/api/delete-data", async (req, res) => {
+    try {
+      const token = String(req.body?.token || "").trim();
+      const result = await executeDataDeletion(token);
+      if (result.status === "error") {
+        const isInput = result.code === "invalid_token" || result.code === "deletion_scope_not_found";
+        return res.status(isInput ? 400 : 503).json(result);
+      }
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(503).json({ status: "error", code: "deletion_incomplete", retryable: true, message: err.message });
+    }
+  });
 
   // Dedicated Albert Dialogue Endpoint (RP-1 DeepSeek conversation)
   const albertHandler = async (req: express.Request, res: express.Response) => {

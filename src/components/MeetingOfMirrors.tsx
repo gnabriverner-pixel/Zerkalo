@@ -71,6 +71,37 @@ export function MeetingOfMirrors({
   const [isAlbertOpen, setIsAlbertOpen] = useState(false);
   const [albertTopic, setAlbertTopic] = useState('');
   const [userNote, setUserNote] = useState(initialUserNote || '');
+  const [isHandoffLoading, setIsHandoffLoading] = useState(false);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
+
+  const handleContinueToTelegram = async () => {
+    if (!meetingResult || !codeResult || !storyResult) return;
+    setIsHandoffLoading(true);
+    setHandoffError(null);
+    try {
+      const resp = await fetch("/api/handoff/create-claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          codeResult,
+          storyResult,
+          meetingResult,
+          consent: true,
+          ageVerified: true,
+        }),
+      });
+      const data = await resp.json();
+      if (data.status === "ok" && data.telegramUrl) {
+        window.open(data.telegramUrl, "_blank", "noopener,noreferrer");
+      } else {
+        setHandoffError(data.message || "Не удалось сформировать защищённую ссылку для перехода.");
+      }
+    } catch {
+      setHandoffError("Ошибка связи с сервером при создании ссылки.");
+    } finally {
+      setIsHandoffLoading(false);
+    }
+  };
 
   const checkCurrentSaveStatus = (): string | null => {
     const current = loadMyMirrorSnapshot();
@@ -535,16 +566,18 @@ export function MeetingOfMirrors({
                     <span>Диалог на сайте</span>
                   </button>
 
-                  <a
-                    href="https://t.me/digitalcodesystem_bot" 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  <button
+                    onClick={handleContinueToTelegram}
+                    disabled={isHandoffLoading}
+                    className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     <Send size={14} />
-                    <span>Открыть в Telegram</span>
-                  </a>
+                    <span>{isHandoffLoading ? "Создание ссылки..." : "Продолжить в Telegram"}</span>
+                  </button>
                 </div>
+                {handoffError && (
+                  <p className="text-[11px] text-amber-400 mt-2">{handoffError}</p>
+                )}
               </div>
 
               {/* LOCAL PERSISTENCE BRIDGE (MY MIRROR V0) */}

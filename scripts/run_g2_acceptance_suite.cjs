@@ -19,13 +19,13 @@ async function answerQuestion(page, stepTag, text, isLast = false) {
   await page.waitForTimeout(200);
 
   if (isLast) {
-    const submitBtn = page.locator('button:has-text("Сплести историю")');
-    await submitBtn.waitFor({ state: 'visible' });
-    await submitBtn.click();
+    const submitBtn = page.locator('button:has-text("Соткать историю")').or(page.locator('button:has-text("Сплести историю")'));
+    await submitBtn.first().waitFor({ state: 'visible' });
+    await submitBtn.first().click();
   } else {
-    const nextBtn = page.locator('button:has-text("Продолжить")');
-    await nextBtn.waitFor({ state: 'visible' });
-    await nextBtn.click();
+    const nextBtn = page.locator('button:has-text("Далее")').or(page.locator('button:has-text("Продолжить")'));
+    await nextBtn.first().waitFor({ state: 'visible' });
+    await nextBtn.first().click();
   }
   await page.waitForTimeout(500);
 }
@@ -77,9 +77,12 @@ async function runSuite() {
   console.log("=== STARTING CANONICAL G2 LIVE ACCEPTANCE RUN (MOBILE) ===");
   console.log("=========================================================");
 
-  const browser = await chromium.launch({
-    headless: true
-  });
+  const launchOptions = { headless: true };
+  const chromePath = "/Users/artemkrysin/Library/Caches/ms-playwright/chromium-1155/chrome-mac/Chromium.app/Contents/MacOS/Chromium";
+  if (fs.existsSync(chromePath)) {
+    launchOptions.executablePath = chromePath;
+  }
+  const browser = await chromium.launch(launchOptions);
 
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
