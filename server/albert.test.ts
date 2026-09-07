@@ -69,17 +69,43 @@ describe("Albert Web Dialogue Canonical DTO Adapter (digital-code-system/telegra
     expect(divergenceEv.status).toBe("partial");
   });
 
-  it("delegates to DCS canonical Albert orchestrator when bridge is up", async () => {
-    // When DCS bridge is running on port 39500
-    const resp = await generateAlbertDialogue(sampleRequest);
+  it("passes recent dialogue to the bridge and preserves an absent follow-up", async () => {
+    // Transport contract test, not a live provider claim.
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      status: "ok", text: "Готовое приглашение.", provider: "deepseek", model: "test",
+      next_open_loop: null, grounding_state: "grounded",
+    }), { status: 200 }));
+    let resp;
+    try {
+      resp = await generateAlbertDialogue(sampleRequest);
+      const body = JSON.parse(fetchMock.mock.calls[0][1]!.body as string);
+      expect(body.envelope.memory_summary.recent_turns).toEqual([
+        { role: "user", text: sampleRequest.history![0].text },
+        { role: "assistant", text: sampleRequest.history![1].text },
+      ]);
+    } finally {
+      fetchMock.mockRestore();
+    }
 
     expect(resp.status).toBe("ok");
     expect(resp.authority).toBe("digital-code-system/telegram_v2.albert.orchestrator");
     expect(resp.message).toBeDefined();
     expect(resp.message.length).toBeGreaterThan(10);
-    expect(resp.next_open_loop).toBeDefined();
+    expect(resp.next_open_loop).toBeNull();
     expect(resp.grounding_state).toBeDefined();
   }, 45_000);
+
+  it("bounds history without losing recent corrections or promoting assistant text to evidence", () => {
+    const history: AlbertDialogueRequest["history"] = Array.from({ length: 12 }, (_, i) => ({
+      sender: i % 2 ? "albert" : "user", text: `${i}: ` + "x".repeat(2200),
+    }));
+    history.push({ sender: "user", text: "Нет, описание не про меня." });
+    const envelope = buildCanonicalEnvelopeFromWebContext(undefined, history);
+    expect(envelope.memory_summary.recent_turns).toHaveLength(8);
+    expect(envelope.memory_summary.recent_turns.every((t: any) => t.text.length <= 2000)).toBe(true);
+    expect(envelope.memory_summary.recent_turns.at(-1).text).toBe("Нет, описание не про меня.");
+    expect(envelope.evidence).toEqual([]);
+  });
 
   it("fails closed on invalid or oversized user messages", async () => {
     await expect(generateAlbertDialogue({ message: "" })).rejects.toThrow(/invalid_message/);

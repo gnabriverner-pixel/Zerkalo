@@ -46,7 +46,7 @@ export interface AlbertDialogueResponse {
   provider: "deepseek";
   model: string;
   authority: "digital-code-system/telegram_v2.albert.orchestrator";
-  next_open_loop?: string;
+  next_open_loop?: string | null;
   grounding_state?: string;
 }
 
@@ -98,7 +98,7 @@ export function buildCanonicalEnvelopeFromWebContext(
   // Memory statements from history
   const salientStatements = (history || [])
     .filter((h) => h.sender === "user")
-    .map((h) => h.text.trim())
+    .map((h) => h.text.trim().slice(0, 2000))
     .filter(Boolean)
     .slice(-3);
 
@@ -138,6 +138,12 @@ export function buildCanonicalEnvelopeFromWebContext(
     memory_summary: {
       summary: (context?.meetingSummary || "Завершена встреча зеркал.").slice(0, 300),
       salient_user_statements: salientStatements,
+      // Same bounded conversational memory consumed by the Telegram core.
+      // Assistant text remains history, never confirmed recognition evidence.
+      recent_turns: (history || [])
+        .filter(h => (h.sender === "user" || h.sender === "albert") && h.text.trim())
+        .slice(-8)
+        .map(h => ({ role: h.sender === "user" ? "user" : "assistant", text: h.text.trim().slice(0, 2000) })),
       updated_at: now,
     },
   };
@@ -200,7 +206,7 @@ export async function generateAlbertDialogue(
       provider: "deepseek",
       model,
       authority: "digital-code-system/telegram_v2.albert.orchestrator",
-      next_open_loop: data.next_open_loop || request.context?.centralQuestion || "В чем ваша главная опора сейчас?",
+      next_open_loop: data.next_open_loop ?? null,
       grounding_state: data.grounding_state || data.turn?.grounding_state || "grounded",
     };
   } catch (err: any) {
