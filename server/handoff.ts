@@ -2,6 +2,7 @@ import crypto from "crypto";
 import fs from "fs/promises";
 import fsSync from "fs";
 import path from "path";
+import { meetingEvidence, mergeTruthEvidence, type TruthState } from "./truthEvidence";
 import type { CalculationResult, MeetingApiResponse, StoryInputs } from "../src/types";
 
 export const CLAIM_TTL_MS = 15 * 60_000; // 15 minutes TTL
@@ -20,6 +21,7 @@ export interface CreateClaimParams {
   meetingResult: any;
   consent: boolean;
   ageVerified: boolean;
+  truthState?: TruthState;
 }
 
 export interface ContinuationClaimRecord {
@@ -123,7 +125,8 @@ export function extractAndValidateMeetingDto(rawMeeting: any): ValidatedMeetingH
 export function buildSharedContextEnvelope(
   codeResult: CalculationResult,
   storyResult: any,
-  meetingResult: any
+  meetingResult: any,
+  truthState?: TruthState,
 ): Record<string, any> {
   const now = new Date().toISOString();
   // Canonical OpaqueUserRef requires UUIDv4
@@ -148,46 +151,9 @@ export function buildSharedContextEnvelope(
   const livingQuestion = meeting.reflectiveQuestion.slice(0, 300);
   const nextOpenLoop = (meeting.openLoop || livingQuestion).slice(0, 300);
 
-  // 4. Evidence (Confirmed observations and contrasts from completed journey)
-  const evidence: Array<{ status: string; claim_summary: string; recorded_at: string }> = [
-    {
-      status: "confirmed",
-      claim_summary: `Число Сознания ${codeResult.soul}, Число Действия ${codeResult.path}`,
-      recorded_at: now,
-    },
-    {
-      status: "confirmed",
-      claim_summary: `Образ мифа: ${mirror.mainImage || "Символический образ"}`,
-      recorded_at: now,
-    },
-    {
-      status: "confirmed",
-      claim_summary: `Встреча: ${meetingSummary.slice(0, 150)}`,
-      recorded_at: now,
-    },
-  ];
-
-  // Map each parallel as confirmed resonance
-  for (const p of meeting.parallels) {
-    if (p.theme) {
-      evidence.push({
-        status: "confirmed",
-        claim_summary: `Резонанс [${p.theme}]: ${(p.synthesis || p.codeAnchor || "").slice(0, 120)}`,
-        recorded_at: now,
-      });
-    }
-  }
-
-  // Map each divergence as partial/contrast
-  for (const d of meeting.divergences) {
-    if (d.theme) {
-      evidence.push({
-        status: "partial",
-        claim_summary: `Контраст [${d.theme}]: ${(d.reflection || d.codeAspect || "").slice(0, 120)}`,
-        recorded_at: now,
-      });
-    }
-  }
+  // Numbers stay in DerivedCodeSnapshot; generated texts are unreviewed.
+  const evidence = mergeTruthEvidence(meetingEvidence(meetingSummary, mirror.mainImage || "",
+    meeting.parallels, meeting.divergences, now), truthState);
 
   // 5. Seven-day retention with standard class
   const expiresAt = new Date(Date.now() + 7 * 86400_000).toISOString();
@@ -267,7 +233,7 @@ export async function createContinuationClaim(params: CreateClaimParams): Promis
   const createdAt = new Date(nowMs).toISOString();
   const expiresAt = new Date(nowMs + CLAIM_TTL_MS).toISOString();
 
-  const envelope = buildSharedContextEnvelope(params.codeResult, params.storyResult, params.meetingResult);
+  const envelope = buildSharedContextEnvelope(params.codeResult, params.storyResult, params.meetingResult, params.truthState);
   const signature = signClaim(claimId, expiresAt);
 
   const claimRecord: ContinuationClaimRecord = {

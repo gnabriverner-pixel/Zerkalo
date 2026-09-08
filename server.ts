@@ -339,13 +339,14 @@ async function startServer() {
   // Continuation Claim Handoff Endpoint (Web -> Telegram V2)
   app.post("/api/handoff/create-claim", async (req, res) => {
     try {
-      const { codeResult, storyResult, meetingResult, consent, ageVerified } = req.body || {};
+      const { codeResult, storyResult, meetingResult, consent, ageVerified, truthState } = req.body || {};
       const claim = await createContinuationClaim({
         codeResult,
         storyResult,
         meetingResult,
         consent: Boolean(consent),
         ageVerified: Boolean(ageVerified),
+        truthState,
       });
       return res.status(200).json({ status: "ok", ...claim });
     } catch (err: any) {

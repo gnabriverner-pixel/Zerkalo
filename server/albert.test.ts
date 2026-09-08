@@ -63,10 +63,12 @@ describe("Albert Web Dialogue Canonical DTO Adapter (digital-code-system/telegra
     expect(claimSummaries.some((c: string) => c.includes("Внешний напор"))).toBe(true);
 
     const parallelEv = envelope.evidence.find((e: any) => e.claim_summary.includes("Потребность в тишине"));
-    expect(parallelEv.status).toBe("confirmed");
+    expect(parallelEv.status).toBe("unreviewed");
+    expect(parallelEv.source).toBe("resonance");
 
     const divergenceEv = envelope.evidence.find((e: any) => e.claim_summary.includes("Внешний напор"));
-    expect(divergenceEv.status).toBe("partial");
+    expect(divergenceEv.status).toBe("unreviewed");
+    expect(divergenceEv.source).toBe("divergence");
   });
 
   it("passes recent dialogue to the bridge and preserves an absent follow-up", async () => {

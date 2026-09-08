@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CalculationResult, MeetingOfMirrorsResult } from '../types';
 import { numberKnowledge } from '../data/numberKnowledge';
+import { loadTruthState, saveTruthState, truthJourneyKey, hasTruthCorrections, TRUTH_CLEARED_EVENT } from '../services/albertTruthState';
 import { 
   X, 
   Send, 
@@ -54,6 +55,15 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const journeyKey = truthJourneyKey(calc, storyResult, meetingResult);
+  const truthRef = useRef<{ journey: string; state: any }>({ journey: journeyKey, state: loadTruthState(journeyKey) });
+  const truthEpochRef = useRef(0);
+  if (truthRef.current.journey !== journeyKey) truthRef.current = { journey: journeyKey, state: loadTruthState(journeyKey) };
+  useEffect(() => {
+    const clear = () => { truthRef.current.state = undefined; truthEpochRef.current += 1; };
+    window.addEventListener(TRUTH_CLEARED_EVENT, clear);
+    return () => window.removeEventListener(TRUTH_CLEARED_EVENT, clear);
+  }, []);
 
   const soul = calc?.soul || 1;
   const path = calc?.path || 1;
@@ -90,7 +100,9 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       let greeting = '';
-      if (meetingResult) {
+      if (hasTruthCorrections(truthRef.current.state)) {
+        greeting = 'Здравствуйте. Продолжим с учётом ваших уточнений. О чём вы хотели бы поговорить?';
+      } else if (meetingResult) {
         greeting = `Здравствуйте. Я вижу сопоставление двух ваших зеркал — расчетной структуры и образного мифа.\n\n${meetingResult.summary}\n\nО чем из увиденного в зеркалах вы хотели бы поговорить глубже? Вы можете выбрать тему ниже или задать свой вопрос своими словами.`;
       } else if (calc) {
         greeting = `Здравствуйте. Я вижу вашу формулу: Душа ${soul} (${soulInfo?.planet.split(' ')[0] || ''}), Путь ${path} (${pathInfo?.planet.split(' ')[0] || ''}), Направление ${dir} и Выражение ${expr}.\n\nКарта уже перед нами. О чем из увиденного вы хотели бы поговорить глубже? Вы можете выбрать вопрос или спросить о своей ситуации своими словами.`;
@@ -132,6 +144,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
     setLastFailedMessage(null);
 
     try {
+      const truthEpoch = truthEpochRef.current;
       const historyPayload = messages.map(m => ({
         sender: m.sender,
         text: m.text
@@ -174,7 +187,8 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         body: JSON.stringify({
           message: text,
           history: historyPayload,
-          context: contextPayload
+          context: contextPayload,
+          truthState: truthRef.current.state
         })
       });
 
@@ -188,6 +202,10 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
       }
 
       const data = await res.json();
+      if (data.truthState && truthEpoch === truthEpochRef.current) {
+        truthRef.current.state = data.truthState;
+        saveTruthState(journeyKey, data.truthState);
+      }
       if (data.status !== 'ok' || !data.message) {
         const safeMessage = data?.ui?.safe_message || 'Не удалось получить ответ. Ваши результаты сохранены — попробуйте повторить запрос.';
         setErrorText(safeMessage);

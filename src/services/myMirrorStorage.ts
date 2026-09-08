@@ -1,4 +1,5 @@
 import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult } from '../types';
+import { clearTruthState } from './albertTruthState';
 
 export const MY_MIRROR_STORAGE_KEY = 'zerkalo.myMirror.v1';
 
@@ -149,6 +150,7 @@ export function deleteMyMirrorSnapshot(): boolean {
 
   try {
     window.localStorage.removeItem(MY_MIRROR_STORAGE_KEY);
+    clearTruthState();
     return true;
   } catch (err) {
     console.error('[MyMirrorStorage] Failed to delete snapshot:', err);
@@ -342,6 +344,7 @@ export function clearTransientDraft(): boolean {
   if (typeof window === 'undefined' || !window.sessionStorage) return false;
   try {
     window.sessionStorage.removeItem(TRANSIENT_DRAFT_KEY);
+    clearTruthState();
     return true;
   } catch {
     return false;

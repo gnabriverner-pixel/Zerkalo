@@ -179,10 +179,12 @@ describe("Web -> Telegram V2 Continuation Claim Contract", () => {
     expect(claimSummaries.some((c: string) => c.includes(sentinelDivergenceTheme))).toBe(true);
 
     const parallelEv = envelope.evidence.find((e: any) => e.claim_summary.includes(sentinelParallelTheme));
-    expect(parallelEv.status).toBe("confirmed");
+    expect(parallelEv.status).toBe("unreviewed");
+    expect(parallelEv.source).toBe("resonance");
 
     const divergenceEv = envelope.evidence.find((e: any) => e.claim_summary.includes(sentinelDivergenceTheme));
-    expect(divergenceEv.status).toBe("partial");
+    expect(divergenceEv.status).toBe("unreviewed");
+    expect(divergenceEv.source).toBe("divergence");
   });
 
   it("fails closed when meeting context is invalid or missing required fields (no silent generic defaults)", () => {

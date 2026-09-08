@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { meetingEvidence, mergeTruthEvidence, type TruthState } from "./truthEvidence";
 
 export interface AlbertDialogueContext {
   meetingSummary?: string;
@@ -38,6 +39,7 @@ export interface AlbertDialogueRequest {
   message: string;
   history?: Array<{ sender: "user" | "albert"; text: string }>;
   context?: AlbertDialogueContext;
+  truthState?: TruthState;
 }
 
 export interface AlbertDialogueResponse {
@@ -48,6 +50,7 @@ export interface AlbertDialogueResponse {
   authority: "digital-code-system/telegram_v2.albert.orchestrator";
   next_open_loop?: string | null;
   grounding_state?: string;
+  truthState?: TruthState;
 }
 
 /**
@@ -64,36 +67,12 @@ export function buildCanonicalEnvelopeFromWebContext(
 
   const c = context?.codeAnchors?.numbers || {};
   const components = [
-    { component_key: "mind", value_summary: String(c.soul ?? 7) },
-    { component_key: "path", value_summary: String(c.path ?? 1) },
-    { component_key: "direction", value_summary: String(c.direction ?? 8) },
-    { component_key: "expression", value_summary: String(c.expression ?? 9) },
-    { component_key: "result", value_summary: String(c.result ?? 5) },
-  ];
-
-  const evidence: Array<{ status: string; claim_summary: string; recorded_at: string }> = [];
-  if (context?.resonances) {
-    for (const r of context.resonances) {
-      if (r.theme) {
-        evidence.push({
-          status: "confirmed",
-          claim_summary: `Резонанс [${r.theme}]: ${(r.synthesis || r.codeAnchor || "").slice(0, 120)}`,
-          recorded_at: now,
-        });
-      }
-    }
-  }
-  if (context?.divergences) {
-    for (const d of context.divergences) {
-      if (d.theme) {
-        evidence.push({
-          status: "partial",
-          claim_summary: `Контраст [${d.theme}]: ${(d.reflection || d.codeAspect || "").slice(0, 120)}`,
-          recorded_at: now,
-        });
-      }
-    }
-  }
+    ["mind", c.soul], ["path", c.path], ["direction", c.direction],
+    ["expression", c.expression], ["result", c.result],
+  ].filter(([, value]) => typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 9)
+    .map(([key, value]) => ({ component_key: key, value_summary: String(value) }));
+  const evidence = meetingEvidence(context?.meetingSummary || "", context?.mythAnchors?.mainImage || "",
+    context?.resonances || [], context?.divergences || [], now);
 
   // Memory statements from history
   const salientStatements = (history || [])
@@ -117,12 +96,12 @@ export function buildCanonicalEnvelopeFromWebContext(
       expires_at: expiresAt,
       policy_marker: "7d_retention_bound",
     },
-    derived_code: {
+    derived_code: components.length ? {
       method_version: "v1",
-      profile_ref: `code_${c.soul ?? 7}_${c.path ?? 1}_${c.result ?? 5}`,
+      profile_ref: `code_${components.map(c => c.value_summary).join("_")}`,
       components,
       generated_at: now,
-    },
+    } : null,
     evidence,
     experience_state: {
       myth_summary: (context?.mythAnchors?.mainImage || context?.mythAnchors?.title || "Символический миф").slice(0, 300),
@@ -165,6 +144,7 @@ export async function generateAlbertDialogue(
   }
 
   const envelope = buildCanonicalEnvelopeFromWebContext(request.context, request.history);
+  envelope.evidence = mergeTruthEvidence(envelope.evidence, request.truthState);
   const dcsUrl = process.env.DCS_BRIDGE_URL || "http://127.0.0.1:39500";
   const requestId = `web_albert_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
 
@@ -208,6 +188,12 @@ export async function generateAlbertDialogue(
       authority: "digital-code-system/telegram_v2.albert.orchestrator",
       next_open_loop: data.next_open_loop ?? null,
       grounding_state: data.grounding_state || data.turn?.grounding_state || "grounded",
+      truthState: data.evidence_delta ? {
+        evidence: data.evidence_delta,
+        expiresAt: request.truthState?.expiresAt && Date.parse(request.truthState.expiresAt) > Date.now()
+          ? new Date(Math.min(Date.parse(request.truthState.expiresAt), Date.parse(envelope.retention.expires_at))).toISOString()
+          : envelope.retention.expires_at,
+      } : undefined,
     };
   } catch (err: any) {
     clearTimeout(timer);

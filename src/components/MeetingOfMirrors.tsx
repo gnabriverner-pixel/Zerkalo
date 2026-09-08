@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { loadTruthState, truthJourneyKey } from '../services/albertTruthState';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle2, 
@@ -88,6 +89,7 @@ export function MeetingOfMirrors({
           meetingResult,
           consent: true,
           ageVerified: true,
+          truthState: loadTruthState(truthJourneyKey(codeResult, storyResult, meetingResult)),
         }),
       });
       const data = await resp.json();
