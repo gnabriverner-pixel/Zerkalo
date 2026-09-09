@@ -73,9 +73,14 @@ describe("Web -> Telegram V2 Continuation Claim Contract", () => {
       ageVerified: true,
     });
 
-    expect(claim.claimId).toHaveLength(32);
+    expect(claim.claimId).toHaveLength(43);
     expect(claim.token).toContain(claim.claimId);
-    expect(claim.telegramUrl).toContain(`claim_${claim.claimId}_`);
+    const start = new URL(claim.telegramUrl).searchParams.get("start")!;
+    expect(start).toBe(`h_${claim.claimId}`);
+    expect(start).toHaveLength(45);
+    expect(start).toMatch(/^h_[A-Za-z0-9_-]{43}$/);
+    expect(start.length).toBeLessThanOrEqual(64);
+    expect(start).not.toContain(claim.token.split(".")[1]);
     // URL contains no PII, no DOB
     expect(claim.telegramUrl).not.toContain("06.05.1986");
     expect(claim.telegramUrl).not.toContain("dob");
@@ -102,7 +107,8 @@ describe("Web -> Telegram V2 Continuation Claim Contract", () => {
       ageVerified: true,
     });
 
-    const tamperedSig = "a" + claim.token.split(".")[1].slice(1);
+    const signature = claim.token.split(".")[1];
+    const tamperedSig = (signature[0] === "a" ? "b" : "a") + signature.slice(1);
     const result = await consumeContinuationClaim(claim.claimId, tamperedSig);
     expect(result.success).toBe(false);
     expect(result.code).toBe("tamper_rejected");

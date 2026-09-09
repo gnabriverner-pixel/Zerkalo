@@ -228,7 +228,9 @@ export async function createContinuationClaim(params: CreateClaimParams): Promis
     throw new Error("journey_incomplete:all_three_stages_required");
   }
 
-  const claimId = crypto.randomBytes(16).toString("hex");
+  // 256-bit opaque bearer ID. The full HMAC stays in the server-side record;
+  // Telegram receives only a safe 45-character lookup parameter.
+  const claimId = crypto.randomBytes(32).toString("base64url");
   const nowMs = Date.now();
   const createdAt = new Date(nowMs).toISOString();
   const expiresAt = new Date(nowMs + CLAIM_TTL_MS).toISOString();
@@ -253,7 +255,7 @@ export async function createContinuationClaim(params: CreateClaimParams): Promis
   await fs.rename(tmpPath, claimFilePath);
 
   const token = `${claimId}.${signature}`;
-  const telegramUrl = `https://t.me/${BOT_USERNAME}?start=claim_${claimId}_${signature}`;
+  const telegramUrl = `https://t.me/${BOT_USERNAME}?start=h_${claimId}`;
 
   return {
     claimId,
