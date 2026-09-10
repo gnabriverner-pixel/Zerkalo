@@ -152,8 +152,10 @@ describe("Unified Release U1 Master Contract Verification", () => {
         ageVerified: true,
       });
 
-      expect(claim.claimId).toHaveLength(32);
-      expect(claim.telegramUrl).toContain(`claim_${claim.claimId}_`);
+      expect(claim.claimId).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      const start=new URL(claim.telegramUrl).searchParams.get('start');
+      expect(start).toBe(`h_${claim.claimId}`);
+      expect(start!.length).toBeLessThanOrEqual(64);
       expect(claim.telegramUrl).not.toContain("06.05.1986");
 
       const sig = claim.token.split(".")[1];

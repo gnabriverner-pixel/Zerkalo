@@ -136,7 +136,8 @@ export async function generateAlbertDialogue(
   request: AlbertDialogueRequest,
   _client?: any,
   model: string = "deepseek-v4-pro",
-  timeoutMs: number = 45_000
+  timeoutMs: number = 45_000,
+  consentReceipt?: {version:string;recordedAt:number}
 ): Promise<AlbertDialogueResponse> {
   const userText = String(request.message || "").trim();
   if (!userText || userText.length > 2000) {
@@ -144,6 +145,11 @@ export async function generateAlbertDialogue(
   }
 
   const envelope = buildCanonicalEnvelopeFromWebContext(request.context, request.history);
+  if(consentReceipt) {
+    envelope.consent.recorded_at=new Date(consentReceipt.recordedAt).toISOString();
+    envelope.consent.policy_version=consentReceipt.version;
+    envelope.consent.cross_surface=false;
+  }
   envelope.evidence = mergeTruthEvidence(envelope.evidence, request.truthState);
   const dcsUrl = process.env.DCS_BRIDGE_URL || "http://127.0.0.1:39500";
   const requestId = `web_albert_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;

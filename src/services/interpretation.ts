@@ -2,26 +2,15 @@ import { CalculationResult, FirstMirror } from '../types';
 import { getNumberKnowledge } from '../data/numberKnowledge';
 import { getCompoundKnowledge } from '../data/compoundKnowledge';
 
-export function determineKeyInsight(soul: number, path: number, result: number): string {
-  if ([1, 4, 8].includes(soul) && [1, 4, 8].includes(result)) {
-    return "Ваша формула показывает не просто набор качеств, а бескомпромиссный способ превращать внутренний импульс в материальную форму, которую можно увидеть и применить.";
-  }
-  if ([2, 6].includes(soul) && [2, 6].includes(result)) {
-    return "Главная тема этой архитектуры — не масштаб ради масштаба, а умение дать своей силе человеческий язык, выстраивая глубокие, резонирующие связи.";
-  }
-  if ([7, 11].includes(soul) || [7, 11].includes(result)) {
-    return "Первый слой вашей карты показывает связку тонкого наблюдения и зрелого итога: именно между ними возникает ваш главный маршрут и уникальная экспертиза.";
-  }
-  if ([3, 5].includes(soul) || [3, 5].includes(path)) {
-    return "Эта матрица выстроена вокруг скорости и слова: ваша задача — перевести хаос постоянного поиска в точный, измеримый результат.";
-  }
-  if (result === 9 || soul === 9) {
-    return "Архитектура вашего кода заряжена на длинные дистанции: это потенциал завершать то, что другие только начинают, и мыслить категориями мирового масштаба.";
-  }
-  if (path === 8 || path === 4) {
-    return "Ваша связка чисел указывает на мощную несущую конструкцию: вы не адаптируетесь под систему, вы способны её создавать и удерживать.";
-  }
-  return "Первый слой показывает плотную связку внутреннего желания, способа действия и зрелого результата: именно между ними возникает ваш главный жизненный алгоритм.";
+export function determineKeyInsight(soul: number, path: number, result: number, expression=soul, direction=path): string {
+  const theme=(n:number)=>getNumberKnowledge(n).keywords[0];
+  return `В языке метода внутренний мотив «${theme(soul)}» (Душа ${soul}) встречается со способом действия «${theme(path)}» (Путь ${path}). Выражение ${expression} добавляет тему «${theme(expression)}» в контакт с миром; Направление ${direction} — «${theme(direction)}» в выбор среды. Связующий вопрос: как сохранить исходный мотив, двигаясь к теме «${theme(result)}» (Результат ${result}), и где привычный способ действия помогает этому, а где требует изменения?`;
+}
+
+/** Attribute the existing authorial corpus instead of asserting a biography. */
+export function methodReading(text:string):string {
+  const bounded=text.replace(/Психика рассчитана на сверхнагрузки\.?/g,'В методе выделена тема выносливости, а не доказанная способность выдерживать перегрузки.');
+  return `В интерпретации метода: «${bounded.replace(/[«»]/g,'').replace(/\.$/,'')}».`;
 }
 
 function cleanSentence(text: string): string {
@@ -69,18 +58,18 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
     ? getCompoundKnowledge(calc.resultComposite.split('/')[0])
     : null;
 
-  const soulEssence = cleanSentence(soul.positions.soul.essence);
-  const pathEssence = cleanSentence(path.positions.path.essence);
-  const resultEssence = cleanSentence(result.positions.result.essence);
+  const soulEssence = methodReading(soul.positions.soul.essence);
+  const pathEssence = methodReading(path.positions.path.essence);
+  const resultEssence = methodReading(result.positions.result.essence);
 
-  const soulStrength = cleanSentence(soul.positions.soul.strength);
-  const exprStrength = cleanSentence(expression.positions.expression.strength);
+  const soulStrength = methodReading(soul.positions.soul.strength);
+  const exprStrength = methodReading(expression.positions.expression.strength);
 
-  const dirTension = cleanSentence(direction.positions.direction.tension);
-  const pathTension = cleanSentence(path.positions.path.tension);
+  const dirTension = methodReading(direction.positions.direction.tension);
+  const pathTension = methodReading(path.positions.path.tension);
 
   const tensionParts = [
-    `Зоны трения проявляются там, где выбранная стратегия (Путь ${path.number}) сталкивается с фокусом приложения практических усилий (Направление ${direction.number}).`,
+    `Здесь сопоставляются стратегия (Путь ${path.number}) и среда приложения усилий (Направление ${direction.number}). Разные числа не доказывают конфликт: проверьте на одной ситуации, помогает ли выбранный способ действия в этой среде.`,
     `По линии Направления характерно следующее напряжение: ${dirTension}`
   ];
   appendUniqueParagraph(tensionParts, `По линии Пути может проявляться`, pathTension);
@@ -95,7 +84,7 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
   const resultRec = cleanSentence(result.positions.result.recommendation);
 
   const stepParts = [
-    `Чтобы потенциал раскрывался без застревания, начните с точного применения энергии Направления (${direction.number}) с прицелом на смысловой Результат (${result.number}).`,
+    `Возьмите одну текущую задачу и сравните способ действия (Путь ${path.number}), условия работы (Направление ${direction.number}) и нужный итог (Результат ${result.number}). Следующие ориентиры принадлежат методу; выбирайте только применимый к этой задаче.`,
     `Практический ориентир по Направлению: ${dirRec}`
   ];
   appendUniqueParagraph(stepParts, `Ориентир по линии Результата`, resultRec);
@@ -113,17 +102,17 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
       planets: `${soul.planet} · ${path.planet} · ${expression.planet} · ${direction.planet} · ${result.planet}`,
       positions: "Душа · Путь · Выражение · Направление · Результат"
     },
-    keyInsight: determineKeyInsight(soul.number, path.number, result.number),
+    keyInsight: determineKeyInsight(soul.number, path.number, result.number,expression.number,direction.number),
     blocks: [
       {
         id: "main_pattern",
         title: "Главный узор",
-        text: `Ядро вашей матрицы опирается на связку внутреннего импульса (Душа ${soul.number}), жизненной стратегии (Путь ${path.number}) и итоговой реализации (Результат ${result.number}).\n\nПозиция Души определяет внутреннюю мотивацию: ${soulEssence}\n\nТраектория Пути задаёт способ движения во внешнем мире: ${pathEssence}\n\nЭтот вектор ведёт к финальной сборке опыта: ${resultEssence}`
+        text: `Сначала отделим мотив (Душа ${soul.number}) от способа действовать (Путь ${path.number}) и образа итога (Результат ${result.number}). Их связь — вопрос к опыту, а не три установленных свойства.\n\nМотив в позиции Души. ${soulEssence}\n\nСпособ действия в позиции Пути. ${pathEssence}\n\nОбраз итога в позиции Результата. ${resultEssence}\n\nПроверьте связь на конкретном решении: какой мотив был вашим, каким способом вы действовали и что получилось? Совпадение или несовпадение важно сохранить, не подгоняя ответ под описание.`
       },
       {
         id: "strength",
-        title: "Что уже является силой",
-        text: `Ваша опора — это резонанс между внутренней потребностью (Душа ${soul.number}) и внешним стилем контакта с миром (Выражение ${expression.number}).\n\nВнутренняя опора по числу Души: ${soulStrength}\n\nВнешний ресурс по числу Выражения: ${exprStrength}\n\nЭто сочетание позволяет открывать возможности, сохраняя верность своей природе.`
+        title: "Как соединяются ресурсы",
+        text: `Здесь встречаются две разные роли: внутренняя потребность (Душа ${soul.number}) и стиль контакта (Выражение ${expression.number}).\n\nОпора по числу Души. ${soulStrength}\n\nРесурс по числу Выражения. ${exprStrength}\n\n${soul.number===expression.number ? 'Одна тема повторяется в двух позициях метода. Это не означает, что внутреннее и внешнее у человека всегда совпадают.' : 'В методе мотив и его внешняя подача описаны разными темами. Их различие само по себе не является противоречием личности.'} Посмотрите, удаётся ли выразить важное для вас так, чтобы собеседник это понял.`
       },
       {
         id: "tension",
@@ -138,7 +127,7 @@ export function generateFirstMirror(calc: CalculationResult): FirstMirror {
       {
         id: "resonance",
         title: "Метафорический резонанс",
-        text: `«${taleTitle}».\n\nВаше глубинное ядро (Душа ${soul.number}) соотносится с архетипом «${soul.archetypeName}». Внутренняя основа характера: ${soul.core}. В созидательном проявлении этот потенциал раскрывается как ${soul.gift.toLowerCase()}. В теневом выражении он может проявляться как ${soul.shadow.toLowerCase()}. Планетарный ориентир архетипа — ${soul.planet}.`
+        text: `«${taleTitle}».\n\nЧислу Души ${soul.number} метод сопоставляет архетип «${soul.archetypeName}» и темы: ${soul.core}. Его ресурсный образ — ${soul.gift.toLowerCase()}, контрастная сторона — ${soul.shadow.toLowerCase()}. Планетарный символ этого образа — ${soul.planet}. Это авторская метафора Кода, не воспоминание или факт вашей биографии.`
       }
     ],
     strengthTags: [soul.gift.split(',')[0], path.gift.split(',')[0], expression.keywords[0], direction.keywords[1]],

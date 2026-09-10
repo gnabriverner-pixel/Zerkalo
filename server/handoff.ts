@@ -7,6 +7,30 @@ import type { CalculationResult, MeetingApiResponse, StoryInputs } from "../src/
 
 export const CLAIM_TTL_MS = 15 * 60_000; // 15 minutes TTL
 
+/** Expiry invalidates a capability; the sweep also removes its payload. */
+export async function sweepExpiredClaims(directory: string = CLAIMS_DIR, now = Date.now()): Promise<number> {
+  let removed = 0;
+  let entries;
+  try {entries = await fs.readdir(directory, {withFileTypes:true});} catch(error:any) {if(error.code==='ENOENT')return 0;throw error;}
+  if(path.resolve(directory)===path.parse(path.resolve(directory)).root || path.resolve(directory)===process.cwd()) throw new Error('unsafe_claim_directory');
+  await fs.chmod(directory,0o770);
+  for(const entry of entries) {
+    if(!entry.isFile() || !/^(?:[a-f0-9]{32}|[A-Za-z0-9_-]{43})\.json$/.test(entry.name))continue;
+    const file=path.join(directory,entry.name);
+    try {
+      const stat=await fs.lstat(file);
+      if(!stat.isFile() || stat.size>1_000_000)continue;
+      const record=JSON.parse(await fs.readFile(file,'utf8'));
+      const expiry=Date.parse(record.expiresAt);
+      if(record.claimId!==entry.name.slice(0,-5) || !Number.isFinite(expiry) || typeof record.signature!=='string')continue;
+      if(!verifyClaimSignature(record.claimId,record.expiresAt,record.signature))continue;
+      if(expiry<=now) {await fs.unlink(file);removed++;}
+      else await fs.chmod(file,0o660);
+    }catch(error:any){if(error.code!=='ENOENT')console.warn('claim_retention_record_skipped');}
+  }
+  return removed;
+}
+
 const CLAIMS_DIR = process.env.SHARED_CLAIMS_DIR || path.join(process.cwd(), "data", "claims");
 const BOT_USERNAME = process.env.TELEGRAM_STAGING_BOT_USERNAME || "ZerkaloStagingBot";
 
@@ -22,6 +46,7 @@ export interface CreateClaimParams {
   consent: boolean;
   ageVerified: boolean;
   truthState?: TruthState;
+  consentReceipt?: {version:string;recordedAt:number};
 }
 
 export interface ContinuationClaimRecord {
@@ -236,6 +261,10 @@ export async function createContinuationClaim(params: CreateClaimParams): Promis
   const expiresAt = new Date(nowMs + CLAIM_TTL_MS).toISOString();
 
   const envelope = buildSharedContextEnvelope(params.codeResult, params.storyResult, params.meetingResult, params.truthState);
+  if(params.consentReceipt) {
+    envelope.consent.recorded_at=new Date(params.consentReceipt.recordedAt).toISOString();
+    envelope.consent.policy_version=params.consentReceipt.version;
+  }
   const signature = signClaim(claimId, expiresAt);
 
   const claimRecord: ContinuationClaimRecord = {
@@ -247,11 +276,13 @@ export async function createContinuationClaim(params: CreateClaimParams): Promis
     envelope,
   };
 
-  await fs.mkdir(CLAIMS_DIR, { recursive: true });
+  await fs.mkdir(CLAIMS_DIR, { recursive: true, mode:0o770 });
+  await fs.chmod(CLAIMS_DIR,0o770);
   const claimFilePath = path.join(CLAIMS_DIR, `${claimId}.json`);
   const tmpPath = `${claimFilePath}.${Date.now()}.tmp`;
 
-  await fs.writeFile(tmpPath, JSON.stringify(claimRecord, null, 2), "utf-8");
+  await fs.writeFile(tmpPath, JSON.stringify(claimRecord, null, 2), {encoding:"utf-8",mode:0o660,flag:'wx'});
+  await fs.chmod(tmpPath,0o660);
   await fs.rename(tmpPath, claimFilePath);
 
   const token = `${claimId}.${signature}`;
@@ -308,7 +339,8 @@ export async function consumeContinuationClaim(
   // 4. Mark Consumed Atomically
   claim.consumedAt = new Date().toISOString();
   const tmpPath = `${claimFilePath}.${Date.now()}.tmp`;
-  await fs.writeFile(tmpPath, JSON.stringify(claim, null, 2), "utf-8");
+  await fs.writeFile(tmpPath, JSON.stringify(claim, null, 2), {encoding:"utf-8",mode:0o660,flag:'wx'});
+  await fs.chmod(tmpPath,0o660);
   await fs.rename(tmpPath, claimFilePath);
 
   return { success: true, envelope: claim.envelope };

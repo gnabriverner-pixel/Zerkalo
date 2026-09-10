@@ -20,8 +20,9 @@ import { generateMeetingOfMirrors } from "./server/meeting";
 import { generateAlbertDialogue } from "./server/albert";
 import crypto from "crypto";
 import { calculateCanonicalDigitalCode } from "./server/dcsBridge";
-import { createContinuationClaim } from "./server/handoff";
+import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
 import { registerDeletionScope, executeDataDeletion } from "./server/deletion";
+import { installConsentRoutes } from './server/consent';
 
 const PERSONAL_MYTH_MODEL = process.env.PERSONAL_MYTH_MODEL || "deepseek-v4-pro";
 const MEETING_MODEL = process.env.MEETING_MODEL || "deepseek-v4-pro";
@@ -54,6 +55,12 @@ async function startServer() {
 
   // Schema reference: "status": "crisis", "story_result": { "mirror": { "mainImage": "", "innerTension": "" } }
   app.use(express.json({ limit: "5mb" }));
+  app.get('/privacy', (_req,res)=>res.sendFile(path.resolve('public/privacy.html')));
+  app.get('/terms', (_req,res)=>res.sendFile(path.resolve('public/terms.html')));
+  installConsentRoutes(app);
+  const sweepClaims = () => sweepExpiredClaims().catch(()=>console.warn('claim_retention_sweep_failed'));
+  void sweepClaims();
+  setInterval(sweepClaims,60_000).unref();
 
   function getPackageReleaseInfo(): Record<string, any> | null {
     const cwd = process.cwd();
@@ -344,9 +351,10 @@ async function startServer() {
         codeResult,
         storyResult,
         meetingResult,
-        consent: Boolean(consent),
-        ageVerified: Boolean(ageVerified),
+        consent: res.locals.consent?.scopes.includes('telegram_transfer') === true,
+        ageVerified: res.locals.consent?.adult === true,
         truthState,
+        consentReceipt:res.locals.consent,
       });
       return res.status(200).json({ status: "ok", ...claim });
     } catch (err: any) {
@@ -407,7 +415,8 @@ async function startServer() {
         req.body,
         deepseekClient,
         ALBERT_MODEL,
-        30_000
+        30_000,
+        res.locals.consent
       );
 
       return res.status(200).json(dialogueRes);

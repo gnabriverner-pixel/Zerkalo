@@ -74,12 +74,15 @@ export function MeetingOfMirrors({
   const [userNote, setUserNote] = useState(initialUserNote || '');
   const [isHandoffLoading, setIsHandoffLoading] = useState(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
+  const [transferAccepted, setTransferAccepted] = useState(false);
 
   const handleContinueToTelegram = async () => {
-    if (!meetingResult || !codeResult || !storyResult) return;
+    if (!meetingResult || !codeResult || !storyResult || !transferAccepted) return;
     setIsHandoffLoading(true);
     setHandoffError(null);
     try {
+      const {acceptConsent} = await import('../services/consent');
+      await acceptConsent('telegram_transfer');
       const resp = await fetch("/api/handoff/create-claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -570,13 +573,17 @@ export function MeetingOfMirrors({
 
                   <button
                     onClick={handleContinueToTelegram}
-                    disabled={isHandoffLoading}
+                    disabled={isHandoffLoading || !transferAccepted}
                     className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     <Send size={14} />
                     <span>{isHandoffLoading ? "Создание ссылки..." : "Продолжить в Telegram"}</span>
                   </button>
                 </div>
+                <label className="flex items-start justify-center gap-3 text-sm leading-relaxed text-stone-300 text-left cursor-pointer">
+                  <input type="checkbox" checked={transferAccepted} onChange={e=>setTransferAccepted(e.target.checked)} className="mt-1 size-5 shrink-0" />
+                  Разрешаю перенести результаты, образы и поправки в Telegram для продолжения разговора. Дата рождения и исходные четыре ответа не переносятся.
+                </label>
                 {handoffError && (
                   <p className="text-[11px] text-amber-400 mt-2">{handoffError}</p>
                 )}

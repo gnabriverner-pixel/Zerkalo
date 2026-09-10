@@ -1,0 +1,894 @@
+{
+  "generatedAt": "2026-09-10T11:34:59.514Z",
+  "synthetic": true,
+  "runs": {
+    "baseline-18": {
+      "cases": 18,
+      "complete": 16,
+      "degraded": 0,
+      "incomplete": 2,
+      "code": 18,
+      "myth": 16,
+      "meeting": 16,
+      "turns": 64,
+      "nominalTurns": 62,
+      "recoveryTurns": 2,
+      "mythRepairs": 2,
+      "failures": {
+        "myth:personal_myth_quality_failed": 2
+      },
+      "caseChecks": [
+        {
+          "id": "synthetic_ambiguous",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 415,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_boundary",
+          "status": "incomplete",
+          "currentMythQA": null,
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_calm",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 407,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": false,
+            "followupDetails": false,
+            "requestedNoQuestion": false,
+            "allTurnsNominal": false
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_career",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 351,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_choice",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 398,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_craft",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 357,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_creative",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 395,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_detailed",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 374,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_instruction_boundary",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 332,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": false
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_later_life",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 465,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_learning",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 466,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_no_image",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 388,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_partial",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 519,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_relationship",
+          "status": "incomplete",
+          "currentMythQA": null,
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_roles",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 453,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_strong_agreement",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 355,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_strong_rejection",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 361,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_terse",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 655,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        }
+      ]
+    },
+    "candidate-18": {
+      "cases": 18,
+      "complete": 12,
+      "degraded": 4,
+      "incomplete": 2,
+      "code": 18,
+      "myth": 16,
+      "meeting": 16,
+      "turns": 64,
+      "nominalTurns": 60,
+      "recoveryTurns": 4,
+      "mythRepairs": 1,
+      "failures": {
+        "myth:personal_myth_quality_failed": 2
+      },
+      "caseChecks": [
+        {
+          "id": "synthetic_ambiguous",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 360,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_boundary",
+          "status": "incomplete",
+          "currentMythQA": {
+            "passed": false,
+            "blockers": [
+              "register_formal_you_forbidden"
+            ],
+            "word_count": 453,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_calm",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 373,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_career",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 463,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_choice",
+          "status": "incomplete",
+          "currentMythQA": {
+            "passed": false,
+            "blockers": [
+              "story_word_count_out_of_contract_300_to_800"
+            ],
+            "word_count": 282,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_craft",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 335,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_creative",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 346,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_detailed",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 374,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_instruction_boundary",
+          "status": "degraded",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 300,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": false
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_later_life",
+          "status": "degraded",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 339,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": false
+          },
+          "failures": [
+            {
+              "class": "transient",
+              "cause": "APIConnectionError"
+            }
+          ]
+        },
+        {
+          "id": "synthetic_learning",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 378,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_no_image",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 381,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_partial",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 346,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_relationship",
+          "status": "degraded",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 442,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": false
+          },
+          "failures": [
+            {
+              "class": "transient",
+              "cause": "APITimeoutError"
+            }
+          ]
+        },
+        {
+          "id": "synthetic_roles",
+          "status": "degraded",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 417,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": false
+          },
+          "failures": [
+            {
+              "class": "transient",
+              "cause": "APITimeoutError"
+            }
+          ]
+        },
+        {
+          "id": "synthetic_strong_agreement",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 378,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_strong_rejection",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 333,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_terse",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 405,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        }
+      ]
+    },
+    "final-18": {
+      "cases": 18,
+      "complete": 9,
+      "degraded": 0,
+      "incomplete": 9,
+      "code": 18,
+      "myth": 11,
+      "meeting": 9,
+      "turns": 36,
+      "nominalTurns": 36,
+      "recoveryTurns": 0,
+      "mythRepairs": 2,
+      "failures": {
+        "myth:provider_http_402": 6,
+        "meeting:provider_http_402": 2,
+        "myth:personal_myth_quality_failed": 1
+      },
+      "caseChecks": [
+        {
+          "id": "synthetic_ambiguous",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 322,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_boundary",
+          "status": "incomplete",
+          "currentMythQA": null,
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_calm",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 532,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_career",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 356,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_choice",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 361,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_craft",
+          "status": "incomplete",
+          "currentMythQA": null,
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_creative",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 364,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_detailed",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 337,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_instruction_boundary",
+          "status": "incomplete",
+          "currentMythQA": null,
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_later_life",
+          "status": "incomplete",
+          "currentMythQA": null,
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_learning",
+          "status": "incomplete",
+          "currentMythQA": null,
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_no_image",
+          "status": "incomplete",
+          "currentMythQA": null,
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_partial",
+          "status": "incomplete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 395,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_relationship",
+          "status": "incomplete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 555,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_roles",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 350,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_strong_agreement",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 403,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        },
+        {
+          "id": "synthetic_strong_rejection",
+          "status": "incomplete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 310,
+            "paragraph_count": 5
+          },
+          "deliveryChecks": null,
+          "failures": []
+        },
+        {
+          "id": "synthetic_terse",
+          "status": "complete",
+          "currentMythQA": {
+            "passed": true,
+            "blockers": [],
+            "word_count": 426,
+            "paragraph_count": 6
+          },
+          "deliveryChecks": {
+            "invitationDetails": true,
+            "followupDetails": true,
+            "requestedNoQuestion": true,
+            "allTurnsNominal": true
+          },
+          "failures": []
+        }
+      ]
+    }
+  }
+}

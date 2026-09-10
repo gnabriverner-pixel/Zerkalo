@@ -12,6 +12,7 @@ import {
 import { CalculationResult, FirstMirror, ApiResponse } from '../types';
 import { generateFirstMirror } from '../services/interpretation';
 import { numberKnowledge } from '../data/numberKnowledge';
+import {methodReading} from '../services/interpretation';
 import { PASSPORT_PRACTICES } from '../data/passportPractices';
 import { ArchetypeBasRelief, ARCHETYPE_VISUALS } from './ArchetypeBasRelief';
 import { validateBirthDate } from '../services/birthDate';
@@ -300,7 +301,7 @@ export function AlabasterSanctuary({
             </button>
 
             <p className="text-xs text-[#8C8E96] font-light leading-relaxed max-w-sm">
-              Мы ничего о вас не спрашиваем. Сначала — расчет и интерпретация. А потом уже вы сами решаете, насколько это совпадает с вашей жизнью.
+              Здесь нужна только дата для расчёта. Интерпретацию вы сравниваете со своим опытом — совпадение не требуется.
             </p>
           </form>
         </motion.div>
@@ -328,7 +329,7 @@ export function AlabasterSanctuary({
             </h1>
 
             <p className="font-serif italic text-xl sm:text-2xl text-[#63656C] max-w-xl mx-auto leading-relaxed font-light mb-8">
-              «Числа не предопределяют судьбу. Они называют силы, которые уже действуют в вашей жизни.»
+              «Числа задают язык наблюдения. Какая часть этого языка описывает ваш опыт — решаете вы.»
             </p>
 
             {/* 5 KEYS ROW — РАННЯЯ НАГРАДА */}
@@ -397,7 +398,7 @@ export function AlabasterSanctuary({
               </h2>
 
               <p className="font-serif italic text-xl sm:text-2xl text-[#4A4B50] leading-relaxed font-light pt-2">
-                «{soulInfo.positions.soul.essence}»
+                {methodReading(soulInfo.positions.soul.essence)}
               </p>
             </div>
 
@@ -405,10 +406,10 @@ export function AlabasterSanctuary({
             <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
               <div className="p-8 rounded-xs bg-[#FCFAF7] border border-[#1A1A1C]/8 shadow-sm">
                 <span className="text-[10px] uppercase font-mono tracking-wider text-emerald-800 font-medium block mb-2">
-                  Сила ядра
+                  Ресурс в языке метода
                 </span>
                 <p className="text-sm text-[#4A4B50] font-light leading-relaxed">
-                  {soulInfo.positions.soul.strength}
+                  {methodReading(soulInfo.positions.soul.strength)}
                 </p>
               </div>
 
@@ -417,7 +418,7 @@ export function AlabasterSanctuary({
                   Внутренний запрос
                 </span>
                 <p className="text-sm text-[#4A4B50] font-light leading-relaxed">
-                  {soulInfo.positions.soul.tension}
+                  {methodReading(soulInfo.positions.soul.tension)}
                 </p>
               </div>
             </div>
@@ -426,7 +427,7 @@ export function AlabasterSanctuary({
               onClick={() => scrollTo(sectionAct3Ref)}
               className="px-8 py-3.5 border border-[#C8A45D]/60 bg-[#C8A45D]/10 hover:bg-[#C8A45D]/20 text-[#1A1A1C] rounded-xs uppercase tracking-[0.2em] text-xs font-medium transition-all inline-flex items-center gap-2 cursor-pointer mt-4"
             >
-              <span>Как вы действуете: Число Выражения</span>
+              <span>Стиль контакта: Число Выражения</span>
               <ChevronDown size={14} className="text-[#C8A45D]" />
             </button>
           </section>
@@ -460,7 +461,7 @@ export function AlabasterSanctuary({
               </h2>
 
               <p className="font-serif italic text-xl sm:text-2xl text-[#4A4B50] leading-relaxed font-light pt-2">
-                «{exprInfo.positions.expression.essence}»
+                {methodReading(exprInfo.positions.expression.essence)}
               </p>
             </div>
 
@@ -470,7 +471,7 @@ export function AlabasterSanctuary({
                   Как вас считывает среда
                 </span>
                 <p className="text-sm text-[#4A4B50] font-light leading-relaxed">
-                  {exprInfo.positions.expression.strength}
+                  {methodReading(exprInfo.positions.expression.strength)}
                 </p>
               </div>
 
@@ -479,7 +480,7 @@ export function AlabasterSanctuary({
                   Точность контакта
                 </span>
                 <p className="text-sm text-[#4A4B50] font-light leading-relaxed">
-                  {exprInfo.positions.expression.recommendation}
+                  {methodReading(exprInfo.positions.expression.recommendation)}
                 </p>
               </div>
             </div>
@@ -526,14 +527,14 @@ export function AlabasterSanctuary({
             <div className="max-w-2xl mx-auto space-y-4 text-left sm:text-center">
               <h3 className="font-serif text-3xl sm:text-4xl text-[#1A1A1C] font-light">
                 {soulNum === exprNum 
-                  ? 'Монолитный резонанс: Единая природа'
+                  ? 'Одна тема в двух позициях'
                   : `Тандем двух начал: ${soulVisual.title} и ${exprVisual.title}`}
               </h3>
 
               <p className="text-[16px] sm:text-[17px] text-[#4A4B50] font-light leading-relaxed pt-2">
                 {soulNum === exprNum
-                  ? 'Когда число Души и число Выражения совпадают, внутренняя мотивация абсолютно совпадает с внешним проявлением. Нет зазора между тем, кто вы внутри, и тем, как вас воспринимают окружающие. Это дает монолитность, но требует гибкости в адаптации.'
-                  : `Внутри вас действует импульс архетипа ${soulVisual.title} (${soulVisual.planet}), тогда как в мир вы выходите через язык архетипа ${exprVisual.title} (${exprVisual.planet}). Это создает объемную многослойность: глубокая суть формулируется на более мягком или, напротив, более структурированном языке.`}
+                  ? 'Одинаковое число повторяет тему метода в двух ролях: внутренний мотив и внешний контакт. Это не доказывает, что переживание всегда совпадает с впечатлением окружающих. Вспомните один разговор: удалось ли передать то, что было важно вам?'
+                  : `Метод ставит рядом мотив архетипа «${soulVisual.title}» и способ контакта «${exprVisual.title}». Различие этих ролей — не диагноз внутреннего конфликта. Посмотрите на один разговор: какой мотив вы хотели выразить и каким способом он был услышан.`}
               </p>
             </div>
 
@@ -575,7 +576,7 @@ export function AlabasterSanctuary({
               </h2>
 
               <p className="font-serif italic text-xl sm:text-2xl text-[#4A4B50] leading-relaxed font-light pt-2">
-                «{pathInfo.positions.path.essence}»
+                {methodReading(pathInfo.positions.path.essence)}
               </p>
             </div>
 
@@ -585,7 +586,7 @@ export function AlabasterSanctuary({
                   Траектория реализации (Путь {pathNum})
                 </span>
                 <p className="text-sm text-[#4A4B50] font-light leading-relaxed">
-                  {pathInfo.positions.path.strength}
+                  {methodReading(pathInfo.positions.path.strength)}
                 </p>
               </div>
 
@@ -594,7 +595,7 @@ export function AlabasterSanctuary({
                   Вектор применения (Направление {dirNum})
                 </span>
                 <p className="text-sm text-[#4A4B50] font-light leading-relaxed">
-                  {dirInfo.positions.direction.essence}
+                  {methodReading(dirInfo.positions.direction.essence)}
                 </p>
               </div>
             </div>

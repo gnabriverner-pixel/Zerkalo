@@ -1,0 +1,9 @@
+{
+  "synthetic": true,
+  "startedAt": "2026-09-10T05:55:14.053Z",
+  "webSha": "d31d27d6323760a26b897b0646118c2088c600ab",
+  "dcsSha": "b7cdee5c177f5bddf8acfec46315d115c9e3e037",
+  "model": "deepseek-v4-pro",
+  "requested": 18,
+  "channelValidation": "actual core with WEB/TELEGRAM contracts; NOT real Telegram transport"
+}

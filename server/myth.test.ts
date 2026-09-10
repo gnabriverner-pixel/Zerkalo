@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   PERSONAL_MYTH_WRITER_VERSION,
   buildPersonalMythPromptV11,
+  buildPersonalMythRepairPrompt,
   containsCrisisLanguage,
   generatePersonalMyth,
   parsePersonalMythRequest,
@@ -56,6 +57,37 @@ function validPayload() {
 }
 
 describe("Personal Myth v1.1 release contract", () => {
+  it('keeps register repair explicit across all result fields',()=>{
+    const result=parsePersonalMythResult(JSON.stringify(validPayload()));
+    result.mirror.innerTension='Расстояние между вами.';
+    const prompt=buildPersonalMythRepairPrompt(request(),result.story,result.mirror,['register_formal_you_forbidden'],result);
+    expect(prompt).toContain('вежливое обращение');
+    expect(prompt).toContain('включая journal_question');
+    expect(prompt).toContain(result.one_step);
+    expect(prompt).toContain(result.journal_question);
+    expect(prompt).toContain('Метафорическая сцена не доказывает его биографию');
+  });
+  it('distinguishes explicit grammatical plural from formal address',()=>{
+    const result=parsePersonalMythResult(JSON.stringify(validPayload()));
+    result.story+=' Ты останавливаешься у окна, и вы вдвоём замечаете свет.';
+    result.journal_question='Как меняется расстояние между вами в этой сцене?';
+    expect(validatePersonalMythResult(result).blockers).not.toContain('register_formal_you_forbidden');
+    result.mirror.newView='Вы можете изменить взгляд, пока между вами остаётся воздух.';
+    expect(validatePersonalMythResult(result).blockers).toContain('register_formal_you_forbidden');
+  });
+  it('checks explicit invented biography in mirror as well as the story',()=>{
+    const result=parsePersonalMythResult(JSON.stringify(validPayload()));
+    result.mirror.newView='В детстве ты часто прятался за этой дверью.';
+    expect(validatePersonalMythResult(result).blockers).toContain('invented_biography_risk');
+  });
+  it('gives the editor a measured short-story correction, not only a generic request',()=>{
+    const result=parsePersonalMythResult(JSON.stringify(validPayload()));
+    result.story=Array(282).fill('слово').join(' ');
+    const prompt=buildPersonalMythRepairPrompt(request(),result.story,result.mirror,['story_word_count_out_of_contract_300_to_800'],result);
+    expect(prompt).toContain('282 слов');
+    expect(prompt).toContain('400–550 слов');
+    expect(prompt.split(result.story)).toHaveLength(2);
+  });
   it("cleanProse preserves paragraph breaks and normalizes whitespace", () => {
     const raw = "   Параграф один со    лишними пробелами.   \n\n\n\n  Параграф два.  \n\n  Параграф три.  ";
     const cleaned = cleanProse(raw);
@@ -307,4 +339,3 @@ describe("Personal Myth v1.1 release contract", () => {
     });
   });
 });
-
