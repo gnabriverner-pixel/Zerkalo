@@ -8,9 +8,9 @@ import { generateFullInterpretationPayload, generateFirstMirror } from "./src/se
 import { buildPersonalMythPrompt } from "./src/services/mythPrompts";
 import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
-import { DeepSeekClient } from "./server/deepseek";
+import { RouterAIClient, PRIMARY_MODEL } from "./server/routerai";
 import {
-  DeepSeekMythProvider,
+  createRouterAIMythProvider,
   PERSONAL_MYTH_WRITER_VERSION,
   containsCrisisLanguage,
   generatePersonalMyth,
@@ -24,9 +24,9 @@ import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
 import { registerDeletionScope, executeDataDeletion } from "./server/deletion";
 import { installConsentRoutes } from './server/consent';
 
-const PERSONAL_MYTH_MODEL = process.env.PERSONAL_MYTH_MODEL || "deepseek-v4-pro";
-const MEETING_MODEL = process.env.MEETING_MODEL || "deepseek-v4-pro";
-const ALBERT_MODEL = process.env.ALBERT_MODEL || "deepseek-v4-pro";
+const PERSONAL_MYTH_MODEL = PRIMARY_MODEL;
+const MEETING_MODEL = PRIMARY_MODEL;
+const ALBERT_MODEL = PRIMARY_MODEL;
 
 function isCrisisInput(inputs: StoryInputs): boolean {
   const combined = `${inputs.q1 || ''} ${inputs.q2 || ''} ${inputs.q3 || ''} ${inputs.q4 || ''}`.toLowerCase();
@@ -47,8 +47,8 @@ function isCrisisInput(inputs: StoryInputs): boolean {
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
-  const deepseekClient = new DeepSeekClient(process.env);
-  const mythProvider = new DeepSeekMythProvider(process.env, deepseekClient);
+  const deepseekClient = new RouterAIClient(process.env);
+  const mythProvider = createRouterAIMythProvider(deepseekClient);
   const personalMythTimeoutMs = Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 45_000));
   const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
   const mythRate = new Map<string, { windowStartedAt: number; count: number }>();
@@ -125,18 +125,18 @@ async function startServer() {
       providers: {
         personal_myth: {
           ready,
-          provider: "deepseek",
+          provider: "routerai",
           model: PERSONAL_MYTH_MODEL,
           writer: PERSONAL_MYTH_WRITER_VERSION,
         },
         meeting: {
           ready,
-          provider: "deepseek",
+          provider: "routerai",
           model: MEETING_MODEL,
         },
         albert: {
           ready,
-          provider: "deepseek",
+          provider: "routerai",
           model: ALBERT_MODEL,
         },
       },
@@ -246,8 +246,8 @@ async function startServer() {
       const payload = {
         mode: "story",
         status: "ok",
-        provider: "deepseek",
-        model: PERSONAL_MYTH_MODEL,
+        provider: generated.provider,
+        model: generated.model,
         writer_version: PERSONAL_MYTH_WRITER_VERSION,
         story_result: generated.result,
         qa: {
@@ -415,7 +415,7 @@ async function startServer() {
         req.body,
         deepseekClient,
         ALBERT_MODEL,
-        30_000,
+        45_000,
         res.locals.consent
       );
 

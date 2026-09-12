@@ -13,7 +13,7 @@ export interface DeepSeekRequestOptions {
   model?: string;
   temperature?: number;
   max_tokens?: number;
-  response_format?: { type: "json_object" | "text" };
+  response_format?: { type: "json_object" | "text" } | { type: "json_schema"; json_schema: {name:string; strict:true; schema:Record<string,unknown>} };
   timeoutMs?: number;
   retryContext?: RequestRetryContext;
 }

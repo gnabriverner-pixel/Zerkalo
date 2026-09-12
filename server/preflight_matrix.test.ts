@@ -7,7 +7,7 @@ const preflightScript = path.join(repoRoot, "deploy", "preflight.sh");
 
 function runPreflightWithEnv(customEnv: Record<string, string>): { status: number; output: string } {
   try {
-    const output = child_process.execSync(`bash ${preflightScript}`, {
+    const output = child_process.execFileSync('bash', [preflightScript], {
       cwd: repoRoot,
       env: {
         ...process.env,

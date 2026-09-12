@@ -1,4 +1,6 @@
 import type { StoryInputs } from "../src/types";
+import { type ChatClient, RouterAIClient, fallbackEligible } from './routerai';
+import { MYTH_SCHEMA, strictFormat } from './structuredOutput';
 
 export const PERSONAL_MYTH_WRITER_VERSION = "personal-myth-v1.2-quality";
 
@@ -28,6 +30,7 @@ export interface PersonalMythProvider {
   readonly model: string;
   isReady(): boolean;
   generate(prompt: string, timeoutMs: number): Promise<string>;
+  fallback?(): PersonalMythProvider | undefined;
 }
 
 export interface PersonalMythQualityReport {
@@ -440,11 +443,11 @@ export function validatePersonalMythResult(result: PersonalMythResult): Personal
   // Only inherently plural/couple constructions are exempt: they can never be formal
   // singular address ("вы оба/обе", "вы вдвоём", "вы вместе", "между вами",
   // "один"-семейство + "из вас", "оба/обе ваших" с окончаниями,
-  // "вы садитесь рядом" anchored by "рядом").
+  // "вы садитесь/сидите рядом" anchored by "рядом").
   // Bare plural-verb or oblique forms without a pair marker ("вы выбрали", "перед вами")
   // stay blocked by design: they are grammatically identical to formal singular address.
   // Do not erase arbitrary quoted text or other uses of вы/ваш from validation.
-  const addressText=nonDisclaimerText.replace(/(?<![а-яё])(?:между\s+вами|вы\s+вдво[её]м|вы\s+об[ае]|вы\s+вместе|вы\s+садитесь\s+рядом|од(?:и|н)[а-яё]*\s+из\s+вас|об[ае]\s+ваш[а-яё]*)(?![а-яё])/giu,' ');
+  const addressText=nonDisclaimerText.replace(/(?<![а-яё])(?:между\s+вами|вы\s+вдво[её]м|вы\s+об[ае]|вы\s+вместе|вы\s+(?:садитесь|сидите)\s+рядом|вы\s+оказываетесь\s+(?:вдво[её]м|вместе)|вы\s+делите\s+[^.!?\n]{1,80}\s+(?:на\s+двоих|между\s+собой)|од(?:и|н)[а-яё]*\s+из\s+вас|об[ае]\s+ваш[а-яё]*)(?![а-яё])/giu,' ');
   if (FORMAL_YOU_PATTERNS.some((pattern) => pattern.test(addressText))) {
     blockers.push("register_formal_you_forbidden");
   }
@@ -489,13 +492,19 @@ export function validatePersonalMythResult(result: PersonalMythResult): Personal
 }
 
 export class DeepSeekMythProvider implements PersonalMythProvider {
-  readonly name = "deepseek";
+  readonly name: string;
   readonly model: string;
-  private readonly client: DeepSeekClient;
+  private readonly client: ChatClient;
 
-  constructor(env: NodeJS.ProcessEnv = process.env, client?: DeepSeekClient) {
-    this.model = clean(env.PERSONAL_MYTH_MODEL || "deepseek-v4-pro");
+  constructor(env: NodeJS.ProcessEnv = process.env, client?: ChatClient) {
+    this.model = clean(client?.name === 'routerai' ? client.defaultModel : env.PERSONAL_MYTH_MODEL || "deepseek-v4-pro");
     this.client = client ?? new DeepSeekClient(env);
+    this.name = client?.name || 'deepseek';
+  }
+
+  fallback(): PersonalMythProvider | undefined {
+    const client = this.client.fallback?.();
+    return client ? new DeepSeekMythProvider({}, client) : undefined;
   }
 
   isReady(): boolean {
@@ -511,7 +520,7 @@ export class DeepSeekMythProvider implements PersonalMythProvider {
       ],
       temperature: 0.72,
       max_tokens: 5000,
-      response_format: { type: "json_object" },
+      response_format: this.name === 'routerai' ? strictFormat('personal_myth', MYTH_SCHEMA) : { type: "json_object" },
       timeoutMs,
     });
   }
@@ -520,6 +529,8 @@ export class DeepSeekMythProvider implements PersonalMythProvider {
 import { DeepSeekClient } from "./deepseek";
 
 export interface PersonalMythGenerationResult {
+  provider?: string;
+  model?: string;
   result: PersonalMythResult;
   quality: PersonalMythQualityReport;
   repaired: boolean;
@@ -533,11 +544,42 @@ export async function generatePersonalMyth(
   provider: PersonalMythProvider,
   timeoutMs: number,
 ): Promise<PersonalMythGenerationResult> {
+  // Preserve the original two-attempt wall-clock envelope, including fallback.
+  const deadline = Date.now() + timeoutMs * 2;
+  const bounded = (source:PersonalMythProvider):PersonalMythProvider => ({
+    name:source.name,model:source.model,isReady:()=>source.isReady(),
+    generate:(prompt,ms)=>{
+      const remaining=deadline-Date.now();
+      if (remaining <= 0) throw new Error('provider_call_timeout:request_deadline_exhausted');
+      return source.generate(prompt,Math.min(ms,remaining));
+    },
+  });
+  try {
+    return {...await generatePersonalMythAttempt(request, bounded(provider), timeoutMs),provider:provider.name,model:provider.model};
+  } catch (error) {
+    const fallback = fallbackEligible(error) ? provider.fallback?.() : undefined;
+    if (!fallback) throw error;
+    return {...await generatePersonalMythAttempt(request, bounded(fallback), timeoutMs),provider:fallback.name,model:fallback.model};
+  }
+}
+
+export const createRouterAIMythProvider = (client = new RouterAIClient()) => new DeepSeekMythProvider({}, client);
+
+async function generatePersonalMythAttempt(
+  request: PersonalMythRequest, provider: PersonalMythProvider, timeoutMs: number,
+): Promise<PersonalMythGenerationResult> {
   if (!provider.isReady()) throw new Error("personal_myth_provider_not_ready");
 
   // Attempt 1: Initial generation
   const initialPrompt = buildPersonalMythPromptV11(request);
-  const rawInitial = await provider.generate(initialPrompt, timeoutMs);
+  let rawInitial: string;
+  try {rawInitial = await provider.generate(initialPrompt, timeoutMs);}
+  catch(error) {
+    // An explicitly truncated draft is not a successful result. Give the existing
+    // structural repair its one chance before fallback; never validate/deliver it.
+    if(error instanceof Error && error.message==='provider_truncated') rawInitial='';
+    else throw error;
+  }
 
   let initialResult: PersonalMythResult;
   let initialParseFailed = false;

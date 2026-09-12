@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { PRIMARY_MODEL } from './routerai';
 import { meetingEvidence, mergeTruthEvidence, type TruthState } from "./truthEvidence";
 
 export interface AlbertDialogueContext {
@@ -45,8 +46,8 @@ export interface AlbertDialogueRequest {
 export interface AlbertDialogueResponse {
   status: "ok";
   message: string;
-  provider: "deepseek";
-  model: string;
+  provider: string;
+  model: string | null;
   authority: "digital-code-system/telegram_v2.albert.orchestrator";
   next_open_loop?: string | null;
   grounding_state?: string;
@@ -135,7 +136,7 @@ export function buildCanonicalEnvelopeFromWebContext(
 export async function generateAlbertDialogue(
   request: AlbertDialogueRequest,
   _client?: any,
-  model: string = "deepseek-v4-pro",
+  model: string = PRIMARY_MODEL,
   timeoutMs: number = 45_000,
   consentReceipt?: {version:string;recordedAt:number}
 ): Promise<AlbertDialogueResponse> {
@@ -189,8 +190,8 @@ export async function generateAlbertDialogue(
     return {
       status: "ok",
       message: replyText,
-      provider: "deepseek",
-      model,
+      provider: data.provider || 'unknown',
+      model: data.model ?? null,
       authority: "digital-code-system/telegram_v2.albert.orchestrator",
       next_open_loop: data.next_open_loop ?? null,
       grounding_state: data.grounding_state || data.turn?.grounding_state || "grounded",

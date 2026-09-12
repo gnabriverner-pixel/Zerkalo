@@ -1,23 +1,39 @@
 import type { CalculationResult, FirstMirror, StoryInputs, MeetingApiResponse } from "../src/types";
 import { buildMeetingOfMirrorsPrompt } from "../src/services/mythPrompts";
 import { parseMeetingResponse } from "../src/services/meetingContract";
-import { DeepSeekClient, RequestRetryContext } from "./deepseek";
+import type { RequestRetryContext } from "./deepseek";
+import { type ChatClient, fallbackEligible } from './routerai';
+import { MEETING_SCHEMA, strictFormat } from './structuredOutput';
 
 export const MEETING_GLOBAL_TIMEOUT_MS = 48_000; // <= 50s and strictly < 60s nginx proxy timeout
 
 export interface GenerateMeetingParams {
   codeData: { calc: CalculationResult; firstMirror?: FirstMirror };
   storyData: { storyInputs: StoryInputs; storyResult: any };
-  client: DeepSeekClient;
+  client: ChatClient;
   model?: string;
   totalBudgetMs?: number;
 }
 
-export async function generateMeetingOfMirrors({
+export async function generateMeetingOfMirrors(params: GenerateMeetingParams): Promise<MeetingApiResponse & {provider:string; model:string}> {
+  const total = params.totalBudgetMs ?? MEETING_GLOBAL_TIMEOUT_MS;
+  const deadline = Date.now() + total;
+  try {
+    return await generateMeetingAttempt({...params, totalBudgetMs:params.client.fallback ? Math.floor(total * 0.7) : total});
+  } catch (error) {
+    const fallback = fallbackEligible(error) ? params.client.fallback?.() : undefined;
+    if (!fallback) throw error;
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error('meeting_timeout:deadline_exhausted');
+    return await generateMeetingAttempt({...params, client:fallback,model:fallback.defaultModel,totalBudgetMs:remaining});
+  }
+}
+
+async function generateMeetingAttempt({
   codeData,
   storyData,
   client,
-  model = "deepseek-v4-pro",
+  model = client.defaultModel || "deepseek-v4-pro",
   totalBudgetMs = MEETING_GLOBAL_TIMEOUT_MS,
 }: GenerateMeetingParams): Promise<MeetingApiResponse & { provider: string; model: string }> {
   if (!client.isReady()) {
@@ -40,8 +56,10 @@ export async function generateMeetingOfMirrors({
         { role: "user", content: prompt },
       ],
       temperature: 0.6,
-      max_tokens: 4000,
-      response_format: { type: "json_object" },
+      // Stage 1.5 exhausted exactly 4000 completion tokens even with finish_reason=stop.
+      // 6000 is bounded headroom; acceptance records actual consumption.
+      max_tokens: client.name === 'routerai' ? 6000 : 4000,
+      response_format: client.name === 'routerai' ? strictFormat('meeting', MEETING_SCHEMA) : { type: "json_object" },
       timeoutMs: totalBudgetMs,
       retryContext,
     });
@@ -80,15 +98,20 @@ export async function generateMeetingOfMirrors({
     let normalizedRaw: unknown = parsedRaw;
     if (typeof parsedRaw === "object" && parsedRaw !== null) {
       const obj = parsedRaw as Record<string, unknown>;
-      if (!obj.status && (obj.summary || obj.parallels || obj.resonances || obj.divergences)) {
+      // Observed Stage 1.5 transport envelope. Unwrap exactly once, then subject the
+      // complete inner envelope to the unchanged product parser (never fill fields).
+      if (Object.keys(obj).length === 1 && typeof obj.result === 'object' && obj.result !== null
+          && (obj.result as any).status === 'ok' && (obj.result as any).result) {
+        normalizedRaw = obj.result;
+      } else if (client.name !== 'routerai' && !obj.status && (obj.summary || obj.parallels || obj.resonances || obj.divergences)) {
         normalizedRaw = { status: "ok", result: obj };
       }
     }
     const validated = parseMeetingResponse(normalizedRaw);
     return {
       ...validated,
-      provider: "deepseek",
-      model,
+      provider: client.name || "deepseek",
+      model: client.name === 'routerai' ? client.defaultModel! : model,
     };
   } catch (validationErr: any) {
     throw new Error(`meeting_malformed_response:${validationErr?.message || "contract_validation_failed"}`);
