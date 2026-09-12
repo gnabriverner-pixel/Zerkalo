@@ -36,4 +36,31 @@ describe('acceptance budget proxy integration',()=>{
     const f=vi.fn();vi.stubGlobal('fetch',f);
     await expect(startBudgetProxy('', '/not-used')).rejects.toThrow('routerai_not_ready');expect(f).not.toHaveBeenCalled();
   });
+  it('settles a timed-out caller before the next request without synthetic 409 or lost spend',async()=>{
+    const dir=fs.mkdtempSync(path.join(os.tmpdir(),'routerai-settlement-test-'));
+    const ledger=path.join(dir,'spend.json');let calls=0;let completed=0;
+    let entered!:()=>void;const started=new Promise<void>(r=>{entered=r;});
+    vi.stubGlobal('fetch',async(url:any,options:any)=>{
+      const s=String(url);
+      if(s.startsWith('http://127.0.0.1:'))return actualFetch(url,options);
+      if(s.endsWith('/credits'))return new Response(JSON.stringify({data:{credits:1000-completed*0.5}}));
+      if(s.endsWith('/endpoints'))return new Response(JSON.stringify({data:{endpoints:[{tag:'deepseek',pricing:{prompt:0.0003,completion:0.0015}}]}}));
+      calls++;
+      if(calls===1){entered();await new Promise(r=>setTimeout(r,80));}
+      completed++;
+      return new Response(JSON.stringify({usage:{cost:0.5}}));
+    });
+    const proxy=await startBudgetProxy('synthetic-key',ledger);
+    const body={model:PRIMARY_MODEL,max_tokens:20,messages:[],include_reasoning:false,
+      reasoning:{effort:'low'},provider:{allow_fallbacks:false}};
+    try {
+      const controller=new AbortController();
+      const first=proxy.transport('ignored',{body:JSON.stringify(body),signal:controller.signal}).catch(()=>null);
+      await started;controller.abort();await first;
+      const second=await proxy.transport('ignored',{body:JSON.stringify(body)});
+      expect(second.status).toBe(200);expect(completed).toBe(2);expect(calls).toBe(2);
+      expect(proxy.guard.state.chargedRub).toBe(1);expect(proxy.guard.reservedRub).toBe(0);
+      expect(proxy.guard.state.blocked).toBe(false);
+    }finally{await proxy.close();fs.rmSync(dir,{recursive:true});}
+  });
 });

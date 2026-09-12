@@ -23,7 +23,10 @@ push, merge, payment activation or model comparison. P1/P2 are not reopened.
 ## Bounds and repaired transport
 
 Myth retains one repair per selected model and a total envelope of twice the
-configured per-attempt timeout (default 90 seconds across primary and fallback).
+configured per-attempt timeout (default 150 seconds across primary and fallback).
+The first RouterAI acceptance request returned HTTP 200 after 62.785 seconds,
+outside the inherited 45-second Myth attempt. Default attempt is now 75 seconds,
+within the existing configurable 90-second ceiling; no prompt or UX changes.
 Meeting retains its 48-second total bound; primary receives 70% and fallback the
 remaining time. RouterAI transport has no hidden SDK retry. Meeting output cap is
 6000 tokens (was 4000); this is a candidate cap, not a live-proven minimum yet.
@@ -70,6 +73,9 @@ not generate model outputs. No real provider key is sent to the child test drive
 The budget ledger location does not follow an output-directory override. A
 host-wide exclusive lock rejects concurrent acceptance processes; a stale lock
 requires inspection rather than automatic removal or allowance reset.
+The proxy waits for an already billed request to settle before admitting a
+subsequent attempt, even if the local caller has timed out. Shutdown also waits
+for settlement; the ledger cannot report a false zero while a request is active.
 
 The runner distinguishes mechanical completion from semantic review. It never
 automatically certifies invented biography, unsupported causality or literary

@@ -56,14 +56,20 @@ async function startLockedBudgetProxy(key:string, ledgerFile:string) {
   guard.reconcileBalance(Math.max(0,baseline-await credits()));save();
   if(guard.state.blocked)throw new Error('spend_guard_blocked');
   const nonce=crypto.randomBytes(24).toString('hex');
-  let inflight=false;
+  // A caller can time out before RouterAI reports its final cost. Serialize the
+  // next attempt behind settlement, not a synthetic 409 masquerading as provider
+  // failure. Disconnected queued callers never create a new billable request.
+  let settled:Promise<void>=Promise.resolve();
   const server=http.createServer(async(req,res)=>{
     const reply=(status:number,body:unknown)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(body));};
     if(req.method!=='POST'||req.url!=='/completion'||req.headers['x-acceptance-token']!==nonce)return reply(403,{error:'acceptance_forbidden'});
-    if(inflight)return reply(409,{error:'acceptance_serial_only'});
-    inflight=true;
+    const previous=settled;
+    let release!:()=>void;
+    settled=new Promise<void>(resolve=>{release=resolve;});
+    await previous;
     let id:string|undefined;
     try {
+      if(res.destroyed)return;
       const chunks:Buffer[]=[];let size=0;
       for await(const chunk of req){size+=chunk.length;if(size>1_000_000)throw new Error('acceptance_body_limit');chunks.push(chunk);}
       const body=JSON.parse(Buffer.concat(chunks).toString('utf8'));
@@ -88,13 +94,13 @@ async function startLockedBudgetProxy(key:string, ledgerFile:string) {
       const message=error instanceof Error?error.message:'';
       const code=/^(spend_|acceptance_|routerai_)[a-z0-9_]+$/.test(message)?message:'acceptance_transport_unknown';
       guard.state.blocked=true;events.push({error:code});save();reply(402,{error:code});
-    } finally {inflight=false;}
+    } finally {release();}
   });
   await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
   const address=server.address();if(!address||typeof address==='string')throw new Error('acceptance_proxy_address');
   const url=`http://127.0.0.1:${address.port}/completion`;
   const transport:typeof fetch=async(_url,options)=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-Acceptance-Token':nonce},body:options?.body,signal:options?.signal});
   return {url,nonce,transport,guard,events,
-    close:async()=>{await new Promise<void>(r=>server.close(()=>r()));save();},
+    close:async()=>{await new Promise<void>(r=>server.close(()=>r()));await settled;save();},
   };
 }

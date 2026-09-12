@@ -49,7 +49,7 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
   const deepseekClient = new RouterAIClient(process.env);
   const mythProvider = createRouterAIMythProvider(deepseekClient);
-  const personalMythTimeoutMs = Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 45_000));
+  const personalMythTimeoutMs = Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 75_000));
   const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
   const mythRate = new Map<string, { windowStartedAt: number; count: number }>();
 

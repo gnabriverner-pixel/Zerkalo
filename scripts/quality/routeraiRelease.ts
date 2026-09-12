@@ -59,7 +59,7 @@ async function run(p:typeof personas[number],forced:boolean) {
     const calc=JSON.parse(raw.stdout);if(calc.error||!calc.soul)throw new Error('canonical_calculation_failed');
     const firstMirror=generateFirstMirror(calc);record.code={calc,firstMirror};record.stages.code={status:'ok',ms:Date.now()-start};
     stage='myth';start=Date.now();
-    const myth=await generatePersonalMyth(parsePersonalMythRequest({request_id:`routerai_${p.id}`,answers:p.answers}),createRouterAIMythProvider(client),45_000);
+    const myth=await generatePersonalMyth(parsePersonalMythRequest({request_id:`routerai_${p.id}`,answers:p.answers}),createRouterAIMythProvider(client),75_000);
     record.answers=p.answers;record.myth=myth;record.stages.myth={status:'ok',ms:Date.now()-start};
     stage='meeting';start=Date.now();
     const meeting=await generateMeetingOfMirrors({codeData:{calc,firstMirror},storyData:{storyInputs:p.answers,storyResult:myth.result},client});
