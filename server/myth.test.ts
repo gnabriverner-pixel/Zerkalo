@@ -75,6 +75,28 @@ describe("Personal Myth v1.1 release contract", () => {
     result.mirror.newView='Вы можете изменить взгляд, пока между вами остаётся воздух.';
     expect(validatePersonalMythResult(result).blockers).toContain('register_formal_you_forbidden');
   });
+  it('treats plural/couple вы as grammatical plural, keeps singular formal blocked',()=>{
+    for(const couple of [
+      'Вы оба замечаете свет.',
+      'Когда вы садитесь рядом, разговор становится тише.',
+      'Расстояние между вами сокращается.',
+      'Вы вдвоём замечаете свет.',
+      'Один из вас смотрит в окно, другой молчит.',
+      'Вы вместе держите оба ваших отражения в этом окне.',
+    ]){
+      const ok=parsePersonalMythResult(JSON.stringify(validPayload()));
+      ok.story+=`\n\n${couple}`;
+      expect(validatePersonalMythResult(ok).blockers).not.toContain('register_formal_you_forbidden');
+    }
+    for(const formal of [
+      'Вы можете сделать выбор прямо сейчас.',
+      'Вам следует прислушаться к себе.',
+    ]){
+      const bad=parsePersonalMythResult(JSON.stringify(validPayload()));
+      bad.story+=`\n\n${formal}`;
+      expect(validatePersonalMythResult(bad).blockers).toContain('register_formal_you_forbidden');
+    }
+  });
   it('checks explicit invented biography in mirror as well as the story',()=>{
     const result=parsePersonalMythResult(JSON.stringify(validPayload()));
     result.mirror.newView='В детстве ты часто прятался за этой дверью.';

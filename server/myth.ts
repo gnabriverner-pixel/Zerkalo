@@ -437,9 +437,14 @@ export function validatePersonalMythResult(result: PersonalMythResult): Personal
   }
 
   // 2. Narrative Register & Protagonist Voice Validation
-  // Only these explicit plural constructions refer to a pair, not formal address.
+  // Only inherently plural/couple constructions are exempt: they can never be formal
+  // singular address ("вы оба/обе", "вы вдвоём", "вы вместе", "между вами",
+  // "один"-семейство + "из вас", "оба/обе ваших" с окончаниями,
+  // "вы садитесь рядом" anchored by "рядом").
+  // Bare plural-verb or oblique forms without a pair marker ("вы выбрали", "перед вами")
+  // stay blocked by design: they are grammatically identical to formal singular address.
   // Do not erase arbitrary quoted text or other uses of вы/ваш from validation.
-  const addressText=nonDisclaimerText.replace(/(?<![а-яё])(?:между\s+вами|вы\s+вдво[её]м)(?![а-яё])/giu,' ');
+  const addressText=nonDisclaimerText.replace(/(?<![а-яё])(?:между\s+вами|вы\s+вдво[её]м|вы\s+об[ае]|вы\s+вместе|вы\s+садитесь\s+рядом|од(?:и|н)[а-яё]*\s+из\s+вас|об[ае]\s+ваш[а-яё]*)(?![а-яё])/giu,' ');
   if (FORMAL_YOU_PATTERNS.some((pattern) => pattern.test(addressText))) {
     blockers.push("register_formal_you_forbidden");
   }
