@@ -156,9 +156,9 @@ export function hasFormalYouViolation(nonDisclaimerText: string, secondPersonCou
 
     const hasSecondPersonSingular = /(?<![а-яё])(?:ты|тебя|тебе|тобой|тобою|твой|твоя|твоё|твое|твои|твоих|твоим|твоей|твоего|твоему)(?![а-яё])/iu.test(sentence);
     const hasPluralPastVerb = /(?<![а-яё])[а-яё]{3,}ли(?![а-яё])/iu.test(sentence);
-    const hasCoupleVocabulary = /(?<![а-яё])(?:разные|вместе|друг\s+(?:друга|другу|с\s+другом)|вдво[её]м|обоих|обоюдн\w*|партн[её]р\w*|собеседник\w*|спутник\w*|разговор\w*|встреч\w*)(?![а-яё])/iu.test(sentence);
+    const hasCoupleVocabulary = /(?<![а-яё])(?:разные|вместе|друг\s+(?:друга|другу|с\s+другом|к\s+другу|от\s+друга)|вдво[её]м|обоих|обоюдн\w*|партн[её]р\w*|собеседник\w*|спутник\w*|разговор\w*|встреч\w*|отношени\w*|пар[аеыу])(?![а-яё])/iu.test(sentence);
 
-    const isCoupleContext = hasSecondPersonSingular && (hasPluralPastVerb || hasCoupleVocabulary);
+    const isCoupleContext = (hasPluralPastVerb && hasCoupleVocabulary) || (hasSecondPersonSingular && (hasPluralPastVerb || hasCoupleVocabulary));
     if (!isCoupleContext) {
       return true;
     }

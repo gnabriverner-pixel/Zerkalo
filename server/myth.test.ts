@@ -169,6 +169,14 @@ describe("Personal Myth v1.1 release contract", () => {
     expect(quality.blockers).toContain("register_formal_you_forbidden");
   });
 
+  it("allows plural couple context with 'вы' in story or mirror when couple markers and plural verbs are present", () => {
+    const payload = validPayload();
+    payload.story_result.mirror.hiddenResource = "Воспоминание о том, как вы спокойно обсудили выходные и выбрали разные занятия: в этой сцене уже есть опыт, что разность не разрывает, а расширяет пространство.";
+    const result = parsePersonalMythResult(JSON.stringify(payload));
+    const quality = validatePersonalMythResult(result);
+    expect(quality.blockers).not.toContain("register_formal_you_forbidden");
+  });
+
   it("rejects invented biography indicators", () => {
     const payload = validPayload();
     payload.story_result.story += "\n\nВ детстве ты часто гулял по этой аллее.";
