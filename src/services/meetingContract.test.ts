@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMeetingResponse } from "./meetingContract";
+import { isSpuriousDecorativeGrounding, parseMeetingResponse } from "./meetingContract";
 
 function payload(parallelCount = 1, divergenceCount = 1) {
   return {
@@ -49,5 +49,65 @@ describe("Meeting of Mirrors contract", () => {
   it("rejects arrays outside the frozen contract", () => {
     expect(() => parseMeetingResponse(payload(5, 0))).toThrow("meeting_invalid_parallel_count");
     expect(() => parseMeetingResponse(payload(1, 3))).toThrow("meeting_invalid_divergence_count");
+  });
+
+  it("detects spurious decorative grounding promoted to psychological/burnout claims", () => {
+    const spuriousParallel = {
+      theme: "Риск истощения от включённости",
+      codeAnchor: "Направление 8: «Тенденция поглощаться работой на 100%, забывая про тело, семью и радость».",
+      mythAnchor: "«Мокрые листы акварели на натянутой верёвке под тёплой настольной лампой» — образ сосредоточенного вечернего труда.",
+      synthesis: "Миф рисует сцену, где работа продолжается вечерами, а Код предупреждает о возможном перевесе работы.",
+    };
+    expect(isSpuriousDecorativeGrounding(spuriousParallel)).toBe(true);
+
+    const validParallel = {
+      theme: "Аналитическая пауза перед действием",
+      codeAnchor: "Путь 3: «Паралич анализа: слишком долгое обдумывание заменяет само действие».",
+      mythAnchor: "«Третий вечер выбираю первую картину... никак не решу» — прямой ответ пользователя о ситуации выбора.",
+      synthesis: "В обоих источниках появляется тема паузы перед выбором.",
+    };
+    expect(isSpuriousDecorativeGrounding(validParallel)).toBe(false);
+  });
+
+  it("filters out spurious decorative parallels in parseMeetingResponse, preserving valid ones", () => {
+    const base = payload(1, 1);
+    base.result.parallels.push({
+      theme: "Риск истощения от включённости",
+      codeAnchor: "Направление 8: «Тенденция поглощаться работой на 100%, забывая про тело, семью и радость».",
+      mythAnchor: "«Мокрые листы акварели на натянутой верёвке под тёплой настольной лампой» — образ сосредоточенного вечернего труда.",
+      synthesis: "Миф рисует сцену, где работа продолжается вечерами, а Код предупреждает о возможном перевесе работы.",
+    });
+
+    const parsed = parseMeetingResponse(base);
+    expect(parsed.result?.parallels).toHaveLength(1);
+    expect(parsed.result?.parallels[0].theme).toBe("Темп");
+    expect(parsed.result?.hasStrongParallels).toBe(true);
+  });
+
+  it("honestly sets hasStrongParallels to false if no parallels survive grounding", () => {
+    const base = {
+      status: "ok",
+      result: {
+        summary: "Две линзы сопоставлены.",
+        hasStrongParallels: true,
+        confidenceNote: "Резонанс",
+        parallels: [
+          {
+            theme: "Риск истощения от включённости",
+            codeAnchor: "Направление 8: «Тенденция поглощаться работой на 100%, забывая про тело, семью и радость».",
+            mythAnchor: "«Мокрые листы акварели на натянутой верёвке под тёплой настольной лампой» — образ сосредоточенного вечернего труда.",
+            synthesis: "Миф рисует сцену вечернего труда.",
+          },
+        ],
+        divergences: [],
+        albertInsight: "Различение двух подходов.",
+        reflectiveQuestion: "Где граница?",
+        disclaimer: "Дисклеймер.",
+      },
+    };
+
+    const parsed = parseMeetingResponse(base);
+    expect(parsed.result?.parallels).toHaveLength(0);
+    expect(parsed.result?.hasStrongParallels).toBe(false);
   });
 });
