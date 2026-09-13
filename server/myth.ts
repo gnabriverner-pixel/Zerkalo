@@ -92,6 +92,82 @@ const FORMAL_YOU_PATTERNS = [
 ];
 
 /**
+ * Validates that the text does not use formal singular address ("вы / ваш").
+ * Allows inherently plural couple constructions ("вы оба", "вы вдвоём", "между вами", etc.).
+ * Also allows an isolated lowercase "вы/вас/вам/вами" referring to a couple (user + other)
+ * inside a stable second-person singular ("ты") baseline narrative when anchored by "ты"
+ * and plural actions (e.g. "Ты вспоминаешь, как однажды вы спокойно обсудили...").
+ * Strictly forbids:
+ * - Any capitalized "Вы / Вам / Вас / Вами / Ваш" (polite singular address) without couple marker.
+ * - Any possessive "ваш / ваша / ваше / ваши...".
+ * - Systematic drift to "вы" (> 2 occurrences across the text).
+ */
+export function hasFormalYouViolation(nonDisclaimerText: string, secondPersonCount: number): boolean {
+  const addressText = nonDisclaimerText.replace(
+    /(?<![а-яё])(?:между\s+вами|вы\s+вдво[её]м|вы\s+об[ае]|вы\s+вместе|вы\s+(?:садитесь|сидите)\s+рядом|вы\s+оказываетесь\s+(?:вдво[её]м|вместе)|вы\s+делите\s+[^.!?\n]{1,80}\s+(?:на\s+двоих|между\s+собой)|од(?:и|н)[а-яё]*\s+из\s+вас|об[ае]\s+ваш[а-яё]*)(?![а-яё])/giu,
+    ' '
+  );
+
+  const matches = Array.from(
+    addressText.matchAll(/(?<![а-яё])(вы|вас|вам|вами|ваш|ваша|ваше|ваши|вашего|вашей|вашему|вашим|ваших)(?![а-яё])/giu)
+  );
+
+  if (matches.length === 0) {
+    return false;
+  }
+
+  // Any possessive "ваш..." addressed to protagonist is strictly forbidden
+  if (matches.some((m) => /^ваш/iu.test(m[0]))) {
+    return true;
+  }
+
+  // Capitalized "Вы / Вам / Вас / Вами" without couple marker is formal address
+  if (matches.some((m) => /^[В]/.test(m[0]))) {
+    return true;
+  }
+
+  // Systematic shift to "вы": more than 2 occurrences across text is not an isolated mention
+  if (matches.length > 2) {
+    return true;
+  }
+
+  // Isolated plural is only valid within a stable "ты" baseline narrative
+  if (secondPersonCount < 2) {
+    return true;
+  }
+
+  // For each isolated lowercase occurrence, check if it refers to a couple in its sentence context
+  for (const match of matches) {
+    const matchIndex = match.index ?? 0;
+    const textBefore = addressText.slice(0, matchIndex);
+    const textAfter = addressText.slice(matchIndex + match[0].length);
+
+    const prevBoundary = Math.max(
+      textBefore.lastIndexOf('.'),
+      textBefore.lastIndexOf('!'),
+      textBefore.lastIndexOf('?'),
+      textBefore.lastIndexOf('\n')
+    );
+    const nextBoundary = textAfter.search(/[.!?\n]/);
+
+    const sentenceStart = prevBoundary >= 0 ? prevBoundary + 1 : 0;
+    const sentenceEnd = nextBoundary >= 0 ? matchIndex + match[0].length + nextBoundary : addressText.length;
+    const sentence = addressText.slice(sentenceStart, sentenceEnd).trim();
+
+    const hasSecondPersonSingular = /(?<![а-яё])(?:ты|тебя|тебе|тобой|тобою|твой|твоя|твоё|твое|твои|твоих|твоим|твоей|твоего|твоему)(?![а-яё])/iu.test(sentence);
+    const hasPluralPastVerb = /(?<![а-яё])[а-яё]{3,}ли(?![а-яё])/iu.test(sentence);
+    const hasCoupleVocabulary = /(?<![а-яё])(?:разные|вместе|друг\s+(?:друга|другу|с\s+другом)|вдво[её]м|обоих|обоюдн\w*|партн[её]р\w*|собеседник\w*|спутник\w*|разговор\w*|встреч\w*)(?![а-яё])/iu.test(sentence);
+
+    const isCoupleContext = hasSecondPersonSingular && (hasPluralPastVerb || hasCoupleVocabulary);
+    if (!isCoupleContext) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Presence of second-person singular (ты/твой).
  */
 const SECOND_PERSON_SINGULAR_PATTERN = /(?:^|[\s.,!?;:«»"—()\[\]])(?:ты|тебя|тебе|тобой|тобою|твой|твоя|твоё|твое|твои|твоих|твоим|твоей|твоего|твоему)(?:$|[\s.,!?;:«»"—()\[\]])/giu;
@@ -439,19 +515,6 @@ export function validatePersonalMythResult(result: PersonalMythResult): Personal
     blockers.push("affirmative_diagnosis_forbidden");
   }
 
-  // 2. Narrative Register & Protagonist Voice Validation
-  // Only inherently plural/couple constructions are exempt: they can never be formal
-  // singular address ("вы оба/обе", "вы вдвоём", "вы вместе", "между вами",
-  // "один"-семейство + "из вас", "оба/обе ваших" с окончаниями,
-  // "вы садитесь/сидите рядом" anchored by "рядом").
-  // Bare plural-verb or oblique forms without a pair marker ("вы выбрали", "перед вами")
-  // stay blocked by design: they are grammatically identical to formal singular address.
-  // Do not erase arbitrary quoted text or other uses of вы/ваш from validation.
-  const addressText=nonDisclaimerText.replace(/(?<![а-яё])(?:между\s+вами|вы\s+вдво[её]м|вы\s+об[ае]|вы\s+вместе|вы\s+(?:садитесь|сидите)\s+рядом|вы\s+оказываетесь\s+(?:вдво[её]м|вместе)|вы\s+делите\s+[^.!?\n]{1,80}\s+(?:на\s+двоих|между\s+собой)|од(?:и|н)[а-яё]*\s+из\s+вас|об[ае]\s+ваш[а-яё]*)(?![а-яё])/giu,' ');
-  if (FORMAL_YOU_PATTERNS.some((pattern) => pattern.test(addressText))) {
-    blockers.push("register_formal_you_forbidden");
-  }
-
   const narrativeOnly = stripQuotedDialogue(result.story);
   const secondPersonMatches = narrativeOnly.match(SECOND_PERSON_SINGULAR_PATTERN) || [];
   
@@ -465,6 +528,13 @@ export function validatePersonalMythResult(result: PersonalMythResult): Personal
 
   if (THIRD_PERSON_HUMAN_PROTAGONIST.test(narrativeOnly) || THIRD_PERSON_COGNITIVE_DRIFT.test(narrativeOnly)) {
     blockers.push("narrative_third_person_drift");
+  }
+
+  // 2. Narrative Register & Protagonist Voice Validation
+  // Check for formal-you singular address violations while allowing isolated
+  // plural couple references within a stable second-person singular ("ты") narrative.
+  if (hasFormalYouViolation(nonDisclaimerText, secondPersonMatches.length)) {
+    blockers.push("register_formal_you_forbidden");
   }
 
   // 3. Invented Biography check

@@ -34,7 +34,7 @@ async function startLockedBudgetProxy(key:string, ledgerFile:string) {
   const rates:Record<string,Rates>={};
   for(const model of [PRIMARY_MODEL,FALLBACK_MODEL]) {
     const data=await get(`/models/${model}/endpoints`);
-    const endpoints=(data?.data?.endpoints||[]).filter((e:any)=>model!==FALLBACK_MODEL || e.tag==='deepseek');
+    const endpoints=(data?.data?.endpoints||[]).filter((e:any)=>model!==PRIMARY_MODEL || e.tag==='deepseek');
     if(!endpoints.length)throw new Error('routerai_endpoint_missing');
     const pricing=endpoints.flatMap((e:any)=>[e.pricing,...(e.variable_pricings||[])]);
     const input=Math.max(...pricing.map((p:any)=>Number(p.prompt)));
@@ -58,10 +58,10 @@ async function startLockedBudgetProxy(key:string, ledgerFile:string) {
   const nonce=crypto.randomBytes(24).toString('hex');
   // A caller can time out before RouterAI reports its final cost. Serialize the
   // next attempt behind settlement, not a synthetic 409 masquerading as provider
-  // failure. Disconnected queued callers never create a new billable request.
-  let settled:Promise<void>=Promise.resolve();
+  // unresponsiveness.
+  let settled=Promise.resolve();
   const server=http.createServer(async(req,res)=>{
-    const reply=(status:number,body:unknown)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(body));};
+    const reply=(status:number,data:any)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(data));};
     if(req.method!=='POST'||req.url!=='/completion'||req.headers['x-acceptance-token']!==nonce)return reply(403,{error:'acceptance_forbidden'});
     let disconnected=false;
     req.once('aborted',()=>{disconnected=true;});
@@ -78,9 +78,8 @@ async function startLockedBudgetProxy(key:string, ledgerFile:string) {
       const body=JSON.parse(Buffer.concat(chunks).toString('utf8'));
       if(!rates[body.model])throw new Error('acceptance_model_not_allowed');
       if(body.include_reasoning!==false || body.provider?.allow_fallbacks!==false
-         || (body.model===PRIMARY_MODEL && body.reasoning?.effort!=='low'))throw new Error('acceptance_primary_contract');
-      if(body.model===FALLBACK_MODEL && (JSON.stringify(body.provider?.only)!=='["deepseek"]'||body.provider?.allow_fallbacks!==false
-        ||body.thinking?.type!=='disabled'||body.include_reasoning!==false))throw new Error('acceptance_fallback_contract');
+         || (body.model===PRIMARY_MODEL && (JSON.stringify(body.provider?.only)!=='["deepseek"]'||body.thinking?.type!=='disabled')))throw new Error('acceptance_primary_contract');
+      if(body.model===FALLBACK_MODEL && (body.reasoning?.effort!=='low'||body.include_reasoning!==false))throw new Error('acceptance_fallback_contract');
       guard.reconcileBalance(Math.max(0,baseline-await credits()));
       if(disconnected||res.destroyed)return;
       const next=crypto.randomUUID();guard.reserve(next,body,body.max_tokens,rates[body.model]);id=next;save();

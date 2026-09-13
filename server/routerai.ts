@@ -1,8 +1,8 @@
 import type { DeepSeekRequestOptions } from './deepseek';
 
 export const ROUTERAI_URL = 'https://routerai.ru/api/v1';
-export const PRIMARY_MODEL = 'anthropic/claude-sonnet-5';
-export const FALLBACK_MODEL = 'deepseek/deepseek-v4.1-flash';
+export const PRIMARY_MODEL = 'deepseek/deepseek-v4.1-flash';
+export const FALLBACK_MODEL = 'anthropic/claude-sonnet-5';
 export interface ProviderEvent {
   gateway: 'routerai'; model: string; upstream: string | null;
   responseModel: string | null;
@@ -62,8 +62,8 @@ export class RouterAIClient implements ChatClient {
           temperature:options.temperature ?? 0.7,max_tokens:options.max_tokens ?? 4000,
           ...(options.response_format ? {response_format:options.response_format} : {}),
           include_reasoning:false,
-          ...(secondary ? {thinking:{type:'disabled'},provider:{only:['deepseek'],allow_fallbacks:false}}
-            : {reasoning:{effort:'low'},provider:{allow_fallbacks:false}}),
+          ...(!secondary ? {thinking:{type:'disabled'},provider:{only:['deepseek'],allow_fallbacks:false}}
+            : {reasoning:{effort:'low'},provider:{order:['claude-on-aws'],allow_fallbacks:false}}),
         }),
       });
       if (!response.ok) throw new Error(`provider_http_${response.status}`);
@@ -76,9 +76,10 @@ export class RouterAIClient implements ChatClient {
       // Only bounded metadata, never raw responses, prompts, keys or reasoning.
       const upstream = String(payload?.provider ?? payload?.provider_name ?? '').toLowerCase();
       event.upstream = /^[a-z][a-z0-9 -]{0,40}$/.test(upstream) ? upstream : null;
-      if (secondary && event.upstream !== 'deepseek') throw new Error('provider_upstream_mismatch');
+      if (!secondary && event.upstream !== 'deepseek') throw new Error('provider_upstream_mismatch');
+      if (secondary && !['anthropic', 'claude-on-aws', 'aws'].includes(event.upstream ?? '')) throw new Error('provider_upstream_mismatch');
       // Official DeepSeek returns upstream alias deepseek-flash in the proven transport.
-      const validModels = secondary ? [FALLBACK_MODEL, 'deepseek-flash'] : [PRIMARY_MODEL];
+      const validModels = !secondary ? [PRIMARY_MODEL, 'deepseek-flash'] : [FALLBACK_MODEL];
       if (!validModels.includes(payload?.model)) throw new Error('provider_model_mismatch');
       event.responseModel = validModels.includes(payload?.model) ? payload.model : null;
       if(payload?.choices?.[0]?.finish_reason==='length')throw new Error('provider_truncated');

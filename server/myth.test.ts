@@ -86,6 +86,7 @@ describe("Personal Myth v1.1 release contract", () => {
       'Вы вдвоём замечаете свет.',
       'Один из вас смотрит в окно, другой молчит.',
       'Вы вместе держите оба ваших отражения в этом окне.',
+      'Ты вспоминаешь, как однажды вы спокойно обсудили выходные и выбрали разные занятия.',
     ]){
       const ok=parsePersonalMythResult(JSON.stringify(validPayload()));
       ok.story+=`\n\n${couple}`;
@@ -101,6 +102,11 @@ describe("Personal Myth v1.1 release contract", () => {
       bad.story+=`\n\n${formal}`;
       expect(validatePersonalMythResult(bad).blockers).toContain('register_formal_you_forbidden');
     }
+  });
+  it('allows isolated couple plural inside stable second-person narrative regression',()=>{
+    const result=parsePersonalMythResult(JSON.stringify(validPayload()));
+    result.story+='\n\nТы вспоминаешь, как однажды вы спокойно обсудили выходные и выбрали разные занятия.';
+    expect(validatePersonalMythResult(result).blockers).not.toContain('register_formal_you_forbidden');
   });
   it('checks explicit invented biography in mirror as well as the story',()=>{
     const result=parsePersonalMythResult(JSON.stringify(validPayload()));

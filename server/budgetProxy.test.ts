@@ -24,7 +24,7 @@ describe('acceptance budget proxy integration',()=>{
     try {
       await expect(startBudgetProxy('synthetic-api-secret',path.join(dir,'other.json'))).rejects.toThrow('acceptance_already_locked');
       const body={model:PRIMARY_MODEL,messages:[{role:'user',content:'synthetic-private-text'}],max_tokens:2500,
-        include_reasoning:false,reasoning:{effort:'low'},provider:{allow_fallbacks:false}};
+        include_reasoning:false,thinking:{type:'disabled'},provider:{only:['deepseek'],allow_fallbacks:false}};
       const r=await proxy.transport('ignored',{body:JSON.stringify(body)});
       expect(r.status).toBe(200);expect(proxy.guard.state.chargedRub).toBe(0.5);expect(calls).toBe(1);
       const saved=fs.readFileSync(ledger,'utf8');expect(saved).not.toContain('synthetic-api-secret');expect(saved).not.toContain('synthetic-private-text');
@@ -52,7 +52,7 @@ describe('acceptance budget proxy integration',()=>{
     });
     const proxy=await startBudgetProxy('synthetic-key',ledger);
     const body={model:PRIMARY_MODEL,max_tokens:20,messages:[],include_reasoning:false,
-      reasoning:{effort:'low'},provider:{allow_fallbacks:false}};
+      thinking:{type:'disabled'},provider:{only:['deepseek'],allow_fallbacks:false}};
     try {
       const controller=new AbortController();
       const first=proxy.transport('ignored',{body:JSON.stringify(body),signal:controller.signal}).catch(()=>null);
@@ -81,7 +81,7 @@ describe('acceptance budget proxy integration',()=>{
     });
     const proxy=await startBudgetProxy('synthetic-key',path.join(dir,'spend.json'));
     const body=JSON.stringify({model:PRIMARY_MODEL,max_tokens:20,messages:[],include_reasoning:false,
-      reasoning:{effort:'low'},provider:{allow_fallbacks:false}});
+      thinking:{type:'disabled'},provider:{only:['deepseek'],allow_fallbacks:false}});
     try {
       const first=proxy.transport('ignored',{body});await firstPending;
       const controller=new AbortController();
