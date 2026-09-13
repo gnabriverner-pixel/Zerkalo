@@ -46,31 +46,31 @@ export default function PersonalMyth({
   const stepMeta = [
     {
       id: 'q1',
-      tag: '01 / 04 · Напряжение',
+      tag: '01 / 04 · Ситуация',
       orbNumber: 4, // Rahu
-      title: 'Что сейчас создаёт внутреннее напряжение или неясность?',
-      placeholder: 'Опишите не фактами, а ощущением: развилка, тяжесть, застывшее ожидание, фоновый шум...'
+      title: 'В какой ситуации тебе сейчас хочется лучше понять себя?',
+      placeholder: 'Опиши один эпизод: что происходит, что ты делаешь и что остаётся неясным. Если трудности нет — что хочется исследовать?'
     },
     {
       id: 'q2',
       tag: '02 / 04 · Образ состояния',
       orbNumber: 8, // Saturn
-      title: 'Если бы это состояние было образом — что это за образ?',
-      placeholder: 'Каменный замок без окон, туман над застывшим озером, закрытая дверь, маяк в бурю...'
+      title: 'Какой предмет, место или образ точнее всего передаёт это состояние?',
+      placeholder: 'Подойдёт обычная вещь. Образ не приходит — так и напиши; выдумывать красивую метафору не нужно.'
     },
     {
       id: 'q3',
       tag: '03 / 04 · Точка живости',
       orbNumber: 5, // Mercury
-      title: 'Вспомни момент за последнее время, когда ты чувствовал себя по-настоящему живым.',
-      placeholder: 'Что там происходило? Утренний свет, холодная вода, открытый разговор, ясность решения...'
+      title: 'Когда за последнее время ты почувствовал: «вот здесь я на своём месте»?',
+      placeholder: 'Что ты делал? Какая одна деталь осталась в памяти?'
     },
     {
       id: 'q4',
       tag: '04 / 04 · Искомое качество',
       orbNumber: 6, // Venus
-      title: 'Какое качество или состояние ты сейчас больше всего ищешь?',
-      placeholder: 'Тишины, дерзости, мягкости, ясных границ, простора, опоры, тепла...'
+      title: 'Чего тебе хочется больше в этой ситуации?',
+      placeholder: 'Назови качество или состояние своими словами. Не правильный ответ, а то, чего действительно ищешь.'
     }
   ];
 
@@ -227,7 +227,7 @@ export default function PersonalMyth({
                       handleNext();
                     }
                   }}
-                  placeholder="Опиши образ несколькими словами или фразой..."
+                  placeholder={currentQuestion.placeholder}
                   className="w-full bg-transparent border-b border-stone-600 focus:border-[var(--color-antique-gold)] px-2 py-3 text-lg sm:text-xl text-stone-100 placeholder:text-stone-600 focus:outline-none transition-colors resize-none font-serif leading-relaxed text-center"
                 />
                 
@@ -303,9 +303,12 @@ export default function PersonalMyth({
               <div className="text-center w-full max-w-2xl mx-auto pt-4">
                 <EmblemPlate planet={7} variant="alabaster" size={64} showNumber={false} showLabel={false} className="mx-auto mb-6" />
                 
-                <span className="text-[10px] tracking-[0.3em] uppercase text-purple-300/80 font-mono block mb-3">
-                  Личный Миф · Сказка
+                <span className="text-[10px] tracking-[0.3em] uppercase text-purple-300/80 font-mono block mb-2">
+                  Личный Миф · Художественная сцена
                 </span>
+                <p className="text-xs text-stone-400 font-light mb-4">
+                  Дальше — художественная сцена. Её герой — ты.
+                </p>
                 
                 <h1 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-4 font-light tracking-tight">
                   {result.title}
@@ -320,7 +323,7 @@ export default function PersonalMyth({
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <span className="text-[10px] uppercase text-stone-500 font-mono block mb-1">01 · Напряжение</span>
+                    <span className="text-[10px] uppercase text-stone-500 font-mono block mb-1">01 · Ситуация</span>
                     <p className="text-xs text-stone-300 font-serif italic">«{inputs.q1 || '—'}»</p>
                   </div>
                   <div>

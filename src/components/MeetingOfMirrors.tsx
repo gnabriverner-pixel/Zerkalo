@@ -394,12 +394,17 @@ export function MeetingOfMirrors({
               {/* Summary & Confidence Header */}
               <div className="bg-[#0D121D] border border-[var(--color-border-gold)] p-8 sm:p-10 rounded-xs text-left relative overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
-                    Итог · {meetingResult.parallels.length} {pluralRu(meetingResult.parallels.length, 'резонанс', 'резонанса', 'резонансов')} · {meetingResult.divergences.length} {pluralRu(meetingResult.divergences.length, 'расхождение', 'расхождения', 'расхождений')}
-                  </span>
-                  <span className="text-[11px] font-serif italic text-stone-400">
-                    {meetingResult.confidenceNote}
-                  </span>
+                  <h3 className="font-serif text-xl sm:text-2xl text-[var(--color-antique-gold)] font-normal">
+                    Что становится видно рядом
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] uppercase font-mono tracking-[0.15em] text-stone-400">
+                      {meetingResult.parallels.length} {pluralRu(meetingResult.parallels.length, 'резонанс', 'резонанса', 'резонансов')} · {meetingResult.divergences.length} {pluralRu(meetingResult.divergences.length, 'расхождение', 'расхождения', 'расхождений')}
+                    </span>
+                    <span className="text-[11px] font-serif italic text-stone-400">
+                      {meetingResult.confidenceNote}
+                    </span>
+                  </div>
                 </div>
 
                 <p className="font-serif text-xl sm:text-2xl text-stone-100 font-light leading-relaxed mb-6">
@@ -562,7 +567,7 @@ export function MeetingOfMirrors({
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-2">
                   <button
                     onClick={() => {
-                      setAlbertTopic(`Обсуждение синтеза: Душа ${codeResult?.soul}, Путь ${codeResult?.path}, Миф "${storyResult?.title}".`);
+                      setAlbertTopic(meetingResult?.reflectiveQuestion || meetingResult?.albertInsight || 'Продолжение исследования');
                       setIsAlbertOpen(true);
                     }}
                     className="w-full sm:w-auto px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"

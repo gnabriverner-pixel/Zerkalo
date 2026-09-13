@@ -4,7 +4,7 @@ import { getCompoundKnowledge } from '../data/compoundKnowledge';
 
 export function determineKeyInsight(soul: number, path: number, result: number, expression=soul, direction=path): string {
   const theme=(n:number)=>getNumberKnowledge(n).keywords[0];
-  return `В языке метода внутренний мотив «${theme(soul)}» (Душа ${soul}) встречается со способом действия «${theme(path)}» (Путь ${path}). Выражение ${expression} добавляет тему «${theme(expression)}» в контакт с миром; Направление ${direction} — «${theme(direction)}» в выбор среды. Связующий вопрос: как сохранить исходный мотив, двигаясь к теме «${theme(result)}» (Результат ${result}), и где привычный способ действия помогает этому, а где требует изменения?`;
+  return `В языке метода внутренний мотив «${theme(soul)}» (Душа ${soul}) встречается со способом действия «${theme(path)}» (Путь ${path}). Выражение ${expression} и Направление ${direction} уточняют контакт и среду на пути к итогу (Результат ${result}). Проверьте на конкретной задаче: вам важнее отстоять свой мотив или способ действия? Это разные задачи. Если такого затруднения нет, эту линию не нужно примерять на себя.`;
 }
 
 /** Attribute the existing authorial corpus instead of asserting a biography. */

@@ -301,7 +301,7 @@ export function AlabasterSanctuary({
             </button>
 
             <p className="text-xs text-[#8C8E96] font-light leading-relaxed max-w-sm">
-              Здесь нужна только дата для расчёта. Интерпретацию вы сравниваете со своим опытом — совпадение не требуется.
+              Сначала — взгляд метода. Не нужно узнавать себя в каждой строке: отметьте одну мысль, которую хочется проверить.
             </p>
           </form>
         </motion.div>
@@ -680,7 +680,7 @@ export function AlabasterSanctuary({
               <div className="w-full bg-[#FCFAF7] border border-[#C8A45D]/40 p-8 sm:p-10 rounded-xs text-left shadow-xs space-y-6">
                 <div className="space-y-2 text-center sm:text-left">
                   <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[#C8A45D] block font-medium">
-                    Смысловой узор Кода · Материал для Встречи зеркал
+                    Взгляд метода — проверьте на своей ситуации
                   </span>
                   <h3 className="font-serif text-2xl sm:text-3xl text-[#1A1A1C] font-light">
                     {reading.title || 'Синтез формулы'}

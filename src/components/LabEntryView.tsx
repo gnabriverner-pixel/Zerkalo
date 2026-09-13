@@ -163,7 +163,7 @@ export function LabEntryView({
           className="min-h-[78svh] flex flex-col items-center justify-center space-y-6 max-w-3xl mx-auto pt-12"
         >
           <span className="text-[11px] uppercase tracking-[0.35em] text-[var(--color-antique-gold)] font-mono block opacity-90">
-            Личная коллекция отражений
+            Посмотреть на себя с неожиданной стороны
           </span>
 
           <h1 className="font-serif text-6xl sm:text-7xl lg:text-[88px] text-[var(--color-text-primary)] font-light tracking-tight leading-[0.95]">
@@ -171,11 +171,11 @@ export function LabEntryView({
           </h1>
 
           <p className="text-[var(--color-text-secondary)] font-light text-[17px] sm:text-[18px] max-w-2xl mx-auto leading-[1.7] pt-2">
-            Иногда себя легче увидеть не напрямую. Здесь два независимых зеркала: одно возникает из даты рождения, другое — из ваших собственных образов.
+            Два независимых взгляда: язык Цифрового Кода и история из ваших собственных образов. Сопоставьте их, отметьте, что попало точно и с чем вы не согласны, и продолжите разговор с Альбертом о том, что важно вам сейчас.
           </p>
 
           <a href="#collection" className="mt-7 inline-flex min-h-12 items-center justify-center border border-[var(--color-border-gold)] bg-[#111723]/80 px-9 py-3 text-[11px] uppercase tracking-[0.28em] text-[var(--color-antique-gold)] transition-colors hover:bg-[#18202e]">
-            Войти в коллекцию
+            Выбрать зеркало
           </a>
           <p className="text-xs text-[var(--color-text-muted)]">Начните с любого зеркала. Встреча откроется только после обоих.</p>
         </motion.div>
@@ -266,10 +266,14 @@ export function LabEntryView({
                     </span>
                   </div>
                   <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
-                    Сохранённая встреча зеркал
+                    Продолжить с того места
                   </h3>
                   <p className="text-xs text-stone-300 font-light leading-relaxed max-w-lg">
-                    Код {savedSnapshot.codeDate} · Миф «{savedSnapshot.storyResult.title}» · {savedSnapshot.meetingResult.parallels.length} {pluralRu(savedSnapshot.meetingResult.parallels.length, 'резонанс', 'резонанса', 'резонансов')}
+                    {savedSnapshot.meetingUserNote
+                      ? `Ваша заметка: «${savedSnapshot.meetingUserNote}»`
+                      : savedSnapshot.storyResult?.title
+                        ? `В Мифе остался образ «${savedSnapshot.storyResult.title}»`
+                        : `Код ${savedSnapshot.codeDate}`}
                   </p>
                 </div>
               </div>
@@ -279,7 +283,7 @@ export function LabEntryView({
                   onClick={onRestoreSavedMirror}
                   className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
                 >
-                  <span>Открыть сохранённое</span>
+                  <span>Продолжить с того места</span>
                   <ChevronRight size={14} />
                 </button>
                 {onDeleteSavedMirror && (
