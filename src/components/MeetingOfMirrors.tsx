@@ -410,6 +410,12 @@ export function MeetingOfMirrors({
                 <p className="font-serif text-xl sm:text-2xl text-stone-100 font-light leading-relaxed mb-6">
                   {meetingResult.summary}
                 </p>
+
+                {meetingResult.disclaimer && (
+                  <p className="text-xs sm:text-sm text-stone-400 font-light border-t border-white/[0.06] pt-4 leading-relaxed">
+                    {meetingResult.disclaimer}
+                  </p>
+                )}
               </div>
 
               {/* Zero-resonance state banner if parallels is empty */}
@@ -422,7 +428,7 @@ export function MeetingOfMirrors({
                     Сильных резонансов не найдено
                   </h3>
                   <p className="text-sm text-stone-300 font-light leading-relaxed max-w-2xl">
-                    Две линзы показывают разные плоскости. Система не будет превращать отдельные похожие слова в доказательство связи.
+                    Два независимых взгляда показывают разные плоскости: мы не превращаем отдельные похожие слова в искусственную связь.
                   </p>
                 </div>
               )}

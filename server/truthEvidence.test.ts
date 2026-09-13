@@ -52,7 +52,7 @@ describe("claim provenance", () => {
     const prompt = buildMeetingOfMirrorsPrompt({calc: {} as any}, {storyInputs: {q1:"Я не лидер",q2:"сад",q3:"дома",q4:"тишина"},storyResult:{title:"Сад"}});
     expect(prompt).not.toContain("в этом нет противоречия: дата говорит о потенциальной структуре");
     expect(prompt).toContain("реальное расхождение");
-    expect(prompt).toContain("созданная машиной художественная история");
+    expect(prompt).toContain("художественная история Мифа");
     expect(prompt).toContain("Несогласие не подтверждает гипотезу");
     expect(prompt).toContain("Я не лидер");
   });

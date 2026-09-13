@@ -60,7 +60,7 @@ export function parseMeetingResponse(value: unknown): MeetingApiResponse {
   const confNote = raw.confidenceNote || raw.confidence_note || "Синтез независимых линз";
   const insight = raw.albertInsight || raw.albert_insight || raw.insight || raw.summary;
   const question = raw.reflectiveQuestion || raw.reflective_question || raw.question || "О чем для вас этот диалог двух зеркал?";
-  const disclaimerText = raw.disclaimer || "Эти две версии появились независимо. Одна — из вашей даты, другая — из образов, выбранных вами. Совпадения между ними ничего не доказывают, но дают повод присмотреться к себе внимательнее.";
+  const disclaimerText = raw.disclaimer || "Код и Миф — два независимых взгляда. Ни один из них не считается истиной о вас: мы смотрим, какое новое различие появляется, если поставить их рядом.";
 
   const result: MeetingOfMirrorsResult = {
     summary: text(raw.summary, "summary"),
