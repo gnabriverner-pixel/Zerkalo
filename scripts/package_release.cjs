@@ -73,6 +73,7 @@ function buildDeployableArchive(releaseSha, outDir) {
     "package.json",
     "package-lock.json",
     "src",
+    "public",
     "index.html",
     "vite.config.ts",
     "tsconfig.json",
