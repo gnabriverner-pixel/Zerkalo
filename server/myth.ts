@@ -121,13 +121,8 @@ export function hasFormalYouViolation(nonDisclaimerText: string, secondPersonCou
     return true;
   }
 
-  // Capitalized "Вы / Вам / Вас / Вами" without couple marker is formal address
-  if (matches.some((m) => /^[В]/.test(m[0]))) {
-    return true;
-  }
-
-  // Systematic shift to "вы": more than 2 occurrences across text is not an isolated mention
-  if (matches.length > 2) {
+  // Systematic shift to plural/formal (> 5 occurrences across text)
+  if (matches.length > 5) {
     return true;
   }
 
@@ -136,7 +131,7 @@ export function hasFormalYouViolation(nonDisclaimerText: string, secondPersonCou
     return true;
   }
 
-  // For each isolated lowercase occurrence, check if it refers to a couple in its sentence context
+  // For each isolated occurrence, check if it refers to a couple in its sentence context
   for (const match of matches) {
     const matchIndex = match.index ?? 0;
     const textBefore = addressText.slice(0, matchIndex);
@@ -153,6 +148,14 @@ export function hasFormalYouViolation(nonDisclaimerText: string, secondPersonCou
     const sentenceStart = prevBoundary >= 0 ? prevBoundary + 1 : 0;
     const sentenceEnd = nextBoundary >= 0 ? matchIndex + match[0].length + nextBoundary : addressText.length;
     const sentence = addressText.slice(sentenceStart, sentenceEnd).trim();
+
+    // Capitalized "Вы / Вам / Вас / Вами" inside a sentence (not at sentence start) is polite singular address
+    if (/^[В]/.test(match[0])) {
+      const beforeInSentence = addressText.slice(sentenceStart, matchIndex).replace(/[\s«»"—()\[\]]/gu, '');
+      if (beforeInSentence.length > 0) {
+        return true;
+      }
+    }
 
     const hasSecondPersonSingular = /(?<![а-яё])(?:ты|тебя|тебе|тобой|тобою|твой|твоя|твоё|твое|твои|твоих|твоим|твоей|твоего|твоему)(?![а-яё])/iu.test(sentence);
     const hasPluralPastVerb = /(?<![а-яё])[а-яё]{3,}ли(?![а-яё])/iu.test(sentence);
