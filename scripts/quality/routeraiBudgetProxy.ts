@@ -63,13 +63,16 @@ async function startLockedBudgetProxy(key:string, ledgerFile:string) {
   const server=http.createServer(async(req,res)=>{
     const reply=(status:number,body:unknown)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(body));};
     if(req.method!=='POST'||req.url!=='/completion'||req.headers['x-acceptance-token']!==nonce)return reply(403,{error:'acceptance_forbidden'});
+    let disconnected=false;
+    req.once('aborted',()=>{disconnected=true;});
+    res.once('close',()=>{disconnected=true;});
     const previous=settled;
     let release!:()=>void;
     settled=new Promise<void>(resolve=>{release=resolve;});
     await previous;
     let id:string|undefined;
     try {
-      if(res.destroyed)return;
+      if(disconnected||res.destroyed)return;
       const chunks:Buffer[]=[];let size=0;
       for await(const chunk of req){size+=chunk.length;if(size>1_000_000)throw new Error('acceptance_body_limit');chunks.push(chunk);}
       const body=JSON.parse(Buffer.concat(chunks).toString('utf8'));
@@ -79,6 +82,7 @@ async function startLockedBudgetProxy(key:string, ledgerFile:string) {
       if(body.model===FALLBACK_MODEL && (JSON.stringify(body.provider?.only)!=='["deepseek"]'||body.provider?.allow_fallbacks!==false
         ||body.thinking?.type!=='disabled'||body.include_reasoning!==false))throw new Error('acceptance_fallback_contract');
       guard.reconcileBalance(Math.max(0,baseline-await credits()));
+      if(disconnected||res.destroyed)return;
       const next=crypto.randomUUID();guard.reserve(next,body,body.max_tokens,rates[body.model]);id=next;save();
       const started=Date.now();
       const response=await fetch(`${ROUTERAI_URL}/chat/completions`,{method:'POST',headers:{...auth,'Content-Type':'application/json'},

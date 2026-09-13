@@ -63,4 +63,33 @@ describe('acceptance budget proxy integration',()=>{
       expect(proxy.guard.state.blocked).toBe(false);
     }finally{await proxy.close();fs.rmSync(dir,{recursive:true});}
   });
+  it('does not bill a queued caller disconnected during the final credits await',async()=>{
+    const dir=fs.mkdtempSync(path.join(os.tmpdir(),'routerai-queue-abort-test-'));
+    let calls=0;let releaseFirst!:()=>void;let releaseCredits!:()=>void;
+    let firstStarted!:()=>void;const firstPending=new Promise<void>(r=>{firstStarted=r;});
+    let creditsStarted!:()=>void;const creditsPending=new Promise<void>(r=>{creditsStarted=r;});
+    vi.stubGlobal('fetch',async(url:any,options:any)=>{
+      const s=String(url);
+      if(s.startsWith('http://127.0.0.1:'))return actualFetch(url,options);
+      if(s.endsWith('/credits')){
+        if(calls===1){creditsStarted();await new Promise<void>(r=>{releaseCredits=r;});}
+        return new Response(JSON.stringify({data:{credits:1000}}));
+      }
+      if(s.endsWith('/endpoints'))return new Response(JSON.stringify({data:{endpoints:[{tag:'deepseek',pricing:{prompt:0.0003,completion:0.0015}}]}}));
+      calls++;firstStarted();await new Promise<void>(r=>{releaseFirst=r;});
+      return new Response(JSON.stringify({usage:{cost:0.5}}));
+    });
+    const proxy=await startBudgetProxy('synthetic-key',path.join(dir,'spend.json'));
+    const body=JSON.stringify({model:PRIMARY_MODEL,max_tokens:20,messages:[],include_reasoning:false,
+      reasoning:{effort:'low'},provider:{allow_fallbacks:false}});
+    try {
+      const first=proxy.transport('ignored',{body});await firstPending;
+      const controller=new AbortController();
+      const second=proxy.transport('ignored',{body,signal:controller.signal}).catch(()=>null);
+      releaseFirst();await first;await creditsPending;
+      controller.abort();await second;await new Promise(r=>setTimeout(r,20));releaseCredits();
+      await proxy.close();expect(calls).toBe(1);expect(proxy.guard.reservedRub).toBe(0);
+      expect(proxy.guard.state.chargedRub).toBe(0.5);
+    }finally{fs.rmSync(dir,{recursive:true});}
+  });
 });
