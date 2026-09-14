@@ -90,7 +90,7 @@ export default function App() {
     switch (mode) {
       case 'alabaster':
         document.title = isPreviewV2
-          ? 'Цифровой Код V2 · Предпросмотр | Зеркало Себя'
+          ? (isQaMode ? 'Цифровой Код V2 · QA Режим | Зеркало Себя' : 'Цифровой Код | Зеркало Себя')
           : 'Цифровой Код · Алебастровое святилище | Зеркало Себя';
         break;
       case 'myth':
@@ -220,25 +220,27 @@ export default function App() {
             </span>
           </button>
 
-          {/* Owner preview toggle badge */}
-          <button
-            type="button"
-            onClick={() => {
-              const next = !isPreviewV2;
-              setIsPreviewV2(next);
-              if (next && mode !== 'alabaster') {
-                setMode('alabaster');
-              }
-            }}
-            className={`min-h-[28px] px-2.5 py-1 rounded-full text-[9px] font-mono tracking-wider uppercase transition-all cursor-pointer border ${
-              isPreviewV2
-                ? 'bg-[var(--color-antique-gold)]/20 border-[var(--color-antique-gold)] text-amber-200 shadow-xs'
-                : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
-            }`}
-            title="Переключить вертикальный срез Digital Code V2"
-          >
-            V2 PREVIEW {isPreviewV2 ? '●' : '○'}
-          </button>
+          {/* Owner preview toggle badge - QA Mode only */}
+          {isQaMode && (
+            <button
+              type="button"
+              onClick={() => {
+                const next = !isPreviewV2;
+                setIsPreviewV2(next);
+                if (next && mode !== 'alabaster') {
+                  setMode('alabaster');
+                }
+              }}
+              className={`min-h-[28px] px-2.5 py-1 rounded-full text-[9px] font-mono tracking-wider uppercase transition-all cursor-pointer border ${
+                isPreviewV2
+                  ? 'bg-[var(--color-antique-gold)]/20 border-[var(--color-antique-gold)] text-amber-200 shadow-xs'
+                  : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
+              }`}
+              title="Переключить вертикальный срез Digital Code V2"
+            >
+              V2 PREVIEW {isPreviewV2 ? '●' : '○'}
+            </button>
+          )}
         </div>
 
         {/* Center: Quiet Lens Switcher with comfortable tap targets */}
@@ -259,7 +261,7 @@ export default function App() {
                 : 'text-stone-400 hover:text-stone-200'
             }`}
           >
-            <span>{isPreviewV2 ? 'Код V2' : 'Код'}</span>
+            <span>{isQaMode && isPreviewV2 ? 'Код V2' : 'Код'}</span>
             {hasCode && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-antique-gold)]" />}
           </button>
 
