@@ -97,12 +97,18 @@ export function CodeV2Experience({
   // Auto-calculate on initial load only if date is explicitly provided
   useEffect(() => {
     if (!initialDate) return;
-    const d = day.padStart(2, '0');
-    const m = month.padStart(2, '0');
-    const y = year;
-    const validation = validateBirthDate(d, m, y);
-    if (validation.valid) {
-      fetchV2Calculation(validation.formatted);
+    const parts = initialDate.split('.');
+    if (parts.length === 3) {
+      const d = parts[0].trim().padStart(2, '0');
+      const m = parts[1].trim().padStart(2, '0');
+      const y = parts[2].trim();
+      setDay(d);
+      setMonth(m);
+      setYear(y);
+      const validation = validateBirthDate(d, m, y);
+      if (validation.valid) {
+        fetchV2Calculation(validation.formatted);
+      }
     }
   }, [initialDate]);
 
