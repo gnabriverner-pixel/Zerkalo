@@ -7,7 +7,9 @@ import { LabEntryView } from './components/LabEntryView';
 import { MetaphorLibrary } from './components/MetaphorLibrary';
 import { AboutMethod } from './components/AboutMethod';
 import { AlabasterSanctuary } from './components/AlabasterSanctuary';
-import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult } from './types';
+import { CodeV2Experience } from './components/CodeV2/CodeV2Experience';
+import { AlbertDialogue } from './components/AlbertDialogue';
+import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, CodeV2Payload } from './types';
 import { 
   loadMyMirrorSnapshot, 
   deleteMyMirrorSnapshot, 
@@ -21,9 +23,49 @@ import {
 import { EmblemDefs } from './art/emblem';
 
 export default function App() {
-  const [mode, setMode] = useState<'entry' | 'myth' | 'meeting' | 'alabaster' | 'ab-test'>('entry');
+  const [mode, setMode] = useState<'entry' | 'myth' | 'meeting' | 'alabaster' | 'ab-test'>(() => {
+    if (typeof window === 'undefined') return 'entry';
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('preview') === 'v2' || params.get('v') === '2') {
+      return 'alabaster';
+    }
+    return 'entry';
+  });
   const [showLibrary, setShowLibrary] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+
+  // Digital Code V2 Preview State
+  const [isPreviewV2, setIsPreviewV2] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('preview') === 'v2' || params.get('v') === '2';
+  });
+  const [isQaMode, setIsQaMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('qa') === '1';
+  });
+  const [previewDob, setPreviewDob] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    const params = new URLSearchParams(window.location.search);
+    return params.get('dob') || '';
+  });
+  const [isAlbertV2Open, setIsAlbertV2Open] = useState(false);
+  const [codeV2Payload, setCodeV2Payload] = useState<CodeV2Payload | null>(null);
+
+  // Auto-activate preview on direct landing with ?preview=v2 or ?v=2
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('preview') === 'v2' || params.get('v') === '2') {
+      setIsPreviewV2(true);
+      setIsQaMode(params.get('qa') === '1');
+      if (params.get('dob')) {
+        setPreviewDob(params.get('dob') || '');
+      }
+      setMode('alabaster');
+    }
+  }, []);
 
   // Shared state between lenses
   const [codeDate, setCodeDate] = useState<string>('');
@@ -47,7 +89,9 @@ export default function App() {
   useEffect(() => {
     switch (mode) {
       case 'alabaster':
-        document.title = 'Цифровой Код · Алебастровое святилище | Зеркало Себя';
+        document.title = isPreviewV2
+          ? (isQaMode ? 'Цифровой Код V2 · QA Режим | Зеркало Себя' : 'Цифровой Код | Зеркало Себя')
+          : 'Цифровой Код · Алебастровое святилище | Зеркало Себя';
         break;
       case 'myth':
         document.title = 'Личный Миф · Образная линза | Зеркало Себя';
@@ -60,7 +104,7 @@ export default function App() {
         document.title = 'Зеркало Себя — Ведическая нумерология и Личный миф';
         break;
     }
-  }, [mode]);
+  }, [mode, isPreviewV2]);
 
   const refreshSavedSnapshot = () => {
     setSavedSnapshot(loadMyMirrorSnapshot());
@@ -145,7 +189,7 @@ export default function App() {
 
   return (
     <div className={`min-h-screen w-full flex flex-col font-sans relative overflow-x-hidden transition-colors duration-300 ${
-      mode === 'alabaster' 
+      mode === 'alabaster' && !isPreviewV2
         ? 'bg-[#FCFAF7] text-[#1A1A1C] selection:bg-[#C8A45D]/30 selection:text-[#1A1A1C]'
         : 'bg-[#090D15] text-[#EAEAEA] selection:bg-[var(--color-antique-gold)]/20 selection:text-white'
     }`}>
@@ -153,13 +197,13 @@ export default function App() {
       
       {/* Quiet, Minimalist Header */}
       <header className={`fixed top-0 left-0 w-full flex justify-between items-center z-50 py-2.5 sm:py-3.5 px-3 sm:px-8 pointer-events-none transition-all duration-300 ${
-        mode === 'alabaster'
+        mode === 'alabaster' && !isPreviewV2
           ? 'bg-[#FCFAF7]/90 text-[#1A1A1C] border-b border-[#1A1A1C]/8 shadow-xs backdrop-blur-md'
           : 'bg-gradient-to-b from-[#090D15]/95 via-[#090D15]/80 to-transparent text-[#EAEAEA] backdrop-blur-sm'
       }`}>
         
-        {/* Left: Minimal Logo with >=44px touch target */}
-        <div className="pointer-events-auto flex items-center gap-3">
+        {/* Left: Minimal Logo with >=44px touch target + V2 Preview Chip */}
+        <div className="pointer-events-auto flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setMode('entry')}
             className="group min-w-[44px] min-h-[44px] p-2 flex items-center gap-2.5 text-left transition-all duration-300 cursor-pointer -ml-2"
@@ -168,18 +212,40 @@ export default function App() {
           >
             <span className={`w-2.5 h-2.5 rounded-full bg-[var(--color-antique-gold)] shadow-[0_0_8px_rgba(200,164,93,0.6)] group-hover:scale-125 transition-transform`} />
             <span className={`hidden sm:inline font-serif text-lg tracking-wide transition-colors whitespace-nowrap ${
-              mode === 'alabaster'
+              mode === 'alabaster' && !isPreviewV2
                 ? 'text-[#1A1A1C] group-hover:text-[var(--color-antique-gold)]'
                 : 'text-[#F4F4F4] group-hover:text-[var(--color-antique-gold)]'
             }`}>
               Зеркало себя
             </span>
           </button>
+
+          {/* Owner preview toggle badge - QA Mode only */}
+          {isQaMode && (
+            <button
+              type="button"
+              onClick={() => {
+                const next = !isPreviewV2;
+                setIsPreviewV2(next);
+                if (next && mode !== 'alabaster') {
+                  setMode('alabaster');
+                }
+              }}
+              className={`min-h-[28px] px-2.5 py-1 rounded-full text-[9px] font-mono tracking-wider uppercase transition-all cursor-pointer border ${
+                isPreviewV2
+                  ? 'bg-[var(--color-antique-gold)]/20 border-[var(--color-antique-gold)] text-amber-200 shadow-xs'
+                  : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
+              }`}
+              title="Переключить вертикальный срез Digital Code V2"
+            >
+              V2 PREVIEW {isPreviewV2 ? '●' : '○'}
+            </button>
+          )}
         </div>
 
         {/* Center: Quiet Lens Switcher with comfortable tap targets */}
         <nav aria-label="Режимы исследования" className={`flex items-center gap-1 sm:gap-1.5 p-1 rounded-full pointer-events-auto shadow-sm transition-colors duration-300 ${
-          mode === 'alabaster'
+          mode === 'alabaster' && !isPreviewV2
             ? 'bg-[#EDEAE4]/90 border border-[#1A1A1C]/10 backdrop-blur-md text-[#63656C]'
             : 'bg-[#0D121D]/85 border border-white/10 backdrop-blur-md text-gray-400'
         }`}>
@@ -189,11 +255,13 @@ export default function App() {
             onClick={() => setMode('alabaster')}
             className={`min-h-[40px] px-3.5 py-2 rounded-full text-[10px] sm:text-[11px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
               mode === 'alabaster'
-                ? 'bg-[#1A1A1C] text-[#FCFAF7] font-medium shadow-xs'
+                ? isPreviewV2
+                  ? 'bg-[var(--color-antique-gold)]/25 text-amber-200 font-medium border border-[var(--color-antique-gold)]/40 shadow-xs'
+                  : 'bg-[#1A1A1C] text-[#FCFAF7] font-medium shadow-xs'
                 : 'text-stone-400 hover:text-stone-200'
             }`}
           >
-            <span>Код</span>
+            <span>{isQaMode && isPreviewV2 ? 'Код V2' : 'Код'}</span>
             {hasCode && <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-antique-gold)]" />}
           </button>
 
@@ -203,7 +271,7 @@ export default function App() {
             className={`min-h-[40px] px-3.5 py-2 rounded-full text-[10px] sm:text-[11px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
               mode === 'myth'
                 ? 'bg-white/15 text-white font-medium shadow-xs'
-                : mode === 'alabaster'
+                : mode === 'alabaster' && !isPreviewV2
                   ? 'text-[#63656C] hover:text-[#1A1A1C]'
                   : 'text-gray-400 hover:text-gray-200'
             }`}
@@ -220,7 +288,7 @@ export default function App() {
                 ? 'bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] font-medium border border-[var(--color-antique-gold)]/40 shadow-xs'
                 : hasBoth
                   ? 'text-[var(--color-antique-gold)] hover:text-amber-200'
-                  : mode === 'alabaster'
+                  : mode === 'alabaster' && !isPreviewV2
                     ? 'text-[#63656C] hover:text-[#1A1A1C]'
                     : 'text-gray-400 hover:text-gray-200'
             }`}
@@ -232,12 +300,12 @@ export default function App() {
 
         {/* Right: Quiet About / Notes Links (Desktop & Mobile Accessible) */}
         <div className={`pointer-events-auto flex items-center gap-2 sm:gap-4 text-xs transition-colors duration-300 ${
-          mode === 'alabaster' ? 'text-[#63656C]' : 'text-gray-400'
+          mode === 'alabaster' && !isPreviewV2 ? 'text-[#63656C]' : 'text-gray-400'
         }`}>
           <button
             onClick={() => setShowAbout(true)}
             className={`min-h-[44px] px-2 py-2 tracking-wider uppercase text-[10px] sm:text-[11px] transition-colors cursor-pointer font-light ${
-              mode === 'alabaster' ? 'hover:text-[#1A1A1C]' : 'hover:text-[var(--color-antique-gold)]'
+              mode === 'alabaster' && !isPreviewV2 ? 'hover:text-[#1A1A1C]' : 'hover:text-[var(--color-antique-gold)]'
             }`}
           >
             О методе
@@ -246,7 +314,7 @@ export default function App() {
           <button
             onClick={() => setShowLibrary(true)}
             className={`min-h-[44px] px-2 py-2 tracking-wider uppercase text-[10px] sm:text-[11px] transition-colors cursor-pointer font-light ${
-              mode === 'alabaster' ? 'hover:text-[#1A1A1C]' : 'hover:text-[var(--color-antique-gold)]'
+              mode === 'alabaster' && !isPreviewV2 ? 'hover:text-[#1A1A1C]' : 'hover:text-[var(--color-antique-gold)]'
             }`}
           >
             <span className="hidden sm:inline">Мои заметки</span>
@@ -261,29 +329,42 @@ export default function App() {
           
           {mode === 'alabaster' && (
             <motion.div
-              key="alabaster"
+              key={isPreviewV2 ? 'code-v2' : 'alabaster'}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="w-full min-h-screen bg-[#FCFAF7]"
+              className={`w-full min-h-screen ${isPreviewV2 ? 'bg-[#090D15]' : 'bg-[#FCFAF7]'}`}
             >
-              <AlabasterSanctuary
-                initialDate={codeDate}
-                initialResult={codeResult}
-                initialReading={firstMirror}
-                onCodeCalculated={(fullDate, calc, reading) => {
-                  setCodeDate(fullDate);
-                  setCodeResult(calc);
-                  setFirstMirror(reading || null);
-                  setMeetingResult(null);
-                  setMeetingUserNote('');
-                }}
-                onBackToCollection={() => setMode('entry')}
-                onContinue={() => setMode(hasMyth ? 'meeting' : 'myth')}
-                continueLabel={hasMyth ? 'Открыть Встречу зеркал' : 'Перейти к Личному мифу'}
-                onOpenAbout={() => setShowAbout(true)}
-              />
+              {isPreviewV2 ? (
+                <CodeV2Experience
+                  initialDate={previewDob || codeDate || ''}
+                  isQaMode={isQaMode}
+                  onOpenAlbert={(p) => {
+                    setCodeV2Payload(p);
+                    setIsAlbertV2Open(true);
+                  }}
+                  onBackToCollection={() => setMode('entry')}
+                  onSwitchToV1={() => setIsPreviewV2(false)}
+                />
+              ) : (
+                <AlabasterSanctuary
+                  initialDate={codeDate}
+                  initialResult={codeResult}
+                  initialReading={firstMirror}
+                  onCodeCalculated={(fullDate, calc, reading) => {
+                    setCodeDate(fullDate);
+                    setCodeResult(calc);
+                    setFirstMirror(reading || null);
+                    setMeetingResult(null);
+                    setMeetingUserNote('');
+                  }}
+                  onBackToCollection={() => setMode('entry')}
+                  onContinue={() => setMode(hasMyth ? 'meeting' : 'myth')}
+                  continueLabel={hasMyth ? 'Открыть Встречу зеркал' : 'Перейти к Личному мифу'}
+                  onOpenAbout={() => setShowAbout(true)}
+                />
+              )}
             </motion.div>
           )}
 
@@ -394,7 +475,17 @@ export default function App() {
 
       {/* Global Modals */}
       <MetaphorLibrary isOpen={showLibrary} onClose={() => setShowLibrary(false)} />
-      <AboutMethod isOpen={showAbout} onClose={() => setShowAbout(false)} theme={mode === 'alabaster' ? 'light' : 'dark'} />
+      <AboutMethod isOpen={showAbout} onClose={() => setShowAbout(false)} theme={mode === 'alabaster' && !isPreviewV2 ? 'light' : 'dark'} />
+
+      {/* Albert Dialogue Modal for Code V2 Preview */}
+      <AlbertDialogue
+        isOpen={isAlbertV2Open}
+        onClose={() => setIsAlbertV2Open(false)}
+        calc={codeResult}
+        codeV2Payload={codeV2Payload}
+        codeV2Context={codeV2Payload?.albert_context}
+        theme="dark"
+      />
     </div>
   );
 }

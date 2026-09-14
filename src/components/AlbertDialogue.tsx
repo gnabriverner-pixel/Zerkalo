@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CalculationResult, MeetingOfMirrorsResult } from '../types';
+import { CalculationResult, MeetingOfMirrorsResult, CodeV2Payload, CodeV2AlbertContext } from '../types';
 import { numberKnowledge } from '../data/numberKnowledge';
 import { loadTruthState, saveTruthState, truthJourneyKey, hasTruthCorrections, TRUTH_CLEARED_EVENT } from '../services/albertTruthState';
 import { 
@@ -21,6 +21,8 @@ interface AlbertDialogueProps {
   meetingResult?: MeetingOfMirrorsResult | null;
   initialTopic?: string;
   theme?: 'light' | 'dark';
+  codeV2Payload?: CodeV2Payload | null;
+  codeV2Context?: CodeV2AlbertContext | null;
 }
 
 interface Message {
@@ -43,7 +45,9 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   storyResult,
   meetingResult,
   initialTopic = '',
-  theme = 'light'
+  theme = 'light',
+  codeV2Payload,
+  codeV2Context
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState(initialTopic);
@@ -53,7 +57,8 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const journeyKey = truthJourneyKey(calc, storyResult, meetingResult);
+  const effectiveCalc = calc || (codeV2Payload?.calculation?.five_numbers as any) || null;
+  const journeyKey = truthJourneyKey(effectiveCalc, storyResult, meetingResult);
   const truthRef = useRef<{ journey: string; state: any }>({ journey: journeyKey, state: loadTruthState(journeyKey) });
   const truthEpochRef = useRef(0);
   if (truthRef.current.journey !== journeyKey) truthRef.current = { journey: journeyKey, state: loadTruthState(journeyKey) };
@@ -63,11 +68,11 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
     return () => window.removeEventListener(TRUTH_CLEARED_EVENT, clear);
   }, []);
 
-  const soul = calc?.soul || 1;
-  const path = calc?.path || 1;
-  const dir = calc?.direction || 1;
-  const expr = calc?.expression || 1;
-  const res = calc?.result || 1;
+  const soul = effectiveCalc?.soul || 1;
+  const path = effectiveCalc?.path || 1;
+  const dir = effectiveCalc?.direction || 1;
+  const expr = effectiveCalc?.expression || 1;
+  const res = effectiveCalc?.result || 1;
 
   const soulInfo = numberKnowledge[soul];
   const pathInfo = numberKnowledge[path];
@@ -98,7 +103,12 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       let greeting = '';
-      if (hasTruthCorrections(truthRef.current.state)) {
+      if (codeV2Context) {
+        const questionPart = codeV2Context.opening_question
+          ? `\n\n${codeV2Context.opening_question}`
+          : '';
+        greeting = `Здравствуйте. ${codeV2Context.opening_statement}${questionPart}\n\nМожем проверить эту развилку на вашей реальной ситуации или разобрать то, с чем вы не согласны.`;
+      } else if (hasTruthCorrections(truthRef.current.state)) {
         greeting = 'Здравствуйте. Продолжим с темы вашего исследования с учётом сделанных уточнений. Какую деталь сейчас важно разобрать?';
       } else if (meetingResult) {
         const questionPart = meetingResult.reflectiveQuestion 
@@ -119,7 +129,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         }
       ]);
     }
-  }, [isOpen, meetingResult, calc, soul, path, dir, expr, soulInfo, pathInfo]);
+  }, [isOpen, meetingResult, calc, soul, path, dir, expr, soulInfo, pathInfo, codeV2Context]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -180,6 +190,9 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
           newView: storyResult.mirror?.newView,
           oneStep: storyResult.one_step
         };
+      }
+      if (codeV2Payload) {
+        contextPayload.codeV2Payload = codeV2Payload;
       }
 
       const res = await fetch('/api/albert/dialogue', {
