@@ -40,6 +40,16 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return params.get('preview') === 'v2' || params.get('v') === '2';
   });
+  const [isQaMode, setIsQaMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('qa') === '1';
+  });
+  const [previewDob, setPreviewDob] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    const params = new URLSearchParams(window.location.search);
+    return params.get('dob') || '';
+  });
   const [isAlbertV2Open, setIsAlbertV2Open] = useState(false);
   const [codeV2Payload, setCodeV2Payload] = useState<CodeV2Payload | null>(null);
 
@@ -49,6 +59,10 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('preview') === 'v2' || params.get('v') === '2') {
       setIsPreviewV2(true);
+      setIsQaMode(params.get('qa') === '1');
+      if (params.get('dob')) {
+        setPreviewDob(params.get('dob') || '');
+      }
       setMode('alabaster');
     }
   }, []);
@@ -322,7 +336,8 @@ export default function App() {
             >
               {isPreviewV2 ? (
                 <CodeV2Experience
-                  initialDate={codeDate || '06.05.1986'}
+                  initialDate={previewDob || codeDate || ''}
+                  isQaMode={isQaMode}
                   onOpenAlbert={(p) => {
                     setCodeV2Payload(p);
                     setIsAlbertV2Open(true);

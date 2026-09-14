@@ -22,6 +22,7 @@ import {
 
 interface CodeV2ExperienceProps {
   initialDate?: string;
+  isQaMode?: boolean;
   onOpenAlbert: (payload: CodeV2Payload) => void;
   onBackToCollection?: () => void;
   onSwitchToV1?: () => void;
@@ -36,13 +37,14 @@ const PRESET_DOBS = [
 
 export function CodeV2Experience({
   initialDate = '',
+  isQaMode = false,
   onOpenAlbert,
   onBackToCollection,
   onSwitchToV1
 }: CodeV2ExperienceProps) {
-  const [day, setDay] = useState(() => (initialDate ? initialDate.split('.')[0] || '' : '06'));
-  const [month, setMonth] = useState(() => (initialDate ? initialDate.split('.')[1] || '' : '05'));
-  const [year, setYear] = useState(() => (initialDate ? initialDate.split('.')[2] || '' : '1986'));
+  const [day, setDay] = useState(() => (initialDate ? initialDate.split('.')[0] || '' : ''));
+  const [month, setMonth] = useState(() => (initialDate ? initialDate.split('.')[1] || '' : ''));
+  const [year, setYear] = useState(() => (initialDate ? initialDate.split('.')[2] || '' : ''));
 
   const [dateError, setDateError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -92,8 +94,9 @@ export function CodeV2Experience({
     }
   };
 
-  // Auto-calculate on initial load if date is present
+  // Auto-calculate on initial load only if date is explicitly provided
   useEffect(() => {
+    if (!initialDate) return;
     const d = day.padStart(2, '0');
     const m = month.padStart(2, '0');
     const y = year;
@@ -101,7 +104,7 @@ export function CodeV2Experience({
     if (validation.valid) {
       fetchV2Calculation(validation.formatted);
     }
-  }, []);
+  }, [initialDate]);
 
   const handleCalculate = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -154,7 +157,7 @@ export function CodeV2Experience({
           <div className="flex items-center gap-2.5">
             <span className="w-2 h-2 rounded-full bg-[var(--color-antique-gold)] animate-pulse" />
             <span className="text-[11px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]">
-              Digital Code V2 · Внутренний срез
+              Digital Code V2 · Предпросмотр {isQaMode && '· QA'}
             </span>
           </div>
 
@@ -189,32 +192,35 @@ export function CodeV2Experience({
         {/* ========================================================= */}
         <div className="w-full max-w-xl bg-[#0E1422]/90 border border-white/10 rounded-2xl p-6 shadow-xl backdrop-blur-md mb-12">
           
-          {/* Quick presets for acceptance */}
-          <div className="mb-5">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-stone-400 mb-2.5 flex items-center justify-between">
-              <span>Контрольные даты для проверки:</span>
+          {/* Quick presets for acceptance - only in QA mode */}
+          {isQaMode && (
+            <div className="mb-5 p-3.5 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-amber-300/80 mb-2.5 flex items-center justify-between">
+                <span>Контрольные даты для проверки (QA Режим):</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">qa=1</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {PRESET_DOBS.map(preset => {
+                  const isActive = `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}` === preset.label;
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => handleSelectPreset(preset.label)}
+                      className={`px-3 py-2 rounded-xl text-left border transition-all duration-200 cursor-pointer ${
+                        isActive
+                          ? 'bg-[var(--color-antique-gold)]/15 border-[var(--color-antique-gold)] text-amber-200 shadow-sm'
+                          : 'bg-white/5 border-white/5 hover:border-white/15 text-stone-300 hover:text-stone-100'
+                      }`}
+                    >
+                      <div className="text-xs font-mono font-medium">{preset.label}</div>
+                      <div className="text-[10px] text-stone-400 truncate">{preset.note}</div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {PRESET_DOBS.map(preset => {
-                const isActive = `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}` === preset.label;
-                return (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    onClick={() => handleSelectPreset(preset.label)}
-                    className={`px-3 py-2 rounded-xl text-left border transition-all duration-200 cursor-pointer ${
-                      isActive
-                        ? 'bg-[var(--color-antique-gold)]/15 border-[var(--color-antique-gold)] text-amber-200 shadow-sm'
-                        : 'bg-white/5 border-white/5 hover:border-white/15 text-stone-300 hover:text-stone-100'
-                    }`}
-                  >
-                    <div className="text-xs font-mono font-medium">{preset.label}</div>
-                    <div className="text-[10px] text-stone-400 truncate">{preset.note}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          )}
 
           <form onSubmit={handleCalculate} className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
             <div className="grid grid-cols-3 gap-2 flex-grow">
@@ -232,7 +238,7 @@ export function CodeV2Experience({
                     setDay(val);
                     if (val.length === 2) monthRef.current?.focus();
                   }}
-                  placeholder="06"
+                  placeholder="ДД"
                   className="w-full text-center bg-black/40 border border-white/10 focus:border-[var(--color-antique-gold)] rounded-xl py-2.5 text-base font-mono text-white outline-none transition-colors"
                 />
               </div>
@@ -251,7 +257,7 @@ export function CodeV2Experience({
                     setMonth(val);
                     if (val.length === 2) yearRef.current?.focus();
                   }}
-                  placeholder="05"
+                  placeholder="ММ"
                   className="w-full text-center bg-black/40 border border-white/10 focus:border-[var(--color-antique-gold)] rounded-xl py-2.5 text-base font-mono text-white outline-none transition-colors"
                 />
               </div>
@@ -269,7 +275,7 @@ export function CodeV2Experience({
                     const val = e.target.value.replace(/\D/g, '');
                     setYear(val);
                   }}
-                  placeholder="1986"
+                  placeholder="ГГГГ"
                   className="w-full text-center bg-black/40 border border-white/10 focus:border-[var(--color-antique-gold)] rounded-xl py-2.5 text-base font-mono text-white outline-none transition-colors"
                 />
               </div>
@@ -308,6 +314,19 @@ export function CodeV2Experience({
             </div>
           )}
         </div>
+
+        {/* Helper invitation when payload is not yet calculated */}
+        {!payload && !isLoading && (
+          <div className="w-full max-w-xl text-center py-10 px-6 bg-white/[0.02] border border-white/5 rounded-2xl mb-12">
+            <Compass className="w-8 h-8 text-[var(--color-antique-gold)]/60 mx-auto mb-3" />
+            <p className="text-sm text-stone-300 font-light leading-relaxed mb-2">
+              Укажите дату рождения, чтобы рассчитать пять позиций Цифрового Кода.
+            </p>
+            <p className="text-xs text-stone-500 font-light leading-relaxed">
+              Вы увидите внутренний исток, способ проявления, механизм действия, развивающую среду и зрелую интеграцию характера.
+            </p>
+          </div>
+        )}
 
         {/* ========================================================= */}
         {/* RESULTS WRAPPER */}
