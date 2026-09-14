@@ -1,4 +1,5 @@
 import { execFile } from "child_process";
+import fs from "fs";
 import path from "path";
 import { promisify } from "util";
 import type { CalculationResult, CodeV2Payload } from "../src/types";
@@ -6,7 +7,9 @@ import type { CalculationResult, CodeV2Payload } from "../src/types";
 const execFileAsync = promisify(execFile);
 
 function getDcsConfig() {
-  const root = process.env.DCS_ROOT || "/Users/artemkrysin/Documents/New project/digital-code-product-journey";
+  const sibling = path.resolve(process.cwd(), "..", "digital-code-product-journey");
+  const fallback = "/Users/artemkrysin/Documents/New project/digital-code-product-journey";
+  const root = process.env.DCS_ROOT || (fs.existsSync(sibling) ? sibling : fallback);
   const bridgeScript = path.join(root, "integration", "zerkalo_bridge.py");
   const pythonBin = process.env.PYTHON_BIN || "python3";
   const url = process.env.DCS_BRIDGE_URL || "http://127.0.0.1:39500";

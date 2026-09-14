@@ -23,7 +23,14 @@ import {
 import { EmblemDefs } from './art/emblem';
 
 export default function App() {
-  const [mode, setMode] = useState<'entry' | 'myth' | 'meeting' | 'alabaster' | 'ab-test'>('entry');
+  const [mode, setMode] = useState<'entry' | 'myth' | 'meeting' | 'alabaster' | 'ab-test'>(() => {
+    if (typeof window === 'undefined') return 'entry';
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('preview') === 'v2' || params.get('v') === '2') {
+      return 'alabaster';
+    }
+    return 'entry';
+  });
   const [showLibrary, setShowLibrary] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
 

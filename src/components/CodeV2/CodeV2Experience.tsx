@@ -316,16 +316,18 @@ export function CodeV2Experience({
           <div ref={resultsRef} className="w-full space-y-12">
             
             {/* ======================================================= */}
-            {/* ACT 1: TRANSPARENT CALCULATION RIBBON & CHAIN */}
+            {/* ACT 1: ARRIVAL & METHOD ORIENTATION (WITH 5 NUMBERS)    */}
             {/* ======================================================= */}
-            <section className="w-full bg-[#0D1322]/80 border border-white/10 rounded-2xl p-6 sm:p-8 backdrop-blur-md">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/5">
+            <section className="w-full bg-[#0D1322]/90 border border-[var(--color-antique-gold)]/25 rounded-2xl p-6 sm:p-8 backdrop-blur-md relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[radial-gradient(circle_at_top_right,rgba(200,164,93,0.08),transparent_70%)] pointer-events-none" />
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-white/5">
                 <div>
                   <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] block mb-1">
-                    Акт 1 · Расчётная формула
+                    Акт 1 · Ориентация и пять чисел карты
                   </span>
-                  <h2 className="font-serif text-2xl sm:text-3xl text-stone-100">
-                    Пять чисел карты ({payload.calculation.date})
+                  <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
+                    Как устроен ваш Цифровой Код ({payload.calculation.date})
                   </h2>
                 </div>
 
@@ -335,19 +337,23 @@ export function CodeV2Experience({
                   className="self-start sm:self-auto text-xs font-mono text-stone-300 hover:text-[var(--color-antique-gold)] border border-white/10 hover:border-[var(--color-antique-gold)]/40 rounded-xl px-3.5 py-2 transition-all cursor-pointer flex items-center gap-2"
                 >
                   <Calculator className="w-3.5 h-3.5" />
-                  <span>{showCalcChain ? 'Скрыть ход расчёта' : 'Показать ход расчёта'}</span>
+                  <span>{showCalcChain ? 'Скрыть ход расчёта' : 'Откуда взялись эти числа?'}</span>
                   {showCalcChain ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
               </div>
 
+              <p className="text-sm sm:text-base text-stone-200 leading-relaxed mb-6 font-light">
+                {payload.method_orientation.summary}
+              </p>
+
               {/* 5-NUMBER RIBBON */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
                 {payload.positions.map((pos) => (
                   <div
                     key={pos.position}
-                    className="bg-black/30 border border-white/5 hover:border-white/15 rounded-xl p-3.5 transition-all flex flex-col items-center text-center"
+                    className="bg-black/40 border border-white/10 hover:border-[var(--color-antique-gold)]/30 rounded-xl p-3.5 transition-all flex flex-col items-center text-center shadow-inner"
                   >
-                    <span className="text-[10px] font-mono text-stone-400 uppercase tracking-wider mb-1">
+                    <span className="text-[10px] font-mono text-stone-400 uppercase tracking-wider mb-1 truncate w-full">
                       {pos.public_name.replace('Число ', '')}
                     </span>
                     <div className="font-serif text-3xl sm:text-4xl text-amber-100 font-light leading-none my-1">
@@ -358,6 +364,9 @@ export function CodeV2Experience({
                     </div>
                     <div className="text-[10px] font-mono text-stone-400 mt-1">
                       {pos.compound_route ? `маршрут ${pos.compound_route}` : `код ${pos.energy}`}
+                    </div>
+                    <div className="text-[10px] text-stone-400 font-sans italic mt-1 text-center line-clamp-1">
+                      {pos.role}
                     </div>
                   </div>
                 ))}
@@ -371,12 +380,12 @@ export function CodeV2Experience({
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.25 }}
-                    className="mt-6 pt-6 border-t border-white/5 overflow-hidden"
+                    className="mb-6 pt-5 border-t border-white/10 overflow-hidden"
                   >
                     <div className="text-xs font-mono uppercase tracking-wider text-stone-400 mb-3">
                       Пошаговая прозрачная цепочка вычислений:
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {payload.calculation.calculation_chain.map((step, idx) => (
                         <div
                           key={step.position}
@@ -403,25 +412,8 @@ export function CodeV2Experience({
                   </motion.div>
                 )}
               </AnimatePresence>
-            </section>
 
-            {/* ======================================================= */}
-            {/* ACT 2: METHOD ORIENTATION FRAME */}
-            {/* ======================================================= */}
-            <section className="w-full bg-[#0D1322]/90 border border-[var(--color-antique-gold)]/25 rounded-2xl p-6 sm:p-8 backdrop-blur-md relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-[radial-gradient(circle_at_top_right,rgba(200,164,93,0.08),transparent_70%)] pointer-events-none" />
-
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] block mb-2">
-                Акт 2 · Ориентация в методе
-              </span>
-              <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 mb-4 font-light">
-                Как читать эту карту
-              </h2>
-
-              <p className="text-sm sm:text-base text-stone-200 leading-relaxed mb-6 font-light">
-                {payload.method_orientation.summary}
-              </p>
-
+              {/* EPISTEMIC CONTOUR & BASE LAW */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div className="p-4 bg-black/30 rounded-xl border border-white/5">
                   <div className="text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)] mb-1.5 flex items-center gap-2">
@@ -465,13 +457,13 @@ export function CodeV2Experience({
             </section>
 
             {/* ======================================================= */}
-            {/* ACT 3: CENTRAL PSYCHOLOGICAL MOTIF */}
+            {/* ACT 2: CENTRAL PSYCHOLOGICAL MOTIF                     */}
             {/* ======================================================= */}
             <section className="w-full bg-gradient-to-br from-[#12192B] to-[#0A0E18] border border-[var(--color-antique-gold)]/30 rounded-2xl p-6 sm:p-8 relative shadow-2xl">
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="w-4 h-4 text-[var(--color-antique-gold)]" />
                 <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)]">
-                  Акт 3 · Главный нерв карты
+                  Акт 2 · Главный нерв карты
                 </span>
               </div>
 
@@ -484,6 +476,21 @@ export function CodeV2Experience({
                   <p key={i}>{para}</p>
                 ))}
               </div>
+
+              {/* Contextual Albert callout immediately after central motif (Section 8.F) */}
+              <div className="mt-6 pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-stone-300">
+                <span className="font-light">
+                  Альберт уже знает этот центральный узел и готов проверить его на вашей ситуации.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onOpenAlbert(payload)}
+                  className="self-start sm:self-auto text-[11px] font-mono text-[var(--color-antique-gold)] hover:text-amber-200 border border-[var(--color-antique-gold)]/30 hover:border-[var(--color-antique-gold)] px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Обсудить узел с Альбертом</span>
+                </button>
+              </div>
             </section>
 
             {/* ======================================================= */}
@@ -492,7 +499,7 @@ export function CodeV2Experience({
             <section className="w-full space-y-6">
               <div className="text-center max-w-xl mx-auto mb-2">
                 <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] block mb-1">
-                  Акт 4 · Разбор пяти ролей
+                  Акт 3 · Разбор пяти ролей
                 </span>
                 <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
                   Анатомия психологических механизмов
@@ -650,12 +657,13 @@ export function CodeV2Experience({
             </section>
 
             {/* ======================================================= */}
-            {/* ACT 5: KEY CONNECTIONS (1-3 INTERACTIONS WITHOUT DEBUG) */}
+            {/* ======================================================= */}
+            {/* ACT 4: KEY CONNECTIONS (1-3 INTERACTIONS WITHOUT DEBUG) */}
             {/* ======================================================= */}
             <section className="w-full bg-[#0D1322]/90 border border-white/10 rounded-2xl p-6 sm:p-8 backdrop-blur-md">
               <div className="max-w-2xl mb-6">
                 <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] block mb-1">
-                  Акт 5 · Ключевые взаимодействия в карте
+                  Акт 4 · Ключевые взаимодействия в карте
                 </span>
                 <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
                   Как спорят и поддерживают друг друга числа
@@ -708,7 +716,7 @@ export function CodeV2Experience({
             </section>
 
             {/* ======================================================= */}
-            {/* ACT 6: ENVIRONMENT & MATURE INTEGRATION */}
+            {/* ACT 5: ENVIRONMENT & MATURE INTEGRATION */}
             {/* ======================================================= */}
             <section className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
               
@@ -716,7 +724,7 @@ export function CodeV2Experience({
               <div className="bg-[#0D1322]/90 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between">
                 <div>
                   <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] block mb-1">
-                    Акт 6.1 · Среда развития
+                    Акт 5.1 · Среда развития
                   </span>
                   <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
                     {payload.synthesis.environment.title}
@@ -748,7 +756,7 @@ export function CodeV2Experience({
               <div className="bg-[#0D1322]/90 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between">
                 <div>
                   <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] block mb-1">
-                    Акт 6.2 · Зрелая интеграция
+                    Акт 5.2 · Зрелая интеграция
                   </span>
                   <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
                     {payload.synthesis.mature_integration.title}
@@ -775,11 +783,11 @@ export function CodeV2Experience({
             </section>
 
             {/* ======================================================= */}
-            {/* ACT 7: PERSONAL VERIFICATION QUESTIONS */}
+            {/* ACT 6: PERSONAL VERIFICATION QUESTIONS */}
             {/* ======================================================= */}
             <section className="w-full bg-[#0D1322]/90 border border-white/10 rounded-2xl p-6 sm:p-8 backdrop-blur-md">
               <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] block mb-1">
-                Акт 7 · Личная верификация
+                Акт 6 · Личная верификация
               </span>
               <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-3">
                 Вопросы для честной проверки карты
@@ -810,7 +818,7 @@ export function CodeV2Experience({
             </section>
 
             {/* ======================================================= */}
-            {/* ACT 8: CONTEXTUAL ALBERT HANDOFF */}
+            {/* ACT 7: CONTEXTUAL ALBERT HANDOFF */}
             {/* ======================================================= */}
             <section className="w-full bg-gradient-to-br from-[#121A2A] via-[#0E1524] to-[#0A0E18] border border-[var(--color-antique-gold)]/40 rounded-2xl p-6 sm:p-8 relative shadow-2xl overflow-hidden">
               <div className="absolute top-0 right-0 w-80 h-80 bg-[radial-gradient(circle_at_top_right,rgba(200,164,93,0.12),transparent_70%)] pointer-events-none" />
@@ -824,15 +832,19 @@ export function CodeV2Experience({
                     </span>
                   </div>
 
-                  <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-3">
-                    Обсудить карту на вашей жизненной ситуации
+                  <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
+                    Альберт — проводник по вашей карте
                   </h3>
 
-                  <blockquote className="text-xs sm:text-sm text-stone-300 font-serif italic border-l-2 border-[var(--color-antique-gold)] pl-3 mb-4 leading-relaxed">
+                  <p className="text-sm sm:text-base text-stone-200 font-light leading-relaxed mb-3">
+                    Он не будет пересказывать числа. Он поможет проверить, что действительно про вас, а что требует уточнения.
+                  </p>
+
+                  <blockquote className="text-xs sm:text-sm text-stone-300 font-serif italic border-l-2 border-[var(--color-antique-gold)] pl-3 mb-3 leading-relaxed">
                     {payload.albert_context.albert_canonical_quote}
                   </blockquote>
 
-                  <p className="text-xs text-stone-400 font-light leading-relaxed">
+                  <p className="text-xs sm:text-sm text-stone-400 font-light leading-relaxed">
                     {payload.albert_context.opening_statement}
                   </p>
                 </div>
@@ -843,7 +855,7 @@ export function CodeV2Experience({
                   className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-medium text-sm hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2.5 shadow-xl shadow-amber-950/30 whitespace-nowrap"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  <span>Поговорить с Альбертом о карте</span>
+                  <span>Поговорить с Альбертом о моей карте</span>
                 </button>
               </div>
             </section>

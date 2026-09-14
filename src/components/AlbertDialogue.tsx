@@ -105,9 +105,9 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
       let greeting = '';
       if (codeV2Context) {
         const questionPart = codeV2Context.opening_question
-          ? `\n\n«${codeV2Context.opening_question}»`
+          ? `\n\n${codeV2Context.opening_question}`
           : '';
-        greeting = `Здравствуйте. ${codeV2Context.opening_statement}${questionPart}\n\nМожем проверить эту связку на вашей ситуации или разобрать деталь, с которой вы не согласны.`;
+        greeting = `Здравствуйте. ${codeV2Context.opening_statement}${questionPart}\n\nМожем проверить эту развилку на вашей реальной ситуации или разобрать то, с чем вы не согласны.`;
       } else if (hasTruthCorrections(truthRef.current.state)) {
         greeting = 'Здравствуйте. Продолжим с темы вашего исследования с учётом сделанных уточнений. Какую деталь сейчас важно разобрать?';
       } else if (meetingResult) {

@@ -107,7 +107,7 @@ export function buildCanonicalEnvelopeFromWebContext(
     } : null,
     evidence,
     experience_state: {
-      myth_summary: (v2?.central_motif || context?.mythAnchors?.mainImage || context?.mythAnchors?.title || "Символический миф").slice(0, 300),
+      myth_summary: (v2?.synthesis?.strongest_motif || v2?.central_motif || context?.mythAnchors?.mainImage || context?.mythAnchors?.title || "Символический миф").slice(0, 300),
       meeting_summary: (v2?.method_orientation?.summary || context?.meetingSummary || "Встреча зеркал").slice(0, 500),
       updated_at: now,
     },
