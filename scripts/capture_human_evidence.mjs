@@ -58,8 +58,10 @@ async function run() {
 
   // 3. Middle of five-position journey
   console.log('Capturing 3: middle of five-position journey...');
-  const posHeader = page2.locator('text=Пять позиций вашего кода');
-  await posHeader.scrollIntoViewIfNeeded();
+  await page2.evaluate(() => {
+    const el = document.querySelector('section.space-y-6');
+    if (el) el.scrollIntoView({ behavior: 'instant', block: 'start' });
+  });
   await page2.waitForTimeout(600);
   const path3 = path.join(outDir, '03_five_position_journey.png');
   await page2.screenshot({ path: path3, fullPage: false });

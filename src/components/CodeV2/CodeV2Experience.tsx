@@ -202,10 +202,17 @@ export function CodeV2Experience({
               <h1 className="font-serif text-3xl sm:text-5xl font-light text-stone-100 tracking-tight mb-4">
                 Ваш Цифровой Код
               </h1>
-              <p className="text-sm sm:text-base text-stone-300 font-light leading-relaxed max-w-lg mx-auto">
-                Дата рождения здесь превращается не в одну цифру, а в пять разных позиций.
-                Они показывают: что движет вами изнутри, как раскрывается ваш потенциал, как вы действуете, в какой среде ваши силы собираются, и во что всё это может складываться со временем.
-              </p>
+              <div className="text-sm sm:text-base text-stone-300 font-light leading-relaxed max-w-lg mx-auto space-y-3">
+                <p>
+                  Дата рождения здесь превращается не в одну цифру,
+                  а в пять разных позиций.
+                </p>
+                <p className="text-stone-400 text-xs sm:text-sm">
+                  Они показывают: что движет вами изнутри, как раскрывается ваш потенциал,
+                  как вы действуете, в какой среде ваши силы собираются,
+                  и во что всё это может складываться со временем.
+                </p>
+              </div>
             </div>
 
             {/* QA Presets: Only shown if isQaMode */}
@@ -363,120 +370,124 @@ export function CodeV2Experience({
               </button>
             </div>
 
-            {/* 1. FIVE NUMBERS RIBBON & EXPANDABLE CALCULATION */}
-            <section className="w-full bg-[#0D1322]/80 border border-white/5 rounded-2xl p-5 sm:p-7 backdrop-blur-md">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/5">
-                <div className="text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)]">
+            {/* 1. HERO OPENING: FIVE NUMBERS & CENTRAL MOTIF (MEANING FIRST) */}
+            <section className="w-full bg-gradient-to-br from-[#12192B] via-[#0E1524] to-[#0A0E18] border border-[var(--color-antique-gold)]/30 rounded-3xl p-6 sm:p-9 relative shadow-2xl overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-[radial-gradient(circle_at_top_right,rgba(200,164,93,0.12),transparent_70%)] pointer-events-none" />
+
+              {/* A. Five Numbers Visually (Editorial Typographic Strip) */}
+              <div className="flex flex-col items-center text-center mb-7 relative z-10">
+                <div className="text-[10px] sm:text-[11px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-3">
                   Пять позиций вашей карты
                 </div>
+
+                <div className="flex items-center justify-center gap-2 sm:gap-6 flex-wrap py-2">
+                  {payload.positions.map((pos, idx) => (
+                    <React.Fragment key={pos.position}>
+                      <div className="flex flex-col items-center px-1.5 sm:px-3">
+                        <span className="font-serif text-3xl sm:text-5xl text-amber-100 font-light leading-none">
+                          {pos.energy}
+                        </span>
+                        <span className="text-[10px] sm:text-xs text-[var(--color-antique-gold)] font-medium mt-1.5">
+                          {pos.energy_name}
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] font-mono text-stone-400 uppercase tracking-wider mt-0.5">
+                          {pos.public_name.replace('Число ', '')}
+                        </span>
+                      </div>
+                      {idx < payload.positions.length - 1 && (
+                        <span className="text-stone-600 text-lg sm:text-2xl font-light select-none pb-4 sm:pb-5">·</span>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+
+              {/* B & C. Central Human Motif (Heading + Why It Matters) */}
+              <div className="pt-6 border-t border-white/10 relative z-10">
+                <div className="text-[10px] sm:text-[11px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-2">
+                  Центральный нерв карты
+                </div>
+
+                <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-4 leading-snug">
+                  {payload.albert_context?.strongest_hypothesis || 'Внутренний контраст вашей карты'}
+                </h2>
+
+                <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-sm sm:text-base text-stone-200 leading-relaxed font-light mb-6">
+                  <p>{getFirstSentence(payload.synthesis.strongest_motif)}</p>
+                </div>
+
+                {/* Quiet Albert Invitation right after central motif */}
+                <div className="pt-5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm text-stone-200 font-medium">
+                      Хотите проверить это на себе?
+                    </div>
+                    <div className="text-xs text-stone-400 font-light mt-0.5">
+                      Альберт уже видит вашу карту.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onOpenAlbert(payload)}
+                    className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-[var(--color-antique-gold)]/15 border border-[var(--color-antique-gold)]/40 hover:bg-[var(--color-antique-gold)]/25 text-amber-200 text-xs font-mono transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Обсудить с Альбертом</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* D. Expandable Calculation: "Вот откуда это взялось" (Meaning first, calculation second) */}
+              <div className="mt-6 pt-4 border-t border-white/10 relative z-10">
                 <button
                   type="button"
                   onClick={() => setShowCalcChain(!showCalcChain)}
-                  className="text-xs text-stone-400 hover:text-stone-200 transition-colors cursor-pointer flex items-center gap-1.5 self-start sm:self-auto"
+                  className="text-xs text-stone-400 hover:text-stone-200 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  <Calculator className="w-3.5 h-3.5" />
+                  <Calculator className="w-3.5 h-3.5 text-[var(--color-antique-gold)]" />
                   <span>{showCalcChain ? 'Скрыть ход расчёта' : 'Вот откуда это взялось'}</span>
-                  {showCalcChain ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  {showCalcChain ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5 text-stone-400" />}
                 </button>
-              </div>
 
-              {/* 5-Number Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                {payload.positions.map((pos) => (
-                  <div
-                    key={pos.position}
-                    className="bg-black/30 border border-white/5 rounded-xl p-3.5 flex flex-col items-center text-center transition-all hover:border-[var(--color-antique-gold)]/20"
-                  >
-                    <span className="text-[10px] font-mono text-stone-400 uppercase tracking-wider mb-1 truncate w-full">
-                      {pos.public_name}
-                    </span>
-                    <div className="font-serif text-3xl sm:text-4xl text-amber-100 font-light leading-none my-1">
-                      {pos.energy}
-                    </div>
-                    <div className="text-xs text-[var(--color-antique-gold)] font-medium">
-                      {pos.energy_name}
-                    </div>
-                    <div className="text-[10px] text-stone-400 mt-1 line-clamp-1">
-                      {pos.role}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Expandable arithmetic chain */}
-              <AnimatePresence>
-                {showCalcChain && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="mt-6 pt-5 border-t border-white/10 overflow-hidden"
-                  >
-                    <div className="text-xs font-mono uppercase tracking-wider text-stone-400 mb-3">
-                      Откуда взялись эти числа:
-                    </div>
-                    <div className="space-y-2">
-                      {payload.calculation.calculation_chain.map((step, idx) => (
-                        <div
-                          key={step.position}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white/2 rounded-xl border border-white/5 text-xs"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <span className="w-5 h-5 rounded-full bg-white/10 text-stone-300 font-mono text-[10px] flex items-center justify-center">
-                              {idx + 1}
-                            </span>
-                            <span className="font-medium text-stone-200">{step.public_name}:</span>
-                            <span className="text-stone-400">{step.formula_label}</span>
+                <AnimatePresence>
+                  {showCalcChain && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="mt-4 pt-4 border-t border-white/5 overflow-hidden"
+                    >
+                      <div className="text-xs font-mono uppercase tracking-wider text-stone-400 mb-3">
+                        Откуда взялись эти числа:
+                      </div>
+                      <div className="space-y-2">
+                        {payload.calculation.calculation_chain.map((step, idx) => (
+                          <div
+                            key={step.position}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-black/40 rounded-xl border border-white/5 text-xs"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-5 h-5 rounded-full bg-white/10 text-stone-300 font-mono text-[10px] flex items-center justify-center">
+                                {idx + 1}
+                              </span>
+                              <span className="font-medium text-stone-200">{step.public_name}:</span>
+                              <span className="text-stone-400">{step.formula_label}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <code className="font-mono text-amber-200 bg-black/60 px-2.5 py-1 rounded-md border border-white/5">
+                                {step.calculation}
+                              </code>
+                              <span className="text-[11px] text-stone-400 hidden sm:inline">
+                                {step.rule}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <code className="font-mono text-amber-200 bg-black/40 px-2.5 py-1 rounded-md border border-white/5">
-                              {step.calculation}
-                            </code>
-                            <span className="text-[11px] text-stone-400 hidden sm:inline">
-                              {step.rule}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </section>
-
-            {/* 2. CENTRAL HUMAN MOTIF (MEANING FIRST) */}
-            <section className="w-full bg-gradient-to-br from-[#12192B] to-[#0A0E18] border border-[var(--color-antique-gold)]/30 rounded-2xl p-6 sm:p-8 relative shadow-2xl">
-              <div className="text-[11px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-2">
-                Центральный нерв карты
-              </div>
-
-              <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-4">
-                {payload.albert_context.strongest_hypothesis || 'Внутренний контраст вашей карты'}
-              </h2>
-
-              <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-sm sm:text-base text-stone-200 leading-relaxed font-light space-y-3">
-                <p>{getFirstSentence(payload.synthesis.strongest_motif)}</p>
-              </div>
-
-              {/* Quiet Albert Invitation after central motif */}
-              <div className="mt-6 pt-5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div className="text-sm text-stone-200 font-medium">
-                    Хотите проверить это на себе?
-                  </div>
-                  <div className="text-xs text-stone-400 font-light mt-0.5">
-                    Альберт уже видит вашу карту.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onOpenAlbert(payload)}
-                  className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-[var(--color-antique-gold)]/15 border border-[var(--color-antique-gold)]/40 hover:bg-[var(--color-antique-gold)]/25 text-amber-200 text-xs font-mono transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Обсудить с Альбертом</span>
-                </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </section>
 
@@ -675,46 +686,7 @@ export function CodeV2Experience({
               </div>
             </section>
 
-            {/* 6. DEVELOPING ENVIRONMENT & MATURE SYNTHESIS */}
-            <section className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Развивающая среда */}
-              <div className="bg-[#0D1322]/80 border border-white/5 rounded-2xl p-6 sm:p-7 backdrop-blur-md flex flex-col justify-between">
-                <div>
-                  <div className="text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)] mb-1">
-                    Развивающая среда
-                  </div>
-                  <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-2">
-                    {payload.positions[3].public_name}: {payload.positions[3].energy_name} · {payload.positions[3].energy}
-                  </h3>
-                  <div className="text-xs font-serif italic text-stone-400 mb-3">
-                    «{payload.positions[3].role_question}»
-                  </div>
-                  <p className="text-xs sm:text-sm text-stone-300 font-light leading-relaxed">
-                    {getFirstSentence(payload.synthesis.environment.summary)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Зрелое проявление */}
-              <div className="bg-[#0D1322]/80 border border-white/5 rounded-2xl p-6 sm:p-7 backdrop-blur-md flex flex-col justify-between">
-                <div>
-                  <div className="text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)] mb-1">
-                    Зрелое проявление
-                  </div>
-                  <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-2">
-                    {payload.positions[4].public_name}: {payload.positions[4].energy_name} · {payload.positions[4].energy}
-                  </h3>
-                  <div className="text-xs font-serif italic text-stone-400 mb-3">
-                    «{payload.positions[4].role_question}»
-                  </div>
-                  <p className="text-xs sm:text-sm text-stone-300 font-light leading-relaxed">
-                    {getFirstSentence(payload.synthesis.mature_integration.summary)}
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* 7. VERIFICATION QUESTIONS */}
+            {/* 5. VERIFICATION QUESTIONS */}
             <section className="w-full bg-[#0D1322]/80 border border-white/5 rounded-2xl p-6 sm:p-8 backdrop-blur-md">
               <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
                 Вопросы для проверки карты

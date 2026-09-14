@@ -45,7 +45,7 @@ describe('Code V2 Human Product Experience UI Contract', () => {
   it('normal calculated view (?preview=v2) contains none of the forbidden terms, fits word budget and exhibits human language', async () => {
     const payload = await calculateCanonicalCodeV2('06.05.1986');
 
-    // Default collapsed view: word budget 450-700 words
+    // Default collapsed view: word budget strictly 450-700 words
     const html = renderToString(
       React.createElement(CodeV2Experience, {
         initialDate: '06.05.1986',
@@ -59,11 +59,29 @@ describe('Code V2 Human Product Experience UI Contract', () => {
       expect(html).not.toContain(term);
     }
 
+    // Must NOT contain internal taxonomy terms in normal view
+    const FORBIDDEN_TAXONOMY = ['TENSION', 'RESONANCE', 'AMPLIFICATION', 'BRAKE', 'COMPENSATION'];
+    for (const tax of FORBIDDEN_TAXONOMY) {
+      expect(html).not.toContain(tax);
+    }
+
+    // Visible text budget: 450-700 Russian words
+    const textOnly = html.replace(/<[^>]*>/g, ' ');
+    const ruWords = textOnly.match(/[а-яА-ЯёЁ]+/g) || [];
+    expect(ruWords.length).toBeGreaterThanOrEqual(450);
+    expect(ruWords.length).toBeLessThanOrEqual(700);
+
+    // Sequence verification: 5 numbers visually, central motif, quiet Albert link, expandable calculation
+    expect(html).toContain('Пять позиций вашей карты');
+    expect(html).toContain('Покой внутри — жёсткий мотор в деле');
+    expect(html).toContain('Хотите проверить это на себе?');
+    expect(html).toContain('Вот откуда это взялось');
+
     // Must contain human labels
     expect(html).toContain('Как это читать');
     expect(html).toContain('О чём это число');
     expect(html).toContain('Проверьте на себе');
-    expect(html).toContain('Хотите проверить это на себе?');
+    expect(html).toContain('Вопросы для проверки карты');
     expect(html).toContain('Альберт — собеседник по вашей карте');
     expect(html).toContain('Поговорить с Альбертом');
 
