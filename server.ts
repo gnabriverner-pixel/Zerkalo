@@ -19,7 +19,7 @@ import {
 import { generateMeetingOfMirrors } from "./server/meeting";
 import { generateAlbertDialogue } from "./server/albert";
 import crypto from "crypto";
-import { calculateCanonicalDigitalCode } from "./server/dcsBridge";
+import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2 } from "./server/dcsBridge";
 import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
 import { registerDeletionScope, executeDataDeletion } from "./server/deletion";
 import { installConsentRoutes } from './server/consent';
@@ -339,6 +339,22 @@ async function startServer() {
         status: "error",
         code: isUnavailable ? "dcs_canonical_engine_unavailable" : "invalid_input",
         message: isUnavailable ? "Канонический сервис расчёта временно недоступен" : err.message,
+      });
+    }
+  });
+
+  // Dedicated Owner-Only / Preview Endpoint for Code V2
+  app.post("/api/preview/code-v2", async (req, res) => {
+    try {
+      const dob = String(req.body?.dob || "").trim();
+      const payload = await calculateCanonicalCodeV2(dob);
+      return res.status(200).json({ status: "ok", payload });
+    } catch (err: any) {
+      const isUnavailable = err?.message?.includes("dcs_canonical_code_v2_unavailable");
+      return res.status(isUnavailable ? 503 : 400).json({
+        status: "error",
+        code: isUnavailable ? "dcs_canonical_code_v2_unavailable" : "invalid_input",
+        message: isUnavailable ? "Канонический сервис Interpretation V2 временно недоступен" : err.message,
       });
     }
   });

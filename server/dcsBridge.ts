@@ -1,7 +1,7 @@
 import { execFile } from "child_process";
 import path from "path";
 import { promisify } from "util";
-import type { CalculationResult } from "../src/types";
+import type { CalculationResult, CodeV2Payload } from "../src/types";
 
 const execFileAsync = promisify(execFile);
 
@@ -206,3 +206,64 @@ export function computeCanonicalFallback(dob: string): CanonicalCalculationResul
     canonicalAuthority: "digital-code-system/engine.py::full_analysis",
   };
 }
+
+const codeV2Cache = new Map<string, CodeV2Payload>();
+
+/**
+ * Calculates structured Code V2 payload strictly using DCS canonical engine & V2 library.
+ * Authority: digital-code-system/scripts/code_v2_payload.py::assemble_code_v2_payload
+ */
+export async function calculateCanonicalCodeV2(dob: string): Promise<CodeV2Payload> {
+  const trimmed = dob.trim();
+  validateDobFormat(trimmed);
+
+  const cached = codeV2Cache.get(trimmed);
+  if (cached) {
+    return cached;
+  }
+
+  const { root, bridgeScript, pythonBin, url: dcsUrl } = getDcsConfig();
+
+  // 1. Try loopback service first if available
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const response = await fetch(`${dcsUrl}/api/canonical/code-v2`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dob: trimmed, request_id: `code_v2_${Date.now()}` }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (response.ok) {
+      const data = (await response.json()) as any;
+      if (data.status === "ok" && data.payload) {
+        codeV2Cache.set(trimmed, data.payload);
+        return data.payload;
+      }
+    }
+  } catch (_httpErr) {
+    // Fallthrough to CLI bridge
+  }
+
+  // 2. Direct CLI bridge execution (canonical process boundary)
+  try {
+    const { stdout } = await execFileAsync(pythonBin, [bridgeScript, "code-v2", "--dob", trimmed], {
+      timeout: 10_000,
+      cwd: root,
+      env: { ...process.env, PYTHONPATH: root },
+    });
+
+    const parsed = JSON.parse(stdout.trim());
+    if (parsed && parsed.status === "ok" && parsed.calculation && parsed.positions) {
+      codeV2Cache.set(trimmed, parsed as CodeV2Payload);
+      return parsed as CodeV2Payload;
+    }
+    throw new Error("invalid_dcs_code_v2_payload");
+  } catch (cliErr: any) {
+    console.error(`[dcsBridge] DCS Canonical Code V2 Engine unavailable:`, cliErr?.message);
+    throw new Error("dcs_canonical_code_v2_unavailable");
+  }
+}
+

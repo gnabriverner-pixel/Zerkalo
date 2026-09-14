@@ -66,7 +66,7 @@ export function buildCanonicalEnvelopeFromWebContext(
   const expiresAt = new Date(Date.now() + 7 * 86400_000).toISOString();
   const userRef = crypto.randomUUID();
 
-  const c = context?.codeAnchors?.numbers || {};
+  const c = context?.codeAnchors?.numbers || (context as any)?.codeV2Payload?.calculation?.five_numbers || {};
   const components = [
     ["mind", c.soul], ["path", c.path], ["direction", c.direction],
     ["expression", c.expression], ["result", c.result],
@@ -81,6 +81,8 @@ export function buildCanonicalEnvelopeFromWebContext(
     .map((h) => h.text.trim().slice(0, 2000))
     .filter(Boolean)
     .slice(-3);
+
+  const v2 = (context as any)?.codeV2Payload;
 
   return {
     schema_version: "telegram_v2.context.v1",
@@ -105,18 +107,18 @@ export function buildCanonicalEnvelopeFromWebContext(
     } : null,
     evidence,
     experience_state: {
-      myth_summary: (context?.mythAnchors?.mainImage || context?.mythAnchors?.title || "Символический миф").slice(0, 300),
-      meeting_summary: (context?.meetingSummary || "Встреча зеркал").slice(0, 500),
+      myth_summary: (v2?.central_motif || context?.mythAnchors?.mainImage || context?.mythAnchors?.title || "Символический миф").slice(0, 300),
+      meeting_summary: (v2?.method_orientation?.summary || context?.meetingSummary || "Встреча зеркал").slice(0, 500),
       updated_at: now,
     },
     active_thread: {
-      current_question: (context?.centralQuestion || "В чем ваша главная опора сейчас?").slice(0, 300),
+      current_question: (v2?.albert_context?.opening_question || context?.centralQuestion || "В чем ваша главная опора сейчас?").slice(0, 300),
       opened_at: now,
-      next_open_loop: (context?.centralQuestion || "В чем ваша главная опора сейчас?").slice(0, 300),
-      topic_summary: (context?.albertInsight || "Встреча зеркал: Код и Личный миф").slice(0, 100),
+      next_open_loop: (v2?.albert_context?.opening_question || context?.centralQuestion || "В чем ваша главная опора сейчас?").slice(0, 300),
+      topic_summary: (v2?.albert_context?.strongest_hypothesis || context?.albertInsight || "Встреча зеркал: Код и Личный миф").slice(0, 100),
     },
     memory_summary: {
-      summary: (context?.meetingSummary || "Завершена встреча зеркал.").slice(0, 300),
+      summary: (v2?.method_orientation?.summary || context?.meetingSummary || "Завершена встреча зеркал.").slice(0, 300),
       salient_user_statements: salientStatements,
       // Same bounded conversational memory consumed by the Telegram core.
       // Assistant text remains history, never confirmed recognition evidence.
