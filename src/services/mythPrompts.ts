@@ -83,7 +83,7 @@ export function buildMeetingOfMirrorsPrompt(
 ===========================================
 - Пять главных чисел: Душа ${calc.soul} (${calc.soulComposite || calc.soul}), Путь ${calc.path} (${calc.pathComposite || calc.path}), Выражение ${calc.expression}, Направление ${calc.direction}, Результат ${calc.result} (${calc.resultComposite || calc.result})
 Это результаты детерминированного расчёта по используемому методу, не проверенные свойства личности.
-Ниже — авторские интерпретации чисел, а не дополнительные вычисленные факты:
+Ниже — авторские интерпретации чисел, а не дополнительные вычисленные факты. Версия чтения: ${firstMirror?.interpretationVersion || 'предыдущее чтение'}. Используй только переданное чтение, не дописывай привычные характеристики чисел:
 - Ключевой смысловой узор Кода: ${firstMirror?.keyInsight || 'Интерпретационный материал не передан; не выдумывай свойства из чисел.'}
 - Главный узор: ${firstMirror?.blocks?.find(b => b.id === 'main_pattern')?.text || ''}
 - Зона силы: ${firstMirror?.blocks?.find(b => b.id === 'strength')?.text || ''}

@@ -1,8 +1,9 @@
 import crypto from "crypto";
 import { PRIMARY_MODEL } from './routerai';
-import { meetingEvidence, mergeTruthEvidence, type TruthState } from "./truthEvidence";
+import { machineClaim, meetingEvidence, mergeTruthEvidence, type TruthState } from "./truthEvidence";
 
 export interface AlbertDialogueContext {
+  userNote?: string;
   meetingSummary?: string;
   confidenceNote?: string;
   centralQuestion?: string;
@@ -76,13 +77,19 @@ export function buildCanonicalEnvelopeFromWebContext(
     context?.resonances || [], context?.divergences || [], now);
 
   // Memory statements from history
-  const salientStatements = (history || [])
+  const salientStatements = [...(context?.userNote ? [{ sender: "user", text: context.userNote }] : []), ...(history || [])]
     .filter((h) => h.sender === "user")
     .map((h) => h.text.trim().slice(0, 2000))
     .filter(Boolean)
     .slice(-3);
 
   const v2 = (context as any)?.codeV2Payload;
+  const codeHypothesis = v2?.central_motif || v2?.synthesis?.strongest_motif || context?.codeAnchors?.keyInsight;
+  if (typeof codeHypothesis === 'string' && codeHypothesis.trim()) {
+    evidence.push(machineClaim(codeHypothesis.slice(0, 2000), 'code_interpretation', 'code.central_motif', now));
+  }
+  const question = context?.centralQuestion || v2?.albert_context?.opening_question || "Что из увиденного вы хотели бы проверить на своём опыте?";
+
 
   return {
     schema_version: "telegram_v2.context.v1",
@@ -100,25 +107,25 @@ export function buildCanonicalEnvelopeFromWebContext(
       policy_marker: "7d_retention_bound",
     },
     derived_code: components.length ? {
-      method_version: "v1",
+      method_version: v2 ? "interpretation_v2" : "v1",
       profile_ref: `code_${components.map(c => c.value_summary).join("_")}`,
       components,
       generated_at: now,
     } : null,
     evidence,
     experience_state: {
-      myth_summary: (v2?.synthesis?.strongest_motif || v2?.central_motif || context?.mythAnchors?.mainImage || context?.mythAnchors?.title || "Символический миф").slice(0, 300),
-      meeting_summary: (v2?.method_orientation?.summary || context?.meetingSummary || "Встреча зеркал").slice(0, 500),
+      myth_summary: (context?.mythAnchors?.mainImage || context?.mythAnchors?.title || "").slice(0, 300) || null,
+      meeting_summary: (context?.meetingSummary || "").slice(0, 500) || null,
       updated_at: now,
     },
     active_thread: {
-      current_question: (v2?.albert_context?.opening_question || context?.centralQuestion || "В чем ваша главная опора сейчас?").slice(0, 300),
+      current_question: question.slice(0, 300),
       opened_at: now,
-      next_open_loop: (v2?.albert_context?.opening_question || context?.centralQuestion || "В чем ваша главная опора сейчас?").slice(0, 300),
-      topic_summary: (v2?.albert_context?.strongest_hypothesis || context?.albertInsight || "Встреча зеркал: Код и Личный миф").slice(0, 100),
+      next_open_loop: question.slice(0, 300),
+      topic_summary: (context?.albertInsight || v2?.albert_context?.strongest_hypothesis || "Исследование своего опыта").slice(0, 100),
     },
     memory_summary: {
-      summary: (v2?.method_orientation?.summary || context?.meetingSummary || "Завершена встреча зеркал.").slice(0, 300),
+      summary: (context?.meetingSummary || (codeHypothesis ? "Открыта символическая карта Кода; её гипотезы ещё предстоит проверить." : "Начат разговор о личном опыте.")).slice(0, 300),
       salient_user_statements: salientStatements,
       // Same bounded conversational memory consumed by the Telegram core.
       // Assistant text remains history, never confirmed recognition evidence.

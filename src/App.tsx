@@ -20,6 +20,8 @@ import {
   hasMeaningfulDraft,
   TransientDraftV1
 } from './services/myMirrorStorage';
+import { firstMirrorFromV2 } from './services/codeV2Session';
+import { truthJourneyKey } from './services/albertTruthState';
 import { EmblemDefs } from './art/emblem';
 
 export default function App() {
@@ -35,11 +37,7 @@ export default function App() {
   const [showAbout, setShowAbout] = useState(false);
 
   // Digital Code V2 Preview State
-  const [isPreviewV2, setIsPreviewV2] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    const params = new URLSearchParams(window.location.search);
-    return params.get('preview') === 'v2' || params.get('v') === '2';
-  });
+  const [isPreviewV2, setIsPreviewV2] = useState(true);
   const [isQaMode, setIsQaMode] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     const params = new URLSearchParams(window.location.search);
@@ -66,6 +64,8 @@ export default function App() {
       setMode('alabaster');
     }
   }, []);
+
+  const [journeyId, setJourneyId] = useState<string>(() => crypto.randomUUID());
 
   // Shared state between lenses
   const [codeDate, setCodeDate] = useState<string>('');
@@ -118,6 +118,8 @@ export default function App() {
         mode,
         codeDate,
         codeResult,
+        codeV2Payload,
+        journeyId,
         firstMirror,
         storyInputs,
         storyResult,
@@ -126,12 +128,14 @@ export default function App() {
       });
       setTransientDraft(loadTransientDraft());
     }
-  }, [mode, codeDate, codeResult, firstMirror, storyInputs, storyResult, meetingResult, meetingUserNote]);
+  }, [mode, codeDate, codeResult, codeV2Payload, journeyId, firstMirror, storyInputs, storyResult, meetingResult, meetingUserNote]);
 
   const handleRestoreSavedMirror = () => {
     const snapshot = loadMyMirrorSnapshot();
     if (!snapshot) return;
 
+    setCodeV2Payload(snapshot.codeV2Payload || null);
+    setJourneyId(snapshot.journeyId || truthJourneyKey(snapshot.codeResult, snapshot.storyResult, snapshot.meetingResult));
     setCodeDate(snapshot.codeDate);
     setCodeResult(snapshot.codeResult);
     setFirstMirror(snapshot.firstMirror);
@@ -151,13 +155,15 @@ export default function App() {
     const draft = loadTransientDraft();
     if (!draft) return;
 
-    if (draft.codeDate) setCodeDate(draft.codeDate);
-    if (draft.codeResult) setCodeResult(draft.codeResult);
-    if (draft.firstMirror) setFirstMirror(draft.firstMirror);
-    if (draft.storyInputs) setStoryInputs(draft.storyInputs);
-    if (draft.storyResult) setStoryResult(draft.storyResult);
-    if (draft.meetingResult) setMeetingResult(draft.meetingResult);
-    if (draft.meetingUserNote) setMeetingUserNote(draft.meetingUserNote);
+    setCodeV2Payload(draft.codeV2Payload || null);
+    setJourneyId(draft.journeyId || truthJourneyKey(draft.codeResult, draft.storyResult, draft.meetingResult));
+    setCodeDate(draft.codeDate ?? '');
+    setCodeResult(draft.codeResult ?? null);
+    setFirstMirror(draft.firstMirror ?? null);
+    setStoryInputs(draft.storyInputs ?? null);
+    setStoryResult(draft.storyResult ?? null);
+    setMeetingResult(draft.meetingResult ?? null);
+    setMeetingUserNote(draft.meetingUserNote ?? '');
 
     if (draft.mode && draft.mode !== 'entry') {
       setMode(draft.mode);
@@ -174,6 +180,9 @@ export default function App() {
     clearTransientDraft();
     setTransientDraft(null);
     setCodeDate('');
+    setPreviewDob('');
+    setCodeV2Payload(null);
+    setJourneyId(crypto.randomUUID());
     setCodeResult(null);
     setFirstMirror(null);
     setStoryInputs(null);
@@ -338,7 +347,30 @@ export default function App() {
             >
               {isPreviewV2 ? (
                 <CodeV2Experience
-                  initialDate={previewDob || codeDate || ''}
+                  initialDate={codeDate || previewDob || ''}
+                  initialPayload={codeV2Payload || undefined}
+                  onCalculated={(payload) => {
+                    setCodeDate(payload.calculation.date);
+                    setPreviewDob('');
+                    setCodeResult(payload.calculation.canonical_result);
+                    setFirstMirror(firstMirrorFromV2(payload));
+                    setCodeV2Payload(payload);
+                    setMeetingResult(null);
+                  }}
+                  onChangeDate={() => {
+                    clearTransientDraft();
+                    setTransientDraft(null);
+                    setCodeDate('');
+                    setPreviewDob('');
+                    setCodeResult(null);
+                    setFirstMirror(null);
+                    setCodeV2Payload(null);
+                    setMeetingResult(null);
+                    setMeetingUserNote('');
+                    setJourneyId(crypto.randomUUID());
+                  }}
+                  onContinue={() => setMode(hasMyth ? 'meeting' : 'myth')}
+                  continueLabel={hasMyth ? 'Открыть Встречу зеркал' : 'Перейти к Личному мифу'}
                   isQaMode={isQaMode}
                   onOpenAlbert={(p) => {
                     setCodeV2Payload(p);
@@ -353,6 +385,8 @@ export default function App() {
                   initialResult={codeResult}
                   initialReading={firstMirror}
                   onCodeCalculated={(fullDate, calc, reading) => {
+                    setCodeV2Payload(null);
+                    setJourneyId(crypto.randomUUID());
                     setCodeDate(fullDate);
                     setCodeResult(calc);
                     setFirstMirror(reading || null);
@@ -389,6 +423,9 @@ export default function App() {
                 onSelectMode={(m, initialDate) => {
                   if (initialDate && initialDate !== codeDate) {
                     setCodeDate(initialDate);
+                    setPreviewDob('');
+                    setCodeV2Payload(null);
+                    setJourneyId(crypto.randomUUID());
                     setCodeResult(null);
                     setFirstMirror(null);
                     setMeetingResult(null);
@@ -419,7 +456,6 @@ export default function App() {
                   setStoryInputs(inputs);
                   setStoryResult(result || null);
                   setMeetingResult(null);
-                  setMeetingUserNote('');
                 }}
                 onNavigateToMeeting={() => setMode(hasCode ? 'meeting' : 'alabaster')}
                 hasCodeResult={hasCode}
@@ -438,6 +474,9 @@ export default function App() {
             >
               <MeetingOfMirrors
                 codeDate={codeDate}
+                codeV2Payload={codeV2Payload}
+                journeyId={journeyId}
+                onOpenAlbert={() => setIsAlbertV2Open(true)}
                 codeResult={codeResult}
                 firstMirror={firstMirror}
                 storyInputs={storyInputs}
@@ -481,6 +520,12 @@ export default function App() {
       <AlbertDialogue
         isOpen={isAlbertV2Open}
         onClose={() => setIsAlbertV2Open(false)}
+        key={journeyId}
+        journeyId={journeyId}
+        userNote={meetingUserNote}
+        onUserNoteChange={setMeetingUserNote}
+        storyResult={storyResult}
+        meetingResult={meetingResult}
         calc={codeResult}
         codeV2Payload={codeV2Payload}
         codeV2Context={codeV2Payload?.albert_context}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CodeV2Payload, CodeV2Position, CodeV2Interaction } from '../../types';
 import { EmblemPlate } from '../../art/emblem';
+import { hasCanonicalV2Result } from '../../services/codeV2Session';
 import { validateBirthDate } from '../../services/birthDate';
 import {
   Calculator,
@@ -23,6 +24,10 @@ interface CodeV2ExperienceProps {
   initialExpanded?: Record<string, boolean>;
   isQaMode?: boolean;
   onOpenAlbert: (payload: CodeV2Payload) => void;
+  onCalculated?: (payload: CodeV2Payload) => void;
+  onChangeDate?: () => void;
+  onContinue?: () => void;
+  continueLabel?: string;
   onBackToCollection?: () => void;
   onSwitchToV1?: () => void;
 }
@@ -46,6 +51,10 @@ export function CodeV2Experience({
   initialExpanded,
   isQaMode = false,
   onOpenAlbert,
+  onCalculated,
+  onChangeDate,
+  onContinue,
+  continueLabel = 'Перейти к Личному мифу',
   onBackToCollection,
   onSwitchToV1
 }: CodeV2ExperienceProps) {
@@ -67,13 +76,20 @@ export function CodeV2Experience({
   const yearRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
+  const requestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => requestRef.current?.abort(), []);
+
   const fetchV2Calculation = async (fullDob: string) => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
     setIsLoading(true);
     setApiError(null);
     setDateError('');
 
     try {
-      const resp = await fetch('/api/preview/code-v2', {
+      const resp = await fetch('/api/code-v2', {
+        signal: controller.signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dob: fullDob })
@@ -85,25 +101,32 @@ export function CodeV2Experience({
       }
 
       const data = await resp.json();
-      if (data.status !== 'ok' || !data.payload) {
+      if (data.status !== 'ok' || !data.payload || !hasCanonicalV2Result(data.payload)) {
         throw new Error('Некорректный ответ сервиса расчёта');
       }
 
+      if (controller.signal.aborted) return;
       setPayload(data.payload);
+      onCalculated?.(data.payload);
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     } catch (err: any) {
+      if (controller.signal.aborted) return;
       console.error('Code calculation failed:', err);
       setApiError(err.message || 'Ошибка соединения с модулем расчёта');
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) setIsLoading(false);
     }
   };
 
   // Auto-calculate on initial load only if date is explicitly provided
   useEffect(() => {
     if (!initialDate) return;
+    if (initialPayload?.calculation.date === initialDate && hasCanonicalV2Result(initialPayload)) {
+      setPayload(initialPayload);
+      return;
+    }
     const parts = initialDate.split('.');
     if (parts.length === 3) {
       const d = parts[0].trim().padStart(2, '0');
@@ -204,13 +227,10 @@ export function CodeV2Experience({
               </h1>
               <div className="text-sm sm:text-base text-stone-300 font-light leading-relaxed max-w-lg mx-auto space-y-3">
                 <p>
-                  Дата рождения здесь превращается не в одну цифру,
-                  а в пять разных позиций.
+                  Посмотрите на привычную ситуацию с неожиданной стороны.
                 </p>
                 <p className="text-stone-400 text-xs sm:text-sm">
-                  Они показывают: что движет вами изнутри, как раскрывается ваш потенциал,
-                  как вы действуете, в какой среде ваши силы собираются,
-                  и во что всё это может складываться со временем.
+                  По дате рождения мы предложим символическую карту. Вы сможете узнать в ней что-то своё, уточнить или не согласиться — ваш опыт важнее описания.
                 </p>
               </div>
             </div>
@@ -361,7 +381,11 @@ export function CodeV2Experience({
               <button
                 type="button"
                 onClick={() => {
+                  requestRef.current?.abort();
                   setPayload(null);
+                  setDateError('');
+                  setApiError(null);
+                  onChangeDate?.();
                   setTimeout(() => dayRef.current?.focus(), 100);
                 }}
                 className="text-stone-400 hover:text-[var(--color-antique-gold)] transition-colors cursor-pointer text-xs"
@@ -413,7 +437,8 @@ export function CodeV2Experience({
                 </h2>
 
                 <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-sm sm:text-base text-stone-200 leading-relaxed font-light mb-6">
-                  <p>{getFirstSentence(payload.synthesis.strongest_motif)}</p>
+                  <p>{getFirstSentence(payload.central_motif || payload.synthesis.strongest_motif)}</p>
+                  {payload.opening_scene && <p className="mt-3 text-stone-300">{payload.opening_scene}</p>}
                 </div>
 
                 {/* Quiet Albert Invitation right after central motif */}
@@ -651,6 +676,14 @@ export function CodeV2Experience({
               </div>
             </section>
 
+            {onContinue && (
+              <div className="rounded-2xl border border-white/10 p-6 space-y-3">
+                <h2 className="font-serif text-2xl">Посмотреть с другой стороны</h2>
+                <p className="text-sm text-stone-300">Личный миф начинается с ваших слов и образов. Его история не подстраивается под числа.</p>
+                <button type="button" onClick={onContinue} className="min-h-[44px] px-5 py-3 rounded-xl bg-[var(--color-antique-gold)] text-[#111622] cursor-pointer">{continueLabel}</button>
+              </div>
+            )}
+
             {/* 5. KEY CONNECTIONS */}
             <section className="w-full bg-[#0D1322]/80 border border-white/5 rounded-2xl p-6 sm:p-8 backdrop-blur-md">
               <div className="max-w-2xl mb-6">
@@ -681,32 +714,6 @@ export function CodeV2Experience({
                         {getFirstSentence(inter.meaning)}
                       </p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* 5. VERIFICATION QUESTIONS */}
-            <section className="w-full bg-[#0D1322]/80 border border-white/5 rounded-2xl p-6 sm:p-8 backdrop-blur-md">
-              <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
-                Вопросы для проверки карты
-              </h2>
-              <p className="text-xs sm:text-sm text-stone-400 font-light leading-relaxed mb-6">
-                Посмотрите, насколько эти наблюдения соотносятся с вашим реальным жизненным опытом:
-              </p>
-
-              <div className="space-y-3 mb-4">
-                {payload.verification.map((q, idx) => (
-                  <div
-                    key={idx}
-                    className="p-4 bg-black/30 rounded-xl border border-white/5 flex items-start gap-3.5"
-                  >
-                    <span className="w-6 h-6 rounded-full bg-[var(--color-antique-gold)]/10 text-amber-200 font-mono text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                      {idx + 1}
-                    </span>
-                    <p className="text-sm text-stone-200 font-serif italic leading-relaxed">
-                      «{q}»
-                    </p>
                   </div>
                 ))}
               </div>

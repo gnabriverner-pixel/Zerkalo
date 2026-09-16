@@ -15,6 +15,9 @@ import {
 
 interface AlbertDialogueProps {
   isOpen: boolean;
+  journeyId?: string;
+  userNote?: string;
+  onUserNoteChange?: (note: string) => void;
   onClose: () => void;
   calc?: CalculationResult | null;
   storyResult?: any;
@@ -40,6 +43,9 @@ const PRESET_QUESTIONS = [
 
 export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   isOpen,
+  journeyId,
+  userNote = '',
+  onUserNoteChange,
   onClose,
   calc,
   storyResult,
@@ -58,9 +64,11 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const effectiveCalc = calc || (codeV2Payload?.calculation?.five_numbers as any) || null;
-  const journeyKey = truthJourneyKey(effectiveCalc, storyResult, meetingResult);
+  const journeyKey = journeyId || truthJourneyKey(effectiveCalc, storyResult, meetingResult);
   const truthRef = useRef<{ journey: string; state: any }>({ journey: journeyKey, state: loadTruthState(journeyKey) });
   const truthEpochRef = useRef(0);
+  const requestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => requestRef.current?.abort(), []);
   if (truthRef.current.journey !== journeyKey) truthRef.current = { journey: journeyKey, state: loadTruthState(journeyKey) };
   useEffect(() => {
     const clear = () => { truthRef.current.state = undefined; truthEpochRef.current += 1; };
@@ -103,18 +111,15 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       let greeting = '';
-      if (codeV2Context) {
+      if (hasTruthCorrections(truthRef.current.state)) {
+        greeting = 'Здравствуйте. Продолжим с учётом ваших уточнений. Что сейчас важно рассмотреть?';
+      } else if (meetingResult) {
+        greeting = `Здравствуйте. Встреча оставила вопрос: «${meetingResult.reflectiveQuestion}». Можем начать с него или с вашей ситуации.`;
+      } else if (codeV2Context) {
         const questionPart = codeV2Context.opening_question
           ? `\n\n${codeV2Context.opening_question}`
           : '';
         greeting = `Здравствуйте. ${codeV2Context.opening_statement}${questionPart}\n\nМожем проверить эту развилку на вашей реальной ситуации или разобрать то, с чем вы не согласны.`;
-      } else if (hasTruthCorrections(truthRef.current.state)) {
-        greeting = 'Здравствуйте. Продолжим с темы вашего исследования с учётом сделанных уточнений. Какую деталь сейчас важно разобрать?';
-      } else if (meetingResult) {
-        const questionPart = meetingResult.reflectiveQuestion 
-          ? `В сопоставлении зеркал выделился вопрос:\n\n«${meetingResult.reflectiveQuestion}»\n\nМожем проверить его на вашей ситуации или начать с того, что важно вам сейчас.`
-          : `В сопоставлении зеркал открылся такой ракурс:\n\n«${meetingResult.albertInsight}»\n\nМожем проверить эту развилку или разобрать то, с чем вы не согласны.`;
-        greeting = `Здравствуйте. ${questionPart}`;
       } else if (calc) {
         greeting = `Здравствуйте. Перед нами карта Кода: мотив Души ${soul} и способ действия Пути ${path}.\n\nПроверим это сочетание на конкретной задаче или разберём другую деталь?`;
       } else {
@@ -137,7 +142,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSend = async (questionText?: string) => {
+  const handleSend = async (questionText?: string, retry = false) => {
     const text = (questionText || inputValue).trim();
     if (!text || isLoading) return;
 
@@ -148,20 +153,22 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    if (!retry) setMessages(prev => [...prev, userMsg]);
     setInputValue('');
     setIsLoading(true);
     setErrorText(null);
     setLastFailedMessage(null);
 
+    const controller = new AbortController();
+    requestRef.current = controller;
     try {
       const truthEpoch = truthEpochRef.current;
-      const historyPayload = messages.map(m => ({
+      const historyPayload = (retry ? messages.slice(0, -1) : messages).map(m => ({
         sender: m.sender,
         text: m.text
       }));
 
-      const contextPayload: Record<string, unknown> = {};
+      const contextPayload: Record<string, unknown> = { userNote };
       if (meetingResult) {
         contextPayload.meetingSummary = meetingResult.summary;
         contextPayload.confidenceNote = meetingResult.confidenceNote;
@@ -170,14 +177,14 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         contextPayload.resonances = meetingResult.parallels;
         contextPayload.divergences = meetingResult.divergences;
       }
-      if (calc) {
+      if (effectiveCalc) {
         contextPayload.codeAnchors = {
           numbers: {
-            soul: calc.soul,
-            path: calc.path,
-            direction: calc.direction,
-            expression: calc.expression,
-            result: calc.result
+            soul: effectiveCalc.soul,
+            path: effectiveCalc.path,
+            direction: effectiveCalc.direction,
+            expression: effectiveCalc.expression,
+            result: effectiveCalc.result
           }
         };
       }
@@ -192,10 +199,14 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         };
       }
       if (codeV2Payload) {
-        contextPayload.codeV2Payload = codeV2Payload;
+        contextPayload.codeV2Payload = {
+          central_motif: codeV2Payload.central_motif || codeV2Payload.synthesis.strongest_motif,
+          albert_context: codeV2Payload.albert_context,
+        };
       }
 
       const res = await fetch('/api/albert/dialogue', {
+        signal: controller.signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -206,9 +217,10 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         })
       });
 
+      if (controller.signal.aborted) return;
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        const safeMessage = errJson?.ui?.safe_message || 'Собеседник временно недоступен. Ваши результаты встречи зеркал сохранены — попробуйте повторить запрос.';
+        const safeMessage = errJson?.ui?.safe_message || 'Собеседник временно недоступен. Результаты остаются на странице — попробуйте повторить запрос.';
         setErrorText(safeMessage);
         setLastFailedMessage(text);
         setIsLoading(false);
@@ -216,12 +228,13 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
       }
 
       const data = await res.json();
+      if (controller.signal.aborted) return;
       if (data.truthState && truthEpoch === truthEpochRef.current) {
         truthRef.current.state = data.truthState;
         saveTruthState(journeyKey, data.truthState);
       }
       if (data.status !== 'ok' || !data.message) {
-        const safeMessage = data?.ui?.safe_message || 'Не удалось получить ответ. Ваши результаты сохранены — попробуйте повторить запрос.';
+        const safeMessage = data?.ui?.safe_message || 'Не удалось получить ответ. Попробуйте повторить запрос.';
         setErrorText(safeMessage);
         setLastFailedMessage(text);
         setIsLoading(false);
@@ -238,8 +251,9 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
       setMessages(prev => [...prev, albertMsg]);
       setIsLoading(false);
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error("Albert dialogue request failed:", err);
-      setErrorText("Собеседник временно недоступен. Ваши результаты встречи зеркал сохранены — попробуйте повторить запрос.");
+      setErrorText("Собеседник временно недоступен. Результаты остаются на странице — попробуйте повторить запрос.");
       setLastFailedMessage(text);
       setIsLoading(false);
     }
@@ -247,7 +261,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
 
   const handleRetry = () => {
     if (lastFailedMessage) {
-      handleSend(lastFailedMessage);
+      handleSend(lastFailedMessage, true);
     }
   };
 
@@ -386,6 +400,16 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
               </div>
             )}
 
+            {onUserNoteChange && messages.some(m => m.sender === 'user') && (
+              <label className="block space-y-2 text-sm text-stone-300 font-sans">
+                <span>Что я хочу оставить себе</span>
+                <textarea aria-label="Моя мысль после разговора" value={userNote} maxLength={2000}
+                  onChange={e => onUserNoteChange(e.target.value)} rows={2}
+                  placeholder="Своими словами: что стало яснее или с чем я не согласен"
+                  className="w-full rounded border border-white/20 bg-black/20 p-3 text-inherit" />
+                <span className="block text-xs">Эта заметка останется в текущем исследовании. Сохранение на устройстве — в «Моём зеркале».</span>
+              </label>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -396,7 +420,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
             {PRESET_QUESTIONS.map((q, idx) => (
               <button
                 key={idx}
-                onClick={() => handleSend(q)}
+                onClick={() => setInputValue(q === 'Вот с чем я не согласен' ? 'Не согласен с тем, что ' : q === 'Проверить на моей ситуации' ? 'В моей ситуации ' : 'Мне важно сделать следующий шаг в ')}
                 disabled={isLoading}
                 className={`text-xs px-3 py-1.5 rounded-full border whitespace-nowrap transition-all text-left disabled:opacity-50 ${
                   isDark 
@@ -433,6 +457,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
               />
               <button
                 type="submit"
+                aria-label="Отправить сообщение"
                 disabled={!inputValue.trim() || isLoading}
                 className="px-5 py-3 bg-[var(--color-antique-gold)] text-white hover:bg-[#B8934C] disabled:opacity-30 rounded-sm transition-colors flex items-center justify-center shrink-0"
               >

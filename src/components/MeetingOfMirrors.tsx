@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { loadTruthState, truthJourneyKey } from '../services/albertTruthState';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -14,7 +14,7 @@ import {
   Check,
   Trash2
 } from 'lucide-react';
-import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, MeetingApiResponse } from '../types';
+import { CalculationResult, CodeV2Payload, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, MeetingApiResponse } from '../types';
 import { EmblemPlate } from '../art/emblem';
 import { AlbertDialogue } from './AlbertDialogue';
 import { TesterFeedbackWidget } from './TesterFeedbackWidget';
@@ -28,6 +28,9 @@ import {
 
 export interface MeetingOfMirrorsProps {
   codeDate?: string;
+  codeV2Payload?: CodeV2Payload | null;
+  journeyId?: string;
+  onOpenAlbert?: () => void;
   codeResult: CalculationResult | null;
   firstMirror: FirstMirror | null;
   storyInputs: StoryInputs | null;
@@ -53,6 +56,9 @@ export function pluralRu(value: number, one: string, few: string, many: string) 
 
 export function MeetingOfMirrors({
   codeDate,
+  codeV2Payload,
+  journeyId,
+  onOpenAlbert,
   codeResult,
   firstMirror,
   storyInputs,
@@ -92,7 +98,7 @@ export function MeetingOfMirrors({
           meetingResult,
           consent: true,
           ageVerified: true,
-          truthState: loadTruthState(truthJourneyKey(codeResult, storyResult, meetingResult)),
+          truthState: loadTruthState(journeyId || truthJourneyKey(codeResult, storyResult, meetingResult)),
         }),
       });
       const data = await resp.json();
@@ -127,9 +133,7 @@ export function MeetingOfMirrors({
   const [savedAt, setSavedAt] = useState<string | null>(() => checkCurrentSaveStatus());
 
   useEffect(() => {
-    if (initialMeetingResult) {
-      setMeetingResult(initialMeetingResult);
-    }
+    setMeetingResult(initialMeetingResult || null);
   }, [initialMeetingResult]);
 
   useEffect(() => {
@@ -157,6 +161,8 @@ export function MeetingOfMirrors({
     const success = saveMyMirrorSnapshot({
       codeDate: codeDate || `${codeResult.soul}.${codeResult.expression}.${codeResult.path}`,
       codeResult,
+      codeV2Payload,
+      journeyId,
       firstMirror: effectiveFirstMirror,
       storyInputs,
       storyResult,
@@ -176,14 +182,21 @@ export function MeetingOfMirrors({
     if (onDeleteSnapshot) onDeleteSnapshot();
   };
 
+  const synthesisRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => synthesisRequest.current?.abort(), []);
+
   const handleRunSynthesis = async () => {
     if (!isReadyForSynthesis) return;
 
+    synthesisRequest.current?.abort();
+    const controller = new AbortController();
+    synthesisRequest.current = controller;
     setIsLoading(true);
     setErrorMessage('');
 
     try {
       const response = await fetch('/api/lab/meeting/generate', {
+        signal: controller.signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -199,6 +212,7 @@ export function MeetingOfMirrors({
       });
 
       const data: MeetingApiResponse = await response.json();
+      if (controller.signal.aborted) return;
 
       if (data.status === 'ok' && data.result) {
         setMeetingResult(data.result);
@@ -209,10 +223,11 @@ export function MeetingOfMirrors({
         setErrorMessage(data.ui?.safe_message || 'Не удалось сформировать встречу зеркал. Попробуйте еще раз.');
       }
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error(err);
       setErrorMessage('Связь с зеркалом прервалась при сопоставлении линз.');
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) setIsLoading(false);
     }
   };
 
@@ -573,6 +588,7 @@ export function MeetingOfMirrors({
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-2">
                   <button
                     onClick={() => {
+                      if (onOpenAlbert) { onOpenAlbert(); return; }
                       setAlbertTopic(meetingResult?.reflectiveQuestion || meetingResult?.albertInsight || 'Продолжение исследования');
                       setIsAlbertOpen(true);
                     }}
@@ -663,6 +679,11 @@ export function MeetingOfMirrors({
       <AlbertDialogue
         isOpen={isAlbertOpen}
         onClose={() => setIsAlbertOpen(false)}
+        journeyId={journeyId}
+        codeV2Payload={codeV2Payload}
+        codeV2Context={codeV2Payload?.albert_context}
+        userNote={userNote}
+        onUserNoteChange={handleUserNoteChange}
         calc={codeResult}
         storyResult={storyResult}
         meetingResult={meetingResult}

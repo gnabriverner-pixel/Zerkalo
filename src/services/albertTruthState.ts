@@ -1,5 +1,5 @@
-/** Signed evidence is opaque to the browser. Bounded local persistence preserves
- * corrections across browser restart; existing delete/reset actions clear it. */
+/** Signed evidence is opaque to the browser. Session storage is the default;
+ * explicit saving also preserves it across restart. Delete/reset clears both. */
 const KEY = 'zerkalo.albert.truth.v1';
 export const TRUTH_CLEARED_EVENT = 'zerkalo:truth-cleared';
 
@@ -19,19 +19,34 @@ export function truthJourneyKey(calc: any, story: any, meeting: any): string {
 
 export function loadTruthState(journey: string) {
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (saved?.journey === journey && Date.parse(saved.state?.expiresAt) > Date.now()) return saved.state;
-    if (saved && !(Date.parse(saved.state?.expiresAt) > Date.now())) localStorage.removeItem(KEY);
+    for (const storage of [sessionStorage, localStorage]) {
+      const saved = JSON.parse(storage.getItem(KEY) || 'null');
+      if (saved?.journey === journey && Date.parse(saved.state?.expiresAt) > Date.now()) return saved.state;
+      if (saved && !(Date.parse(saved.state?.expiresAt) > Date.now())) storage.removeItem(KEY);
+    }
   } catch { /* Missing/unavailable storage must not manufacture evidence. */ }
   return undefined;
 }
 
 export function saveTruthState(journey: string, state: any) {
   if (!state) return;
-  try { localStorage.setItem(KEY, JSON.stringify({ journey, state })); } catch { /* In-memory caller retains it. */ }
+  try {
+    const value = JSON.stringify({ journey, state });
+    sessionStorage.setItem(KEY, value);
+    const snapshot = JSON.parse(localStorage.getItem('zerkalo.myMirror.v1') || 'null');
+    if (snapshot?.journeyId === journey) localStorage.setItem(KEY, value);
+  } catch { /* In-memory caller retains it. */ }
+}
+
+/** Called only by the existing explicit save action. */
+export function persistTruthState(journey: string) {
+  const state = loadTruthState(journey);
+  if (state) {
+    try { localStorage.setItem(KEY, JSON.stringify({ journey, state })); } catch { /* Saving may be unavailable. */ }
+  }
 }
 
 export function clearTruthState() {
-  localStorage.removeItem(KEY);
+  try { localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); } catch { /* Still invalidate in-flight replies. */ }
   window.dispatchEvent(new Event(TRUTH_CLEARED_EVENT));
 }

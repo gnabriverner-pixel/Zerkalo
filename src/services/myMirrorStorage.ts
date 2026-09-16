@@ -1,5 +1,19 @@
-import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult } from '../types';
-import { clearTruthState } from './albertTruthState';
+import { CalculationResult, CodeV2Payload, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult } from '../types';
+import { hasCanonicalV2Result } from './codeV2Session';
+import { clearTruthState, persistTruthState } from './albertTruthState';
+
+
+function validV2State(candidate: Record<string, unknown>): boolean {
+  if (candidate.journeyId !== undefined && (typeof candidate.journeyId !== 'string' || !candidate.journeyId.trim())) return false;
+  if (!candidate.codeV2Payload) return true; // Legacy saves remain readable.
+  const payload = candidate.codeV2Payload as CodeV2Payload;
+  if (!hasCanonicalV2Result(payload) || !Array.isArray(payload.positions) || payload.positions.length !== 5 ||
+      !Array.isArray(payload.interactions) || !payload.synthesis || !payload.albert_context || !payload.method_orientation) return false;
+  if (candidate.codeDate !== payload.calculation.date) return false;
+  const result = candidate.codeResult as CalculationResult | undefined;
+  return !!result && ['soul', 'expression', 'path', 'direction', 'result'].every(key =>
+    result[key as keyof CalculationResult] === payload.calculation.canonical_result[key as keyof CalculationResult]);
+}
 
 export const MY_MIRROR_STORAGE_KEY = 'zerkalo.myMirror.v1';
 
@@ -7,6 +21,8 @@ export interface MyMirrorSnapshotV1 {
   version: 1;
   savedAt: string;
   codeDate: string;
+  codeV2Payload?: CodeV2Payload | null;
+  journeyId?: string;
   codeResult: CalculationResult;
   firstMirror: FirstMirror;
   storyInputs: StoryInputs;
@@ -25,6 +41,7 @@ export function isValidMyMirrorSnapshotV1(data: unknown): data is MyMirrorSnapsh
   if (!data || typeof data !== 'object') return false;
 
   const candidate = data as Record<string, unknown>;
+  if (!validV2State(candidate)) return false;
 
   // 1. Version check
   if (candidate.version !== 1) return false;
@@ -95,6 +112,8 @@ export function saveMyMirrorSnapshot(input: SaveMyMirrorInput): boolean {
       savedAt: new Date().toISOString(),
       codeDate: String(input.codeDate || ''),
       codeResult: input.codeResult,
+      ...(input.codeV2Payload ? { codeV2Payload: input.codeV2Payload } : {}),
+      ...(input.journeyId ? { journeyId: input.journeyId } : {}),
       firstMirror: input.firstMirror,
       storyInputs: {
         q1: String(input.storyInputs.q1 || ''),
@@ -112,6 +131,7 @@ export function saveMyMirrorSnapshot(input: SaveMyMirrorInput): boolean {
     }
 
     window.localStorage.setItem(MY_MIRROR_STORAGE_KEY, JSON.stringify(snapshot));
+    if (input.journeyId) persistTruthState(input.journeyId);
     return true;
   } catch (err) {
     console.error('[MyMirrorStorage] Failed to save snapshot:', err);
@@ -293,6 +313,8 @@ export const TRANSIENT_DRAFT_KEY = 'zerkalo.transientDraft.v1';
 export interface TransientDraftV1 {
   version: 1;
   updatedAt: string;
+  codeV2Payload?: CodeV2Payload | null;
+  journeyId?: string;
   mode?: 'entry' | 'alabaster' | 'myth' | 'meeting' | 'ab-test';
   codeDate?: string;
   codeResult?: CalculationResult | null;
@@ -306,8 +328,12 @@ export interface TransientDraftV1 {
 export function isValidTransientDraftV1(data: unknown): data is TransientDraftV1 {
   if (!data || typeof data !== 'object') return false;
   const candidate = data as Record<string, unknown>;
+  if (!validV2State(candidate)) return false;
   if (candidate.version !== 1) return false;
   if (typeof candidate.updatedAt !== 'string') return false;
+  if (candidate.codeDate != null && typeof candidate.codeDate !== 'string') return false;
+  if (candidate.meetingUserNote != null && typeof candidate.meetingUserNote !== 'string') return false;
+  if (candidate.mode != null && !['entry','alabaster','myth','meeting','ab-test'].includes(candidate.mode as string)) return false;
   return true;
 }
 

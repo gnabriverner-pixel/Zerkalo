@@ -14,6 +14,7 @@ export interface CalculationResult {
 }
 
 export type FirstMirror = {
+  interpretationVersion?: "v2";
   title: string;
   subtitle: string;
   formula: {
@@ -164,6 +165,7 @@ export interface CodeV2CalculationStep {
 
 export interface CodeV2Calculation {
   date: string;
+  canonical_result: CalculationResult;
   five_numbers: {
     soul: number;
     expression: number;
@@ -264,6 +266,8 @@ export interface CodeV2AlbertContext {
 
 export interface CodeV2Payload {
   status: "ok";
+  central_motif?: string;
+  opening_scene?: string;
   calculation: CodeV2Calculation;
   method_orientation: CodeV2MethodOrientation;
   positions: CodeV2Position[];
@@ -272,4 +276,3 @@ export interface CodeV2Payload {
   verification: string[];
   albert_context: CodeV2AlbertContext;
 }
-

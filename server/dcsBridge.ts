@@ -2,6 +2,7 @@ import { execFile } from "child_process";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
+import { validateBirthDate } from "../src/services/birthDate";
 import type { CalculationResult, CodeV2Payload } from "../src/types";
 
 const execFileAsync = promisify(execFile);
@@ -26,17 +27,10 @@ export interface CanonicalCalculationResult extends CalculationResult {
 const calculationCache = new Map<string, CanonicalCalculationResult>();
 
 function validateDobFormat(dob: string): void {
-  if (typeof dob !== "string" || !dob.trim()) {
-    throw new Error("Invalid birth date: empty or non-string input. Expected DD.MM.YYYY.");
-  }
-  const trimmed = dob.trim();
-  const parts = trimmed.split(".");
-  if (parts.length !== 3 || parts[0].length !== 2 || parts[1].length !== 2 || parts[2].length !== 4) {
-    throw new Error(`Invalid birth date format: "${dob}". Expected DD.MM.YYYY.`);
-  }
-  const [d, m, y] = parts.map((p) => parseInt(p, 10));
-  if (isNaN(d) || isNaN(m) || isNaN(y) || m < 1 || m > 12 || d < 1 || d > 31 || y < 1900 || y > 2026) {
-    throw new Error(`Invalid birth date "${dob}": out of allowed range 1900..2026.`);
+  const parts = typeof dob === 'string' ? dob.trim().split('.') : [];
+  if (parts.length !== 3 || !/^\d{2}\.\d{2}\.\d{4}$/.test(dob.trim()) ||
+      !validateBirthDate(parts[0], parts[1], parts[2]).valid) {
+    throw new Error('Некорректная дата рождения. Проверьте день, месяц и год.');
   }
 }
 

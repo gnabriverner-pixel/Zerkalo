@@ -344,7 +344,7 @@ async function startServer() {
   });
 
   // Dedicated Owner-Only / Preview Endpoint for Code V2
-  app.post("/api/preview/code-v2", async (req, res) => {
+  app.post(["/api/code-v2", "/api/preview/code-v2"], async (req, res) => {
     try {
       const dob = String(req.body?.dob || "").trim();
       const payload = await calculateCanonicalCodeV2(dob);
@@ -507,7 +507,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, process.env.HOST || "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
