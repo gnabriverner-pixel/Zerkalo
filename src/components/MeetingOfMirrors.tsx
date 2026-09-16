@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { loadTruthState, truthJourneyKey } from '../services/albertTruthState';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle2, 
   AlertCircle, 
   Sparkles, 
   GitFork, 
-  Send, 
+  Send,
   RefreshCw, 
   ChevronRight,
   MessageSquare,
@@ -78,46 +77,7 @@ export function MeetingOfMirrors({
   const [isAlbertOpen, setIsAlbertOpen] = useState(false);
   const [albertTopic, setAlbertTopic] = useState('');
   const [userNote, setUserNote] = useState(initialUserNote || '');
-  const [isHandoffLoading, setIsHandoffLoading] = useState(false);
-  const [handoffError, setHandoffError] = useState<string | null>(null);
-  const [transferAccepted, setTransferAccepted] = useState(false);
-  const [handoffUrl, setHandoffUrl] = useState<string | null>(null);
-  useEffect(() => { setHandoffUrl(null); }, [meetingResult, codeResult, storyResult]);
-
-  const handleContinueToTelegram = async () => {
-    if (!meetingResult || !codeResult || !storyResult || !transferAccepted) return;
-    setIsHandoffLoading(true);
-    setHandoffError(null);
-    setHandoffUrl(null);
-    try {
-      const {acceptConsent} = await import('../services/consent');
-      await acceptConsent('telegram_transfer');
-      const resp = await fetch("/api/handoff/create-claim", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          codeResult,
-          storyResult,
-          meetingResult,
-          consent: true,
-          ageVerified: true,
-          truthState: loadTruthState(journeyId || truthJourneyKey(codeResult, storyResult, meetingResult)),
-        }),
-      });
-      const data = await resp.json();
-      if (data.status === "ok" && data.telegramUrl) {
-        const url = new URL(data.telegramUrl);
-        if (url.origin !== 'https://t.me' || !/^\/[A-Za-z][A-Za-z0-9_]{4,31}$/.test(url.pathname)) throw new Error('invalid_destination');
-        setHandoffUrl(url.href);
-      } else {
-        setHandoffError(data.message || "Не удалось сформировать защищённую ссылку для перехода.");
-      }
-    } catch {
-      setHandoffError("Ошибка связи с сервером при создании ссылки.");
-    } finally {
-      setIsHandoffLoading(false);
-    }
-  };
+  const telegramBotUrl = 'https://t.me/digitalcodesystem_bot';
 
   const checkCurrentSaveStatus = (): string | null => {
     const current = loadMyMirrorSnapshot();
@@ -266,7 +226,7 @@ export function MeetingOfMirrors({
             </motion.div>
           </div>
 
-          <span className="text-[12px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] mb-3">
+          <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] mb-3">
             Синтез двух зеркал · Встреча
           </span>
 
@@ -291,7 +251,7 @@ export function MeetingOfMirrors({
               : 'bg-[#0D121D]/40 border-dashed border-white/10'
           }`}>
             <div className="flex justify-between items-start mb-4">
-              <span className="text-[12px] uppercase font-mono tracking-widest text-stone-400">
+              <span className="text-[13px] uppercase font-mono tracking-widest text-stone-400">
                 Линза 1 · Цифровой код
               </span>
               {hasCode ? (
@@ -331,7 +291,7 @@ export function MeetingOfMirrors({
               : 'bg-[#0D121D]/40 border-dashed border-white/10'
           }`}>
             <div className="flex justify-between items-start mb-4">
-              <span className="text-[12px] uppercase font-mono tracking-widest text-stone-400">
+              <span className="text-[13px] uppercase font-mono tracking-widest text-stone-400">
                 Линза 2 · Личный миф
               </span>
               {hasMyth ? (
@@ -418,7 +378,7 @@ export function MeetingOfMirrors({
                     Что становится видно рядом
                   </h3>
                   <div className="flex items-center gap-3">
-                    <span className="text-[12px] uppercase font-mono tracking-[0.15em] text-stone-400">
+                    <span className="text-[13px] uppercase font-mono tracking-[0.15em] text-stone-400">
                       {meetingResult.parallels.length} {pluralRu(meetingResult.parallels.length, 'резонанс', 'резонанса', 'резонансов')} · {meetingResult.divergences.length} {pluralRu(meetingResult.divergences.length, 'расхождение', 'расхождения', 'расхождений')}
                     </span>
                     <span className="text-[13px] font-serif italic text-stone-400">
@@ -441,7 +401,7 @@ export function MeetingOfMirrors({
               {/* Zero-resonance state banner if parallels is empty */}
               {meetingResult.parallels.length === 0 && (
                 <div className="bg-[#0D121D] border border-white/[0.08] p-8 sm:p-10 rounded-xs text-left space-y-4">
-                  <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
+                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                     Нулевая встреча — полноценный результат
                   </span>
                   <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
@@ -456,7 +416,7 @@ export function MeetingOfMirrors({
               {/* Parallels Section */}
               {meetingResult.parallels.length > 0 && (
                 <div className="space-y-4 text-left">
-                  <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
+                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                     Смысловые резонансы (где зеркала сходятся)
                   </span>
 
@@ -472,7 +432,7 @@ export function MeetingOfMirrors({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="bg-[#E8E0D4] border border-[#C8A45D]/35 p-4 rounded-xs text-[#2B241C]">
-                            <span className="text-[12px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
+                            <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Кода:
                             </span>
                             <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#2B241C]">
@@ -481,7 +441,7 @@ export function MeetingOfMirrors({
                           </div>
 
                           <div className="bg-[#EFE5D3] border border-[#B89568]/35 p-4 rounded-xs text-[#282019]">
-                            <span className="text-[12px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
+                            <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Мифа:
                             </span>
                             <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#282019]">
@@ -504,7 +464,7 @@ export function MeetingOfMirrors({
               {/* Divergences Section */}
               {meetingResult.divergences.length > 0 && (
                 <div className="space-y-4 text-left">
-                  <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
+                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                     Различия ракурсов (где зеркала расходятся)
                   </span>
 
@@ -520,7 +480,7 @@ export function MeetingOfMirrors({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="bg-[#E8E0D4] border border-[#C8A45D]/35 p-4 rounded-xs text-[#2B241C]">
-                            <span className="text-[12px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
+                            <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Кода:
                             </span>
                             <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#2B241C]">
@@ -529,7 +489,7 @@ export function MeetingOfMirrors({
                           </div>
 
                           <div className="bg-[#EFE5D3] border border-[#B89568]/35 p-4 rounded-xs text-[#282019]">
-                            <span className="text-[12px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
+                            <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Мифа:
                             </span>
                             <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#282019]">
@@ -551,7 +511,7 @@ export function MeetingOfMirrors({
 
               {/* Albert's Synthesis Insight & Living Question */}
               <div className="bg-[#0D121D] border border-white/[0.08] p-8 sm:p-10 rounded-xs space-y-6 text-left">
-                <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
+                <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                   Взгляд Альберта Вяземского
                 </span>
                 
@@ -560,7 +520,7 @@ export function MeetingOfMirrors({
                 </p>
 
                 <div className="border-t border-white/[0.06] pt-6">
-                  <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
+                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
                     Вопрос для личной рефлексии
                   </span>
                   <p className="font-serif italic text-lg sm:text-xl text-emerald-200 mb-4 font-normal">
@@ -578,7 +538,7 @@ export function MeetingOfMirrors({
 
               {/* ALBERT CONTINUATION CTA */}
               <div className="bg-[#0D121D] border border-[var(--color-antique-gold)]/40 p-8 sm:p-10 rounded-xs text-center space-y-5">
-                <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
+                <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                   Продолжение исследования
                 </span>
                 
@@ -603,28 +563,19 @@ export function MeetingOfMirrors({
                     <span>Диалог на сайте</span>
                   </button>
 
-                  <button
-                    onClick={handleContinueToTelegram}
-                    disabled={isHandoffLoading || !transferAccepted}
+                  <a
+                    href={telegramBotUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     <Send size={14} />
-                    <span>{isHandoffLoading ? "Создание ссылки..." : "Продолжить в Telegram"}</span>
-                  </button>
+                    <span>Открыть Telegram</span>
+                  </a>
                 </div>
-                <label className="flex items-start justify-center gap-3 text-sm leading-relaxed text-stone-300 text-left cursor-pointer">
-                  <input type="checkbox" checked={transferAccepted} onChange={e=>setTransferAccepted(e.target.checked)} className="mt-1 size-5 shrink-0" />
-                  Разрешаю перенести результаты, образы и поправки в Telegram для продолжения разговора. Дата рождения и исходные четыре ответа не переносятся.
-                </label>
-                {handoffUrl && (
-                  <p className="text-sm text-stone-200">
-                    <a href={handoffUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-4 text-amber-200">Открыть @{new URL(handoffUrl).pathname.slice(1)} в Telegram</a>
-                    <span className="block mt-1">В боте нажмите «Запустить». Ссылка действует 15 минут.</span>
-                  </p>
-                )}
-                {handoffError && (
-                  <p className="text-[13px] text-amber-400 mt-2">{handoffError}</p>
-                )}
+                <p className="text-sm leading-relaxed text-stone-400 max-w-lg mx-auto">
+                  Telegram откроется как отдельный диалог с @digitalcodesystem_bot. Текущие результаты останутся на этом устройстве; для разговора с их контекстом используйте «Диалог на сайте».
+                </p>
               </div>
 
               {/* LOCAL PERSISTENCE BRIDGE (MY MIRROR V0) */}
@@ -632,7 +583,7 @@ export function MeetingOfMirrors({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
                   <div className="flex items-center gap-2">
                     <Bookmark size={14} className="text-[var(--color-antique-gold)]" />
-                    <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]">
+                    <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]">
                       Моё зеркало · Локальное сохранение
                     </span>
                   </div>
@@ -669,7 +620,7 @@ export function MeetingOfMirrors({
                   {savedAt && (
                     <button
                       onClick={handleDelete}
-                      className="px-4 py-2.5 text-stone-400 hover:text-red-300 uppercase tracking-[0.18em] text-[12px] font-mono transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2.5 text-stone-400 hover:text-red-300 uppercase tracking-[0.18em] text-[13px] font-mono transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <Trash2 size={12} />
                       <span>Удалить сохранённое</span>

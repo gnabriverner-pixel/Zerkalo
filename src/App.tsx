@@ -240,7 +240,7 @@ export default function App() {
                   setMode('alabaster');
                 }
               }}
-              className={`min-h-[28px] px-2.5 py-1 rounded-full text-[12px] font-mono tracking-wider uppercase transition-all cursor-pointer border ${
+              className={`min-h-[30px] px-2.5 py-1 rounded-full text-[13px] font-mono tracking-wider uppercase transition-all cursor-pointer border ${
                 isPreviewV2
                   ? 'bg-[var(--color-antique-gold)]/20 border-[var(--color-antique-gold)] text-amber-200 shadow-xs'
                   : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
@@ -262,7 +262,7 @@ export default function App() {
           {/* Digital Code */}
           <button
             onClick={() => setMode('alabaster')}
-            className={`min-h-[40px] px-3.5 py-2 rounded-full text-[12px] sm:text-[13px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
+            className={`min-h-[40px] px-3.5 py-2 rounded-full text-[13px] sm:text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
               mode === 'alabaster'
                 ? isPreviewV2
                   ? 'bg-[var(--color-antique-gold)]/25 text-amber-200 font-medium border border-[var(--color-antique-gold)]/40 shadow-xs'
@@ -277,7 +277,7 @@ export default function App() {
           {/* Lens 1: Myth */}
           <button
             onClick={() => setMode('myth')}
-            className={`min-h-[40px] px-3.5 py-2 rounded-full text-[12px] sm:text-[13px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
+            className={`min-h-[40px] px-3.5 py-2 rounded-full text-[13px] sm:text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
               mode === 'myth'
                 ? 'bg-white/15 text-white font-medium shadow-xs'
                 : mode === 'alabaster' && !isPreviewV2
@@ -292,7 +292,7 @@ export default function App() {
           {/* Synthesis: Meeting */}
           <button
             onClick={() => setMode('meeting')}
-            className={`min-h-[40px] px-3.5 py-2 rounded-full text-[12px] sm:text-[13px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
+            className={`min-h-[40px] px-3.5 py-2 rounded-full text-[13px] sm:text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
               mode === 'meeting'
                 ? 'bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] font-medium border border-[var(--color-antique-gold)]/40 shadow-xs'
                 : hasBoth
@@ -313,7 +313,7 @@ export default function App() {
         }`}>
           <button
             onClick={() => setShowAbout(true)}
-            className={`min-h-[44px] px-2 py-2 tracking-wider uppercase text-[12px] sm:text-[13px] transition-colors cursor-pointer font-light ${
+            className={`min-h-[44px] px-2 py-2 tracking-wider uppercase text-[13px] sm:text-sm transition-colors cursor-pointer font-light ${
               mode === 'alabaster' && !isPreviewV2 ? 'hover:text-[#1A1A1C]' : 'hover:text-[var(--color-antique-gold)]'
             }`}
           >
@@ -322,7 +322,7 @@ export default function App() {
 
           <button
             onClick={() => setShowLibrary(true)}
-            className={`min-h-[44px] px-2 py-2 tracking-wider uppercase text-[12px] sm:text-[13px] transition-colors cursor-pointer font-light ${
+            className={`min-h-[44px] px-2 py-2 tracking-wider uppercase text-[13px] sm:text-sm transition-colors cursor-pointer font-light ${
               mode === 'alabaster' && !isPreviewV2 ? 'hover:text-[#1A1A1C]' : 'hover:text-[var(--color-antique-gold)]'
             }`}
           >

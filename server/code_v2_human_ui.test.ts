@@ -71,12 +71,14 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(ruWords.length).toBeGreaterThanOrEqual(450);
     expect(ruWords.length).toBeLessThanOrEqual(860);
 
-    // Sequence verification: celestial intro, 5 numbers visually, central motif with planetary badge, quiet Albert link, expandable calculation
-    expect(html).toContain('Введение в мир небесных архетипов');
-    expect(html).toContain('9 светил и 5 координат вашей карты');
+    // Sequence verification: symbolic framing, 5 numbers visually, central motif with planetary badge, quiet Albert link, expandable calculation
+    expect(html).toContain('Символический язык карты');
+    expect(html).toContain('Девять светил и пять координат');
+    expect(html).toContain('совпадение не предполагается заранее');
     expect(html).toContain('Пять позиций вашей карты');
     expect(html).toContain('Венера (6) ⟷ Сатурн (8)');
     expect(html).toContain('Покой сердца и строгий закон формы');
+    expect(html).toContain('Гипотеза для проверки, а не вывод о вашей личности');
     expect(html).toContain('Хотите проверить это на себе?');
     for (const paragraph of (payload.central_motif || '').split('\n\n')) {
       expect(html).toContain(paragraph);

@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {signClaim,sweepExpiredClaims} from './handoff';
 
+process.env.CONTINUATION_CLAIM_SECRET = 'unit-test-continuation-secret-32-characters-minimum';
+
 it('removes only authenticated expired payloads; preserves active claims and foreign files',async()=>{
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),'zerkalo-retention-'));
   const expired='a'.repeat(43), active='b'.repeat(43),invalid='c'.repeat(43);

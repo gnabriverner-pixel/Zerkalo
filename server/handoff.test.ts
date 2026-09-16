@@ -13,7 +13,11 @@ import {
 import type { CalculationResult } from "../src/types";
 
 describe("Web -> Telegram V2 Continuation Claim Contract", () => {
-  beforeEach(() => { vi.stubEnv('TELEGRAM_BOT_USERNAME', 'digitalcodesystem_bot'); vi.stubEnv('TELEGRAM_STAGING_BOT_USERNAME', ''); });
+  beforeEach(() => {
+    vi.stubEnv('TELEGRAM_BOT_USERNAME', 'digitalcodesystem_bot');
+    vi.stubEnv('TELEGRAM_STAGING_BOT_USERNAME', '');
+    vi.stubEnv('CONTINUATION_CLAIM_SECRET', 'unit-test-continuation-secret-32-characters-minimum');
+  });
   afterEach(() => vi.unstubAllEnvs());
   it('uses the owner-confirmed bot and rejects an imaginary staging destination', () => {
     expect(getTelegramBotUsername()).toBe('digitalcodesystem_bot');
@@ -25,6 +29,17 @@ describe("Web -> Telegram V2 Continuation Claim Contract", () => {
     expect(getTelegramBotUsername()).toBe('digitalcodesystem_bot');
     vi.stubEnv('TELEGRAM_BOT_USERNAME', 'bad/name?');
     expect(() => getTelegramBotUsername()).toThrow('telegram_destination_unavailable');
+  });
+  it('fails closed when a continuation secret is not configured', async () => {
+    vi.stubEnv('CONTINUATION_CLAIM_SECRET', '');
+    vi.stubEnv('DELETION_LOOKUP_SECRET', '');
+    await expect(createContinuationClaim({
+      codeResult: dummyCode,
+      storyResult: dummyStory,
+      meetingResult: dummyMeeting,
+      consent: true,
+      ageVerified: true,
+    })).rejects.toThrow('continuation_secret_unavailable');
   });
   const dummyCode: CalculationResult = {
     soul: 6,

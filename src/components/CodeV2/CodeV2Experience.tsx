@@ -71,12 +71,11 @@ export function CodeV2Experience({
   const [showCalcChain, setShowCalcChain] = useState(false);
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>(initialExpanded || {});
 
-  const leadInteraction = payload?.albert_context?.selected_interactions?.[0] || payload?.interactions?.[0];
   const soulPos = payload?.positions.find(p => p.position === 'soul');
   const pathPos = payload?.positions.find(p => p.position === 'path');
-  const leadInteractionBadge = (leadInteraction && payload)
-    ? `${payload.positions.find(p => p.position === leadInteraction.pair[0])?.energy_name || ''} (${leadInteraction.energies[0]}) ⟷ ${payload.positions.find(p => p.position === leadInteraction.pair[1])?.energy_name || ''} (${leadInteraction.energies[1]})`
-    : (soulPos && pathPos ? `${soulPos.energy_name} (${soulPos.energy}) ⟷ ${pathPos.energy_name} (${pathPos.energy})` : null);
+  const leadInteractionBadge = soulPos && pathPos
+    ? `${soulPos.energy_name} (${soulPos.energy}) ⟷ ${pathPos.energy_name} (${pathPos.energy})`
+    : null;
 
   const dayRef = useRef<HTMLInputElement>(null);
   const monthRef = useRef<HTMLInputElement>(null);
@@ -247,7 +246,7 @@ export function CodeV2Experience({
               <div className="w-full mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
                 <div className="text-[13px] font-mono uppercase tracking-wider text-amber-300/80 mb-3 flex items-center justify-between">
                   <span>Контрольные даты для проверки (QA Режим):</span>
-                  <span className="text-[12px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">qa=1</span>
+                  <span className="text-[13px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">qa=1</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {PRESET_DOBS.map(preset => {
@@ -264,7 +263,7 @@ export function CodeV2Experience({
                         }`}
                       >
                         <div className="text-xs font-mono font-medium">{preset.label}</div>
-                        <div className="text-[12px] text-stone-400 truncate">{preset.note}</div>
+                        <div className="text-[13px] text-stone-400 truncate">{preset.note}</div>
                       </button>
                     );
                   })}
@@ -277,7 +276,7 @@ export function CodeV2Experience({
               <form onSubmit={handleCalculate} className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
                 <div className="grid grid-cols-3 gap-3 flex-grow">
                   <div>
-                    <label className="block text-[12px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
+                    <label className="block text-[13px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
                       День
                     </label>
                     <input
@@ -297,7 +296,7 @@ export function CodeV2Experience({
                   </div>
 
                   <div>
-                    <label className="block text-[12px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
+                    <label className="block text-[13px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
                       Месяц
                     </label>
                     <input
@@ -317,7 +316,7 @@ export function CodeV2Experience({
                   </div>
 
                   <div>
-                    <label className="block text-[12px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
+                    <label className="block text-[13px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
                       Год
                     </label>
                     <input
@@ -407,21 +406,21 @@ export function CodeV2Experience({
 
               {/* Celestial Immersion Intro */}
               <div className="text-center max-w-xl mx-auto mb-8 relative z-10">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-antique-gold)]/25 text-[11px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] mb-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-antique-gold)]/25 text-[13px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] mb-3">
                   <Sparkles className="w-3 h-3" />
-                  <span>Введение в мир небесных архетипов</span>
+                  <span>Символический язык карты</span>
                 </div>
                 <h1 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-2">
-                  9 светил и 5 координат вашей карты
+                  Девять светил и пять координат
                 </h1>
                 <p className="text-xs sm:text-sm text-stone-300 font-normal leading-relaxed">
-                  Древняя космология видит дату рождения как слепок неба в миг первого вдоха. Девять небесных архетипов задают фундаментальные законы характера, а пять ключевых координат раскрывают внутренний исток, способ действия и точку зрелой сборки личности.
+                  В языке ведической нумерологии числа связаны с девятью светилами. Дата преобразуется в пять координат карты — это символические гипотезы о внутреннем запросе, способе действия и зрелой сборке. Проверьте их по своему опыту: совпадение не предполагается заранее.
                 </p>
               </div>
 
               {/* A. Five Numbers Visually (Editorial Typographic Strip) */}
               <div className="flex flex-col items-center text-center mb-7 relative z-10">
-                <div className="text-[12px] sm:text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-3">
+                <div className="text-[13px] sm:text-sm font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-3">
                   Пять позиций вашей карты
                 </div>
 
@@ -432,10 +431,10 @@ export function CodeV2Experience({
                         <span className="font-serif text-3xl sm:text-5xl text-amber-100 font-light leading-none">
                           {pos.energy}
                         </span>
-                        <span className="text-[12px] sm:text-xs text-[var(--color-antique-gold)] font-medium mt-1.5">
+                        <span className="text-[13px] sm:text-sm text-[var(--color-antique-gold)] font-medium mt-1.5">
                           {pos.energy_name}
                         </span>
-                        <span className="text-[12px] sm:text-[12px] font-mono text-stone-400 uppercase tracking-wider mt-0.5">
+                        <span className="text-[13px] font-mono text-stone-300 uppercase tracking-wider mt-0.5">
                           {pos.public_name.replace('Число ', '')}
                         </span>
                       </div>
@@ -450,11 +449,11 @@ export function CodeV2Experience({
               {/* B & C. Central Human Motif (Heading + Why It Matters) */}
               <div className="pt-6 border-t border-white/10 relative z-10">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                  <div className="text-[12px] sm:text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80">
+                  <div className="text-[13px] sm:text-sm font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80">
                     Центральный нерв карты
                   </div>
                   {leadInteractionBadge && (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--color-antique-gold)]/15 border border-[var(--color-antique-gold)]/35 text-[11px] font-mono text-amber-200">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--color-antique-gold)]/15 border border-[var(--color-antique-gold)]/35 text-[13px] font-mono text-amber-200">
                       <span>{leadInteractionBadge}</span>
                     </div>
                   )}
@@ -465,6 +464,7 @@ export function CodeV2Experience({
                 </h2>
 
                 <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-sm sm:text-base text-stone-200 leading-relaxed font-normal mb-6 space-y-4">
+                  <p className="text-stone-400 text-xs sm:text-sm">Гипотеза для проверки, а не вывод о вашей личности.</p>
                   {(payload.central_motif || payload.synthesis.strongest_motif || '').split('\n\n').map((paragraph, pIdx) => (
                     <p key={pIdx}>{paragraph}</p>
                   ))}
@@ -522,7 +522,7 @@ export function CodeV2Experience({
                             className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-black/40 rounded-xl border border-white/5 text-xs"
                           >
                             <div className="flex items-center gap-2.5">
-                              <span className="w-5 h-5 rounded-full bg-white/10 text-stone-300 font-mono text-[12px] flex items-center justify-center">
+                              <span className="w-5 h-5 rounded-full bg-white/10 text-stone-300 font-mono text-[13px] flex items-center justify-center">
                                 {idx + 1}
                               </span>
                               <span className="font-medium text-stone-200">{step.public_name}:</span>
@@ -732,7 +732,7 @@ export function CodeV2Experience({
                   >
                     <div>
                       {isQaMode && (
-                        <div className="text-[12px] font-mono text-stone-400 mb-2">
+                        <div className="text-[13px] font-mono text-stone-400 mb-2">
                           {inter.category} · {inter.positions_label}
                         </div>
                       )}

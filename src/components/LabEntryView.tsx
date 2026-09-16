@@ -177,7 +177,7 @@ export function LabEntryView({
           <a href="#collection" className="mt-7 inline-flex min-h-12 items-center justify-center border border-[var(--color-border-gold)] bg-[#111723]/80 px-9 py-3 text-[13px] uppercase tracking-[0.28em] text-[var(--color-antique-gold)] transition-colors hover:bg-[#18202e]">
             Выбрать зеркало
           </a>
-          <p className="text-xs text-[var(--color-text-muted)]">Начните с любого зеркала. Встреча откроется только после обоих.</p>
+          <p className="text-[13px] text-[var(--color-text-muted)]">Начните с любого зеркала. Встреча откроется только после обоих.</p>
         </motion.div>
 
         {/* ========================================================= */}
@@ -185,7 +185,7 @@ export function LabEntryView({
         {/* ========================================================= */}
         <section id="collection" className="w-full max-w-4xl mx-auto scroll-mt-24">
           <div className="mx-auto mb-12 max-w-2xl text-center">
-            <span className="text-[12px] uppercase tracking-[0.32em] text-[var(--color-antique-gold)] font-mono">Коллекция зеркал</span>
+            <span className="text-[13px] uppercase tracking-[0.32em] text-[var(--color-antique-gold)] font-mono">Коллекция зеркал</span>
             <h2 className="mt-5 font-serif text-4xl sm:text-5xl font-light">Два самостоятельных взгляда</h2>
             <p className="mt-4 text-sm leading-relaxed text-[var(--color-text-secondary)]">Система не смешивает дату с ответами и не придумывает сходство заранее.</p>
           </div>
@@ -206,17 +206,17 @@ export function LabEntryView({
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
+                    <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
                       Черновик сессии · В процессе
                     </span>
-                    <span className="text-[12px] font-mono text-stone-400">
+                    <span className="text-[13px] font-mono text-stone-400">
                       ({new Date(transientDraft.updatedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })})
                     </span>
                   </div>
                   <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
                     Найдено незавершённое зеркало
                   </h3>
-                  <p className="text-xs text-stone-300 font-normal leading-relaxed max-w-lg">
+                  <p className="text-[13px] text-stone-300 font-normal leading-relaxed max-w-lg">
                     {transientDraft.codeDate ? `Код: ${transientDraft.codeDate}` : ''}
                     {transientDraft.codeDate && (transientDraft.storyResult || transientDraft.storyInputs?.q1) ? ' · ' : ''}
                     {transientDraft.storyResult ? `Миф: «${transientDraft.storyResult.title}»` : (transientDraft.storyInputs?.q1 ? 'Ответы на вопросы мифа сохранены' : '')}
@@ -228,7 +228,7 @@ export function LabEntryView({
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
                 <button
                   onClick={onRestoreDraft}
-                  className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                  className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
                 >
                   <span>Продолжить</span>
                   <ChevronRight size={14} />
@@ -237,7 +237,7 @@ export function LabEntryView({
                   <button
                     onClick={onClearDraft}
                     title="Сбросить незавершённый черновик"
-                    className="px-4 py-3 text-stone-400 hover:text-stone-200 uppercase tracking-widest text-[12px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="px-4 py-3 text-stone-400 hover:text-stone-200 uppercase tracking-widest text-[13px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <span>Начать заново</span>
                   </button>
@@ -258,17 +258,17 @@ export function LabEntryView({
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
+                    <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
                       Моё зеркало · Сохранено локально
                     </span>
-                    <span className="text-[12px] font-mono text-stone-400">
+                    <span className="text-[13px] font-mono text-stone-400">
                       ({new Date(savedSnapshot.savedAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })})
                     </span>
                   </div>
                   <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
                     Продолжить с того места
                   </h3>
-                  <p className="text-xs text-stone-300 font-normal leading-relaxed max-w-lg">
+                  <p className="text-[13px] text-stone-300 font-normal leading-relaxed max-w-lg">
                     {savedSnapshot.meetingUserNote
                       ? `Ваша заметка: «${savedSnapshot.meetingUserNote}»`
                       : savedSnapshot.storyResult?.title
@@ -281,7 +281,7 @@ export function LabEntryView({
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
                 <button
                   onClick={onRestoreSavedMirror}
-                  className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                  className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
                 >
                   <span>Продолжить с того места</span>
                   <ChevronRight size={14} />
@@ -290,7 +290,7 @@ export function LabEntryView({
                   <button
                     onClick={onDeleteSavedMirror}
                     title="Удалить сохранённое зеркало из браузера"
-                    className="px-3 py-3 text-stone-400 hover:text-red-300 uppercase tracking-widest text-[12px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="px-3 py-3 text-stone-400 hover:text-red-300 uppercase tracking-widest text-[13px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Trash2 size={13} />
                     <span className="sm:hidden">Удалить сохранённое</span>
@@ -319,7 +319,7 @@ export function LabEntryView({
             className="group relative flex flex-col items-center justify-between p-10 sm:p-12 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 cursor-pointer text-center"
           >
             <div className="flex flex-col items-center w-full">
-              <span className="text-[12px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
+              <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
                 Независимое зеркало · Личный миф
               </span>
 
@@ -351,7 +351,7 @@ export function LabEntryView({
             className="group relative flex flex-col items-center justify-between p-10 sm:p-12 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 text-center"
           >
             <div className="flex flex-col items-center w-full">
-              <span className="text-[12px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
+              <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
                 Независимое зеркало · Цифровой код
               </span>
 
@@ -414,7 +414,7 @@ export function LabEntryView({
                 </div>
 
                 {dateError && (
-                  <span className="text-xs text-red-300 font-light block">{dateError}</span>
+                  <span className="text-[13px] text-red-300 font-light block">{dateError}</span>
                 )}
 
                 <button
@@ -464,18 +464,18 @@ export function LabEntryView({
                   Встреча Зеркал
                 </span>
                 {isMeetingReady && (
-                  <span className="text-[12px] uppercase font-mono px-2.5 py-0.5 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)] text-[var(--color-antique-gold)]">
+                  <span className="text-[13px] uppercase font-mono px-2.5 py-0.5 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)] text-[var(--color-antique-gold)]">
                     Готово к синтезу
                   </span>
                 )}
               </div>
-              <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] font-normal mt-1 max-w-lg leading-relaxed">
+              <p className="text-[13px] sm:text-sm text-[var(--color-text-secondary)] font-normal mt-1 max-w-lg leading-relaxed">
                 Сопоставление двух независимых отражений: поиск параллелей, честное осмысление расхождений и синтез-вопрос.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[var(--color-antique-gold)] font-mono whitespace-nowrap shrink-0">
+          <div className="flex items-center gap-2 text-[13px] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] font-mono whitespace-nowrap shrink-0">
             <span>{isMeetingReady ? 'Провести встречу →' : 'Узнать больше →'}</span>
           </div>
         </motion.div>
@@ -491,7 +491,7 @@ export function LabEntryView({
         >
           <div className="flex items-center justify-between w-full mb-8">
             <div className="text-left">
-              <span className="text-[12px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-1">
+              <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-1">
                 Канон Вяземского
               </span>
               <h3 className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light">
@@ -501,7 +501,7 @@ export function LabEntryView({
 
             <button
               onClick={handlePantheon}
-              className="text-xs uppercase font-mono tracking-[0.2em] text-[var(--color-antique-gold)] hover:underline transition-colors cursor-pointer"
+              className="text-[13px] uppercase font-mono tracking-[0.2em] text-[var(--color-antique-gold)] hover:underline transition-colors cursor-pointer"
             >
               Смотреть все девять →
             </button>
@@ -522,7 +522,7 @@ export function LabEntryView({
                   <Orb number={arch.num} size={42} glow={false} />
                   <span className="font-serif text-lg text-[var(--color-text-primary)]">{arch.name}</span>
                 </div>
-                <p className="text-xs text-[var(--color-text-secondary)] font-normal leading-relaxed">
+                <p className="text-[13px] text-[var(--color-text-secondary)] font-normal leading-relaxed">
                   {arch.desc}
                 </p>
               </div>

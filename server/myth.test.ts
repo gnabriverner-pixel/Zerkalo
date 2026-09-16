@@ -221,6 +221,22 @@ describe("Personal Myth v1.1 release contract", () => {
     expect(quality.blockers).toContain("missing_second_person_narrative");
   });
 
+  it("instructs generation and repair to keep the reader as the only human actor", () => {
+    const mythRequest = request();
+    const initial = buildPersonalMythPromptV11(mythRequest);
+    expect(initial).toContain("Не вводи в сцену других людей");
+    expect(initial).toContain("В каждом абзаце должно быть прямое обращение");
+
+    const repair = buildPersonalMythRepairPrompt(
+      mythRequest,
+      "Мастер стоял у окна. Он выбирал карту.",
+      { mainImage: "окно", innerTension: "выбор", hiddenResource: "лист", newView: "пространство" },
+      ["narrative_third_person_drift"],
+    );
+    expect(repair).toContain("полностью перепиши story");
+    expect(repair).toContain("в сцене действует только читатель");
+  });
+
   it("rejects first-person narrator drift (я/мы/мой)", () => {
     const payload = validPayload();
     payload.story_result.story = "Я шёл по сырой лесной тропе и чувствовал холодный туман на своих плечах. Мои мысли возвращались к старому дому. Ты можешь заметить этот след, но я знаю, что путь завершён.";

@@ -32,16 +32,16 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   await page.getByPlaceholder('ДД',{exact:true}).fill(day);
   await page.getByPlaceholder('ММ',{exact:true}).fill(month);
   await page.getByPlaceholder('ГГГГ',{exact:true}).fill(year);
-  const calculation=page.waitForResponse(r=>r.url().endsWith('/api/calculate'));
+  const calculation=page.waitForResponse(r=>r.url().endsWith('/api/calculate') || r.url().endsWith('/api/code-v2'));
   await page.getByRole('button',{name:'Рассчитать код',exact:true}).click();
   expect((await calculation).status()).toBe(200);
   await page.getByRole('button',{name:'Перейти к Личному мифу'}).waitFor();
   await page.evaluate(()=>scrollTo(0,0));await shot('code');
   await page.getByRole('button',{name:'Перейти к Личному мифу'}).click();
   await page.getByRole('button',{name:'Войти через образы',exact:true}).click();
-  const tags=['01 / 04 · Напряжение','02 / 04 · Образ состояния','03 / 04 · Точка живости','04 / 04 · Искомое качество'];
+  const tags=['01 / 04 · Ситуация','02 / 04 · Образ состояния','03 / 04 · Точка живости','04 / 04 · Искомое качество'];
   for(const [i,answer]of Object.values(persona.answers).entries()){
-    await page.getByText(tags[i],{exact:true}).waitFor();
+    await page.getByText(tags[i]).waitFor();
     await page.locator('textarea').fill(answer);
     await page.getByRole('button',{name:i===3?'Соткать историю':'Далее',exact:true}).click();
   }
@@ -51,8 +51,9 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   await page.getByRole('button',{name:'Провести Встречу зеркал',exact:true}).click();
   await page.getByRole('button',{name:'Диалог на сайте',exact:true}).waitFor();
   await shot('meeting');
-  const telegram=page.getByRole('button',{name:'Продолжить в Telegram',exact:true});
-  await expect(telegram).toBeDisabled();
+  const telegram=page.getByRole('link',{name:'Открыть Telegram',exact:true});
+  await expect(telegram).toHaveAttribute('href','https://t.me/digitalcodesystem_bot');
+  await expect(page.getByText(/Telegram откроется как отдельный диалог/)).toBeVisible();
   await page.getByRole('button',{name:'Диалог на сайте',exact:true}).click();
   await page.getByPlaceholder('Задайте вопрос Альберту о вашей карте и встрече зеркал...').fill(persona.request);
   await page.getByPlaceholder('Задайте вопрос Альберту о вашей карте и встрече зеркал...').press('Enter');
@@ -63,16 +64,8 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   await page.getByRole('button',{name:'Сохранить на этом устройстве',exact:true}).click();
   await expect(page.getByText('Сохранено в этом браузере',{exact:true})).toBeVisible();
   await page.reload();
-  await page.getByRole('button',{name:'Открыть сохранённое',exact:true}).click();
+  await page.getByRole('button',{name:'Продолжить с того места',exact:true}).click();
   await expect(page.getByRole('button',{name:'Диалог на сайте',exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Продолжить в Telegram',exact:true})).toBeDisabled();
-  await page.getByRole('checkbox').check();
-  const claim=page.waitForResponse(r=>r.url().endsWith('/api/handoff/create-claim'));
-  await page.getByRole('button',{name:'Продолжить в Telegram',exact:true}).click();
-  const response=await claim;expect(response.status()).toBe(200);
-  const payload=await response.json();
-  const start=new URL(payload.telegramUrl).searchParams.get('start')!;
-  expect(start).toMatch(/^h_[A-Za-z0-9_-]{43}$/);expect(start.length).toBeLessThanOrEqual(64);
-  expect(payload.telegramUrl).not.toContain(persona.dob);
+  await expect(page.getByRole('link',{name:'Открыть Telegram',exact:true})).toHaveAttribute('href','https://t.me/digitalcodesystem_bot');
   expect(errors).toEqual([]);
 });

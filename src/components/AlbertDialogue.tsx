@@ -303,7 +303,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                 <Compass className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[12px] tracking-[0.25em] uppercase font-sans text-[var(--color-antique-gold)]">
+                <span className="text-[13px] tracking-[0.25em] uppercase font-sans text-[var(--color-antique-gold)]">
                   Собеседник и Проводник
                 </span>
                 <h3 className="font-serif text-xl sm:text-2xl font-normal">
@@ -348,7 +348,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                 }`}
               >
                 {msg.sender === 'albert' && (
-                  <div className="w-8 h-8 rounded-full border border-[var(--color-antique-gold)] flex items-center justify-center shrink-0 text-[12px] font-serif bg-[var(--color-antique-gold)]/10 text-[var(--color-antique-gold)]">
+                  <div className="w-8 h-8 rounded-full border border-[var(--color-antique-gold)] flex items-center justify-center shrink-0 text-[13px] font-serif bg-[var(--color-antique-gold)]/10 text-[var(--color-antique-gold)]">
                     АВ
                   </div>
                 )}

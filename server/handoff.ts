@@ -42,8 +42,9 @@ export function getTelegramBotUsername(): string {
 }
 
 export function getClaimSecret(): string {
-  const secret = process.env.CONTINUATION_CLAIM_SECRET || process.env.DELETION_LOOKUP_SECRET || "zerkalo-u1-claim-secret-for-staging-and-testing-min16";
-  return secret.trim();
+  const secret = (process.env.CONTINUATION_CLAIM_SECRET || process.env.DELETION_LOOKUP_SECRET || '').trim();
+  if (secret.length < 32) throw new Error('continuation_secret_unavailable');
+  return secret;
 }
 
 export interface CreateClaimParams {

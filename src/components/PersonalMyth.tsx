@@ -231,7 +231,7 @@ export default function PersonalMyth({
                   className="w-full bg-transparent border-b border-stone-600 focus:border-[var(--color-antique-gold)] px-2 py-3 text-lg sm:text-xl text-stone-100 placeholder:text-stone-600 focus:outline-none transition-colors resize-none font-serif leading-relaxed text-center"
                 />
                 
-                <div className="flex justify-between items-center text-[12px] uppercase font-mono text-stone-400 mt-2 px-1">
+                <div className="flex justify-between items-center text-[13px] uppercase font-mono text-stone-400 mt-2 px-1">
                   <span>Минимум 3 символа</span>
                   <span>{currentInputValue.length} знаков</span>
                 </div>
@@ -266,7 +266,7 @@ export default function PersonalMyth({
                   <span>{step === 4 ? 'Соткать историю' : 'Далее'}</span>
                   <ArrowRight size={14} />
                 </button>
-                <span className="text-[12px] text-stone-400 font-mono">или нажми Enter</span>
+                <span className="text-[13px] text-stone-400 font-mono">или нажми Enter</span>
               </div>
             </motion.div>
           )}
@@ -303,7 +303,7 @@ export default function PersonalMyth({
               <div className="text-center w-full max-w-2xl mx-auto pt-4">
                 <EmblemPlate planet={7} variant="alabaster" size={64} showNumber={false} showLabel={false} className="mx-auto mb-6" />
                 
-                <span className="text-[12px] tracking-[0.3em] uppercase text-purple-300/80 font-mono block mb-2">
+                <span className="text-[13px] tracking-[0.3em] uppercase text-purple-300/80 font-mono block mb-2">
                   Личный Миф · Художественная сцена
                 </span>
                 <p className="text-xs text-stone-400 font-normal mb-4">
@@ -317,25 +317,25 @@ export default function PersonalMyth({
 
               {/* PROVENANCE: Из каких образов родилась история */}
               <div className="w-full bg-[#0D121D]/70 border border-white/[0.08] p-6 sm:p-8 rounded-xs">
-                <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]/80 block mb-4">
+                <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]/80 block mb-4">
                   Символические истоки
                 </span>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <span className="text-[12px] uppercase text-stone-400 font-mono block mb-1">01 · Ситуация</span>
+                    <span className="text-[13px] uppercase text-stone-400 font-mono block mb-1">01 · Ситуация</span>
                     <p className="text-xs text-stone-300 font-serif italic">«{inputs.q1 || '—'}»</p>
                   </div>
                   <div>
-                    <span className="text-[12px] uppercase text-stone-400 font-mono block mb-1">02 · Образ состояния</span>
+                    <span className="text-[13px] uppercase text-stone-400 font-mono block mb-1">02 · Образ состояния</span>
                     <p className="text-xs text-stone-300 font-serif italic">«{inputs.q2 || '—'}»</p>
                   </div>
                   <div>
-                    <span className="text-[12px] uppercase text-stone-400 font-mono block mb-1">03 · Точка живости</span>
+                    <span className="text-[13px] uppercase text-stone-400 font-mono block mb-1">03 · Точка живости</span>
                     <p className="text-xs text-stone-300 font-serif italic">«{inputs.q3 || '—'}»</p>
                   </div>
                   <div>
-                    <span className="text-[12px] uppercase text-stone-400 font-mono block mb-1">04 · Искомое качество</span>
+                    <span className="text-[13px] uppercase text-stone-400 font-mono block mb-1">04 · Искомое качество</span>
                     <p className="text-xs text-stone-300 font-serif italic">«{inputs.q4 || '—'}»</p>
                   </div>
                 </div>
@@ -343,7 +343,7 @@ export default function PersonalMyth({
 
               {/* EDITORIAL STORY TEXT (High Leading, Book Chapter) */}
               <article className="w-full bg-[#EFE5D3] border border-[#D1B98D]/50 p-8 sm:p-12 rounded-xs shadow-[0_28px_80px_rgba(0,0,0,0.3)]">
-                <div className="mb-8 flex items-center justify-between border-b border-[#7B6545]/20 pb-4 text-[12px] uppercase tracking-[0.25em] text-[#7B6545] font-mono">
+                <div className="mb-8 flex items-center justify-between border-b border-[#7B6545]/20 pb-4 text-[13px] uppercase tracking-[0.25em] text-[#7B6545] font-mono">
                   <span>Личный миф</span>
                   <span>Чернила · твои четыре образа</span>
                 </div>
@@ -354,9 +354,13 @@ export default function PersonalMyth({
                 </div>
               </article>
 
+              <p className="max-w-2xl mx-auto text-sm text-stone-400 leading-relaxed text-center">
+                У этой истории нет единственно правильной расшифровки. Можно взять одну деталь, изменить её или решить, что образ вам не подходит — смысл остаётся за вами.
+              </p>
+
               {/* LIVING QUESTION FOR REFLECTION */}
               <div className="w-full bg-[#0D121D]/90 border border-[var(--color-antique-gold)]/20 p-8 sm:p-10 rounded-xs text-center">
-                <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-3">
+                <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-3">
                   Вопрос для внутренней тишины
                 </span>
                 
@@ -376,7 +380,7 @@ export default function PersonalMyth({
               {/* CTA TO DIGITAL CODE / MEETING */}
               <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-10 rounded-xs text-center space-y-6">
                 <div>
-                  <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
+                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
                     Следующее зеркало
                   </span>
                   <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
