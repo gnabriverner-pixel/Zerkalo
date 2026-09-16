@@ -73,7 +73,7 @@ describe('Code V2 Human Product Experience UI Contract', () => {
 
     // Sequence verification: 5 numbers visually, central motif, quiet Albert link, expandable calculation
     expect(html).toContain('Пять позиций вашей карты');
-    expect(html).toContain('Покой внутри — жёсткий мотор в деле');
+    expect(html).toContain('Покой сердца и строгий закон формы');
     expect(html).toContain('Хотите проверить это на себе?');
     for (const paragraph of (payload.central_motif || '').split('\n\n')) {
       expect(html).toContain(paragraph);
