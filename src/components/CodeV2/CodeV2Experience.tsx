@@ -193,7 +193,7 @@ export function CodeV2Experience({
           <div className="flex flex-wrap items-center justify-between w-full gap-3 mb-8 pb-4 border-b border-white/5">
             <div className="flex items-center gap-2.5">
               <span className="w-2 h-2 rounded-full bg-[var(--color-antique-gold)] animate-pulse" />
-              <span className="text-[11px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]">
+              <span className="text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]">
                 Digital Code V2 · QA Режим
               </span>
             </div>
@@ -219,13 +219,13 @@ export function CodeV2Experience({
         {!payload && (
           <div className="w-full max-w-xl flex flex-col items-center pt-4 sm:pt-10">
             <div className="text-center max-w-xl mb-8 sm:mb-10">
-              <div className="text-[11px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-3">
+              <div className="text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-3">
                 ЗЕРКАЛО СЕБЯ
               </div>
               <h1 className="font-serif text-3xl sm:text-5xl font-light text-stone-100 tracking-tight mb-4">
                 Ваш Цифровой Код
               </h1>
-              <div className="text-sm sm:text-base text-stone-300 font-light leading-relaxed max-w-lg mx-auto space-y-3">
+              <div className="text-sm sm:text-base text-stone-300 font-normal leading-relaxed max-w-lg mx-auto space-y-3">
                 <p>
                   Посмотрите на привычную ситуацию с неожиданной стороны.
                 </p>
@@ -238,9 +238,9 @@ export function CodeV2Experience({
             {/* QA Presets: Only shown if isQaMode */}
             {isQaMode && (
               <div className="w-full mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
-                <div className="text-[11px] font-mono uppercase tracking-wider text-amber-300/80 mb-3 flex items-center justify-between">
+                <div className="text-[13px] font-mono uppercase tracking-wider text-amber-300/80 mb-3 flex items-center justify-between">
                   <span>Контрольные даты для проверки (QA Режим):</span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">qa=1</span>
+                  <span className="text-[12px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">qa=1</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {PRESET_DOBS.map(preset => {
@@ -257,7 +257,7 @@ export function CodeV2Experience({
                         }`}
                       >
                         <div className="text-xs font-mono font-medium">{preset.label}</div>
-                        <div className="text-[10px] text-stone-400 truncate">{preset.note}</div>
+                        <div className="text-[12px] text-stone-400 truncate">{preset.note}</div>
                       </button>
                     );
                   })}
@@ -270,7 +270,7 @@ export function CodeV2Experience({
               <form onSubmit={handleCalculate} className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
                 <div className="grid grid-cols-3 gap-3 flex-grow">
                   <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
+                    <label className="block text-[12px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
                       День
                     </label>
                     <input
@@ -290,7 +290,7 @@ export function CodeV2Experience({
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
+                    <label className="block text-[12px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
                       Месяц
                     </label>
                     <input
@@ -310,7 +310,7 @@ export function CodeV2Experience({
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
+                    <label className="block text-[12px] font-mono uppercase tracking-wider text-stone-400 mb-1.5 text-center sm:text-left">
                       Год
                     </label>
                     <input
@@ -400,7 +400,7 @@ export function CodeV2Experience({
 
               {/* A. Five Numbers Visually (Editorial Typographic Strip) */}
               <div className="flex flex-col items-center text-center mb-7 relative z-10">
-                <div className="text-[10px] sm:text-[11px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-3">
+                <div className="text-[12px] sm:text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-3">
                   Пять позиций вашей карты
                 </div>
 
@@ -411,15 +411,15 @@ export function CodeV2Experience({
                         <span className="font-serif text-3xl sm:text-5xl text-amber-100 font-light leading-none">
                           {pos.energy}
                         </span>
-                        <span className="text-[10px] sm:text-xs text-[var(--color-antique-gold)] font-medium mt-1.5">
+                        <span className="text-[12px] sm:text-xs text-[var(--color-antique-gold)] font-medium mt-1.5">
                           {pos.energy_name}
                         </span>
-                        <span className="text-[9px] sm:text-[10px] font-mono text-stone-400 uppercase tracking-wider mt-0.5">
+                        <span className="text-[12px] sm:text-[12px] font-mono text-stone-400 uppercase tracking-wider mt-0.5">
                           {pos.public_name.replace('Число ', '')}
                         </span>
                       </div>
                       {idx < payload.positions.length - 1 && (
-                        <span className="text-stone-600 text-lg sm:text-2xl font-light select-none pb-4 sm:pb-5">·</span>
+                        <span className="text-stone-600 text-lg sm:text-2xl font-normal select-none pb-4 sm:pb-5">·</span>
                       )}
                     </React.Fragment>
                   ))}
@@ -428,7 +428,7 @@ export function CodeV2Experience({
 
               {/* B & C. Central Human Motif (Heading + Why It Matters) */}
               <div className="pt-6 border-t border-white/10 relative z-10">
-                <div className="text-[10px] sm:text-[11px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-2">
+                <div className="text-[12px] sm:text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-2">
                   Центральный нерв карты
                 </div>
 
@@ -436,9 +436,10 @@ export function CodeV2Experience({
                   {payload.albert_context?.strongest_hypothesis || 'Внутренний контраст вашей карты'}
                 </h2>
 
-                <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-sm sm:text-base text-stone-200 leading-relaxed font-light mb-6">
-                  <p>{getFirstSentence(payload.central_motif || payload.synthesis.strongest_motif)}</p>
-                  {payload.opening_scene && <p className="mt-3 text-stone-300">{payload.opening_scene}</p>}
+                <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-sm sm:text-base text-stone-200 leading-relaxed font-normal mb-6 space-y-4">
+                  {(payload.central_motif || payload.synthesis.strongest_motif || '').split('\n\n').map((paragraph, pIdx) => (
+                    <p key={pIdx}>{paragraph}</p>
+                  ))}
                 </div>
 
                 {/* Quiet Albert Invitation right after central motif */}
@@ -447,7 +448,7 @@ export function CodeV2Experience({
                     <div className="text-sm text-stone-200 font-medium">
                       Хотите проверить это на себе?
                     </div>
-                    <div className="text-xs text-stone-400 font-light mt-0.5">
+                    <div className="text-xs text-stone-400 font-normal mt-0.5">
                       Альберт уже видит вашу карту.
                     </div>
                   </div>
@@ -493,7 +494,7 @@ export function CodeV2Experience({
                             className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-black/40 rounded-xl border border-white/5 text-xs"
                           >
                             <div className="flex items-center gap-2.5">
-                              <span className="w-5 h-5 rounded-full bg-white/10 text-stone-300 font-mono text-[10px] flex items-center justify-center">
+                              <span className="w-5 h-5 rounded-full bg-white/10 text-stone-300 font-mono text-[12px] flex items-center justify-center">
                                 {idx + 1}
                               </span>
                               <span className="font-medium text-stone-200">{step.public_name}:</span>
@@ -503,7 +504,7 @@ export function CodeV2Experience({
                               <code className="font-mono text-amber-200 bg-black/60 px-2.5 py-1 rounded-md border border-white/5">
                                 {step.calculation}
                               </code>
-                              <span className="text-[11px] text-stone-400 hidden sm:inline">
+                              <span className="text-[13px] text-stone-400 hidden sm:inline">
                                 {step.rule}
                               </span>
                             </div>
@@ -522,7 +523,7 @@ export function CodeV2Experience({
                 <Compass className="w-4 h-4 text-[var(--color-antique-gold)]" />
                 <span>Как это читать</span>
               </div>
-              <p className="text-xs sm:text-sm text-stone-300 font-light leading-relaxed max-w-2xl">
+              <p className="text-xs sm:text-sm text-stone-300 font-normal leading-relaxed max-w-2xl">
                 Цифровой Код использует современную ведическую нумерологию как язык гипотез о человеке. Не принимайте текст как диагноз или готовую истину. Смотрите, что узнаётся в вашей жизни, а с чем хочется поспорить.
               </p>
             </section>
@@ -533,7 +534,7 @@ export function CodeV2Experience({
                 <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
                   Пять позиций вашего кода
                 </h2>
-                <p className="text-xs sm:text-sm text-stone-400 font-light mt-1">
+                <p className="text-xs sm:text-sm text-stone-400 font-normal mt-1">
                   Каждое число отвечает за свой слой жизни и раскрывается по-разному.
                 </p>
               </div>
@@ -577,7 +578,7 @@ export function CodeV2Experience({
                         <div className="text-xs font-medium text-stone-400 mb-2">
                           О чём это число
                         </div>
-                        <p className="text-sm sm:text-base text-stone-200 font-light leading-relaxed">
+                        <p className="text-sm sm:text-base text-stone-200 font-normal leading-relaxed">
                           {isExpanded ? pos.essence : getFirstSentence(pos.essence)}
                         </p>
                       </div>
@@ -596,7 +597,7 @@ export function CodeV2Experience({
                               <span className="text-[var(--color-antique-gold)] font-medium sm:min-w-[190px] flex-shrink-0">
                                 Когда эта сила работает:
                               </span>
-                              <span className="text-stone-300 font-light leading-relaxed">
+                              <span className="text-stone-300 font-normal leading-relaxed">
                                 {pos.strong_form}
                               </span>
                             </div>
@@ -605,7 +606,7 @@ export function CodeV2Experience({
                               <span className="text-amber-400/90 font-medium sm:min-w-[190px] flex-shrink-0">
                                 Где она начинает мешать:
                               </span>
-                              <span className="text-stone-300 font-light leading-relaxed">
+                              <span className="text-stone-300 font-normal leading-relaxed">
                                 {pos.shadow}
                               </span>
                             </div>
@@ -614,22 +615,22 @@ export function CodeV2Experience({
                               <span className="text-purple-300/90 font-medium sm:min-w-[190px] flex-shrink-0">
                                 Главная ловушка:
                               </span>
-                              <span className="text-stone-300 font-light leading-relaxed">
+                              <span className="text-stone-300 font-normal leading-relaxed">
                                 {pos.tension}
                               </span>
                             </div>
 
                             {pos.life_scenes && pos.life_scenes.length > 0 && (
                               <div className="pt-3 border-t border-white/5 space-y-2.5">
-                                <div className="text-[11px] font-mono uppercase tracking-wider text-stone-400 mb-2">
+                                <div className="text-[13px] font-mono uppercase tracking-wider text-stone-400 mb-2">
                                   Ситуации из жизни:
                                 </div>
                                 {pos.life_scenes.map((scene, sIdx) => (
                                   <div
                                     key={sIdx}
-                                    className="p-3.5 bg-black/40 rounded-xl border border-white/5 text-xs text-stone-300 font-light leading-relaxed"
+                                    className="p-3.5 bg-black/40 rounded-xl border border-white/5 text-xs text-stone-300 font-normal leading-relaxed"
                                   >
-                                    <div className="font-medium text-[var(--color-antique-gold)] mb-1 text-[11px]">
+                                    <div className="font-medium text-[var(--color-antique-gold)] mb-1 text-[13px]">
                                       {scene.title}
                                     </div>
                                     <div>{scene.description}</div>
@@ -645,7 +646,7 @@ export function CodeV2Experience({
                       <div className="p-4 bg-black/30 rounded-xl border border-white/5 flex items-start gap-3 mb-3">
                         <Compass className="w-4 h-4 text-[var(--color-antique-gold)] flex-shrink-0 mt-0.5" />
                         <div>
-                          <span className="text-[11px] font-medium text-stone-400 block mb-1">
+                          <span className="text-[13px] font-medium text-stone-400 block mb-1">
                             Проверьте на себе:
                           </span>
                           <p className="text-xs sm:text-sm text-stone-200 font-serif italic leading-relaxed">
@@ -690,7 +691,7 @@ export function CodeV2Experience({
                 <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
                   Как числа взаимодействуют между собой
                 </h2>
-                <p className="text-xs sm:text-sm text-stone-400 font-light leading-relaxed">
+                <p className="text-xs sm:text-sm text-stone-400 font-normal leading-relaxed">
                   Характер проявляется в том, как разные силы поддерживают или сдерживают друг друга.
                 </p>
               </div>
@@ -703,14 +704,14 @@ export function CodeV2Experience({
                   >
                     <div>
                       {isQaMode && (
-                        <div className="text-[10px] font-mono text-stone-400 mb-2">
+                        <div className="text-[12px] font-mono text-stone-400 mb-2">
                           {inter.category} · {inter.positions_label}
                         </div>
                       )}
                       <h4 className="font-serif text-lg text-stone-100 font-light mb-3 leading-snug">
                         {inter.heading}
                       </h4>
-                      <p className="text-xs text-stone-300 font-light leading-relaxed">
+                      <p className="text-xs text-stone-300 font-normal leading-relaxed">
                         {getFirstSentence(inter.meaning)}
                       </p>
                     </div>
@@ -725,13 +726,13 @@ export function CodeV2Experience({
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
                 <div className="max-w-xl">
-                  <div className="text-[11px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-2">
+                  <div className="text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-2">
                     Диалог по карте
                   </div>
                   <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-3">
                     Альберт — собеседник по вашей карте
                   </h3>
-                  <p className="text-sm sm:text-base text-stone-300 font-light leading-relaxed mb-4">
+                  <p className="text-sm sm:text-base text-stone-300 font-normal leading-relaxed mb-4">
                     Он не будет пересказывать числа. Он поможет понять, что действительно про вас, а что стоит уточнить или отбросить.
                   </p>
                   {payload.albert_context?.opening_statement && (

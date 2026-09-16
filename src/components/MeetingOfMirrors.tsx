@@ -81,11 +81,14 @@ export function MeetingOfMirrors({
   const [isHandoffLoading, setIsHandoffLoading] = useState(false);
   const [handoffError, setHandoffError] = useState<string | null>(null);
   const [transferAccepted, setTransferAccepted] = useState(false);
+  const [handoffUrl, setHandoffUrl] = useState<string | null>(null);
+  useEffect(() => { setHandoffUrl(null); }, [meetingResult, codeResult, storyResult]);
 
   const handleContinueToTelegram = async () => {
     if (!meetingResult || !codeResult || !storyResult || !transferAccepted) return;
     setIsHandoffLoading(true);
     setHandoffError(null);
+    setHandoffUrl(null);
     try {
       const {acceptConsent} = await import('../services/consent');
       await acceptConsent('telegram_transfer');
@@ -103,7 +106,9 @@ export function MeetingOfMirrors({
       });
       const data = await resp.json();
       if (data.status === "ok" && data.telegramUrl) {
-        window.open(data.telegramUrl, "_blank", "noopener,noreferrer");
+        const url = new URL(data.telegramUrl);
+        if (url.origin !== 'https://t.me' || !/^\/[A-Za-z][A-Za-z0-9_]{4,31}$/.test(url.pathname)) throw new Error('invalid_destination');
+        setHandoffUrl(url.href);
       } else {
         setHandoffError(data.message || "Не удалось сформировать защищённую ссылку для перехода.");
       }
@@ -261,7 +266,7 @@ export function MeetingOfMirrors({
             </motion.div>
           </div>
 
-          <span className="text-[10px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] mb-3">
+          <span className="text-[12px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] mb-3">
             Синтез двух зеркал · Встреча
           </span>
 
@@ -269,7 +274,7 @@ export function MeetingOfMirrors({
             Встреча Зеркал
           </h1>
 
-          <p className="text-sm sm:text-base text-stone-300 font-light max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-stone-300 font-normal max-w-xl mx-auto leading-relaxed">
             Сопоставление расчетного цифрового кода и метафорического мифа.
           </p>
         </div>
@@ -286,7 +291,7 @@ export function MeetingOfMirrors({
               : 'bg-[#0D121D]/40 border-dashed border-white/10'
           }`}>
             <div className="flex justify-between items-start mb-4">
-              <span className="text-[10px] uppercase font-mono tracking-widest text-stone-400">
+              <span className="text-[12px] uppercase font-mono tracking-widest text-stone-400">
                 Линза 1 · Цифровой код
               </span>
               {hasCode ? (
@@ -304,7 +309,7 @@ export function MeetingOfMirrors({
                 <h3 className="font-serif text-xl text-stone-100 mb-1">
                   Формула: {codeResult.soul} / {codeResult.expression} / {codeResult.path}
                 </h3>
-                <p className="text-xs text-stone-400 font-light line-clamp-2">
+                <p className="text-xs text-stone-400 font-normal line-clamp-2">
                   {firstMirror?.keyInsight || `Число Души ${codeResult.soul}, Путь ${codeResult.path}`}
                 </p>
               </div>
@@ -326,7 +331,7 @@ export function MeetingOfMirrors({
               : 'bg-[#0D121D]/40 border-dashed border-white/10'
           }`}>
             <div className="flex justify-between items-start mb-4">
-              <span className="text-[10px] uppercase font-mono tracking-widest text-stone-400">
+              <span className="text-[12px] uppercase font-mono tracking-widest text-stone-400">
                 Линза 2 · Личный миф
               </span>
               {hasMyth ? (
@@ -344,7 +349,7 @@ export function MeetingOfMirrors({
                 <h3 className="font-serif text-xl text-stone-100 mb-1">
                   «{storyResult.title}»
                 </h3>
-                <p className="text-xs text-stone-400 font-light line-clamp-2">
+                <p className="text-xs text-stone-400 font-normal line-clamp-2">
                   {storyResult.story}
                 </p>
               </div>
@@ -413,21 +418,21 @@ export function MeetingOfMirrors({
                     Что становится видно рядом
                   </h3>
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] uppercase font-mono tracking-[0.15em] text-stone-400">
+                    <span className="text-[12px] uppercase font-mono tracking-[0.15em] text-stone-400">
                       {meetingResult.parallels.length} {pluralRu(meetingResult.parallels.length, 'резонанс', 'резонанса', 'резонансов')} · {meetingResult.divergences.length} {pluralRu(meetingResult.divergences.length, 'расхождение', 'расхождения', 'расхождений')}
                     </span>
-                    <span className="text-[11px] font-serif italic text-stone-400">
+                    <span className="text-[13px] font-serif italic text-stone-400">
                       {meetingResult.confidenceNote}
                     </span>
                   </div>
                 </div>
 
-                <p className="font-serif text-xl sm:text-2xl text-stone-100 font-light leading-relaxed mb-6">
+                <p className="font-serif text-xl sm:text-2xl text-stone-100 font-normal leading-relaxed mb-6">
                   {meetingResult.summary}
                 </p>
 
                 {meetingResult.disclaimer && (
-                  <p className="text-xs sm:text-sm text-stone-400 font-light border-t border-white/[0.06] pt-4 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-stone-400 font-normal border-t border-white/[0.06] pt-4 leading-relaxed">
                     {meetingResult.disclaimer}
                   </p>
                 )}
@@ -436,13 +441,13 @@ export function MeetingOfMirrors({
               {/* Zero-resonance state banner if parallels is empty */}
               {meetingResult.parallels.length === 0 && (
                 <div className="bg-[#0D121D] border border-white/[0.08] p-8 sm:p-10 rounded-xs text-left space-y-4">
-                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
+                  <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                     Нулевая встреча — полноценный результат
                   </span>
                   <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
                     Сильных резонансов не найдено
                   </h3>
-                  <p className="text-sm text-stone-300 font-light leading-relaxed max-w-2xl">
+                  <p className="text-sm text-stone-300 font-normal leading-relaxed max-w-2xl">
                     Два независимых взгляда показывают разные плоскости: мы не превращаем отдельные похожие слова в искусственную связь.
                   </p>
                 </div>
@@ -451,7 +456,7 @@ export function MeetingOfMirrors({
               {/* Parallels Section */}
               {meetingResult.parallels.length > 0 && (
                 <div className="space-y-4 text-left">
-                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
+                  <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                     Смысловые резонансы (где зеркала сходятся)
                   </span>
 
@@ -467,7 +472,7 @@ export function MeetingOfMirrors({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="bg-[#E8E0D4] border border-[#C8A45D]/35 p-4 rounded-xs text-[#2B241C]">
-                            <span className="text-[9px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
+                            <span className="text-[12px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Кода:
                             </span>
                             <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#2B241C]">
@@ -476,7 +481,7 @@ export function MeetingOfMirrors({
                           </div>
 
                           <div className="bg-[#EFE5D3] border border-[#B89568]/35 p-4 rounded-xs text-[#282019]">
-                            <span className="text-[9px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
+                            <span className="text-[12px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Мифа:
                             </span>
                             <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#282019]">
@@ -499,7 +504,7 @@ export function MeetingOfMirrors({
               {/* Divergences Section */}
               {meetingResult.divergences.length > 0 && (
                 <div className="space-y-4 text-left">
-                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
+                  <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                     Различия ракурсов (где зеркала расходятся)
                   </span>
 
@@ -515,7 +520,7 @@ export function MeetingOfMirrors({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="bg-[#E8E0D4] border border-[#C8A45D]/35 p-4 rounded-xs text-[#2B241C]">
-                            <span className="text-[9px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
+                            <span className="text-[12px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Кода:
                             </span>
                             <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#2B241C]">
@@ -524,7 +529,7 @@ export function MeetingOfMirrors({
                           </div>
 
                           <div className="bg-[#EFE5D3] border border-[#B89568]/35 p-4 rounded-xs text-[#282019]">
-                            <span className="text-[9px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
+                            <span className="text-[12px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Мифа:
                             </span>
                             <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#282019]">
@@ -546,19 +551,19 @@ export function MeetingOfMirrors({
 
               {/* Albert's Synthesis Insight & Living Question */}
               <div className="bg-[#0D121D] border border-white/[0.08] p-8 sm:p-10 rounded-xs space-y-6 text-left">
-                <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
+                <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                   Взгляд Альберта Вяземского
                 </span>
                 
-                <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed font-light">
+                <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed font-normal">
                   {meetingResult.albertInsight}
                 </p>
 
                 <div className="border-t border-white/[0.06] pt-6">
-                  <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
+                  <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
                     Вопрос для личной рефлексии
                   </span>
-                  <p className="font-serif italic text-lg sm:text-xl text-emerald-200 mb-4 font-light">
+                  <p className="font-serif italic text-lg sm:text-xl text-emerald-200 mb-4 font-normal">
                     «{meetingResult.reflectiveQuestion}»
                   </p>
                   <textarea
@@ -566,14 +571,14 @@ export function MeetingOfMirrors({
                     value={userNote}
                     onChange={(e) => handleUserNoteChange(e.target.value)}
                     placeholder="Запишите мысли или инсайты от этой встречи..."
-                    className="w-full bg-[#080C14] border-0 border-b border-white/20 text-sm text-stone-200 py-3 outline-none focus:border-[var(--color-antique-gold)] resize-none font-light"
+                    className="w-full bg-[#080C14] border-0 border-b border-white/20 text-sm text-stone-200 py-3 outline-none focus:border-[var(--color-antique-gold)] resize-none font-normal"
                   />
                 </div>
               </div>
 
               {/* ALBERT CONTINUATION CTA */}
               <div className="bg-[#0D121D] border border-[var(--color-antique-gold)]/40 p-8 sm:p-10 rounded-xs text-center space-y-5">
-                <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
+                <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
                   Продолжение исследования
                 </span>
                 
@@ -581,7 +586,7 @@ export function MeetingOfMirrors({
                   Исследовать синтез с Альбертом
                 </h3>
                 
-                <p className="text-xs sm:text-sm text-stone-300 font-light max-w-lg mx-auto leading-relaxed">
+                <p className="text-xs sm:text-sm text-stone-300 font-normal max-w-lg mx-auto leading-relaxed">
                   Задайте вопрос Альберту прямо на сайте: он удерживает структуру вашего Кода, образы Мифа и найденные параллели.
                 </p>
 
@@ -611,8 +616,14 @@ export function MeetingOfMirrors({
                   <input type="checkbox" checked={transferAccepted} onChange={e=>setTransferAccepted(e.target.checked)} className="mt-1 size-5 shrink-0" />
                   Разрешаю перенести результаты, образы и поправки в Telegram для продолжения разговора. Дата рождения и исходные четыре ответа не переносятся.
                 </label>
+                {handoffUrl && (
+                  <p className="text-sm text-stone-200">
+                    <a href={handoffUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-4 text-amber-200">Открыть @{new URL(handoffUrl).pathname.slice(1)} в Telegram</a>
+                    <span className="block mt-1">В боте нажмите «Запустить». Ссылка действует 15 минут.</span>
+                  </p>
+                )}
                 {handoffError && (
-                  <p className="text-[11px] text-amber-400 mt-2">{handoffError}</p>
+                  <p className="text-[13px] text-amber-400 mt-2">{handoffError}</p>
                 )}
               </div>
 
@@ -621,12 +632,12 @@ export function MeetingOfMirrors({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
                   <div className="flex items-center gap-2">
                     <Bookmark size={14} className="text-[var(--color-antique-gold)]" />
-                    <span className="text-[10px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]">
+                    <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]">
                       Моё зеркало · Локальное сохранение
                     </span>
                   </div>
                   {savedAt && (
-                    <span className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5">
+                    <span className="text-[13px] font-mono text-emerald-400/90 flex items-center gap-1.5">
                       <Check size={12} />
                       <span>Сохранено в этом браузере</span>
                     </span>
@@ -637,7 +648,7 @@ export function MeetingOfMirrors({
                   <h4 className="font-serif text-lg sm:text-xl text-stone-100 font-light mb-1">
                     {savedAt ? 'Зеркало сохранено на этом устройстве' : 'Сохранить в «Моё зеркало»'}
                   </h4>
-                  <p className="text-xs text-stone-400 font-light leading-relaxed max-w-xl">
+                  <p className="text-xs text-stone-400 font-normal leading-relaxed max-w-xl">
                     Код, ваши 4 ответа, Личный миф и Встреча сохранятся только в этом браузере на этом устройстве. Нового серверного хранения не создаётся.
                   </p>
                 </div>
@@ -645,7 +656,7 @@ export function MeetingOfMirrors({
                 <div className="flex flex-wrap items-center gap-3 pt-1">
                   <button
                     onClick={handleSave}
-                    className={`px-5 py-2.5 rounded-xs uppercase tracking-[0.2em] text-[11px] font-medium transition-all flex items-center gap-2 cursor-pointer ${
+                    className={`px-5 py-2.5 rounded-xs uppercase tracking-[0.2em] text-[13px] font-medium transition-all flex items-center gap-2 cursor-pointer ${
                       savedAt
                         ? 'bg-white/10 text-stone-200 hover:bg-white/15 border border-white/20'
                         : 'border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)]'
@@ -658,7 +669,7 @@ export function MeetingOfMirrors({
                   {savedAt && (
                     <button
                       onClick={handleDelete}
-                      className="px-4 py-2.5 text-stone-400 hover:text-red-300 uppercase tracking-[0.18em] text-[10px] font-mono transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2.5 text-stone-400 hover:text-red-300 uppercase tracking-[0.18em] text-[12px] font-mono transition-colors flex items-center gap-1.5 cursor-pointer"
                     >
                       <Trash2 size={12} />
                       <span>Удалить сохранённое</span>

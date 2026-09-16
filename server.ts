@@ -375,6 +375,7 @@ async function startServer() {
       return res.status(200).json({ status: "ok", ...claim });
     } catch (err: any) {
       const msg = err?.message || "claim_creation_failed";
+      if (msg === 'telegram_destination_unavailable') return res.status(503).json({status:'error', code:msg, message:'Переход в Telegram временно недоступен. Ваше исследование остаётся здесь — можно продолжить диалог на сайте.'});
       const isInput = msg.includes("consent_required") || msg.includes("age_requirement") || msg.includes("journey_incomplete");
       return res.status(isInput ? 400 : 500).json({ status: "error", code: msg.split(":", 1)[0], message: msg });
     }

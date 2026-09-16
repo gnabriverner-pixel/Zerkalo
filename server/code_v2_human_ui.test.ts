@@ -65,16 +65,20 @@ describe('Code V2 Human Product Experience UI Contract', () => {
       expect(html).not.toContain(tax);
     }
 
-    // Visible text budget: 450-700 Russian words
+    // Visible text budget: 450-800 Russian words (allowing for 90-160 word enriched central motif)
     const textOnly = html.replace(/<[^>]*>/g, ' ');
     const ruWords = textOnly.match(/[а-яА-ЯёЁ]+/g) || [];
     expect(ruWords.length).toBeGreaterThanOrEqual(450);
-    expect(ruWords.length).toBeLessThanOrEqual(700);
+    expect(ruWords.length).toBeLessThanOrEqual(800);
 
     // Sequence verification: 5 numbers visually, central motif, quiet Albert link, expandable calculation
     expect(html).toContain('Пять позиций вашей карты');
     expect(html).toContain('Покой внутри — жёсткий мотор в деле');
     expect(html).toContain('Хотите проверить это на себе?');
+    for (const paragraph of (payload.central_motif || '').split('\n\n')) {
+      expect(html).toContain(paragraph);
+    }
+    expect(html).not.toContain('Раскрыть эту связь');
     expect(html).toContain('Вот откуда это взялось');
 
     // Must contain human labels

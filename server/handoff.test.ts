@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "fs/promises";
 import path from "path";
 import {
@@ -8,10 +8,24 @@ import {
   verifyClaimSignature,
   buildSharedContextEnvelope,
   CLAIM_TTL_MS,
+  getTelegramBotUsername,
 } from "./handoff";
 import type { CalculationResult } from "../src/types";
 
 describe("Web -> Telegram V2 Continuation Claim Contract", () => {
+  beforeEach(() => { vi.stubEnv('TELEGRAM_BOT_USERNAME', 'digitalcodesystem_bot'); vi.stubEnv('TELEGRAM_STAGING_BOT_USERNAME', ''); });
+  afterEach(() => vi.unstubAllEnvs());
+  it('uses the owner-confirmed bot and rejects an imaginary staging destination', () => {
+    expect(getTelegramBotUsername()).toBe('digitalcodesystem_bot');
+    vi.stubEnv('TELEGRAM_BOT_USERNAME', '');
+    expect(getTelegramBotUsername()).toBe('digitalcodesystem_bot');
+    vi.stubEnv('TELEGRAM_STAGING_BOT_USERNAME', 'ZerkaloStagingBot');
+    expect(() => getTelegramBotUsername()).toThrow('telegram_destination_unavailable');
+    vi.stubEnv('TELEGRAM_BOT_USERNAME', '@digitalcodesystem_bot');
+    expect(getTelegramBotUsername()).toBe('digitalcodesystem_bot');
+    vi.stubEnv('TELEGRAM_BOT_USERNAME', 'bad/name?');
+    expect(() => getTelegramBotUsername()).toThrow('telegram_destination_unavailable');
+  });
   const dummyCode: CalculationResult = {
     soul: 6,
     soulComposite: "6",
@@ -75,6 +89,7 @@ describe("Web -> Telegram V2 Continuation Claim Contract", () => {
 
     expect(claim.claimId).toHaveLength(43);
     expect(claim.token).toContain(claim.claimId);
+    expect(new URL(claim.telegramUrl).pathname).toBe("/digitalcodesystem_bot");
     const start = new URL(claim.telegramUrl).searchParams.get("start")!;
     expect(start).toBe(`h_${claim.claimId}`);
     expect(start).toHaveLength(45);
