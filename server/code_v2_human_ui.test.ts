@@ -65,14 +65,17 @@ describe('Code V2 Human Product Experience UI Contract', () => {
       expect(html).not.toContain(tax);
     }
 
-    // Visible text budget: 450-800 Russian words (allowing for 90-160 word enriched central motif)
+    // Visible text budget: 450-860 Russian words (allowing for celestial intro and enriched central motif)
     const textOnly = html.replace(/<[^>]*>/g, ' ');
     const ruWords = textOnly.match(/[а-яА-ЯёЁ]+/g) || [];
     expect(ruWords.length).toBeGreaterThanOrEqual(450);
-    expect(ruWords.length).toBeLessThanOrEqual(800);
+    expect(ruWords.length).toBeLessThanOrEqual(860);
 
-    // Sequence verification: 5 numbers visually, central motif, quiet Albert link, expandable calculation
+    // Sequence verification: celestial intro, 5 numbers visually, central motif with planetary badge, quiet Albert link, expandable calculation
+    expect(html).toContain('Введение в мир небесных архетипов');
+    expect(html).toContain('9 светил и 5 координат вашей карты');
     expect(html).toContain('Пять позиций вашей карты');
+    expect(html).toContain('Венера (6) ⟷ Сатурн (8)');
     expect(html).toContain('Покой сердца и строгий закон формы');
     expect(html).toContain('Хотите проверить это на себе?');
     for (const paragraph of (payload.central_motif || '').split('\n\n')) {

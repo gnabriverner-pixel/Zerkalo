@@ -71,6 +71,13 @@ export function CodeV2Experience({
   const [showCalcChain, setShowCalcChain] = useState(false);
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>(initialExpanded || {});
 
+  const leadInteraction = payload?.albert_context?.selected_interactions?.[0] || payload?.interactions?.[0];
+  const soulPos = payload?.positions.find(p => p.position === 'soul');
+  const pathPos = payload?.positions.find(p => p.position === 'path');
+  const leadInteractionBadge = (leadInteraction && payload)
+    ? `${payload.positions.find(p => p.position === leadInteraction.pair[0])?.energy_name || ''} (${leadInteraction.energies[0]}) ⟷ ${payload.positions.find(p => p.position === leadInteraction.pair[1])?.energy_name || ''} (${leadInteraction.energies[1]})`
+    : (soulPos && pathPos ? `${soulPos.energy_name} (${soulPos.energy}) ⟷ ${pathPos.energy_name} (${pathPos.energy})` : null);
+
   const dayRef = useRef<HTMLInputElement>(null);
   const monthRef = useRef<HTMLInputElement>(null);
   const yearRef = useRef<HTMLInputElement>(null);
@@ -398,6 +405,20 @@ export function CodeV2Experience({
             <section className="w-full bg-gradient-to-br from-[#12192B] via-[#0E1524] to-[#0A0E18] border border-[var(--color-antique-gold)]/30 rounded-3xl p-6 sm:p-9 relative shadow-2xl overflow-hidden">
               <div className="absolute top-0 right-0 w-96 h-96 bg-[radial-gradient(circle_at_top_right,rgba(200,164,93,0.12),transparent_70%)] pointer-events-none" />
 
+              {/* Celestial Immersion Intro */}
+              <div className="text-center max-w-xl mx-auto mb-8 relative z-10">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-antique-gold)]/25 text-[11px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] mb-3">
+                  <Sparkles className="w-3 h-3" />
+                  <span>Введение в мир небесных архетипов</span>
+                </div>
+                <h1 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-2">
+                  9 светил и 5 координат вашей карты
+                </h1>
+                <p className="text-xs sm:text-sm text-stone-300 font-normal leading-relaxed">
+                  Каждая цифра даты рождения связана с небесным принципом. Вместе они задают пять координат вашей карты.
+                </p>
+              </div>
+
               {/* A. Five Numbers Visually (Editorial Typographic Strip) */}
               <div className="flex flex-col items-center text-center mb-7 relative z-10">
                 <div className="text-[12px] sm:text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-3">
@@ -428,8 +449,15 @@ export function CodeV2Experience({
 
               {/* B & C. Central Human Motif (Heading + Why It Matters) */}
               <div className="pt-6 border-t border-white/10 relative z-10">
-                <div className="text-[12px] sm:text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-2">
-                  Центральный нерв карты
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <div className="text-[12px] sm:text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80">
+                    Центральный нерв карты
+                  </div>
+                  {leadInteractionBadge && (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--color-antique-gold)]/15 border border-[var(--color-antique-gold)]/35 text-[11px] font-mono text-amber-200">
+                      <span>{leadInteractionBadge}</span>
+                    </div>
+                  )}
                 </div>
 
                 <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-4 leading-snug">
