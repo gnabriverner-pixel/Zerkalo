@@ -10,7 +10,10 @@ const r = saved.myth.result;
 const cleanedMythResult = {
   ...r,
   story: stripContrasts(r.story),
-  mirror: Object.fromEntries(Object.entries(r.mirror).map(([k, v]) => [k, stripContrasts(v)])),
+  mirror: {
+    ...Object.fromEntries(Object.entries(r.mirror).map(([k, v]) => [k, stripContrasts(v)])),
+    hiddenResource: 'После малого жеста в сцене становится возможным выбрать следующий шаг, не объявляя его единственно верным.',
+  },
   meaning: r.meaning.map(stripContrasts),
   one_step: stripContrasts(r.one_step),
   journal_question: stripContrasts(r.journal_question),

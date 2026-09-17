@@ -45,7 +45,7 @@ function validPayload() {
       mirror: {
         mainImage: "Дверь остаётся для тебя образом выбора, а не готовым объяснением.",
         innerTension: "История отражает твое внутреннее напряжение между желанием сделать шаг и правом остаться в тишине.",
-        hiddenResource: "Прогулка у воды возвращает тебе твой собственный живой темп.",
+        hiddenResource: "После того как ты берёшь камень в ладонь, становится возможным выбрать темп следующего шага, не требуя от двери готового ответа.",
         newView: "Туман и движение у реки соединяются в твое право идти без требования немедленной ясности.",
       },
       meaning: ["Дверь как вопрос", "Темп как выбор", "Неопределённость остаётся"],
@@ -149,7 +149,9 @@ describe("Personal Myth v1.1 release contract", () => {
     expect(prompt).toContain("ТОЛЬКО ВТОРОЕ ЛИЦО ЕДИНСТВЕННОГО ЧИСЛА");
     expect(prompt).toContain("400–600 слов");
     expect(prompt).toContain("3–6 законченных абзацев");
-    expect(prompt).toContain("ИНТЕГРАЦИЯ Q4");
+    expect(prompt).toContain("Q4 КАК НАПРАВЛЕНИЕ ВОЗМОЖНОГО РАСКРЫТИЯ");
+    expect(prompt).toContain("НЕ является правильным финалом");
+    expect(prompt).toContain("ЧТО СТАЛО ВОЗМОЖНЫМ");
     expect(prompt).toContain("ОБРАЗНАЯ ДРАМАТУРГИЯ И ЧУВСТВО ОПОРЫ");
     expect(prompt).toContain("ОДИН центральный материальный образ");
     expect(prompt).toContain("естественным современным русским языком");
@@ -175,6 +177,22 @@ describe("Personal Myth v1.1 release contract", () => {
     const inventedConflict = parsePersonalMythResult(JSON.stringify(validPayload()));
     inventedConflict.story += "\n\nТы не знаешь, с чего начать, и всё кажется недостаточно важным.";
     expect(validatePersonalMythResult(inventedConflict, noConflictRequest).blockers).toContain("invented_conflict_risk");
+
+    const inventedRelease = parsePersonalMythResult(JSON.stringify(validPayload()));
+    inventedRelease.story += "\n\nТы замечаешь, как плечи постепенно отпускает, хотя ты не знал, что они были напряжены.";
+    expect(validatePersonalMythResult(inventedRelease, noConflictRequest).blockers).toContain("invented_conflict_risk");
+
+    const inventedHistory = parsePersonalMythResult(JSON.stringify(validPayload()));
+    inventedHistory.story += "\n\nТы не помнишь, когда в последний раз просто сидел так спокойно.";
+    expect(validatePersonalMythResult(inventedHistory, noConflictRequest).blockers).toContain("invented_conflict_risk");
+
+    const inventedHabit = parsePersonalMythResult(JSON.stringify(validPayload()));
+    inventedHabit.story += "\n\nРаньше ты бы сразу поправил занавеску — такова твоя привычка.";
+    expect(validatePersonalMythResult(inventedHabit, noConflictRequest).blockers).toContain("invented_conflict_risk");
+
+    const inventedBaseline = parsePersonalMythResult(JSON.stringify(validPayload()));
+    inventedBaseline.story += "\n\nТы не помнишь, чтобы наливал так полно, и смотришь на чашку дольше, чем обычно.";
+    expect(validatePersonalMythResult(inventedBaseline, noConflictRequest).blockers).toContain("invented_conflict_risk");
   });
 
   it("validates a complete result conforming to 300-800 words and 3-6 paragraphs", () => {
@@ -184,6 +202,15 @@ describe("Personal Myth v1.1 release contract", () => {
     expect(quality.word_count).toBeGreaterThanOrEqual(300);
     expect(quality.word_count).toBeLessThanOrEqual(800);
     expect(quality.paragraph_count).toBe(4);
+  });
+
+  it("requires an emergent possibility without declaring a hidden essence", () => {
+    const missingPossibility = parsePersonalMythResult(JSON.stringify(validPayload()));
+    missingPossibility.mirror.hiddenResource = "Твоя внутренняя сила уже находится в тебе.";
+    expect(validatePersonalMythResult(missingPossibility, request()).blockers).toContain("emergent_possibility_contract");
+
+    const shownPossibility = parsePersonalMythResult(JSON.stringify(validPayload()));
+    expect(validatePersonalMythResult(shownPossibility, request()).blockers).not.toContain("emergent_possibility_contract");
   });
 
   it("rejects formal 'вы/ваш' register in story and mirror", () => {

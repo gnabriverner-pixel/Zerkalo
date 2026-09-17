@@ -389,7 +389,7 @@ export default function Storytelling() {
                          <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.innerTension}</p>
                        </div>
                        <div className="bg-[#111A16] border border-[#2A3B33] p-6">
-                         <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Скрытый ресурс</h4>
+                         <h4 className="text-xs uppercase tracking-widest text-[#A3B8AD] mb-3">Что стало возможным</h4>
                          <p className="font-sans text-gray-300 leading-relaxed text-sm">{result.mirror.hiddenResource}</p>
                        </div>
                        <div className="bg-[#111A16] border border-[#2A3B33] p-6">

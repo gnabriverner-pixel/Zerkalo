@@ -354,6 +354,15 @@ export default function PersonalMyth({
                 </div>
               </article>
 
+              <div className="w-full max-w-2xl mx-auto rounded-xs border border-purple-300/15 bg-purple-300/[0.04] p-6 sm:p-7">
+                <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-purple-200/80 block mb-3">
+                  Что стало возможным
+                </span>
+                <p className="font-serif text-lg text-stone-200 leading-relaxed">
+                  {result.mirror.hiddenResource}
+                </p>
+              </div>
+
               <p className="max-w-2xl mx-auto text-sm text-stone-400 leading-relaxed text-center">
                 У этой истории нет единственно правильной расшифровки. Можно взять одну деталь, изменить её или решить, что образ вам не подходит — смысл остаётся за вами.
               </p>

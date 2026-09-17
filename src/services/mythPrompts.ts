@@ -46,7 +46,7 @@ export function buildPersonalMythPrompt(inputs: StoryInputs): string {
     "mirror": {
       "mainImage": "Короткое емкое описание центрального образа и его скрытого значения (2-3 предложения)",
       "innerTension": "В чем на самом деле заключается скрытое напряжение (2-3 предложения)",
-      "hiddenResource": "В чем заключается обнаруженная сила и точка опоры (2-3 предложения)",
+      "hiddenResource": "Что стало возможным внутри сцены после конкретного жеста; не скрытая сила и не характеристика человека (1-2 предложения)",
       "newView": "Как меняется угол зрения на текущую ситуацию (2-3 предложения)"
     },
     "meaning": [
@@ -102,7 +102,7 @@ export function buildMeetingOfMirrorsPrompt(
 - Название созданного Мифа: "${storyResult.title}"
 - Центральный образ Мифа: "${storyResult.mirror?.mainImage || ''}"
 - Внутреннее напряжение Мифа: "${storyResult.mirror?.innerTension || ''}"
-- Скрытый ресурс Мифа: "${storyResult.mirror?.hiddenResource || ''}"
+- Что стало возможным в Мифе: "${storyResult.mirror?.hiddenResource || ''}"
 - Новый взгляд Мифа: "${storyResult.mirror?.newView || ''}"
 - Шаг Мифа: "${storyResult.one_step || ''}"
 
