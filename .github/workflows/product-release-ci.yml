@@ -1,0 +1,49 @@
+name: Product Release CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - integration/current-production-v2-base
+      - release/routerai-acceptance
+      - release/unified-u1
+  push:
+    branches:
+      - main
+      - integration/current-production-v2-base
+      - release/routerai-acceptance
+      - release/unified-u1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: product-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install exact dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Package and boot-check immutable artifact
+        run: node scripts/package_release.cjs
+      - name: Verify release identity
+        run: |
+          node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("dist/release.json","utf8"));if(p.release_sha!==process.env.GITHUB_SHA||p.dirty!==false)process.exit(1)'
