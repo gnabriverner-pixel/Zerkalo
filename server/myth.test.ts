@@ -3,7 +3,6 @@ import {
   PERSONAL_MYTH_WRITER_VERSION,
   buildPersonalMythPromptV11,
   buildPersonalMythRepairPrompt,
-  formatBlockerForRepair,
   containsCrisisLanguage,
   generatePersonalMyth,
   parsePersonalMythRequest,
@@ -238,15 +237,14 @@ describe("Personal Myth v1.1 release contract", () => {
     expect(validatePersonalMythResult(certainty).blockers).toContain("unsupported_certainty");
   });
 
-  it("repairs repeated 'не X, а Y' rhetoric while allowing limited natural contrast", () => {
+  it("treats repeated 'не X, а Y' rhetoric as editorial guidance, not a user-visible failure", () => {
     const oneContrast = parsePersonalMythResult(JSON.stringify(validPayload()));
     expect(validatePersonalMythResult(oneContrast).blockers).not.toContain("contrast_template_overuse");
 
     oneContrast.meaning.push("Это не препятствие, а приглашение посмотреть внимательнее.");
     expect(validatePersonalMythResult(oneContrast).blockers).not.toContain("contrast_template_overuse");
     oneContrast.meaning.push("Это не ответ, а ещё один способ поставить вопрос.");
-    expect(validatePersonalMythResult(oneContrast).blockers).toContain("contrast_template_overuse");
-    expect(formatBlockerForRepair("contrast_template_overuse")).toContain("не более двух");
+    expect(validatePersonalMythResult(oneContrast).passed).toBe(true);
   });
 
   it("rejects third-person protagonist drift (он/она/путник/герой)", () => {
@@ -415,7 +413,7 @@ describe("Personal Myth v1.1 release contract", () => {
       expect(res.quality.passed).toBe(true);
     });
 
-    it("does not fail the user after one editorial repair leaves only repeated contrast rhetoric", async () => {
+    it("does not spend a repair attempt or fail the user on contrast rhetoric alone", async () => {
       let attempts = 0;
       const rhetoricalPayload = validPayload();
       rhetoricalPayload.story_result.meaning.push("Это не препятствие, а приглашение посмотреть внимательнее.");
@@ -432,8 +430,8 @@ describe("Personal Myth v1.1 release contract", () => {
       };
 
       const res = await generatePersonalMyth(request(), provider, 1000);
-      expect(attempts).toBe(2);
-      expect(res.repaired).toBe(true);
+      expect(attempts).toBe(1);
+      expect(res.repaired).toBe(false);
       expect(res.quality.passed).toBe(true);
       expect(res.quality.blockers).toEqual([]);
     });

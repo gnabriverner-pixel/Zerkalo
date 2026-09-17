@@ -376,8 +376,6 @@ export function formatBlockerForRepair(blocker: string): string {
   switch (blocker) {
     case "template_fingerprint":
       return "Категорически запрещена фраза «впервые за долгое время» и похожие штампы. Удали их из текста.";
-    case "contrast_template_overuse":
-      return "Конструкция «не X, а Y» повторяется и делает текст шаблонным. Оставь не более двух таких оборотов во всём результате; остальные мысли вырази прямыми фразами без риторического противопоставления.";
     case "story_word_count_out_of_contract_300_to_800":
       return "Объем истории должен укладываться в жесткий диапазон 300–800 слов (предпочтительный целевой ориентир: 400–600 слов). Если текст был кратким, подробно раскрой фактуру, детали и чувственный опыт.";
     case "paragraph_count_out_of_contract_3_to_6":
@@ -616,7 +614,7 @@ export function validatePersonalMythResult(result: PersonalMythResult, request?:
   }
   const negationContrasts = nonDisclaimerText.match(NEGATION_CONTRAST_TEMPLATE) || [];
   if (negationContrasts.length > 2) {
-    blockers.push("contrast_template_overuse");
+    console.warn(`[PersonalMyth Editorial Warning] repeated contrast template: ${negationContrasts.length}`);
   }
 
   // 5. Unsupported certainty in mirror
@@ -631,18 +629,6 @@ export function validatePersonalMythResult(result: PersonalMythResult, request?:
     word_count,
     paragraph_count,
   };
-}
-
-function acceptEditorialSoftLimitAfterRepair(report: PersonalMythQualityReport): PersonalMythQualityReport {
-  const hardBlockers = report.blockers.filter((blocker) => blocker !== "contrast_template_overuse");
-  if (hardBlockers.length === 0 && report.blockers.includes("contrast_template_overuse")) {
-    // The extra editorial pass has already been spent. Repeated rhetoric is a
-    // quality concern, but it must not turn an otherwise safe story into a
-    // user-visible service failure.
-    console.warn("[PersonalMyth Editorial Warning] contrast template remains after repair");
-    return { ...report, passed: true, blockers: [] };
-  }
-  return report;
 }
 
 export class DeepSeekMythProvider implements PersonalMythProvider {
@@ -756,7 +742,7 @@ async function generatePersonalMythAttempt(
     } catch (repParseErr) {
       throw new Error(`personal_myth_quality_failed:repair_parse_error`);
     }
-    const repairedQuality = acceptEditorialSoftLimitAfterRepair(validatePersonalMythResult(repairedResult, request));
+    const repairedQuality = validatePersonalMythResult(repairedResult, request);
     if (repairedQuality.passed) {
       return {
         result: repairedResult,
@@ -802,7 +788,7 @@ async function generatePersonalMythAttempt(
     throw new Error(`personal_myth_quality_failed:repair_parse_error`);
   }
 
-  const repairQuality = acceptEditorialSoftLimitAfterRepair(validatePersonalMythResult(repairedResult, request));
+  const repairQuality = validatePersonalMythResult(repairedResult, request);
   if (repairQuality.passed) {
     return {
       result: repairedResult,
