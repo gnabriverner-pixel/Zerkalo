@@ -636,45 +636,105 @@ export function CodeV2Experience({
                             transition={{ duration: 0.2 }}
                             className="space-y-3 mb-6 pt-3 border-t border-white/5 overflow-hidden"
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-base">
-                              <span className="text-[var(--color-antique-gold)] font-medium sm:min-w-[190px] flex-shrink-0">
-                                Когда эта сила работает:
-                              </span>
-                              <span className="text-stone-300 font-normal leading-relaxed">
-                                {pos.strong_form}
-                              </span>
-                            </div>
+                            {pos.position === 'direction' && pos.direction_compound ? (
+                              <div className="space-y-4">
+                                <div className="rounded-xl border border-[var(--color-antique-gold)]/20 bg-[var(--color-antique-gold)]/5 p-4 sm:p-5">
+                                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                                    <span className="text-[13px] font-mono uppercase tracking-wider text-[var(--color-antique-gold)]">
+                                      {pos.direction_compound.origin.label}
+                                    </span>
+                                    <span className="rounded-md border border-white/10 bg-black/20 px-2 py-1 font-mono text-[13px] text-stone-200">
+                                      {pos.direction_compound.origin.formula}
+                                    </span>
+                                  </div>
+                                  <p className="text-base text-stone-200 font-normal leading-relaxed">
+                                    {pos.direction_compound.origin.summary}
+                                  </p>
+                                </div>
 
-                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-base">
-                              <span className="text-amber-400/90 font-medium sm:min-w-[190px] flex-shrink-0">
-                                Где она начинает мешать:
-                              </span>
-                              <span className="text-stone-300 font-normal leading-relaxed">
-                                {pos.shadow}
-                              </span>
-                            </div>
+                                {pos.direction_compound.compound && (
+                                  <div className="rounded-xl border border-white/10 bg-black/20 p-4 sm:p-5">
+                                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                                      <span className="text-[13px] font-mono uppercase tracking-wider text-stone-400">
+                                        {pos.direction_compound.compound.label}
+                                      </span>
+                                      <span className="rounded-md border border-white/10 px-2 py-1 font-mono text-[13px] text-stone-300">
+                                        {pos.direction_compound.compound.formula}
+                                      </span>
+                                    </div>
+                                    <p className="text-base text-stone-300 font-normal leading-relaxed">
+                                      {pos.direction_compound.compound.summary}
+                                    </p>
+                                  </div>
+                                )}
 
-                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-base">
-                              <span className="text-purple-300/90 font-medium sm:min-w-[190px] flex-shrink-0">
-                                Главная ловушка:
-                              </span>
-                              <span className="text-stone-300 font-normal leading-relaxed">
-                                {pos.tension}
-                              </span>
-                            </div>
+                                <div className="space-y-2.5">
+                                  <div className="text-[13px] font-mono uppercase tracking-wider text-stone-400">
+                                    Где эта связка может быть плодотворной
+                                  </div>
+                                  {pos.direction_compound.possible_forms.map((form, formIndex) => (
+                                    <div key={formIndex} className="flex items-start gap-3 text-base text-stone-300 leading-relaxed">
+                                      <span className="mt-[0.7em] h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--color-antique-gold)]" />
+                                      <span>{form}</span>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div className="flex flex-col gap-1.5 rounded-xl border border-amber-400/15 bg-amber-400/5 p-4 text-base sm:flex-row sm:gap-3">
+                                  <span className="text-amber-300/90 font-medium sm:min-w-[190px] flex-shrink-0">
+                                    Возможное искажение:
+                                  </span>
+                                  <span className="text-stone-300 font-normal leading-relaxed">
+                                    {pos.direction_compound.distortion}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-base">
+                                  <span className="text-[var(--color-antique-gold)] font-medium sm:min-w-[190px] flex-shrink-0">
+                                    Когда эта сила работает:
+                                  </span>
+                                  <span className="text-stone-300 font-normal leading-relaxed">
+                                    {pos.strong_form}
+                                  </span>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-base">
+                                  <span className="text-amber-400/90 font-medium sm:min-w-[190px] flex-shrink-0">
+                                    Где она начинает мешать:
+                                  </span>
+                                  <span className="text-stone-300 font-normal leading-relaxed">
+                                    {pos.shadow}
+                                  </span>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-base">
+                                  <span className="text-purple-300/90 font-medium sm:min-w-[190px] flex-shrink-0">
+                                    Главная ловушка:
+                                  </span>
+                                  <span className="text-stone-300 font-normal leading-relaxed">
+                                    {pos.tension}
+                                  </span>
+                                </div>
+                              </>
+                            )}
 
                             {pos.environment_parameters && Object.keys(pos.environment_parameters).length > 0 && (
-                              <div className="pt-3 border-t border-white/5 space-y-3">
-                                <div className="text-[13px] font-mono uppercase tracking-wider text-stone-400">
-                                  В какой среде раскрывается это Направление:
+                              <details className="group border-t border-white/5 pt-3">
+                                <summary className="cursor-pointer list-none text-[13px] font-mono uppercase tracking-wider text-stone-400 transition-colors hover:text-stone-200">
+                                  <span className="group-open:hidden">В какой среде раскрывается это Направление</span>
+                                  <span className="hidden group-open:inline">Скрыть параметры среды</span>
+                                </summary>
+                                <div className="mt-3 space-y-3">
+                                  {Object.entries(pos.environment_parameters).map(([label, description]) => (
+                                    <div key={label} className="grid gap-1 sm:grid-cols-[190px_1fr] sm:gap-3 text-base">
+                                      <span className="text-[var(--color-antique-gold)] font-medium">{label}:</span>
+                                      <span className="text-stone-300 font-normal leading-relaxed">{description}</span>
+                                    </div>
+                                  ))}
                                 </div>
-                                {Object.entries(pos.environment_parameters).map(([label, description]) => (
-                                  <div key={label} className="grid gap-1 sm:grid-cols-[190px_1fr] sm:gap-3 text-base">
-                                    <span className="text-[var(--color-antique-gold)] font-medium">{label}:</span>
-                                    <span className="text-stone-300 font-normal leading-relaxed">{description}</span>
-                                  </div>
-                                ))}
-                              </div>
+                              </details>
                             )}
 
                             {pos.life_scenes && pos.life_scenes.length > 0 && (

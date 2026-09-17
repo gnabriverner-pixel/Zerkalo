@@ -198,6 +198,25 @@ export interface CodeV2PositionScene {
   description: string;
 }
 
+export interface CodeV2DirectionCompound {
+  origin: {
+    label: string;
+    formula: string;
+    soul_route: string;
+    path_route: string;
+    summary: string;
+  };
+  compound?: {
+    label: string;
+    formula: string;
+    summary: string;
+  } | null;
+  possible_forms: string[];
+  distortion: string;
+  verification_question: string;
+  provenance: "DERIVED_PRODUCT_SYNTHESIS";
+}
+
 export interface CodeV2Position {
   position: "soul" | "expression" | "path" | "direction" | "result";
   public_name: string;
@@ -219,6 +238,7 @@ export interface CodeV2Position {
   all_verification_questions?: string[];
   albert_hook: string;
   environment_parameters?: Record<string, string>;
+  direction_compound?: CodeV2DirectionCompound;
 }
 
 export interface CodeV2Interaction {
