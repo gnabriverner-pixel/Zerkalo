@@ -98,6 +98,7 @@ describe("Unified Release U1 Master Contract Verification", () => {
             summary: "Два зеркала встретились.",
             hasStrongParallels: true,
             confidenceNote: "Высокая согласованность.",
+            possibleSupport: "Опорой может стать уже названное действие; можно проверить его в исходной ситуации.",
             parallels: [{ theme: "Опора", codeAnchor: "8", mythAnchor: "Камень", synthesis: "Синтез" }],
             divergences: [],
             albertInsight: "Инсайт",

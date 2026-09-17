@@ -49,6 +49,7 @@ describe("Meeting of Mirrors DeepSeek Migration", () => {
         summary: "Два зеркала встретились.",
         hasStrongParallels: true,
         confidenceNote: "Высокий резонанс.",
+        possibleSupport: "Опорой может стать уже названная прогулка: можно проверить, помогает ли её ритм различить следующий шаг.",
         parallels: [
           {
             theme: "Поиск опоры",
@@ -98,6 +99,7 @@ describe("Meeting of Mirrors DeepSeek Migration", () => {
         summary: "Две линзы показывают совершенно разные плоскости.",
         hasStrongParallels: false,
         confidenceNote: "Контраст разных граней.",
+        possibleSupport: "Можно опереться на право пока не соединять эти два взгляда и проверить, какой из них точнее описывает ситуацию.",
         parallels: [],
         divergences: [
           {

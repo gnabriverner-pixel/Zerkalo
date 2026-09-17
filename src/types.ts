@@ -106,6 +106,7 @@ export interface MeetingOfMirrorsResult {
   summary: string;
   hasStrongParallels: boolean;
   confidenceNote: string;
+  possibleSupport: string;
   parallels: MeetingParallel[];
   divergences: MeetingDivergence[];
   albertInsight: string;

@@ -44,15 +44,6 @@ export interface MeetingOfMirrorsProps {
   onOpenMyth: () => void;
 }
 
-export function pluralRu(value: number, one: string, few: string, many: string) {
-  const mod100 = value % 100;
-  const mod10 = value % 10;
-  if (mod100 >= 11 && mod100 <= 14) return many;
-  if (mod10 === 1) return one;
-  if (mod10 >= 2 && mod10 <= 4) return few;
-  return many;
-}
-
 export function MeetingOfMirrors({
   codeDate,
   codeV2Payload,
@@ -167,7 +158,8 @@ export function MeetingOfMirrors({
         body: JSON.stringify({
           codeData: {
             calc: codeResult,
-            firstMirror: firstMirror || undefined
+            firstMirror: firstMirror || undefined,
+            codeV2Payload: codeV2Payload || undefined
           },
           storyData: {
             storyInputs,
@@ -235,7 +227,7 @@ export function MeetingOfMirrors({
           </h1>
 
           <p className="text-sm sm:text-base text-stone-300 font-normal max-w-xl mx-auto leading-relaxed">
-            Сопоставление расчетного цифрового кода и метафорического мифа.
+            Два независимых взгляда встречаются, чтобы показать новое различие и возможную опору — без требования согласиться с ними.
           </p>
         </div>
 
@@ -255,12 +247,12 @@ export function MeetingOfMirrors({
                 Линза 1 · Цифровой код
               </span>
               {hasCode ? (
-                <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono">
+                <span className="flex items-center gap-1.5 text-sm text-emerald-400 font-mono">
                   <CheckCircle2 size={13} />
                   <span>Собрано</span>
                 </span>
               ) : (
-                <span className="text-xs text-amber-400/80 font-mono">Не рассчитано</span>
+                <span className="text-sm text-amber-400/80 font-mono">Не рассчитано</span>
               )}
             </div>
 
@@ -269,14 +261,14 @@ export function MeetingOfMirrors({
                 <h3 className="font-serif text-xl text-stone-100 mb-1">
                   Формула: {codeResult.soul} / {codeResult.expression} / {codeResult.path}
                 </h3>
-                <p className="text-xs text-stone-400 font-normal line-clamp-2">
+                <p className="text-sm text-stone-300 font-normal leading-relaxed line-clamp-3">
                   {firstMirror?.keyInsight || `Число Души ${codeResult.soul}, Путь ${codeResult.path}`}
                 </p>
               </div>
             ) : (
               <button
                 onClick={onOpenCode}
-                className="text-xs text-[var(--color-antique-gold)] hover:underline flex items-center gap-1 mt-2 cursor-pointer"
+                className="text-sm text-[var(--color-antique-gold)] hover:underline flex items-center gap-1 mt-2 cursor-pointer"
               >
                 <span>Рассчитать код</span>
                 <ChevronRight size={14} />
@@ -295,12 +287,12 @@ export function MeetingOfMirrors({
                 Линза 2 · Личный миф
               </span>
               {hasMyth ? (
-                <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono">
+                <span className="flex items-center gap-1.5 text-sm text-emerald-400 font-mono">
                   <CheckCircle2 size={13} />
                   <span>Сотворено</span>
                 </span>
               ) : (
-                <span className="text-xs text-amber-400/80 font-mono">Не создано</span>
+                <span className="text-sm text-amber-400/80 font-mono">Не создано</span>
               )}
             </div>
 
@@ -309,14 +301,14 @@ export function MeetingOfMirrors({
                 <h3 className="font-serif text-xl text-stone-100 mb-1">
                   «{storyResult.title}»
                 </h3>
-                <p className="text-xs text-stone-400 font-normal line-clamp-2">
+                <p className="text-sm text-stone-300 font-normal leading-relaxed line-clamp-3">
                   {storyResult.story}
                 </p>
               </div>
             ) : (
               <button
                 onClick={onOpenMyth}
-                className="text-xs text-[var(--color-antique-gold)] hover:underline flex items-center gap-1 mt-2 cursor-pointer"
+                className="text-sm text-[var(--color-antique-gold)] hover:underline flex items-center gap-1 mt-2 cursor-pointer"
               >
                 <span>Создать Личный миф</span>
                 <ChevronRight size={14} />
@@ -332,7 +324,7 @@ export function MeetingOfMirrors({
             <button
               onClick={handleRunSynthesis}
               disabled={!isReadyForSynthesis || isLoading}
-              className={`w-full sm:w-auto px-8 py-3.5 rounded-xs uppercase tracking-[0.2em] text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+              className={`w-full sm:w-auto px-8 py-3.5 rounded-xs uppercase tracking-[0.18em] text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                 isReadyForSynthesis && !isLoading
                   ? 'bg-[var(--color-antique-gold)] text-gray-950 hover:bg-[#D9B770] cursor-pointer shadow-md'
                   : 'bg-white/5 text-stone-500 cursor-not-allowed border border-white/[0.06]'
@@ -352,7 +344,7 @@ export function MeetingOfMirrors({
             </button>
 
             {errorMessage && (
-              <p className="mt-3 text-xs text-red-300 flex items-center gap-1.5">
+              <p className="mt-3 text-sm text-red-300 flex items-center gap-1.5">
                 <AlertCircle size={13} />
                 <span>{errorMessage}</span>
               </p>
@@ -373,26 +365,35 @@ export function MeetingOfMirrors({
             >
               {/* Summary & Confidence Header */}
               <div className="bg-[#0D121D] border border-[var(--color-border-gold)] p-8 sm:p-10 rounded-xs text-left relative overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div className="space-y-3 mb-5">
                   <h3 className="font-serif text-xl sm:text-2xl text-[var(--color-antique-gold)] font-normal">
                     Что становится видно рядом
                   </h3>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[13px] uppercase font-mono tracking-[0.15em] text-stone-400">
-                      {meetingResult.parallels.length} {pluralRu(meetingResult.parallels.length, 'резонанс', 'резонанса', 'резонансов')} · {meetingResult.divergences.length} {pluralRu(meetingResult.divergences.length, 'расхождение', 'расхождения', 'расхождений')}
-                    </span>
-                    <span className="text-[13px] font-serif italic text-stone-400">
-                      {meetingResult.confidenceNote}
-                    </span>
-                  </div>
+                  <p className="text-sm sm:text-base text-stone-300 leading-relaxed max-w-2xl">
+                    {meetingResult.confidenceNote}
+                  </p>
                 </div>
 
                 <p className="font-serif text-xl sm:text-2xl text-stone-100 font-normal leading-relaxed mb-6">
                   {meetingResult.summary}
                 </p>
 
+                {meetingResult.possibleSupport && (
+                  <div className="bg-[var(--color-antique-gold)]/[0.07] border border-[var(--color-antique-gold)]/25 p-5 sm:p-6 mb-6 rounded-xs">
+                    <span className="text-[13px] uppercase font-mono tracking-[0.22em] text-[var(--color-antique-gold)] block mb-3">
+                      Возможная опора
+                    </span>
+                    <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed">
+                      {meetingResult.possibleSupport}
+                    </p>
+                    <p className="text-sm text-stone-400 leading-relaxed mt-3">
+                      Это гипотеза из ваших слов и двух линз. Оставьте только то, что подтверждается вашим опытом.
+                    </p>
+                  </div>
+                )}
+
                 {meetingResult.disclaimer && (
-                  <p className="text-xs sm:text-sm text-stone-400 font-normal border-t border-white/[0.06] pt-4 leading-relaxed">
+                  <p className="text-sm sm:text-base text-stone-400 font-normal border-t border-white/[0.06] pt-4 leading-relaxed">
                     {meetingResult.disclaimer}
                   </p>
                 )}
@@ -407,7 +408,7 @@ export function MeetingOfMirrors({
                   <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
                     Сильных резонансов не найдено
                   </h3>
-                  <p className="text-sm text-stone-300 font-normal leading-relaxed max-w-2xl">
+                  <p className="text-base text-stone-300 font-normal leading-relaxed max-w-2xl">
                     Два независимых взгляда показывают разные плоскости: мы не превращаем отдельные похожие слова в искусственную связь.
                   </p>
                 </div>
@@ -435,7 +436,7 @@ export function MeetingOfMirrors({
                             <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Кода:
                             </span>
-                            <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#2B241C]">
+                            <p className="text-sm sm:text-base font-sans leading-relaxed text-[#2B241C]">
                               {p.codeAnchor}
                             </p>
                           </div>
@@ -444,14 +445,14 @@ export function MeetingOfMirrors({
                             <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Мифа:
                             </span>
-                            <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#282019]">
+                            <p className="text-sm sm:text-base font-sans leading-relaxed text-[#282019]">
                               {p.mythAnchor}
                             </p>
                           </div>
                         </div>
 
                         <div className="pt-2 border-t border-white/[0.06]">
-                          <p className="text-sm text-stone-300 font-serif italic">
+                          <p className="text-base sm:text-lg leading-relaxed text-stone-300 font-serif italic">
                             «{p.synthesis}»
                           </p>
                         </div>
@@ -483,7 +484,7 @@ export function MeetingOfMirrors({
                             <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Кода:
                             </span>
-                            <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#2B241C]">
+                            <p className="text-sm sm:text-base font-sans leading-relaxed text-[#2B241C]">
                               {d.codeAspect}
                             </p>
                           </div>
@@ -492,14 +493,14 @@ export function MeetingOfMirrors({
                             <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
                               Линза Мифа:
                             </span>
-                            <p className="text-xs sm:text-sm font-sans leading-relaxed text-[#282019]">
+                            <p className="text-sm sm:text-base font-sans leading-relaxed text-[#282019]">
                               {d.mythAspect}
                             </p>
                           </div>
                         </div>
 
                         <div className="pt-2 border-t border-white/[0.06]">
-                          <p className="text-sm text-stone-300 font-serif italic">
+                          <p className="text-base sm:text-lg leading-relaxed text-stone-300 font-serif italic">
                             «{d.reflection}»
                           </p>
                         </div>
@@ -512,7 +513,7 @@ export function MeetingOfMirrors({
               {/* Albert's Synthesis Insight & Living Question */}
               <div className="bg-[#0D121D] border border-white/[0.08] p-8 sm:p-10 rounded-xs space-y-6 text-left">
                 <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
-                  Взгляд Альберта Вяземского
+                  Новое различение
                 </span>
                 
                 <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed font-normal">
@@ -521,7 +522,7 @@ export function MeetingOfMirrors({
 
                 <div className="border-t border-white/[0.06] pt-6">
                   <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
-                    Вопрос для личной рефлексии
+                    Проверка на своём опыте
                   </span>
                   <p className="font-serif italic text-lg sm:text-xl text-emerald-200 mb-4 font-normal">
                     «{meetingResult.reflectiveQuestion}»
@@ -530,8 +531,8 @@ export function MeetingOfMirrors({
                     rows={2}
                     value={userNote}
                     onChange={(e) => handleUserNoteChange(e.target.value)}
-                    placeholder="Запишите мысли или инсайты от этой встречи..."
-                    className="w-full bg-[#080C14] border-0 border-b border-white/20 text-sm text-stone-200 py-3 outline-none focus:border-[var(--color-antique-gold)] resize-none font-normal"
+                    placeholder="Что здесь похоже на ваш опыт, а что хочется уточнить или отвергнуть?"
+                    className="w-full bg-[#080C14] border-0 border-b border-white/20 text-base text-stone-200 py-3 outline-none focus:border-[var(--color-antique-gold)] resize-none font-normal"
                   />
                 </div>
               </div>
@@ -546,7 +547,7 @@ export function MeetingOfMirrors({
                   Исследовать синтез с Альбертом
                 </h3>
                 
-                <p className="text-xs sm:text-sm text-stone-300 font-normal max-w-lg mx-auto leading-relaxed">
+                <p className="text-sm sm:text-base text-stone-300 font-normal max-w-lg mx-auto leading-relaxed">
                   Задайте вопрос Альберту прямо на сайте: он удерживает структуру вашего Кода, образы Мифа и найденные параллели.
                 </p>
 
@@ -557,7 +558,7 @@ export function MeetingOfMirrors({
                       setAlbertTopic(meetingResult?.reflectiveQuestion || meetingResult?.albertInsight || 'Продолжение исследования');
                       setIsAlbertOpen(true);
                     }}
-                    className="w-full sm:w-auto px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                    className="w-full sm:w-auto px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.18em] text-sm font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   >
                     <MessageSquare size={14} />
                     <span>Диалог на сайте</span>
@@ -567,7 +568,7 @@ export function MeetingOfMirrors({
                     href={telegramBotUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.18em] text-sm rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     <Send size={14} />
                     <span>Открыть Telegram</span>
@@ -599,7 +600,7 @@ export function MeetingOfMirrors({
                   <h4 className="font-serif text-lg sm:text-xl text-stone-100 font-light mb-1">
                     {savedAt ? 'Зеркало сохранено на этом устройстве' : 'Сохранить в «Моё зеркало»'}
                   </h4>
-                  <p className="text-xs text-stone-400 font-normal leading-relaxed max-w-xl">
+                  <p className="text-sm text-stone-400 font-normal leading-relaxed max-w-xl">
                     Код, ваши 4 ответа, Личный миф и Встреча сохранятся только в этом браузере на этом устройстве. Нового серверного хранения не создаётся.
                   </p>
                 </div>

@@ -103,6 +103,7 @@ describe('Zerkalo V1.1 Full Product Regression Test Suite', () => {
         summary: 'Итоговое сопоставление',
         hasStrongParallels: true,
         confidenceNote: 'Высокая степень созвучия',
+        possibleSupport: 'Опорой может стать уже названный способ удерживать внимание; можно проверить его в одном действии.',
         parallels: [
           { theme: 'Творчество', codeAnchor: 'Душа 6', mythAnchor: 'Берег', synthesis: 'Творческое созидание' }
         ],

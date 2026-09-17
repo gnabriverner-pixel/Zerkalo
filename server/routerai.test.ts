@@ -1,6 +1,6 @@
 import {describe,it,expect,vi} from 'vitest';
 import fs from 'node:fs';
-import {RouterAIClient,PRIMARY_MODEL,FALLBACK_MODEL,fallbackEligible,type ProviderEvent} from './routerai';
+import {RouterAIClient,PRIMARY_MODEL,FALLBACK_MODEL,MEETING_FALLBACK_MODEL,fallbackEligible,type ProviderEvent} from './routerai';
 import {createRouterAIMythProvider,generatePersonalMyth,parsePersonalMythRequest} from './myth';
 import {generateMeetingOfMirrors} from './meeting';
 
@@ -19,9 +19,11 @@ const cleanedMythResult = {
   journal_question: stripContrasts(r.journal_question),
 };
 const myth = JSON.stringify({mode:'story',status:'ok',writer_version:'fixture',story_result:cleanedMythResult});
-const meeting = JSON.stringify(saved.meeting);
+const meetingFixture = structuredClone(saved.meeting);
+meetingFixture.result.possibleSupport = 'Опорой может стать уже названное внимание к конкретной ситуации; можно проверить его в одном небольшом действии.';
+const meeting = JSON.stringify(meetingFixture);
 const jsonReply = (content:string, model=PRIMARY_MODEL, extra={}) => new Response(JSON.stringify({
-  model,provider:model === PRIMARY_MODEL ? 'DeepSeek' : 'Anthropic',choices:[{finish_reason:'stop',message:{content}}],usage:{cost:0.01,prompt_tokens:10,completion_tokens:10},...extra,
+  model,provider:model === PRIMARY_MODEL ? 'DeepSeek' : model === MEETING_FALLBACK_MODEL ? 'OpenAI' : 'Anthropic',choices:[{finish_reason:'stop',message:{content}}],usage:{cost:0.01,prompt_tokens:10,completion_tokens:10},...extra,
 }),{status:200});
 const request = () => parsePersonalMythRequest({request_id:'synthetic_routerai_test',answers:saved.answers});
 function fixture(replies: Array<() => Response | Promise<Response>>) {
@@ -30,7 +32,7 @@ function fixture(replies: Array<() => Response | Promise<Response>>) {
   return {bodies,events,transport,client:new RouterAIClient({ROUTERAI_API_KEY:'fixture-key-not-real'},PRIMARY_MODEL,transport as any,e=>events.push(e))};
 }
 const runMyth = (client:RouterAIClient)=>generatePersonalMyth(request(),createRouterAIMythProvider(client),1000);
-const runMeeting = (client:RouterAIClient)=>generateMeetingOfMirrors({client,codeData:saved.code,storyData:{storyInputs:saved.answers,storyResult:saved.myth.result},totalBudgetMs:1000});
+const runMeeting = (client:RouterAIClient)=>generateMeetingOfMirrors({client:client.withFallback(MEETING_FALLBACK_MODEL),codeData:saved.code,storyData:{storyInputs:saved.answers,storyResult:saved.myth.result},totalBudgetMs:1000});
 
 describe('RouterAI frozen release policy',()=>{
   it('one primary call, strict schema, low reasoning, safe cost/model evidence',async()=>{
@@ -90,8 +92,9 @@ describe('RouterAI frozen release policy',()=>{
     expect(f.bodies).toHaveLength(1);
   });
   it('meeting structural failure reaches fallback before delivery',async()=>{
-    const f=fixture([()=>jsonReply('{'),()=>jsonReply(meeting,FALLBACK_MODEL)]);
-    expect((await runMeeting(f.client)).model).toBe(FALLBACK_MODEL);expect(f.bodies).toHaveLength(2);
+    const f=fixture([()=>jsonReply('{'),()=>jsonReply(meeting,MEETING_FALLBACK_MODEL,{provider:'OpenAI'})]);
+    expect((await runMeeting(f.client)).model).toBe(MEETING_FALLBACK_MODEL);expect(f.bodies).toHaveLength(2);
+    expect(f.bodies[1]).toMatchObject({model:MEETING_FALLBACK_MODEL,provider:{only:['openai'],allow_fallbacks:false}});
   });
   it('truncated Web output is never a successful delivery and repair remains bounded',async()=>{
     const truncated=()=>new Response(JSON.stringify({model:PRIMARY_MODEL,provider:'DeepSeek',choices:[{finish_reason:'length',message:{content:myth}}]}));
@@ -101,8 +104,8 @@ describe('RouterAI frozen release policy',()=>{
     expect(f.events.slice(0,2).every(e=>e.outcome==='provider_truncated')).toBe(true);
   });
   it('RouterAI bare Meeting result cannot bypass strict envelope',async()=>{
-    const f=fixture([()=>jsonReply(JSON.stringify(saved.meeting.result)),()=>jsonReply(meeting,FALLBACK_MODEL)]);
-    expect((await runMeeting(f.client)).model).toBe(FALLBACK_MODEL);expect(f.bodies).toHaveLength(2);
+    const f=fixture([()=>jsonReply(JSON.stringify(saved.meeting.result)),()=>jsonReply(meeting,MEETING_FALLBACK_MODEL,{provider:'OpenAI'})]);
+    expect((await runMeeting(f.client)).model).toBe(MEETING_FALLBACK_MODEL);expect(f.bodies).toHaveLength(2);
   });
   it('request policy cannot change model via call options',async()=>{
     const f=fixture([()=>jsonReply('answer')]);await f.client.call({model:'other/model',messages:[]});expect(f.bodies[0].model).toBe(PRIMARY_MODEL);

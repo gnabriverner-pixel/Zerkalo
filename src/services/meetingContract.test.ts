@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSpuriousDecorativeGrounding, parseMeetingResponse } from "./meetingContract";
+import { isSpuriousDecorativeGrounding, isUnsupportedSupportClaim, parseMeetingResponse } from "./meetingContract";
 
 function payload(parallelCount = 1, divergenceCount = 1) {
   return {
@@ -8,6 +8,7 @@ function payload(parallelCount = 1, divergenceCount = 1) {
       summary: "Две линзы встретились без требования совпасть.",
       hasStrongParallels: parallelCount > 0,
       confidenceNote: parallelCount ? "Частичный резонанс" : "Разные плоскости",
+      possibleSupport: "Опорой может стать уже названная пауза: можно проверить, меняет ли она темп следующего действия.",
       parallels: Array.from({ length: parallelCount }, () => ({
         theme: "Темп",
         codeAnchor: "Код описывает последовательное движение.",
@@ -51,6 +52,15 @@ describe("Meeting of Mirrors contract", () => {
     expect(() => parseMeetingResponse(payload(1, 3))).toThrow("meeting_invalid_divergence_count");
   });
 
+  it("keeps possible support provisional and rejects hidden-potential claims", () => {
+    expect(isUnsupportedSupportClaim("Опорой может стать пауза, которую человек уже назвал; можно проверить её в одном разговоре.")).toBe(false);
+    expect(isUnsupportedSupportClaim("В вас уже есть скрытая сила, и вы способны преодолеть это.")).toBe(true);
+
+    const invalid = payload(1, 0);
+    invalid.result.possibleSupport = "Ваша скрытая сила уже находится внутри вас.";
+    expect(() => parseMeetingResponse(invalid)).toThrow("meeting_unsupported_support_claim");
+  });
+
   it("detects spurious decorative grounding promoted to psychological/burnout claims", () => {
     const spuriousParallel = {
       theme: "Риск истощения от включённости",
@@ -91,6 +101,7 @@ describe("Meeting of Mirrors contract", () => {
         summary: "Две линзы сопоставлены.",
         hasStrongParallels: true,
         confidenceNote: "Резонанс",
+        possibleSupport: "Можно проверить, станет ли опорой точный вопрос к собственной ситуации.",
         parallels: [
           {
             theme: "Риск истощения от включённости",

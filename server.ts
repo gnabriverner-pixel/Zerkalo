@@ -8,7 +8,7 @@ import { generateFullInterpretationPayload, generateFirstMirror } from "./src/se
 import { buildPersonalMythPrompt } from "./src/services/mythPrompts";
 import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
-import { RouterAIClient, PRIMARY_MODEL } from "./server/routerai";
+import { RouterAIClient, PRIMARY_MODEL, MEETING_FALLBACK_MODEL } from "./server/routerai";
 import {
   createRouterAIMythProvider,
   PERSONAL_MYTH_WRITER_VERSION,
@@ -48,6 +48,7 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
   const deepseekClient = new RouterAIClient(process.env);
+  const meetingClient = deepseekClient.withFallback(MEETING_FALLBACK_MODEL);
   const mythProvider = createRouterAIMythProvider(deepseekClient);
   const personalMythTimeoutMs = Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 75_000));
   const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
@@ -302,7 +303,7 @@ async function startServer() {
       const result = await generateMeetingOfMirrors({
         codeData,
         storyData,
-        client: deepseekClient,
+        client: meetingClient,
         model: MEETING_MODEL,
         totalBudgetMs: 48_000,
       });

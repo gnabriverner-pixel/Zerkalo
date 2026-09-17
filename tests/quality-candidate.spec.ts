@@ -5,12 +5,14 @@ import {personas} from '../scripts/quality/personas';
 
 // UI/transport test with recorded synthetic MODEL outputs. Not a fresh model or Telegram delivery test.
 const fixture=JSON.parse(fs.readFileSync('docs/evidence/quality-2026-09/final-18/synthetic_career.json','utf8'));
+const meetingFixture=structuredClone(fixture.meeting);
+meetingFixture.result.possibleSupport='Опорой может стать уже названное внимание к конкретной задаче; можно проверить его в одном небольшом действии.';
 const persona=personas[0];
 test('consent → canonical Code → recorded Myth/Meeting → save/reload → handoff',async({page,context},info)=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.name));
   await page.route('**/api/personal-myth',r=>r.fulfill({json:{mode:'story',status:'ok',story_result:fixture.myth.result}}));
-  await page.route('**/api/meeting-of-mirrors',r=>r.fulfill({json:fixture.meeting}));
-  await page.route('**/api/lab/meeting/generate',r=>r.fulfill({json:fixture.meeting}));
+  await page.route('**/api/meeting-of-mirrors',r=>r.fulfill({json:meetingFixture}));
+  await page.route('**/api/lab/meeting/generate',r=>r.fulfill({json:meetingFixture}));
   await page.route('**/api/albert/dialogue',r=>r.fulfill({json:{status:'ok',message:fixture.albert.turns[2].reply}}));
   // Never follow a local test capability into the public Telegram bot.
   await context.route('https://t.me/**',r=>r.abort());
@@ -50,6 +52,8 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   await page.getByRole('button',{name:'Открыть Встречу зеркал',exact:true}).click();
   await page.getByRole('button',{name:'Провести Встречу зеркал',exact:true}).click();
   await page.getByRole('button',{name:'Диалог на сайте',exact:true}).waitFor();
+  await expect(page.getByText('Возможная опора',{exact:true})).toBeVisible();
+  expect(await page.getByText(meetingFixture.result.possibleSupport,{exact:true}).evaluate(el=>Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(18);
   await shot('meeting');
   const telegram=page.getByRole('link',{name:'Открыть Telegram',exact:true});
   await expect(telegram).toHaveAttribute('href','https://t.me/digitalcodesystem_bot');
