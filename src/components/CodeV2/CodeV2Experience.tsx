@@ -38,6 +38,15 @@ function getFirstSentence(text: string): string {
   return match ? match[0].trim() : text;
 }
 
+export function cleanPositionEssence(text: string): string {
+  if (!text) return '';
+  const [intro] = text.split(/\n\s*#{1,6}\s+/u, 1);
+  return intro
+    .replace(/\*\*([^*]+)\*\*/gu, '$1')
+    .replace(/^\s*[*-]\s+/gmu, '')
+    .trim();
+}
+
 const PRESET_DOBS = [
   { label: '06.05.1986', note: 'Венера 6 / Сатурн 8' },
   { label: '06.09.1991', note: 'Венера 6 / Сатурн 8 (усиление)' },
@@ -551,7 +560,7 @@ export function CodeV2Experience({
                 <Compass className="w-4 h-4 text-[var(--color-antique-gold)]" />
                 <span>Как это читать</span>
               </div>
-              <p className="text-xs sm:text-sm text-stone-300 font-normal leading-relaxed max-w-2xl">
+              <p className="text-sm sm:text-base text-stone-300 font-normal leading-relaxed max-w-2xl">
                 Цифровой Код объединяет строгую математику пропорций и язык небесных архетипов. Это не фатальный диагноз, а инструмент честной саморефлексии — система выверенных гипотез. Исследуйте эту карту внимательно: отмечайте, где ваш опыт безошибочно узнаёт себя, а где возникает желание оспорить формулировку.
               </p>
             </section>
@@ -562,7 +571,7 @@ export function CodeV2Experience({
                 <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
                   Пять позиций вашего кода
                 </h2>
-                <p className="text-xs sm:text-sm text-stone-400 font-normal mt-1">
+                <p className="text-sm text-stone-400 font-normal mt-1">
                   Каждое число отвечает за свой слой жизни и раскрывается по-разному.
                 </p>
               </div>
@@ -570,6 +579,7 @@ export function CodeV2Experience({
               <div className="space-y-6">
                 {payload.positions.map((pos) => {
                   const isExpanded = !!expandedDetails[pos.position];
+                  const publicEssence = cleanPositionEssence(pos.essence);
                   return (
                     <div
                       key={pos.position}
@@ -588,7 +598,7 @@ export function CodeV2Experience({
                             <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
                               {pos.energy_name} · {pos.energy}
                             </h3>
-                            <div className="text-xs sm:text-sm font-serif italic text-stone-300 mt-1">
+                            <div className="text-sm sm:text-base font-serif italic text-stone-300 mt-1 leading-relaxed">
                               «{pos.role_question}»
                             </div>
                           </div>
@@ -606,8 +616,13 @@ export function CodeV2Experience({
                         <div className="text-xs font-medium text-stone-400 mb-2">
                           О чём это число
                         </div>
-                        <p className="text-sm sm:text-base text-stone-200 font-normal leading-relaxed">
-                          {isExpanded ? pos.essence : getFirstSentence(pos.essence)}
+                        {pos.position === 'path' && (
+                          <p className="mb-3 rounded-xl border border-[var(--color-antique-gold)]/20 bg-[var(--color-antique-gold)]/5 px-4 py-3 text-sm sm:text-base text-stone-300 font-normal leading-relaxed">
+                            Это не готовая черта характера, а направление практики: способ действовать, который постепенно осваивается через выборы, поступки и повторяющиеся жизненные задачи.
+                          </p>
+                        )}
+                        <p className="text-base sm:text-[17px] text-stone-200 font-normal leading-relaxed">
+                          {isExpanded ? publicEssence : getFirstSentence(publicEssence)}
                         </p>
                       </div>
 
@@ -621,7 +636,7 @@ export function CodeV2Experience({
                             transition={{ duration: 0.2 }}
                             className="space-y-3 mb-6 pt-3 border-t border-white/5 overflow-hidden"
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-xs">
+                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-sm sm:text-base">
                               <span className="text-[var(--color-antique-gold)] font-medium sm:min-w-[190px] flex-shrink-0">
                                 Когда эта сила работает:
                               </span>
@@ -630,7 +645,7 @@ export function CodeV2Experience({
                               </span>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-xs">
+                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-sm sm:text-base">
                               <span className="text-amber-400/90 font-medium sm:min-w-[190px] flex-shrink-0">
                                 Где она начинает мешать:
                               </span>
@@ -639,7 +654,7 @@ export function CodeV2Experience({
                               </span>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-xs">
+                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-sm sm:text-base">
                               <span className="text-purple-300/90 font-medium sm:min-w-[190px] flex-shrink-0">
                                 Главная ловушка:
                               </span>
@@ -647,6 +662,20 @@ export function CodeV2Experience({
                                 {pos.tension}
                               </span>
                             </div>
+
+                            {pos.environment_parameters && Object.keys(pos.environment_parameters).length > 0 && (
+                              <div className="pt-3 border-t border-white/5 space-y-3">
+                                <div className="text-[13px] font-mono uppercase tracking-wider text-stone-400">
+                                  В какой среде раскрывается это Направление:
+                                </div>
+                                {Object.entries(pos.environment_parameters).map(([label, description]) => (
+                                  <div key={label} className="grid gap-1 sm:grid-cols-[190px_1fr] sm:gap-3 text-sm sm:text-base">
+                                    <span className="text-[var(--color-antique-gold)] font-medium">{label}:</span>
+                                    <span className="text-stone-300 font-normal leading-relaxed">{description}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
 
                             {pos.life_scenes && pos.life_scenes.length > 0 && (
                               <div className="pt-3 border-t border-white/5 space-y-2.5">
@@ -656,7 +685,7 @@ export function CodeV2Experience({
                                 {pos.life_scenes.map((scene, sIdx) => (
                                   <div
                                     key={sIdx}
-                                    className="p-3.5 bg-black/40 rounded-xl border border-white/5 text-xs text-stone-300 font-normal leading-relaxed"
+                                    className="p-3.5 bg-black/40 rounded-xl border border-white/5 text-sm sm:text-base text-stone-300 font-normal leading-relaxed"
                                   >
                                     <div className="font-medium text-[var(--color-antique-gold)] mb-1 text-[13px]">
                                       {scene.title}
@@ -677,7 +706,7 @@ export function CodeV2Experience({
                           <span className="text-[13px] font-medium text-stone-400 block mb-1">
                             Проверьте на себе:
                           </span>
-                          <p className="text-xs sm:text-sm text-stone-200 font-serif italic leading-relaxed">
+                          <p className="text-sm sm:text-base text-stone-200 font-serif italic leading-relaxed">
                             «{pos.verification_question}»
                           </p>
                         </div>

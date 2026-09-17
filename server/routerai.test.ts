@@ -5,7 +5,17 @@ import {createRouterAIMythProvider,generatePersonalMyth,parsePersonalMythRequest
 import {generateMeetingOfMirrors} from './meeting';
 
 const saved = JSON.parse(fs.readFileSync('docs/evidence/quality-2026-09/final-18/synthetic_career.json','utf8'));
-const myth = JSON.stringify({mode:'story',status:'ok',writer_version:'fixture',story_result:saved.myth.result});
+const stripContrasts = (s: any): any => typeof s === 'string' ? s.replace(/(?:^|[\s«"(])не\s+[^.!?\n]{1,100}?,?\s+а\s+([а-яё])/giu, ' $1') : s;
+const r = saved.myth.result;
+const cleanedMythResult = {
+  ...r,
+  story: stripContrasts(r.story),
+  mirror: Object.fromEntries(Object.entries(r.mirror).map(([k, v]) => [k, stripContrasts(v)])),
+  meaning: r.meaning.map(stripContrasts),
+  one_step: stripContrasts(r.one_step),
+  journal_question: stripContrasts(r.journal_question),
+};
+const myth = JSON.stringify({mode:'story',status:'ok',writer_version:'fixture',story_result:cleanedMythResult});
 const meeting = JSON.stringify(saved.meeting);
 const jsonReply = (content:string, model=PRIMARY_MODEL, extra={}) => new Response(JSON.stringify({
   model,provider:model === PRIMARY_MODEL ? 'DeepSeek' : 'Anthropic',choices:[{finish_reason:'stop',message:{content}}],usage:{cost:0.01,prompt_tokens:10,completion_tokens:10},...extra,

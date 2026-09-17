@@ -3,6 +3,7 @@ import {
   PERSONAL_MYTH_WRITER_VERSION,
   buildPersonalMythPromptV11,
   buildPersonalMythRepairPrompt,
+  formatBlockerForRepair,
   containsCrisisLanguage,
   generatePersonalMyth,
   parsePersonalMythRequest,
@@ -150,6 +151,31 @@ describe("Personal Myth v1.1 release contract", () => {
     expect(prompt).toContain("400–600 слов");
     expect(prompt).toContain("3–6 законченных абзацев");
     expect(prompt).toContain("ИНТЕГРАЦИЯ Q4");
+    expect(prompt).toContain("ОБРАЗНАЯ ДРАМАТУРГИЯ И ЧУВСТВО ОПОРЫ");
+    expect(prompt).toContain("ОДИН центральный материальный образ");
+    expect(prompt).toContain("естественным современным русским языком");
+    expect(prompt).toContain("прочитай весь результат как строгий русскоязычный редактор");
+    expect(prompt).toContain("Каждая чувственная деталь должна влиять");
+  });
+
+  it("adds input-specific fidelity rules when conflict and prior resource are explicitly absent", () => {
+    const noConflictRequest = parsePersonalMythRequest({
+      request_id: "req_no_conflict_12345",
+      consent_version: PERSONAL_MYTH_WRITER_VERSION,
+      answers: {
+        q1: "Сейчас у меня нет острого конфликта.",
+        q2: "Чашка рядом с тетрадью.",
+        q3: "Не знаю, ничего конкретного не вспоминается.",
+        q4: "Спокойная ясность.",
+      },
+    });
+    const prompt = buildPersonalMythPromptV11(noConflictRequest);
+    expect(prompt).toContain("Пользователь прямо сообщил, что острого конфликта или проблемы нет");
+    expect(prompt).toContain("Пользователь не назвал прежний опыт опоры в q3");
+
+    const inventedConflict = parsePersonalMythResult(JSON.stringify(validPayload()));
+    inventedConflict.story += "\n\nТы не знаешь, с чего начать, и всё кажется недостаточно важным.";
+    expect(validatePersonalMythResult(inventedConflict, noConflictRequest).blockers).toContain("invented_conflict_risk");
   });
 
   it("validates a complete result conforming to 300-800 words and 3-6 paragraphs", () => {
@@ -212,6 +238,17 @@ describe("Personal Myth v1.1 release contract", () => {
     expect(validatePersonalMythResult(certainty).blockers).toContain("unsupported_certainty");
   });
 
+  it("repairs repeated 'не X, а Y' rhetoric while allowing limited natural contrast", () => {
+    const oneContrast = parsePersonalMythResult(JSON.stringify(validPayload()));
+    expect(validatePersonalMythResult(oneContrast).blockers).not.toContain("contrast_template_overuse");
+
+    oneContrast.meaning.push("Это не препятствие, а приглашение посмотреть внимательнее.");
+    expect(validatePersonalMythResult(oneContrast).blockers).not.toContain("contrast_template_overuse");
+    oneContrast.meaning.push("Это не ответ, а ещё один способ поставить вопрос.");
+    expect(validatePersonalMythResult(oneContrast).blockers).toContain("contrast_template_overuse");
+    expect(formatBlockerForRepair("contrast_template_overuse")).toContain("не более двух");
+  });
+
   it("rejects third-person protagonist drift (он/она/путник/герой)", () => {
     const payload = validPayload();
     payload.story_result.story = "Путник медленно шёл по сырой лесной тропе и чувствовал тяжесть прожитых лет. Он остановился у реки и посмотрел на воду. Вокруг шумел ветер, и герой понимал, что выбор сделан. Его шаги стихали в тумане.";
@@ -235,6 +272,8 @@ describe("Personal Myth v1.1 release contract", () => {
     );
     expect(repair).toContain("полностью перепиши story");
     expect(repair).toContain("в сцене действует только читатель");
+    expect(repair).toContain("Удерживай один центральный материальный образ");
+    expect(repair).toContain("Проведи строгую русскую редактуру");
   });
 
   it("rejects first-person narrator drift (я/мы/мой)", () => {
@@ -374,6 +413,29 @@ describe("Personal Myth v1.1 release contract", () => {
       expect(res.repaired).toBe(true);
       expect(attempts).toBe(2);
       expect(res.quality.passed).toBe(true);
+    });
+
+    it("does not fail the user after one editorial repair leaves only repeated contrast rhetoric", async () => {
+      let attempts = 0;
+      const rhetoricalPayload = validPayload();
+      rhetoricalPayload.story_result.meaning.push("Это не препятствие, а приглашение посмотреть внимательнее.");
+      rhetoricalPayload.story_result.meaning.push("Это не ответ, а ещё один способ поставить вопрос.");
+
+      const provider: PersonalMythProvider = {
+        name: "deepseek",
+        model: "deepseek-v4-pro",
+        isReady: () => true,
+        generate: async () => {
+          attempts += 1;
+          return JSON.stringify(rhetoricalPayload);
+        },
+      };
+
+      const res = await generatePersonalMyth(request(), provider, 1000);
+      expect(attempts).toBe(2);
+      expect(res.repaired).toBe(true);
+      expect(res.quality.passed).toBe(true);
+      expect(res.quality.blockers).toEqual([]);
     });
 
     it("fails closed when both initial and repair attempts violate quality contract", async () => {

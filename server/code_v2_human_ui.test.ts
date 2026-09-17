@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
-import { CodeV2Experience } from '../src/components/CodeV2/CodeV2Experience';
+import { cleanPositionEssence, CodeV2Experience } from '../src/components/CodeV2/CodeV2Experience';
 import { calculateCanonicalCodeV2 } from './dcsBridge';
 
 const FORBIDDEN_NORMAL_TERMS = [
@@ -110,6 +110,46 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(expandedHtml).toContain('Когда эта сила работает');
     expect(expandedHtml).toContain('Где она начинает мешать');
     expect(expandedHtml).toContain('Главная ловушка');
+  });
+
+  it('renders legacy markdown-rich Direction payloads as clean structured prose', async () => {
+    const payload = await calculateCanonicalCodeV2('06.05.1986');
+    const direction = payload.positions.find((position) => position.position === 'direction');
+    expect(direction).toBeTruthy();
+    direction!.essence = 'Короткое человеческое описание.\n\n### Параметры среды:\n* **Темп:** Быстрый.';
+    direction!.environment_parameters = { 'Темп среды': 'Быстрый и гибкий' };
+
+    expect(cleanPositionEssence(direction!.essence)).toBe('Короткое человеческое описание.');
+
+    const html = renderToString(
+      React.createElement(CodeV2Experience, {
+        initialDate: '06.05.1986',
+        initialPayload: payload,
+        initialExpanded: { direction: true },
+        isQaMode: false,
+        onOpenAlbert: () => {}
+      })
+    );
+
+    expect(html).toContain('В какой среде раскрывается это Направление');
+    expect(html).toContain('Быстрый и гибкий');
+    expect(html).not.toContain('###');
+    expect(html).not.toContain('**Темп:**');
+  });
+
+  it('frames Path as a capability learned through life rather than a finished trait', async () => {
+    const payload = await calculateCanonicalCodeV2('06.05.1986');
+    const html = renderToString(
+      React.createElement(CodeV2Experience, {
+        initialDate: '06.05.1986',
+        initialPayload: payload,
+        isQaMode: false,
+        onOpenAlbert: () => {}
+      })
+    );
+
+    expect(html).toContain('Осваиваемый способ действия');
+    expect(html).toContain('Это не готовая черта характера, а направление практики');
   });
 
   it('QA mode (?preview=v2&qa=1) exposes QA controls and presets', () => {

@@ -55,7 +55,7 @@ describe('Owner Code V2 Vertical Slice Acceptance Suite', () => {
 
       // 3. Positions (5 roles)
       expect(payload.positions).toHaveLength(5);
-      const expectedRoles = ['Внутренний исток', 'Раскрытие потенциала вовне', 'Механизм действия', 'Формат среды', 'Зрелая интеграция'];
+      const expectedRoles = ['Внутренний исток', 'Раскрытие потенциала вовне', 'Осваиваемый способ действия', 'Формат среды', 'Зрелая интеграция'];
       for (const pos of payload.positions) {
         expect(expectedRoles).toContain(pos.role);
         expect(pos.role_question.length).toBeGreaterThan(5);
