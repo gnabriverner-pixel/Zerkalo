@@ -157,6 +157,9 @@ describe("Personal Myth v1.1 release contract", () => {
     expect(prompt).toContain("естественным современным русским языком");
     expect(prompt).toContain("прочитай весь результат как строгий русскоязычный редактор");
     expect(prompt).toContain("Каждая чувственная деталь должна влиять");
+    expect(prompt).toContain("Не добавляй после него авторский вывод");
+    expect(prompt).toContain("вопрос или возможный ракурс");
+    expect(prompt).toContain("После сильного финального образа оставь паузу");
   });
 
   it("adds input-specific fidelity rules when conflict and prior resource are explicitly absent", () => {

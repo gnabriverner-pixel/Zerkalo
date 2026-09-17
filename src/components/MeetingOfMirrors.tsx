@@ -18,6 +18,7 @@ import { EmblemPlate } from '../art/emblem';
 import { AlbertDialogue } from './AlbertDialogue';
 import { TesterFeedbackWidget } from './TesterFeedbackWidget';
 import { generateFirstMirror } from '../services/interpretation';
+import { firstMirrorFromV2 } from '../services/codeV2Session';
 import { 
   saveMyMirrorSnapshot, 
   loadMyMirrorSnapshot, 
@@ -70,14 +71,20 @@ export function MeetingOfMirrors({
   const [userNote, setUserNote] = useState(initialUserNote || '');
   const telegramBotUrl = 'https://t.me/digitalcodesystem_bot';
 
+  const effectiveFirstMirror = (): FirstMirror | null => {
+    if (firstMirror) return firstMirror;
+    if (codeV2Payload) return firstMirrorFromV2(codeV2Payload);
+    return codeResult ? generateFirstMirror(codeResult) : null;
+  };
+
   const checkCurrentSaveStatus = (): string | null => {
     const current = loadMyMirrorSnapshot();
     if (!current) return null;
-    const effectiveFirstMirror = firstMirror || (codeResult ? generateFirstMirror(codeResult) : null);
+    const currentFirstMirror = effectiveFirstMirror();
     const matches = isSnapshotMatchingCurrentSession(current, {
       codeDate,
       codeResult,
-      firstMirror: effectiveFirstMirror,
+      firstMirror: currentFirstMirror,
       storyInputs,
       storyResult,
       meetingResult,
@@ -113,13 +120,14 @@ export function MeetingOfMirrors({
 
   const handleSave = () => {
     if (!codeResult || !storyInputs || !storyResult || !meetingResult) return;
-    const effectiveFirstMirror = firstMirror || generateFirstMirror(codeResult);
+    const currentFirstMirror = effectiveFirstMirror();
+    if (!currentFirstMirror) return;
     const success = saveMyMirrorSnapshot({
       codeDate: codeDate || `${codeResult.soul}.${codeResult.expression}.${codeResult.path}`,
       codeResult,
       codeV2Payload,
       journeyId,
-      firstMirror: effectiveFirstMirror,
+      firstMirror: currentFirstMirror,
       storyInputs,
       storyResult,
       meetingResult,
@@ -143,6 +151,11 @@ export function MeetingOfMirrors({
 
   const handleRunSynthesis = async () => {
     if (!isReadyForSynthesis) return;
+    const currentFirstMirror = effectiveFirstMirror();
+    if (!currentFirstMirror) {
+      setErrorMessage('Не удалось восстановить первое зеркало. Вернитесь к Коду и повторите расчёт.');
+      return;
+    }
 
     synthesisRequest.current?.abort();
     const controller = new AbortController();
@@ -158,7 +171,7 @@ export function MeetingOfMirrors({
         body: JSON.stringify({
           codeData: {
             calc: codeResult,
-            firstMirror: firstMirror || undefined,
+            firstMirror: currentFirstMirror,
             codeV2Payload: codeV2Payload || undefined
           },
           storyData: {
