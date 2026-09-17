@@ -119,10 +119,17 @@ async function startServer() {
 
   app.get("/health/ready", (req, res) => {
     const ready = deepseekClient.isReady();
+    const releaseInfo = getPackageReleaseInfo();
+    const releaseSha =
+      process.env.RELEASE_SHA ||
+      process.env.APP_GIT_SHA ||
+      releaseInfo?.release_sha ||
+      releaseInfo?.releaseSha ||
+      "u1-candidate-dev";
     res.status(ready ? 200 : 503).json({
       status: ready ? "ready" : "not_ready",
       service: "zerkalo",
-      release_sha: process.env.RELEASE_SHA || process.env.APP_GIT_SHA || "u1-candidate-dev",
+      release_sha: releaseSha,
       providers: {
         personal_myth: {
           ready,
