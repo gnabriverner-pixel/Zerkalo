@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeAll } from "vitest";
 import { CRISIS_SAFE_MESSAGE, checkCrisisAndHazardousAction, validateAgeAndConsent } from "./safety";
 import { generateMeetingOfMirrors, MEETING_GLOBAL_TIMEOUT_MS } from "./meeting";
 import { calculateCanonicalDigitalCode, computeCanonicalFallback } from "./dcsBridge";
@@ -7,6 +7,9 @@ import { DeepSeekClient } from "./deepseek";
 import type { CalculationResult, FirstMirror, StoryInputs } from "../src/types";
 
 describe("Unified Release U1 Master Contract Verification", () => {
+  beforeAll(() => {
+    process.env.CONTINUATION_CLAIM_SECRET = 'unit-test-continuation-secret-32-characters-minimum';
+  });
   const dummyCode: CalculationResult = {
     soul: 6,
     soulComposite: "6",
@@ -95,6 +98,7 @@ describe("Unified Release U1 Master Contract Verification", () => {
             summary: "Два зеркала встретились.",
             hasStrongParallels: true,
             confidenceNote: "Высокая согласованность.",
+            possibleSupport: "Опорой может стать уже названное действие; можно проверить его в исходной ситуации.",
             parallels: [{ theme: "Опора", codeAnchor: "8", mythAnchor: "Камень", synthesis: "Синтез" }],
             divergences: [],
             albertInsight: "Инсайт",

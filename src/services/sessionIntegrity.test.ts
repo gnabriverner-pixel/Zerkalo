@@ -67,6 +67,7 @@ const sampleMeetingA: MeetingOfMirrorsResult = {
   summary: 'Встреча двух линз выявляет устойчивую связь между структурой и образом.',
   hasStrongParallels: true,
   confidenceNote: 'Высокая согласованность',
+  possibleSupport: 'Опорой может стать внимание к уже названной паузе; можно проверить её в похожей ситуации.',
   reflectiveQuestion: 'Какая опора позволяет удерживать равновесие?',
   albertInsight: 'Код фиксирует каркас, Миф дает дыхание.',
   disclaimer: 'Синтез носит исследовательский характер',

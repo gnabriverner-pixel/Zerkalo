@@ -10,7 +10,7 @@ export const MYTH_SCHEMA = object({
   }),
 });
 export const MEETING_SCHEMA = object({status:{type:'string',enum:['ok']},result:object({
-  ...strings(['summary','confidenceNote']),hasStrongParallels:{type:'boolean'},
+  ...strings(['summary','confidenceNote','possibleSupport']),hasStrongParallels:{type:'boolean'},
   parallels:{type:'array',items:object(strings(['theme','codeAnchor','mythAnchor','synthesis']))},
   divergences:{type:'array',items:object(strings(['theme','codeAspect','mythAspect','reflection']))},
   ...strings(['albertInsight','reflectiveQuestion','disclaimer']),

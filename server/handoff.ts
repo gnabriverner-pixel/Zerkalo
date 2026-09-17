@@ -32,11 +32,19 @@ export async function sweepExpiredClaims(directory: string = CLAIMS_DIR, now = D
 }
 
 const CLAIMS_DIR = process.env.SHARED_CLAIMS_DIR || path.join(process.cwd(), "data", "claims");
-const BOT_USERNAME = process.env.TELEGRAM_STAGING_BOT_USERNAME || "ZerkaloStagingBot";
+/** Owner-confirmed public destination; never manufacture a staging username. */
+export function getTelegramBotUsername(): string {
+  const username = (process.env.TELEGRAM_BOT_USERNAME || process.env.TELEGRAM_STAGING_BOT_USERNAME || 'digitalcodesystem_bot').trim().replace(/^@/, '');
+  if (!/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(username) || username.toLowerCase() === 'zerkalostagingbot') {
+    throw new Error('telegram_destination_unavailable');
+  }
+  return username;
+}
 
 export function getClaimSecret(): string {
-  const secret = process.env.CONTINUATION_CLAIM_SECRET || process.env.DELETION_LOOKUP_SECRET || "zerkalo-u1-claim-secret-for-staging-and-testing-min16";
-  return secret.trim();
+  const secret = (process.env.CONTINUATION_CLAIM_SECRET || process.env.DELETION_LOOKUP_SECRET || '').trim();
+  if (secret.length < 32) throw new Error('continuation_secret_unavailable');
+  return secret;
 }
 
 export interface CreateClaimParams {
@@ -253,6 +261,8 @@ export async function createContinuationClaim(params: CreateClaimParams): Promis
     throw new Error("journey_incomplete:all_three_stages_required");
   }
 
+  const botUsername = getTelegramBotUsername();
+
   // 256-bit opaque bearer ID. The full HMAC stays in the server-side record;
   // Telegram receives only a safe 45-character lookup parameter.
   const claimId = crypto.randomBytes(32).toString("base64url");
@@ -286,7 +296,7 @@ export async function createContinuationClaim(params: CreateClaimParams): Promis
   await fs.rename(tmpPath, claimFilePath);
 
   const token = `${claimId}.${signature}`;
-  const telegramUrl = `https://t.me/${BOT_USERNAME}?start=h_${claimId}`;
+  const telegramUrl = `https://t.me/${botUsername}?start=h_${claimId}`;
 
   return {
     claimId,

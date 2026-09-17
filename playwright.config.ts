@@ -9,12 +9,12 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   timeout: 180000,
   use: {
-    baseURL: 'http://localhost:3005',
+    baseURL: 'http://localhost:3088',
     ...(executablePath ? { launchOptions: { executablePath } } : {}),
   },
   webServer: {
-    command: 'PORT=3005 npx tsx server.ts',
-    port: 3005,
+    command: 'PORT=3088 npx tsx server.ts',
+    port: 3088,
     reuseExistingServer: true,
     timeout: 60000,
   },

@@ -62,6 +62,7 @@ describe("Meeting of Mirrors U1 Acceptance Cases A-F", () => {
           summary: "Обе линзы сходятся в теме кристаллизации формы и границ.",
           hasStrongParallels: true,
           confidenceNote: "Высокая согласованность (резонанс по 2 ключевым опорам).",
+          possibleSupport: "Опорой может стать названное внимание к деталям; можно проверить, помогает ли оно отделить реальную границу от лишнего контроля.",
           parallels: [
             {
               theme: "Порядок и устойчивость",
@@ -99,6 +100,7 @@ describe("Meeting of Mirrors U1 Acceptance Cases A-F", () => {
           summary: "Код указывает на мягкость Венеры, а Миф говорит о суровой изоляции.",
           hasStrongParallels: false,
           confidenceNote: "Контрастное сопоставление (продуктивное расхождение).",
+          possibleSupport: "Можно проверить названную надёжность как опору: помогает ли она создать ясное условие, не объясняя человеку скрытую защиту.",
           parallels: [],
           divergences: [
             {
@@ -135,6 +137,7 @@ describe("Meeting of Mirrors U1 Acceptance Cases A-F", () => {
           summary: "Прямых пересечений между архетипами Кода и образами Мифа сейчас не обнаружено.",
           hasStrongParallels: false,
           confidenceNote: "Зеркала смотрят на разные стороны одного целого без явного стыка.",
+          possibleSupport: "Пока прямой общей опоры не видно; можно проверить, какая из двух перспектив точнее помогает рассмотреть исходную ситуацию.",
           parallels: [],
           divergences: [],
           albertInsight: "Раздельные перспективы расширяют поле выбора без навязанного согласия.",
@@ -189,6 +192,7 @@ describe("Meeting of Mirrors U1 Acceptance Cases A-F", () => {
             summary: "Восстановленный синтез после успешного повтора.",
             hasStrongParallels: false,
             confidenceNote: "Согласовано.",
+            possibleSupport: "Можно опереться на право перепроверить результат и не принимать его как готовый вывод.",
             parallels: [],
             divergences: [],
             albertInsight: "Повторная попытка завершилась успехом.",

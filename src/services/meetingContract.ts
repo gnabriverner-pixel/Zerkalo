@@ -11,6 +11,13 @@ function text(value: unknown, field: string, max = 2400): string {
   return normalized;
 }
 
+const PROVISIONAL_SUPPORT_LANGUAGE = /(?:может|мог(?:ла|ло|ли)?\s+бы|можно|возможно|похоже|если|стоит\s+проверить|пока\s+не\s+видно)/iu;
+const HIDDEN_SUPPORT_CLAIM = /(?:скрыт\w*\s+(?:сила|талант|потенциал|ресурс)|в\s+вас\s+(?:уже\s+)?есть|вы\s+(?:обладаете|способны|предназначены)|ваша\s+истинн\w*\s+(?:сила|сущност)|вам\s+(?:нужно|необходимо)|вы\s+должны)/iu;
+
+export function isUnsupportedSupportClaim(value: string): boolean {
+  return !PROVISIONAL_SUPPORT_LANGUAGE.test(value) || HIDDEN_SUPPORT_CLAIM.test(value);
+}
+
 function parallel(value: unknown, index: number): MeetingParallel {
   if (!isRecord(value)) throw new Error(`meeting_invalid_parallel_${index}`);
   const theme = value.theme || value.title;
@@ -118,6 +125,11 @@ export function parseMeetingResponse(value: unknown): MeetingApiResponse {
   const hasStrong = parallels.length > 0 ? rawHasStrong : false;
 
   const confNote = raw.confidenceNote || raw.confidence_note || (parallels.length > 0 ? "Синтез независимых линз" : "Разные плоскости");
+  const supportValue = raw.possibleSupport || raw.possible_support || raw.supportHypothesis || raw.support_hypothesis;
+  const possibleSupport = text(supportValue, "possible_support", 1600);
+  if (isUnsupportedSupportClaim(possibleSupport)) {
+    throw new Error("meeting_unsupported_support_claim");
+  }
   const insight = raw.albertInsight || raw.albert_insight || raw.insight || raw.summary;
   const question = raw.reflectiveQuestion || raw.reflective_question || raw.question || "О чем для вас этот диалог двух зеркал?";
   const disclaimerText = raw.disclaimer || "Код и Миф — два независимых взгляда. Ни один из них не считается истиной о вас: мы смотрим, какое новое различие появляется, если поставить их рядом.";
@@ -126,6 +138,7 @@ export function parseMeetingResponse(value: unknown): MeetingApiResponse {
     summary: text(raw.summary, "summary"),
     hasStrongParallels: hasStrong,
     confidenceNote: text(confNote, "confidence_note", 500),
+    possibleSupport,
     parallels,
     divergences,
     albertInsight: text(insight, "albert_insight"),

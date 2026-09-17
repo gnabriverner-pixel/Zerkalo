@@ -1,4 +1,4 @@
-import type { CalculationResult, FirstMirror, StoryInputs, MeetingApiResponse } from "../src/types";
+import type { CalculationResult, FirstMirror, StoryInputs, MeetingApiResponse, CodeV2Payload } from "../src/types";
 import { buildMeetingOfMirrorsPrompt } from "../src/services/mythPrompts";
 import { parseMeetingResponse } from "../src/services/meetingContract";
 import type { RequestRetryContext } from "./deepseek";
@@ -8,7 +8,7 @@ import { MEETING_SCHEMA, strictFormat } from './structuredOutput';
 export const MEETING_GLOBAL_TIMEOUT_MS = 48_000; // <= 50s and strictly < 60s nginx proxy timeout
 
 export interface GenerateMeetingParams {
-  codeData: { calc: CalculationResult; firstMirror?: FirstMirror };
+  codeData: { calc: CalculationResult; firstMirror?: FirstMirror; codeV2Payload?: CodeV2Payload };
   storyData: { storyInputs: StoryInputs; storyResult: any };
   client: ChatClient;
   model?: string;
@@ -52,7 +52,7 @@ async function generateMeetingAttempt({
     responseText = await client.call({
       model,
       messages: [
-        { role: "system", content: "Возвращай только валидный JSON без markdown. Сравнивай Код и Миф как два независимых взгляда, не устанавливай свойства человека. Ни один из них не считается истиной о человеке: смотри, какое новое различие появляется, если поставить их рядом. Единственный источник его актуальной ситуации — исходные ответы. Опорой для резонанса со стороны Мифа могут быть ТОЛЬКО прямые ответы пользователя или действия, прямо их повторяющие. Категорически запрещено использовать декоративные образы (лампы, погоду, обстановку, текстуры, верёвки, листы, вечерний антураж) как свидетельство психологических черт, выгорания, усталости или черт характера. Не подгоняй количество параллелей: 1–2 точные связи или 0 при hasStrongParallels: false намного лучше, чем натянутые параллели. В parallels.synthesis, summary и albertInsight говори о сходстве тем, а не о свойствах личности. Нельзя называть бытовой выбор парализующим разрывом. Новый ракурс формулируй как способ рассмотреть конкретную задачу, не объяснение истинной личности." },
+        { role: "system", content: "Возвращай только валидный JSON без markdown. Сравнивай Код и Миф как два независимых взгляда, не устанавливай свойства человека. Ни один из них не считается истиной о человеке: смотри, какое новое различие появляется, если поставить их рядом. Единственный источник его актуальной ситуации — исходные ответы. Опорой для резонанса и possibleSupport со стороны Мифа могут быть ТОЛЬКО прямые ответы пользователя или действия, прямо их повторяющие. Категорически запрещено использовать декоративные образы (лампы, погоду, обстановку, текстуры, верёвки, листы, вечерний антураж) как свидетельство психологических черт, выгорания, усталости или черт характера. Не подгоняй количество параллелей: 1–2 точные связи или 0 при hasStrongParallels: false намного лучше, чем натянутые параллели. В parallels.synthesis, summary, possibleSupport и albertInsight говори о проверяемых возможностях, а не о свойствах личности. Нельзя называть бытовой выбор парализующим разрывом. Новый ракурс формулируй как способ рассмотреть конкретную задачу, не объяснение истинной личности. PossibleSupport всегда остаётся гипотезой: не объявляй скрытый потенциал, силу, предназначение или способность человека." },
         { role: "user", content: prompt },
       ],
       temperature: 0.6,

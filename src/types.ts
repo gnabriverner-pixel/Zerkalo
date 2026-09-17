@@ -14,6 +14,7 @@ export interface CalculationResult {
 }
 
 export type FirstMirror = {
+  interpretationVersion?: "v2";
   title: string;
   subtitle: string;
   formula: {
@@ -105,6 +106,7 @@ export interface MeetingOfMirrorsResult {
   summary: string;
   hasStrongParallels: boolean;
   confidenceNote: string;
+  possibleSupport: string;
   parallels: MeetingParallel[];
   divergences: MeetingDivergence[];
   albertInsight: string;
@@ -154,3 +156,144 @@ export interface ABComparisonResponse {
   modelBName: string;
 }
 
+export interface CodeV2CalculationStep {
+  position: "soul" | "expression" | "path" | "direction" | "result";
+  public_name: string;
+  formula_label: string;
+  calculation: string;
+  rule: string;
+}
+
+export interface CodeV2Calculation {
+  date: string;
+  canonical_result: CalculationResult;
+  five_numbers: {
+    soul: number;
+    expression: number;
+    path: number;
+    direction: number;
+    result: number;
+  };
+  compound_routes: {
+    soul: string;
+    expression: string;
+    path: string;
+    direction: string;
+    result: string;
+  };
+  calculation_chain: CodeV2CalculationStep[];
+}
+
+export interface CodeV2MethodOrientation {
+  summary: string;
+  epistemic_frame: string;
+  core_law: string;
+  target_questions: Array<{
+    position: string;
+    question: string;
+  }>;
+}
+
+export interface CodeV2PositionScene {
+  title: string;
+  description: string;
+}
+
+export interface CodeV2DirectionCompound {
+  origin: {
+    label: string;
+    formula: string;
+    soul_route: string;
+    path_route: string;
+    summary: string;
+  };
+  compound?: {
+    label: string;
+    formula: string;
+    summary: string;
+  } | null;
+  possible_forms: string[];
+  distortion: string;
+  verification_question: string;
+  provenance: "DERIVED_PRODUCT_SYNTHESIS";
+}
+
+export interface CodeV2Position {
+  position: "soul" | "expression" | "path" | "direction" | "result";
+  public_name: string;
+  role: string;
+  role_question: string;
+  energy: number;
+  energy_name: string;
+  compound_route: string;
+  compound_title?: string | null;
+  compound_nuance?: string | null;
+  headline_mechanism: string;
+  mechanism_names: string[];
+  essence: string;
+  tension: string;
+  strong_form: string;
+  shadow: string;
+  life_scenes: CodeV2PositionScene[];
+  verification_question: string;
+  all_verification_questions?: string[];
+  albert_hook: string;
+  environment_parameters?: Record<string, string>;
+  direction_compound?: CodeV2DirectionCompound;
+}
+
+export interface CodeV2Interaction {
+  pair: [string, string];
+  energies: [number, number];
+  positions_label: string;
+  heading: string;
+  category: string;
+  relation_question: string;
+  meaning: string;
+}
+
+export interface CodeV2Synthesis {
+  strongest_motif: string;
+  environment: {
+    title: string;
+    energy_name: string;
+    summary: string;
+    parameters?: Record<string, string>;
+  };
+  mature_integration: {
+    title: string;
+    energy_name: string;
+    summary: string;
+  };
+  full_synthesis_word_count: number;
+  full_composed_portrait: string;
+}
+
+export interface CodeV2AlbertContext {
+  calculated_map: {
+    soul: number;
+    expression: number;
+    path: number;
+    direction: number;
+    result: number;
+  };
+  selected_interactions: CodeV2Interaction[];
+  strongest_hypothesis: string;
+  opening_statement: string;
+  opening_question: string;
+  albert_canonical_quote: string;
+  provenance_status: string;
+}
+
+export interface CodeV2Payload {
+  status: "ok";
+  central_motif?: string;
+  opening_scene?: string;
+  calculation: CodeV2Calculation;
+  method_orientation: CodeV2MethodOrientation;
+  positions: CodeV2Position[];
+  interactions: CodeV2Interaction[];
+  synthesis: CodeV2Synthesis;
+  verification: string[];
+  albert_context: CodeV2AlbertContext;
+}

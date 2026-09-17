@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { machineClaim, meetingEvidence, mergeTruthEvidence } from "./truthEvidence";
 import { buildCanonicalEnvelopeFromWebContext } from "./albert";
 import { buildMeetingOfMirrorsPrompt } from "../src/services/mythPrompts";
-import { loadTruthState, saveTruthState, hasTruthCorrections } from "../src/services/albertTruthState";
+import { loadTruthState, saveTruthState, hasTruthCorrections, persistTruthState } from "../src/services/albertTruthState";
 import { deleteMyMirrorSnapshot, clearTransientDraft } from "../src/services/myMirrorStorage";
 
 describe("claim provenance", () => {
@@ -35,7 +35,9 @@ describe("claim provenance", () => {
   it("preserves the opaque ledger on reload and scopes it to the journey with expiry", () => {
     const state = { evidence: [{claim_id: "x", status: "rejected", receipt: "opaque"}], expiresAt: new Date(Date.now() + 60_000).toISOString() };
     saveTruthState("journey-a", state);
-    sessionStorage.clear(); // browser session restarted, durable ledger remains
+    localStorage.setItem("zerkalo.myMirror.v1", JSON.stringify({journeyId: "journey-a"}));
+    persistTruthState("journey-a"); // explicit save, then browser restart
+    sessionStorage.clear();
     expect(loadTruthState("journey-a")).toEqual(state);
     expect(loadTruthState("journey-b")).toBeUndefined();
     saveTruthState("journey-a", {...state, expiresAt: "2000-01-01"});

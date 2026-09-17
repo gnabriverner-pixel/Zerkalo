@@ -307,7 +307,7 @@ export function ModelComparisonHarness() {
                       <div className="bg-[#15211B] p-4 rounded-xs border border-[#23332A] space-y-2 text-xs mb-6">
                         <p><strong className="text-[#A3B8AD]">Главный образ:</strong> {comparisonData.variantA.mirror.mainImage}</p>
                         <p><strong className="text-[#A3B8AD]">Напряжение:</strong> {comparisonData.variantA.mirror.innerTension}</p>
-                        <p><strong className="text-[#A3B8AD]">Ресурс:</strong> {comparisonData.variantA.mirror.hiddenResource}</p>
+                        <p><strong className="text-[#A3B8AD]">Что стало возможным:</strong> {comparisonData.variantA.mirror.hiddenResource}</p>
                         <p><strong className="text-[#A3B8AD]">Новый взгляд:</strong> {comparisonData.variantA.mirror.newView}</p>
                       </div>
                     )}
@@ -358,7 +358,7 @@ export function ModelComparisonHarness() {
                       <div className="bg-[#15211B] p-4 rounded-xs border border-[#23332A] space-y-2 text-xs mb-6">
                         <p><strong className="text-[#A3B8AD]">Главный образ:</strong> {comparisonData.variantB.mirror.mainImage}</p>
                         <p><strong className="text-[#A3B8AD]">Напряжение:</strong> {comparisonData.variantB.mirror.innerTension}</p>
-                        <p><strong className="text-[#A3B8AD]">Ресурс:</strong> {comparisonData.variantB.mirror.hiddenResource}</p>
+                        <p><strong className="text-[#A3B8AD]">Что стало возможным:</strong> {comparisonData.variantB.mirror.hiddenResource}</p>
                         <p><strong className="text-[#A3B8AD]">Новый взгляд:</strong> {comparisonData.variantB.mirror.newView}</p>
                       </div>
                     )}

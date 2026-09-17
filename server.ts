@@ -8,7 +8,7 @@ import { generateFullInterpretationPayload, generateFirstMirror } from "./src/se
 import { buildPersonalMythPrompt } from "./src/services/mythPrompts";
 import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
-import { RouterAIClient, PRIMARY_MODEL } from "./server/routerai";
+import { RouterAIClient, PRIMARY_MODEL, MEETING_FALLBACK_MODEL } from "./server/routerai";
 import {
   createRouterAIMythProvider,
   PERSONAL_MYTH_WRITER_VERSION,
@@ -19,7 +19,7 @@ import {
 import { generateMeetingOfMirrors } from "./server/meeting";
 import { generateAlbertDialogue } from "./server/albert";
 import crypto from "crypto";
-import { calculateCanonicalDigitalCode } from "./server/dcsBridge";
+import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2 } from "./server/dcsBridge";
 import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
 import { registerDeletionScope, executeDataDeletion } from "./server/deletion";
 import { installConsentRoutes } from './server/consent';
@@ -48,6 +48,7 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
   const deepseekClient = new RouterAIClient(process.env);
+  const meetingClient = deepseekClient.withFallback(MEETING_FALLBACK_MODEL);
   const mythProvider = createRouterAIMythProvider(deepseekClient);
   const personalMythTimeoutMs = Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 75_000));
   const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
@@ -302,7 +303,7 @@ async function startServer() {
       const result = await generateMeetingOfMirrors({
         codeData,
         storyData,
-        client: deepseekClient,
+        client: meetingClient,
         model: MEETING_MODEL,
         totalBudgetMs: 48_000,
       });
@@ -343,6 +344,22 @@ async function startServer() {
     }
   });
 
+  // Dedicated Owner-Only / Preview Endpoint for Code V2
+  app.post(["/api/code-v2", "/api/preview/code-v2"], async (req, res) => {
+    try {
+      const dob = String(req.body?.dob || "").trim();
+      const payload = await calculateCanonicalCodeV2(dob);
+      return res.status(200).json({ status: "ok", payload });
+    } catch (err: any) {
+      const isUnavailable = err?.message?.includes("dcs_canonical_code_v2_unavailable");
+      return res.status(isUnavailable ? 503 : 400).json({
+        status: "error",
+        code: isUnavailable ? "dcs_canonical_code_v2_unavailable" : "invalid_input",
+        message: isUnavailable ? "Канонический сервис Interpretation V2 временно недоступен" : err.message,
+      });
+    }
+  });
+
   // Continuation Claim Handoff Endpoint (Web -> Telegram V2)
   app.post("/api/handoff/create-claim", async (req, res) => {
     try {
@@ -359,6 +376,7 @@ async function startServer() {
       return res.status(200).json({ status: "ok", ...claim });
     } catch (err: any) {
       const msg = err?.message || "claim_creation_failed";
+      if (msg === 'telegram_destination_unavailable') return res.status(503).json({status:'error', code:msg, message:'Переход в Telegram временно недоступен. Ваше исследование остаётся здесь — можно продолжить диалог на сайте.'});
       const isInput = msg.includes("consent_required") || msg.includes("age_requirement") || msg.includes("journey_incomplete");
       return res.status(isInput ? 400 : 500).json({ status: "error", code: msg.split(":", 1)[0], message: msg });
     }
@@ -491,7 +509,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, process.env.HOST || "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

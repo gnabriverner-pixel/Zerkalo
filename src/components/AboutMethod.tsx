@@ -120,7 +120,7 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
                 <Compass className="w-5 h-5" strokeWidth={1.5} />
               </div>
               <div>
-                <span className={`text-[10px] tracking-[0.25em] uppercase font-sans ${
+                <span className={`text-[12px] tracking-[0.25em] uppercase font-sans ${
                   isDark ? 'text-[#A3B8AD]' : 'text-[var(--color-antique-gold)]'
                 }`}>
                   Концепция & Архитектура Знания
@@ -318,7 +318,7 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
                         <span className="font-serif text-2xl font-semibold leading-none mb-1">
                           {arch.num}
                         </span>
-                        <span className="font-sans text-[10px] tracking-wider uppercase opacity-70 truncate max-w-full">
+                        <span className="font-sans text-[12px] tracking-wider uppercase opacity-70 truncate max-w-full">
                           {arch.planet.split(' ')[0]}
                         </span>
                       </button>
@@ -364,7 +364,7 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                         <div className="space-y-4">
                           <div>
-                            <span className="text-[11px] uppercase tracking-wider font-semibold text-[var(--color-antique-gold)] block mb-1">
+                            <span className="text-[13px] uppercase tracking-wider font-semibold text-[var(--color-antique-gold)] block mb-1">
                               Светлая сторона & Ядро силы
                             </span>
                             <p className="font-sans text-sm leading-relaxed opacity-90">
@@ -372,7 +372,7 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
                             </p>
                           </div>
                           <div>
-                            <span className="text-[11px] uppercase tracking-wider font-semibold text-emerald-600 dark:text-emerald-400 block mb-1">
+                            <span className="text-[13px] uppercase tracking-wider font-semibold text-emerald-600 dark:text-emerald-400 block mb-1">
                               Дар и Ресурс
                             </span>
                             <p className="font-sans text-sm leading-relaxed opacity-90">
@@ -383,7 +383,7 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
 
                         <div className="space-y-4">
                           <div>
-                            <span className="text-[11px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-400 block mb-1">
+                            <span className="text-[13px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-400 block mb-1">
                               Зона напряжения & Тень
                             </span>
                             <p className="font-sans text-sm leading-relaxed opacity-90">
@@ -391,7 +391,7 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
                             </p>
                           </div>
                           <div>
-                            <span className="text-[11px] uppercase tracking-wider font-semibold text-sky-700 dark:text-sky-300 block mb-1">
+                            <span className="text-[13px] uppercase tracking-wider font-semibold text-sky-700 dark:text-sky-300 block mb-1">
                               Практический вектор развития
                             </span>
                             <p className="font-sans text-sm leading-relaxed opacity-90">
@@ -409,7 +409,7 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
                           {knowledge.keywords.map((kw, i) => (
                             <span 
                               key={i} 
-                              className={`text-[11px] px-2.5 py-1 rounded-sm border ${
+                              className={`text-[13px] px-2.5 py-1 rounded-sm border ${
                                 isDark ? 'bg-[#111A16] border-[#2A3B33]' : 'bg-[#FAF8F5] border-[#E8DFC8]'
                               }`}
                             >

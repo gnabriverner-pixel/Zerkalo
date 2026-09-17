@@ -2,6 +2,11 @@
 @import "tailwindcss";
 
 @theme {
+  --text-xs: 0.875rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.65;
+
   --color-antique-gold: oklch(0.80 0.115 74);
   --color-gold: oklch(0.80 0.115 74);
   --color-gold-soft: oklch(0.72 0.07 72 / 45%);
