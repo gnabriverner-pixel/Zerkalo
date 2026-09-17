@@ -472,8 +472,8 @@ export function CodeV2Experience({
                   {payload.albert_context?.strongest_hypothesis || 'Внутренний контраст вашей карты'}
                 </h2>
 
-                <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-sm sm:text-base text-stone-200 leading-relaxed font-normal mb-6 space-y-4">
-                  <p className="text-stone-400 text-xs sm:text-sm">Гипотеза для проверки, а не вывод о вашей личности.</p>
+                <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-base sm:text-[17px] text-stone-200 leading-relaxed font-normal mb-6 space-y-4">
+                  <p className="text-stone-400 text-sm">Гипотеза для проверки, а не вывод о вашей личности.</p>
                   {(payload.central_motif || payload.synthesis.strongest_motif || '').split('\n\n').map((paragraph, pIdx) => (
                     <p key={pIdx}>{paragraph}</p>
                   ))}
@@ -560,7 +560,7 @@ export function CodeV2Experience({
                 <Compass className="w-4 h-4 text-[var(--color-antique-gold)]" />
                 <span>Как это читать</span>
               </div>
-              <p className="text-sm sm:text-base text-stone-300 font-normal leading-relaxed max-w-2xl">
+              <p className="text-base text-stone-300 font-normal leading-relaxed max-w-2xl">
                 Цифровой Код объединяет строгую математику пропорций и язык небесных архетипов. Это не фатальный диагноз, а инструмент честной саморефлексии — система выверенных гипотез. Исследуйте эту карту внимательно: отмечайте, где ваш опыт безошибочно узнаёт себя, а где возникает желание оспорить формулировку.
               </p>
             </section>
@@ -598,7 +598,7 @@ export function CodeV2Experience({
                             <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
                               {pos.energy_name} · {pos.energy}
                             </h3>
-                            <div className="text-sm sm:text-base font-serif italic text-stone-300 mt-1 leading-relaxed">
+                            <div className="text-base font-serif italic text-stone-300 mt-1 leading-relaxed">
                               «{pos.role_question}»
                             </div>
                           </div>
@@ -617,7 +617,7 @@ export function CodeV2Experience({
                           О чём это число
                         </div>
                         {pos.position === 'path' && (
-                          <p className="mb-3 rounded-xl border border-[var(--color-antique-gold)]/20 bg-[var(--color-antique-gold)]/5 px-4 py-3 text-sm sm:text-base text-stone-300 font-normal leading-relaxed">
+                          <p className="mb-3 rounded-xl border border-[var(--color-antique-gold)]/20 bg-[var(--color-antique-gold)]/5 px-4 py-3 text-base text-stone-300 font-normal leading-relaxed">
                             Это не готовая черта характера, а направление практики: способ действовать, который постепенно осваивается через выборы, поступки и повторяющиеся жизненные задачи.
                           </p>
                         )}
@@ -636,7 +636,7 @@ export function CodeV2Experience({
                             transition={{ duration: 0.2 }}
                             className="space-y-3 mb-6 pt-3 border-t border-white/5 overflow-hidden"
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-sm sm:text-base">
+                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-base">
                               <span className="text-[var(--color-antique-gold)] font-medium sm:min-w-[190px] flex-shrink-0">
                                 Когда эта сила работает:
                               </span>
@@ -645,7 +645,7 @@ export function CodeV2Experience({
                               </span>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-sm sm:text-base">
+                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-base">
                               <span className="text-amber-400/90 font-medium sm:min-w-[190px] flex-shrink-0">
                                 Где она начинает мешать:
                               </span>
@@ -654,7 +654,7 @@ export function CodeV2Experience({
                               </span>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-sm sm:text-base">
+                            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1.5 sm:gap-3 text-base">
                               <span className="text-purple-300/90 font-medium sm:min-w-[190px] flex-shrink-0">
                                 Главная ловушка:
                               </span>
@@ -669,7 +669,7 @@ export function CodeV2Experience({
                                   В какой среде раскрывается это Направление:
                                 </div>
                                 {Object.entries(pos.environment_parameters).map(([label, description]) => (
-                                  <div key={label} className="grid gap-1 sm:grid-cols-[190px_1fr] sm:gap-3 text-sm sm:text-base">
+                                  <div key={label} className="grid gap-1 sm:grid-cols-[190px_1fr] sm:gap-3 text-base">
                                     <span className="text-[var(--color-antique-gold)] font-medium">{label}:</span>
                                     <span className="text-stone-300 font-normal leading-relaxed">{description}</span>
                                   </div>
@@ -685,7 +685,7 @@ export function CodeV2Experience({
                                 {pos.life_scenes.map((scene, sIdx) => (
                                   <div
                                     key={sIdx}
-                                    className="p-3.5 bg-black/40 rounded-xl border border-white/5 text-sm sm:text-base text-stone-300 font-normal leading-relaxed"
+                                    className="p-3.5 bg-black/40 rounded-xl border border-white/5 text-base text-stone-300 font-normal leading-relaxed"
                                   >
                                     <div className="font-medium text-[var(--color-antique-gold)] mb-1 text-[13px]">
                                       {scene.title}
@@ -706,7 +706,7 @@ export function CodeV2Experience({
                           <span className="text-[13px] font-medium text-stone-400 block mb-1">
                             Проверьте на себе:
                           </span>
-                          <p className="text-sm sm:text-base text-stone-200 font-serif italic leading-relaxed">
+                          <p className="text-base text-stone-200 font-serif italic leading-relaxed">
                             «{pos.verification_question}»
                           </p>
                         </div>
