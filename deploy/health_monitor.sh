@@ -63,7 +63,7 @@ check_unit() {
     CHECK_RESULTS+=("unit:$unit=failed(state=$active)")
     OVERALL="failed"; return
   fi
-  local prev_key="NRESTARTS_${unit//./_}"
+  local prev_key="NRESTARTS_$(echo "$unit" | tr '.-' '__')"
   local prev="${!prev_key:-}"
   if [[ -n "$prev" && "$restarts" =~ ^[0-9]+$ && "$restarts" -gt "$prev" ]]; then
     CHECK_RESULTS+=("unit:$unit=restarts_grew($prev->$restarts)")
@@ -106,11 +106,16 @@ check_web_ready() {
 
 check_bot_heartbeat() {
   # Read-only getMe: proves the bot token is valid and Telegram API reachable.
+  # One retry absorbs transient network blips so they do not page the owner.
   if [[ -z "$BOT_TOKEN" ]]; then
     CHECK_RESULTS+=("bot:getMe=skip(no token)"); return
   fi
-  local code
-  code="$(curl -fsS -m "$TIMEOUT" -o /dev/null -w '%{http_code}' "https://api.telegram.org/bot${BOT_TOKEN}/getMe" 2>/dev/null)"
+  local code attempt
+  for attempt in 1 2; do
+    code="$(curl -fsS -m "$TIMEOUT" -o /dev/null -w '%{http_code}' "https://api.telegram.org/bot${BOT_TOKEN}/getMe" 2>/dev/null)"
+    [[ "$code" == "200" ]] && break
+    [[ $attempt -eq 1 ]] && sleep 2
+  done
   if [[ "$code" != "200" ]]; then
     CHECK_RESULTS+=("bot:getMe=failed(http=$code)"); OVERALL="failed"; return
   fi
@@ -140,7 +145,7 @@ PREV_OVERALL=$OVERALL
 EOF
 for u in $UNITS_STR; do
   r="$(systemctl show -p NRestarts --value "$u" 2>/dev/null || true)"
-  [[ "$r" =~ ^[0-9]+$ ]] && echo "NRESTARTS_${u//./_}=$r" >> "$STATE_FILE.tmp"
+  [[ "$r" =~ ^[0-9]+$ ]] && echo "NRESTARTS_$(echo "$u" | tr '.-' '__')=$r" >> "$STATE_FILE.tmp"
 done
 mv "$STATE_FILE.tmp" "$STATE_FILE"
 

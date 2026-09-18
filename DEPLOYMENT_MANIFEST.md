@@ -9,14 +9,13 @@
 
 | Component | Repo | Branch | SHA |
 |-----------|------|--------|-----|
-| Web (zerkalosebya.ru) | gnabriverner-pixel/Zerkalo | `main` | `7d9e00f08e9c65167d8e40195f2d5bd1bfd63cd1` |
+| Web (zerkalosebya.ru) | gnabriverner-pixel/Zerkalo | `main` (deployed from release dir) | `c7fc1f8d6c87f44bab86b54d7622c8cd56c97cc1` |
 | DCS bridge + Telegram | gnabriverner-pixel/digital-code-system | `release/routerai-acceptance` | `fe67002ce2a2f9d05fa9faf205ef45264f05a931` |
 
-- Дата фиксации пары: 2026-09-18
-- **Redeploy pending:** `main` продвинулся дальше задеплоенного `7d9e00f` (operability pass: честный health, верификатор, CI-pairing, мониторинг — без продуктовых изменений). Продолжает обслуживаться `7d9e00f`, пока владелец не передеплоит; после редеплоя обновить строку Web SHA выше.
-- `/health` и `/health/ready` на проде возвращают Web SHA `7d9e00f…`, `dirty:false` (проверено 2026-09-18)
-- Verified пара продублирована в [`release-compatibility.json`](release-compatibility.json) — его читает CI
-- Release gate: внешний верификатор `scripts/release_verifier.sh` (GitHub Actions помечены `EXTERNAL_BLOCKED: GitHub account billing lock`; отсутствие зелёного Actions-рана не является дефектом проверенного SHA)
+- **Дата переключения пары: 2026-09-18 ~16:24 UTC** (см. Post-deploy acceptance — COMPLETED ниже).
+- `/health` и `/health/ready` на проде возвращают Web SHA `c7fc1f8…`, `dirty:false`, `dcs_bridge {ready, sha fe67002…}` (проверено живьём после cutover).
+- Release gate: внешний верификатор `scripts/release_verifier.sh` — **fail-closed по пинам пары** (`release-compatibility.json` v2, оба SHA) + канонический runtime Node 24. GitHub Actions помечены `EXTERNAL_BLOCKED: GitHub account billing lock`; отсутствие зелёного Actions-рана не является дефектом проверенного SHA.
+- Runtime прода: Node `v22.23.2` (наблюдение с сервера; канонический runtime *верификации* — Node 24, паритет с CI; прод не менялся).
 
 ## Verification commands
 
@@ -38,25 +37,23 @@ scripts/release_verifier.sh --web-sha 7d9e00f08e9c65167d8e40195f2d5bd1bfd63cd1 \
 Точные команды для среды с SSH: `deploy/rollback.sh` (проверить соответствие
 каталогов перед исполнением).
 
-### Post-deploy acceptance (деплой Web `c7fc1f8…`, monitor из `a4bd2d5`)
+### Post-deploy acceptance — COMPLETED 2026-09-18 (факты, не ожидания)
 
-Основание: верификатор PASS на паре `c7fc1f8` + `fe67002` (см.
-`evidence/verify-20260918-180847/`); `a4bd2d5` отличается от `c7fc1f8`
-только фиксом `deploy/health_monitor.sh` и evidence — продуктового кода не
-меняет. Откат — каталог `7d9e00f…`.
+Деплой Web `c7fc1f8…` из иммутабельного каталога `/media/vda1/opt/zerkalo-releases/c7fc1f8…` (зависимости установлены на сервере, права как у эталона). Мониторинг — из линии `a4bd2d5` (фикс совместимости + getMe retry).
 
-```bash
-# 1. Локально на сервере, после переключения symlink и рестарта:
-curl -fsS http://127.0.0.1:<port>/health | python3 -m json.tool
-#   Ожидаемо: release_sha c7fc1f8…, dirty:false,
-#   components.dcs_bridge = {"state":"ready","sha":"fe67002…"} (мост на старом SHA fe67002).
-# 2. Public:
-curl -fsS https://zerkalosebya.ru/health/ready | python3 -m json.tool
-#   Ожидаемо: status ready, checks.llm_provider.ready=true, checks.dcs_bridge.state=ready.
-# 3. Мониторинг (после установки по PRODUCTION_MONITORING_SETUP.md):
-/usr/local/bin/zerkalo-health-monitor.sh && echo OK   # rc=0, переходов нет
-# 4. Smoke генерации через публичный API (consent → /api/calculate) — путь пользователя не менялся.
-```
+| Проверка | Результат | Время (UTC) |
+|---|---|---|
+| Verifier pair gate (Node 24, чистые checkout) | **PASS 10/10** — `evidence/verify-20260918-gatehardened/`; commit status на оба SHA | 16:16 |
+| Negative pair tests | 3× **FAIL** (wrong web sha / wrong dcs sha / wrong node major), rc=1, 0 дорогих шагов | 16:09 |
+| Preflight перед cutover | release dir, unit, rollback dir `7d9e00f…`, read-доступ юзера zerkalo — OK | 16:21 |
+| Isolated boot-check :3999 (chroot) | `/health`: sha `c7fc1f8…`, dirty=false, `dcs_bridge {ready, fe67002…}` | 16:22 |
+| Cutover | `current` → `c7fc1f8…`, `systemctl start zerkalo.service` → active, NRestarts=0 | 16:24 |
+| Public `https://zerkalosebya.ru/health` | 200: sha `c7fc1f8…`, `dcs_bridge {ready, fe67002…}` | 16:25 |
+| Public `https://zerkalosebya.ru/health/ready` | 200 `ready`: llm_provider=true, dcs_bridge=true/ready/fe67002 | 16:25 |
+| **Реальный пользовательский smoke** | consent → `POST /api/calculate` (dob 06.05.1986) → `status: ok`, authority `engine.py::full_analysis`, числа 6/2/8/5/1, missing [2,3,4,7] — **живой путь через DCS-мост, не mock** | 16:25 |
+| Мониторинг установлен | `/usr/local/bin/zerkalo-health-monitor.sh`, state `/var/lib/zerkalo-health-monitor`, токены из production.env (значения не печатались), timer активен (каждые 5 мин) | 16:26 |
+| Цикл мониторинга | переходы: alert при healthy→failed и failed→healthy; **повторы без алертов**; getMe с retry; baseline NRestarts: zerkalo=0, bridge=0, v2-prod=49019 (рост → алерт) | 16:28 |
+| Rollback SHA | `7d9e00f08e9c65167d8e40195f2d5bd1bfd63cd1` (каталог существует; откат = flip `current` + restart) | — |
 
 ## Monitoring
 
@@ -72,6 +69,7 @@ curl -fsS https://zerkalosebya.ru/health/ready | python3 -m json.tool
 
 ## History
 
-- 2026-09-18: пара `7d9e00f…` (Web) + `fe67002…` (DCS) задеплоена и проверена живым health; DCS `fe67002` = `a3e2fe1` + CI/док-коммиты. Telegram restart-loop (≈49k рестартов из-за удалённого release-каталога) устранён на хосте.
+- 2026-09-18 ~16:24 UTC: **cutover на пару `c7fc1f8…` + `fe67002…`** (operability closure). Мониторинг установлен и проверен. Откат: `7d9e00f…`.
+- 2026-09-18 (до полудня): пара `7d9e00f…` (Web) + `fe67002…` (DCS) задеплоена и проверена живым health; DCS `fe67002` = `a3e2fe1` + CI/док-коммиты. Telegram restart-loop (≈49k рестартов из-за удалённого release-каталога) устранён на хосте.
 - 2026-09-17: `7d9e00f` — «Fix release identity and restore production CI» (PR-линия #30/#31); DCS `a3e2fe1` — релиз Code V2 journey (PR #106).
 - Исторический деплой V1 (2026-07-13): Web `178d22d5…`, DCS `b0a9e7e5…` — см. docs/DIGITAL_CODE_PRODUCT_RELEASE_V1_DEPLOY_RECORD.md.
