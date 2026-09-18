@@ -93,9 +93,15 @@ check_web_ready() {
   fi
   echo "$body" | grep -q '"status":"ready"' || {
     CHECK_RESULTS+=("web:ready=failed(not ready)"); OVERALL="failed"; return; }
-  echo "$body" | grep -q '"state":"ready"' || {
-    CHECK_RESULTS+=("web:ready=degraded(dcs_bridge not ready)"); OVERALL="failed"; return; }
-  CHECK_RESULTS+=("web:ready=ok")
+  # New-schema payloads expose checks.dcs_bridge.state; pre-operability deploys
+  # do not. Only enforce when the field is present (forward/back compatible).
+  if echo "$body" | grep -q '"dcs_bridge"'; then
+    echo "$body" | grep -q '"state":"ready"' || {
+      CHECK_RESULTS+=("web:ready=degraded(dcs_bridge not ready)"); OVERALL="failed"; return; }
+    CHECK_RESULTS+=("web:ready=ok(dcs_bridge=ready)")
+  else
+    CHECK_RESULTS+=("web:ready=ok(legacy payload)")
+  fi
 }
 
 check_bot_heartbeat() {
