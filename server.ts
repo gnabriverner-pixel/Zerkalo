@@ -19,7 +19,7 @@ import {
 import { generateMeetingOfMirrors } from "./server/meeting";
 import { generateAlbertDialogue } from "./server/albert";
 import crypto from "crypto";
-import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2 } from "./server/dcsBridge";
+import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge } from "./server/dcsBridge";
 import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
 import { registerDeletionScope, executeDataDeletion } from "./server/deletion";
 import { installConsentRoutes } from './server/consent';
@@ -84,7 +84,7 @@ async function startServer() {
     return null;
   }
 
-  app.get("/health", (req, res) => {
+  app.get("/health", async (_req, res) => {
     const releaseInfo = getPackageReleaseInfo();
     const candidateSha =
       process.env.RELEASE_SHA ||
@@ -93,7 +93,9 @@ async function startServer() {
       releaseInfo?.releaseSha ||
       "u1-candidate-dev";
     const isDirty = releaseInfo?.dirty ?? false;
-
+    const dcs = await probeDcsBridge();
+    // Probe failures must not fail the whole health endpoint; availability is
+    // reported honestly per component instead of as a constant.
     res.json({
       status: "ok",
       service: "zerkalo",
@@ -102,23 +104,17 @@ async function startServer() {
       releaseSha: candidateSha,
       dirty: isDirty,
       components: {
-        web: "active",
-        dcs_bridge: "active",
+        web: { state: "active" },
+        dcs_bridge: { state: dcs.state, sha: dcs.sha },
         albert: "digital-code-system/telegram_v2.albert.orchestrator",
         telegram_v2_continuity: "SharedContextEnvelopeV1",
-      },
-      models: {
-        personalMyth: PERSONAL_MYTH_MODEL,
-        meeting: MEETING_MODEL,
-        synthesis: MEETING_MODEL,
-        albert: ALBERT_MODEL,
       },
       google_production_dependency: "none",
     });
   });
 
-  app.get("/health/ready", (req, res) => {
-    const ready = deepseekClient.isReady();
+  app.get("/health/ready", async (_req, res) => {
+    const providerReady = deepseekClient.isReady();
     const releaseInfo = getPackageReleaseInfo();
     const releaseSha =
       process.env.RELEASE_SHA ||
@@ -126,28 +122,41 @@ async function startServer() {
       releaseInfo?.release_sha ||
       releaseInfo?.releaseSha ||
       "u1-candidate-dev";
+    const dcs = await probeDcsBridge();
+    const dcsReady = dcs.state === "ready";
+    const ready = providerReady && dcsReady;
+    // Operational detail (models, fallback configuration) stays here; the
+    // public /health response carries only availability and versions.
     res.status(ready ? 200 : 503).json({
       status: ready ? "ready" : "not_ready",
       service: "zerkalo",
       release_sha: releaseSha,
+      checks: {
+        llm_provider: { ready: providerReady, provider: "routerai" },
+        dcs_bridge: { ready: dcsReady, state: dcs.state, sha: dcs.sha },
+      },
       providers: {
         personal_myth: {
-          ready,
+          ready: providerReady,
           provider: "routerai",
           model: PERSONAL_MYTH_MODEL,
           writer: PERSONAL_MYTH_WRITER_VERSION,
+          fallback_model: "anthropic/claude-sonnet-5",
         },
         meeting: {
-          ready,
+          ready: providerReady,
           provider: "routerai",
           model: MEETING_MODEL,
+          fallback_model: "openai/gpt-5.4-mini",
         },
         albert: {
-          ready,
+          ready: providerReady,
           provider: "routerai",
           model: ALBERT_MODEL,
+          fallback_model: "anthropic/claude-sonnet-5",
         },
       },
+      single_gateway_dependency: "routerai",
       google_production_dependency: "none",
     });
   });

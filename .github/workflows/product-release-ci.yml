@@ -1,5 +1,13 @@
 name: Product Release CI
 
+# EXTERNAL_BLOCKED: GitHub account billing lock (as of 2026-09-18, GitHub refuses
+# to start jobs: "account is locked due to a billing issue"). This workflow is
+# fully prepared and will run unchanged once the account lock is lifted.
+# Until then, release verification is performed by the external, free release
+# verifier: scripts/release_verifier.sh (clean checkouts, same checks, JSON+MD
+# evidence, fail-closed). The absence of a green run here is NOT a defect of a
+# verified SHA.
+
 on:
   pull_request:
     branches:
@@ -30,20 +38,83 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      - name: Resolve pinned DCS SHA from release compatibility manifest
+        id: dcs
+        run: |
+          PIN=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("release-compatibility.json","utf8")).dcs.pinned_sha)')
+          if ! echo "$PIN" | grep -Eq '^[0-9a-f]{40}$'; then echo "invalid pinned_sha: $PIN"; exit 1; fi
+          echo "sha=$PIN" >> "$GITHUB_OUTPUT"
+
+      # Private cross-repo access: single fine-grained credential, Contents:read
+      # only (deploy key DCS_RELEASE_CI_READ on the DCS repo). The key is written
+      # to a private file and never echoed or printed.
+      - name: Configure read-only access to private DCS repo
+        env:
+          DCS_DEPLOY_KEY: ${{ secrets.DCS_DEPLOY_KEY }}
+        run: |
+          if [ -z "$DCS_DEPLOY_KEY" ]; then
+            echo "::error::DCS_DEPLOY_KEY secret is not set (read-only deploy key for digital-code-system, Contents:read only)"
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DCS_DEPLOY_KEY" > ~/.ssh/dcs_deploy_key
+          chmod 600 ~/.ssh/dcs_deploy_key
+          ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
+          cat > ~/.ssh/config <<'CFG'
+          Host github.com
+            IdentityFile ~/.ssh/dcs_deploy_key
+            IdentitiesOnly yes
+          CFG
+          chmod 600 ~/.ssh/config
+
+      - name: Checkout exact DCS candidate
+        uses: actions/checkout@v4
+        with:
+          repository: gnabriverner-pixel/digital-code-system
+          ref: ${{ steps.dcs.outputs.sha }}
+          path: dcs
+          fetch-depth: 1
+
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
-      - name: Install exact dependencies
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: dcs/requirements.txt
+
+      - name: Install DCS dependencies
+        run: python -m pip install -r dcs/requirements.txt
+
+      - name: Install exact Web dependencies
         run: npm ci
+
+      # DCS_BRIDGE_URL is a deliberately dead loopback address: no random local
+      # service can intercept verification; tests must use the checked-out DCS.
       - name: Typecheck
+        env:
+          DCS_ROOT: ${{ github.workspace }}/dcs
+          DCS_BRIDGE_URL: http://127.0.0.1:9
+          PYTHON_BIN: python
         run: npm run lint
+
       - name: Test
+        env:
+          DCS_ROOT: ${{ github.workspace }}/dcs
+          DCS_BRIDGE_URL: http://127.0.0.1:9
+          PYTHON_BIN: python
         run: npm test
+
       - name: Build
         run: npm run build
+
       - name: Package and boot-check immutable artifact
         run: node scripts/package_release.cjs
+
       - name: Verify release identity
         run: |
           node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("dist/release.json","utf8"));if(p.release_sha!==process.env.GITHUB_SHA||p.dirty!==false)process.exit(1)'

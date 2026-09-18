@@ -264,3 +264,42 @@ export async function calculateCanonicalCodeV2(dob: string): Promise<CodeV2Paylo
   }
 }
 
+export interface DcsBridgeHealth {
+  state: "ready" | "unavailable" | "timeout";
+  sha: string;
+}
+
+const DCS_HEALTH_TTL_MS = 5_000;
+let dcsHealthCache: { at: number; value: DcsBridgeHealth } | null = null;
+
+/**
+ * Real availability probe of the DCS bridge service. Briefly cached so public
+ * /health polling cannot hammer the bridge. Exposes only state + DCS release
+ * SHA; never the internal URL or credentials.
+ */
+export async function probeDcsBridge(timeoutMs = 1_200): Promise<DcsBridgeHealth> {
+  if (dcsHealthCache && Date.now() - dcsHealthCache.at < DCS_HEALTH_TTL_MS) {
+    return dcsHealthCache.value;
+  }
+  const { url } = getDcsConfig();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let value: DcsBridgeHealth;
+  try {
+    const response = await fetch(`${url}/health`, { signal: controller.signal });
+    if (response.ok) {
+      const data = (await response.json().catch(() => null)) as { sha?: unknown } | null;
+      const sha = typeof data?.sha === "string" && data.sha.trim() ? data.sha.trim() : "unknown";
+      value = { state: "ready", sha };
+    } else {
+      value = { state: "unavailable", sha: "unknown" };
+    }
+  } catch (err: any) {
+    value = { state: err?.name === "AbortError" ? "timeout" : "unavailable", sha: "unknown" };
+  } finally {
+    clearTimeout(timer);
+  }
+  dcsHealthCache = { at: Date.now(), value };
+  return value;
+}
+

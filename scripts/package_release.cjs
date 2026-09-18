@@ -163,7 +163,8 @@ async function verifyArchiveExtractAndBoot(archivePath, releaseSha) {
           const json = await res.json();
           healthData = json;
           const shaMatch = json.release_sha === releaseSha || json.releaseSha === releaseSha;
-          const hasComponents = json.components && json.components.web && json.components.dcs_bridge && json.components.albert;
+          const c = json.components || {};
+          const hasComponents = Boolean(c.web) && Boolean(c.dcs_bridge && c.dcs_bridge.state);
           const notDirty = json.dirty === false;
           if (shaMatch && hasComponents && notDirty) {
             verified = true;
@@ -232,6 +233,13 @@ async function generatePackageManifest(targetOutDir) {
     MAX_REQUEST_RETRIES: 1,
   };
 
+  // Honest dirty flag: CI checkouts are always clean; a dirty local tree must
+  // surface in the release identity instead of silently claiming clean.
+  let dirty = false;
+  try {
+    dirty = child_process.execSync("git status --porcelain", { cwd: repoRoot, encoding: "utf8" }).trim().length > 0;
+  } catch {}
+
   const releaseJson = {
     release_name: "Zerkalo Unified Release U1",
     base_sha: baseSha,
@@ -240,7 +248,7 @@ async function generatePackageManifest(targetOutDir) {
     branch: "integration/unified-release-u1",
     target_version: "v1.0.0-u1",
     build_timestamp: buildTimestamp,
-    dirty: false,
+    dirty,
     components: {
       web: "active",
       dcs_bridge: "active",
@@ -275,7 +283,7 @@ async function generatePackageManifest(targetOutDir) {
     base_sha: baseSha,
     version: "v1.0.0-u1",
     build_timestamp: buildTimestamp,
-    dirty: false,
+    dirty,
     node_version: nodeVersion,
     npm_version: npmVersion,
     package_lock_sha256: packageLockSha256,

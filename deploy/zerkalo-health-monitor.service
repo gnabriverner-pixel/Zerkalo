@@ -1,0 +1,16 @@
+[Unit]
+Description=Zerkalo production health monitor (read-only checks + owner alerts)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Owner fills credentials via drop-in or environment file (never in git):
+#   MONITOR_BOT_TOKEN, MONITOR_CHAT_ID
+EnvironmentFile=-/etc/default/zerkalo-health-monitor
+ExecStart=/opt/zerkalo-releases/current/deploy/health_monitor.sh
+# Read-only over product units; writes only its own state dir
+User=root
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/zerkalo-health-monitor

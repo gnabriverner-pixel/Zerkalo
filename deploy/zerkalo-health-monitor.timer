@@ -1,0 +1,10 @@
+[Unit]
+Description=Run zerkalo health monitor every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=zerkalo-health-monitor.service
+
+[Install]
+WantedBy=timers.target

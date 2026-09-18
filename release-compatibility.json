@@ -1,0 +1,15 @@
+{
+  "$comment": "Release compatibility manifest. Pins the verified Web/DCS SHA pair. CI and the external release verifier MUST read the DCS pin from here, never from a floating branch. Update only after the new pair has passed the full verification.",
+  "version": 1,
+  "web": {
+    "repo": "gnabriverner-pixel/Zerkalo",
+    "branch": "main"
+  },
+  "dcs": {
+    "repo": "gnabriverner-pixel/digital-code-system",
+    "pinned_sha": "fe67002ce2a2f9d05fa9faf205ef45264f05a931",
+    "production_branch": "release/routerai-acceptance"
+  },
+  "updated_at": "2026-09-18",
+  "note": "Web CI checks out the DCS repo at pinned_sha with Contents:read deploy key. 7d9e00f (Web) + fe67002 (DCS) is the deployed production pair as of 2026-09-18."
+}
