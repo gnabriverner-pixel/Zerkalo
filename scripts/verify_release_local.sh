@@ -75,6 +75,12 @@ if ! "$PYTHON_BIN" -c 'import pytest' >/dev/null 2>&1; then
   fail "DCS dependencies missing in $PYTHON_BIN (pytest not importable). Install: $PYTHON_BIN -m pip install -r $DCS_ROOT/requirements.txt"
 fi
 
+# Canonical verification runtime must match CI (Node major 24).
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+if [[ "$NODE_MAJOR" != "24" ]]; then
+  fail "Node 24 is the canonical verification runtime (found v$NODE_MAJOR). Prepend: PATH=\"\$(brew --prefix node@24)/bin:\$PATH\""
+fi
+
 export DCS_ROOT
 export PYTHON_BIN
 

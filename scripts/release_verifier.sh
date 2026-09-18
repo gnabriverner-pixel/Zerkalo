@@ -81,6 +81,59 @@ run_check() { # run_check <side> <name> <workdir> <cmd...>
   return 0  # fail-closed is decided after all checks
 }
 
+# ------------------------------------------------------- fail-closed gates
+# The canonical pair and runtime are defined by the COMMITTED
+# release-compatibility.json of THIS repository (the verifier's own checkout).
+# Any violation fails BEFORE cloning, installing or testing anything expensive.
+WEB_PIN_MATCH=false; DCS_PIN_MATCH=false; PINNED_PAIR_MATCH=false
+MANIFEST_SHA=""
+
+fail_evidence() { # fail_evidence <reason>
+  local reason="$1"
+  say "GATE FAIL: $reason"
+  cat > "$JSON" <<EOF
+{
+  "verdict": "FAIL",
+  "failure_reason": "$reason",
+  "pair": { "web_repo": "$WEB_REPO", "web_sha": "$WEB_SHA", "dcs_repo": "$DCS_REPO", "dcs_sha": "$DCS_SHA" },
+  "web_pin_match": $WEB_PIN_MATCH,
+  "dcs_pin_match": $DCS_PIN_MATCH,
+  "pinned_pair_match": $PINNED_PAIR_MATCH,
+  "manifest_sha": "${MANIFEST_SHA:-null}",
+  "started_at": "$START_ISO",
+  "finished_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "policy": { "github_actions": "EXTERNAL_BLOCKED: GitHub account billing lock; this verifier is the independent release gate", "fail_closed": true }
+}
+EOF
+  {
+    echo "# External Release Verification — FAIL (gate)"
+    echo
+    echo "- Reason: $reason"
+    echo "- Requested pair: web \`$WEB_SHA\` + dcs \`$DCS_SHA\`"
+    echo "- web_pin_match=$WEB_PIN_MATCH dcs_pin_match=$DCS_PIN_MATCH pinned_pair_match=$PINNED_PAIR_MATCH (manifest ${MANIFEST_SHA:-n/a})"
+    echo "- No clone/install/test steps executed (fail-closed before expensive steps)."
+  } > "$MD"
+  exit 1
+}
+
+MANIFEST="$REPO_ROOT/release-compatibility.json"
+CANONICAL_NODE_MAJOR="24"
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo none)"
+[[ "$NODE_MAJOR" == "$CANONICAL_NODE_MAJOR" ]] || fail_evidence "node v$NODE_MAJOR is not the canonical verification runtime (need Node $CANONICAL_NODE_MAJOR, CI parity)"
+[[ -f "$MANIFEST" ]] || fail_evidence "release-compatibility.json missing in verifier repo ($REPO_ROOT)"
+[[ -z "$(git -C "$REPO_ROOT" status --porcelain)" ]] || fail_evidence "verifier repo working tree is dirty — commit release-compatibility.json before verifying"
+MANIFEST_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
+WEB_PIN="$(node -e 'const m=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log((m.web&&m.web.pinned_sha)||"")' "$MANIFEST")"
+DCS_PIN="$(node -e 'const m=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log((m.dcs&&m.dcs.pinned_sha)||"")' "$MANIFEST")"
+sha40 "$WEB_PIN" || fail_evidence "manifest web.pinned_sha missing or invalid: '${WEB_PIN:-}'"
+sha40 "$DCS_PIN" || fail_evidence "manifest dcs.pinned_sha missing or invalid: '${DCS_PIN:-}'"
+[[ "$WEB_SHA" == "$WEB_PIN" ]] || fail_evidence "requested web SHA != pinned web SHA ($WEB_SHA != $WEB_PIN)"
+WEB_PIN_MATCH=true
+[[ "$DCS_SHA" == "$DCS_PIN" ]] || fail_evidence "requested dcs SHA != pinned dcs SHA ($DCS_SHA != $DCS_PIN)"
+DCS_PIN_MATCH=true
+PINNED_PAIR_MATCH=true
+say "Pair gate PASS: web+dcs pins match manifest @ ${MANIFEST_SHA:0:7}; node v$NODE_MAJOR (canonical)"
+
 say "External release verifier"
 say "  Web SHA: $WEB_SHA"
 say "  DCS SHA: $DCS_SHA"
@@ -138,13 +191,17 @@ run_check WEB build "$WORK/web" npm run build
 run_check WEB package_boot_check "$WORK/web" node scripts/package_release.cjs
 run_check WEB release_identity "$WORK/web" node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("dist/release.json","utf8"));if(p.release_sha!==process.env.WEB_SHA||p.dirty!==false)process.exit(1)' 2>/dev/null
 
-# Pair pin consistency (informational, recorded in report)
-PIN_MATCH="null"
+# Cross-check: the manifest inside the verified Web SHA must pin the same DCS SHA
+# (guards against drift between the verifier repo's manifest and the verified tree).
 if [[ -f "$WORK/web/release-compatibility.json" ]]; then
-  PIN="$(node -e 'console.log(JSON.parse(require("fs").readFileSync("'$WORK'/web/release-compatibility.json","utf8")).dcs.pinned_sha)' 2>/dev/null || echo "")"
-  if [[ -n "$PIN" ]]; then
-    [[ "$PIN" == "$DCS_SHA" ]] && PIN_MATCH=true || PIN_MATCH=false
-    say "release-compatibility.json pinned DCS: $PIN — match with verified pair: $PIN_MATCH"
+  TREE_PIN="$(node -e 'const m=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log((m.dcs&&m.dcs.pinned_sha)||"")' "$WORK/web/release-compatibility.json" 2>/dev/null || echo "")"
+  if [[ "$TREE_PIN" == "$DCS_SHA" ]]; then
+    RESULTS_WEB+=" manifest_pair_consistency=PASS:0"
+    say "[WEB] PASS  manifest_pair_consistency (tree pins $DCS_SHA)"
+  else
+    RESULTS_WEB+=" manifest_pair_consistency=FAIL:0:pin"
+    STEP_FAIL=1
+    say "[WEB] FAIL  manifest_pair_consistency (verified tree pins '${TREE_PIN:-<none>}' != $DCS_SHA)"
   fi
 fi
 
@@ -172,9 +229,12 @@ cat > "$JSON" <<EOF
   "pair": {
     "web_repo": "$WEB_REPO", "web_sha": "$WEB_SHA",
     "dcs_repo": "$DCS_REPO", "dcs_sha": "$DCS_SHA",
-    "pinned_pair_match": $PIN_MATCH
+    "web_pin_match": $WEB_PIN_MATCH,
+    "dcs_pin_match": $DCS_PIN_MATCH,
+    "pinned_pair_match": $PINNED_PAIR_MATCH,
+    "manifest_sha": "$MANIFEST_SHA"
   },
-  "environment": { "node": "$NODE_VERSION", "python_base": "$("$PYTHON_BASE" -V 2>&1)", "host": "$(hostname -s)" },
+  "environment": { "node": "$NODE_VERSION", "canonical_node_major": $CANONICAL_NODE_MAJOR, "python_base": "$("$PYTHON_BASE" -V 2>&1)", "host": "$(hostname -s)" },
   "sources_clean": $([[ $DIRTY -eq 0 ]] && echo true || echo false),
   "started_at": "$START_ISO", "finished_at": "$FINISHED_ISO", "duration_seconds": $DURATION,
   "checks": {
@@ -195,7 +255,7 @@ EOF
   echo "- Date: $FINISHED_ISO (duration ${DURATION}s)"
   echo "- Web: \`$WEB_SHA\` ($WEB_REPO)"
   echo "- DCS: \`$DCS_SHA\` ($DCS_REPO)"
-  echo "- Pinned pair match (release-compatibility.json): $PIN_MATCH"
+  echo "- Pinned pair (manifest \`$MANIFEST_SHA\`): web=$WEB_PIN_MATCH dcs=$DCS_PIN_MATCH pair=$PINNED_PAIR_MATCH"
   echo "- Sources at pinned SHAs: clean checkouts"
   echo "- GitHub Actions: EXTERNAL_BLOCKED (account billing lock) — this run is the release gate."
   echo

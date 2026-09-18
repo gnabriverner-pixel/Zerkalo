@@ -30,6 +30,10 @@ scripts/release_verifier.sh --web-sha <40-hex> --dcs-sha <40-hex> [--post-status
 Быстрые проверки по отдельности: `npm run lint` (typecheck), `npm test` (vitest), `npm run build`,
 `node scripts/package_release.cjs` (упаковка + boot-check).
 
+Канонический runtime верификации — **Node 24** (паритет с CI). Внешний верификатор и
+`verify_release_local.sh` падают на другой мажорной версии. Пример переключения:
+`PATH="$(brew --prefix node@24)/bin:$PATH"`. Runtime прода отдельно не трогается.
+
 `npm test` требует DCS: `DCS_ROOT=<checkout DCS>`, `PYTHON_BIN=<python3.12 с deps DCS>`,
 и мёртвый `DCS_BRIDGE_URL=http://127.0.0.1:9` — чтобы случайный локальный сервис
 на `127.0.0.1:39500` не перехватил проверку. `verify_release_local.sh` делает это автоматически.

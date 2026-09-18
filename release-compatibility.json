@@ -1,15 +1,21 @@
 {
-  "$comment": "Release compatibility manifest. Pins the verified Web/DCS SHA pair. CI and the external release verifier MUST read the DCS pin from here, never from a floating branch. Update only after the new pair has passed the full verification.",
-  "version": 1,
+  "$comment": "Release compatibility manifest v2. Pins BOTH SHAs of the canonical verified pair. The external release verifier (scripts/release_verifier.sh) is fail-closed against these pins: requested --web-sha/--dcs-sha MUST equal web.pinned_sha/dcs.pinned_sha or verification refuses before any expensive step. Update pins only after a full verifier PASS on the new pair.",
+  "version": 2,
   "web": {
     "repo": "gnabriverner-pixel/Zerkalo",
-    "branch": "main"
+    "branch": "main",
+    "pinned_sha": "c7fc1f8d6c87f44bab86b54d7622c8cd56c97cc1"
   },
   "dcs": {
     "repo": "gnabriverner-pixel/digital-code-system",
     "pinned_sha": "fe67002ce2a2f9d05fa9faf205ef45264f05a931",
     "production_branch": "release/routerai-acceptance"
   },
+  "runtime": {
+    "canonical_node_major": 24,
+    "production_node": "UNVERIFIED until server inspection; do not assume",
+    "note": "Verification runtime must match CI (Node 24). Production runtime is only observed, never changed by the verifier."
+  },
   "updated_at": "2026-09-18",
-  "note": "Web CI checks out the DCS repo at pinned_sha with Contents:read deploy key. 7d9e00f (Web) + fe67002 (DCS) is the deployed production pair as of 2026-09-18."
+  "note": "Canonical verified pair: Web c7fc1f8 (external verifier PASS 2026-09-18) + DCS fe67002 (deployed). Production rollback Web SHA: 7d9e00f."
 }
