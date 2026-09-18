@@ -45,12 +45,6 @@ export WEB_SHA DCS_SHA
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-OUT_DIR="${OUT_DIR_ARG:-$REPO_ROOT/evidence/verify-$(date +%Y%m%d-%H%M%S)}"
-mkdir -p "$OUT_DIR"
-LOG="$OUT_DIR/verifier.log"
-JSON="$OUT_DIR/report.json"
-MD="$OUT_DIR/report.md"
-: > "$LOG"
 
 START_TS="$(date +%s)"
 START_ISO="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -59,7 +53,35 @@ RESULTS_WEB=""   # "name:status:seconds" space-separated
 RESULTS_DCS=""
 STEP_FAIL=0
 
-say() { printf '[verifier %s] %s\n' "$(date -u +%H:%M:%S)" "$*" | tee -a "$LOG"; }
+# LOG/JSON/MD are only defined AFTER the self-cleanliness gate: the verifier
+# must not create files inside its own repo (default OUT_DIR) before proving
+# the tree is clean. Early failures write evidence under /tmp instead.
+say() { printf '[verifier %s] %s\n' "$(date -u +%H:%M:%S)" "$*" | { [[ -n "${LOG:-}" ]] && tee -a "$LOG" || cat; }; }
+say_early() { printf '[verifier %s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
+
+EARLY_FAIL_DIR=""
+fail_early() { # fail_early <reason> — pre-cleanliness failure, /tmp evidence
+  local reason="$1"
+  EARLY_FAIL_DIR="/tmp/release-verifier-fail-$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$EARLY_FAIL_DIR"
+  cat > "$EARLY_FAIL_DIR/report.json" <<EOF
+{
+  "verdict": "FAIL",
+  "failure_reason": "$reason",
+  "pair": { "web_repo": "$WEB_REPO", "web_sha": "$WEB_SHA", "dcs_repo": "$DCS_REPO", "dcs_sha": "$DCS_SHA" },
+  "web_pin_match": false,
+  "dcs_pin_match": false,
+  "pinned_pair_match": false,
+  "gate_phase": "pre-cleanliness (evidence in /tmp; no files written inside the repo)",
+  "started_at": "$START_ISO",
+  "finished_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "policy": { "fail_closed": true }
+}
+EOF
+  say_early "GATE FAIL: $reason"
+  say_early "Evidence: $EARLY_FAIL_DIR/report.json"
+  exit 1
+}
 
 run_check() { # run_check <side> <name> <workdir> <cmd...>
   local side="$1" name="$2" workdir="$3"; shift 3
@@ -88,7 +110,7 @@ run_check() { # run_check <side> <name> <workdir> <cmd...>
 WEB_PIN_MATCH=false; DCS_PIN_MATCH=false; PINNED_PAIR_MATCH=false
 MANIFEST_SHA=""
 
-fail_evidence() { # fail_evidence <reason>
+fail_evidence() { # fail_evidence <reason> — post-cleanliness failure, evidence in OUT_DIR
   local reason="$1"
   say "GATE FAIL: $reason"
   cat > "$JSON" <<EOF
@@ -118,15 +140,29 @@ EOF
 
 MANIFEST="$REPO_ROOT/release-compatibility.json"
 CANONICAL_NODE_MAJOR="24"
+
+# ---- Phase A: pre-cleanliness gates. Nothing has been written inside the
+# repo yet; early failures keep their evidence in /tmp.
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo none)"
-[[ "$NODE_MAJOR" == "$CANONICAL_NODE_MAJOR" ]] || fail_evidence "node v$NODE_MAJOR is not the canonical verification runtime (need Node $CANONICAL_NODE_MAJOR, CI parity)"
-[[ -f "$MANIFEST" ]] || fail_evidence "release-compatibility.json missing in verifier repo ($REPO_ROOT)"
-[[ -z "$(git -C "$REPO_ROOT" status --porcelain)" ]] || fail_evidence "verifier repo working tree is dirty — commit release-compatibility.json before verifying"
+[[ "$NODE_MAJOR" == "$CANONICAL_NODE_MAJOR" ]] || fail_early "node v$NODE_MAJOR is not the canonical verification runtime (need Node $CANONICAL_NODE_MAJOR, CI parity)"
+[[ -f "$MANIFEST" ]] || fail_early "release-compatibility.json missing in verifier repo ($REPO_ROOT)"
+[[ -z "$(git -C "$REPO_ROOT" status --porcelain)" ]] || fail_early "verifier repo working tree is dirty — commit release-compatibility.json before verifying"
 MANIFEST_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 WEB_PIN="$(node -e 'const m=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log((m.web&&m.web.pinned_sha)||"")' "$MANIFEST")"
 DCS_PIN="$(node -e 'const m=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log((m.dcs&&m.dcs.pinned_sha)||"")' "$MANIFEST")"
-sha40 "$WEB_PIN" || fail_evidence "manifest web.pinned_sha missing or invalid: '${WEB_PIN:-}'"
-sha40 "$DCS_PIN" || fail_evidence "manifest dcs.pinned_sha missing or invalid: '${DCS_PIN:-}'"
+sha40 "$WEB_PIN" || fail_early "manifest web.pinned_sha missing or invalid: '${WEB_PIN:-}'"
+sha40 "$DCS_PIN" || fail_early "manifest dcs.pinned_sha missing or invalid: '${DCS_PIN:-}'"
+
+# ---- Phase B: tree proven clean — now create evidence paths inside the repo.
+OUT_DIR="${OUT_DIR_ARG:-$REPO_ROOT/evidence/verify-$(date +%Y%m%d-%H%M%S)}"
+mkdir -p "$OUT_DIR"
+LOG="$OUT_DIR/verifier.log"
+JSON="$OUT_DIR/report.json"
+MD="$OUT_DIR/report.md"
+: > "$LOG"
+
+# ---- Phase C: pair pin gates (fail-closed before any expensive step).
+WEB_PIN_MATCH=false; DCS_PIN_MATCH=false; PINNED_PAIR_MATCH=false
 [[ "$WEB_SHA" == "$WEB_PIN" ]] || fail_evidence "requested web SHA != pinned web SHA ($WEB_SHA != $WEB_PIN)"
 WEB_PIN_MATCH=true
 [[ "$DCS_SHA" == "$DCS_PIN" ]] || fail_evidence "requested dcs SHA != pinned dcs SHA ($DCS_SHA != $DCS_PIN)"

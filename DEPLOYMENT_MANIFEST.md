@@ -24,7 +24,7 @@
 scripts/verify_release_local.sh
 
 # Внешний verifier на точной паре (JSON+MD evidence, fail-closed):
-scripts/release_verifier.sh --web-sha 7d9e00f08e9c65167d8e40195f2d5bd1bfd63cd1 \
+scripts/release_verifier.sh --web-sha c7fc1f8d6c87f44bab86b54d7622c8cd56c97cc1 \
                             --dcs-sha fe67002ce2a2f9d05fa9faf205ef45264f05a931
 ```
 
@@ -39,7 +39,7 @@ scripts/release_verifier.sh --web-sha 7d9e00f08e9c65167d8e40195f2d5bd1bfd63cd1 \
 
 ### Post-deploy acceptance — COMPLETED 2026-09-18 (факты, не ожидания)
 
-Деплой Web `c7fc1f8…` из иммутабельного каталога `/media/vda1/opt/zerkalo-releases/c7fc1f8…` (зависимости установлены на сервере, права как у эталона). Мониторинг — из линии `a4bd2d5` (фикс совместимости + getMe retry).
+Деплой Web `c7fc1f8…` из иммутабельного каталога `/media/vda1/opt/zerkalo-releases/c7fc1f8…` (зависимости установлены на сервере, права как у эталона). Мониторинг: база совместимости — `a4bd2d5` (фикс dcs_bridge-совместимости с legacy payload), production hardening — `4952b65` (санитизация unit-ключей состояния + getMe retry).
 
 | Проверка | Результат | Время (UTC) |
 |---|---|---|

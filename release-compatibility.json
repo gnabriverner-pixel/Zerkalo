@@ -13,8 +13,8 @@
   },
   "runtime": {
     "canonical_node_major": 24,
-    "production_node": "UNVERIFIED until server inspection; do not assume",
-    "note": "Verification runtime must match CI (Node 24). Production runtime is only observed, never changed by the verifier."
+    "production_node": "v22.23.2 (observed on the production host 2026-09-18)",
+    "note": "Node 24 = canonical verification/CI runtime (verifier and verify_release_local refuse other majors). Node v22.23.2 = observed production runtime. Production runtime is NOT changed by this manifest; it is recorded from server inspection only."
   },
   "updated_at": "2026-09-18",
   "note": "Canonical verified pair: Web c7fc1f8 (external verifier PASS 2026-09-18) + DCS fe67002 (deployed). Production rollback Web SHA: 7d9e00f."
