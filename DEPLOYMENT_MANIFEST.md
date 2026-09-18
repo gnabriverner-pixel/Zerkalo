@@ -13,6 +13,7 @@
 | DCS bridge + Telegram | gnabriverner-pixel/digital-code-system | `release/routerai-acceptance` | `fe67002ce2a2f9d05fa9faf205ef45264f05a931` |
 
 - Дата фиксации пары: 2026-09-18
+- **Redeploy pending:** `main` продвинулся дальше задеплоенного `7d9e00f` (operability pass: честный health, верификатор, CI-pairing, мониторинг — без продуктовых изменений). Продолжает обслуживаться `7d9e00f`, пока владелец не передеплоит; после редеплоя обновить строку Web SHA выше.
 - `/health` и `/health/ready` на проде возвращают Web SHA `7d9e00f…`, `dirty:false` (проверено 2026-09-18)
 - Verified пара продублирована в [`release-compatibility.json`](release-compatibility.json) — его читает CI
 - Release gate: внешний верификатор `scripts/release_verifier.sh` (GitHub Actions помечены `EXTERNAL_BLOCKED: GitHub account billing lock`; отсутствие зелёного Actions-рана не является дефектом проверенного SHA)
@@ -36,6 +37,26 @@ scripts/release_verifier.sh --web-sha 7d9e00f08e9c65167d8e40195f2d5bd1bfd63cd1 \
 каталог релиза + рестарт юнита; БД и runtime-стейт живут вне релизных каталогов.
 Точные команды для среды с SSH: `deploy/rollback.sh` (проверить соответствие
 каталогов перед исполнением).
+
+### Post-deploy acceptance (деплой Web `c7fc1f8…`, monitor из `a4bd2d5`)
+
+Основание: верификатор PASS на паре `c7fc1f8` + `fe67002` (см.
+`evidence/verify-20260918-180847/`); `a4bd2d5` отличается от `c7fc1f8`
+только фиксом `deploy/health_monitor.sh` и evidence — продуктового кода не
+меняет. Откат — каталог `7d9e00f…`.
+
+```bash
+# 1. Локально на сервере, после переключения symlink и рестарта:
+curl -fsS http://127.0.0.1:<port>/health | python3 -m json.tool
+#   Ожидаемо: release_sha c7fc1f8…, dirty:false,
+#   components.dcs_bridge = {"state":"ready","sha":"fe67002…"} (мост на старом SHA fe67002).
+# 2. Public:
+curl -fsS https://zerkalosebya.ru/health/ready | python3 -m json.tool
+#   Ожидаемо: status ready, checks.llm_provider.ready=true, checks.dcs_bridge.state=ready.
+# 3. Мониторинг (после установки по PRODUCTION_MONITORING_SETUP.md):
+/usr/local/bin/zerkalo-health-monitor.sh && echo OK   # rc=0, переходов нет
+# 4. Smoke генерации через публичный API (consent → /api/calculate) — путь пользователя не менялся.
+```
 
 ## Monitoring
 
