@@ -2,9 +2,27 @@ import { chromium } from 'playwright';
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 const PORT = 3088;
-const DCS_ROOT = process.env.DCS_ROOT || '/Users/artemkrysin/code/digital-code-system';
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// DCS checkout: explicit env wins, otherwise the sibling/known locations are probed.
+// No personal absolute paths are baked into this public repository.
+const dcsCandidates = [
+  process.env.DCS_ROOT,
+  path.resolve(repoRoot, '..', 'digital-code-system'),
+  path.resolve(repoRoot, '..', '..', 'digital-code-system'),
+].filter(Boolean);
+const DCS_ROOT = dcsCandidates.find(candidate =>
+  fs.existsSync(path.join(candidate, 'integration', 'zerkalo_bridge.py'))
+);
+if (!DCS_ROOT) {
+  console.error(
+    'DCS checkout not found. Set DCS_ROOT=/path/to/digital-code-system ' +
+      '(expected integration/zerkalo_bridge.py inside it).'
+  );
+  process.exit(2);
+}
 const SCREENSHOT_DIR = path.resolve('docs/screenshots');
 
 if (!fs.existsSync(SCREENSHOT_DIR)) {
