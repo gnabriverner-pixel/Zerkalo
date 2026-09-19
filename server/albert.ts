@@ -142,6 +142,25 @@ export function buildCanonicalEnvelopeFromWebContext(
  * Pure DTO/transport adapter: delegating completely to canonical DCS Albert orchestrator.
  * Authority: digital-code-system/telegram_v2.albert.orchestrator
  */
+export const ALBERT_MESSAGE_MAX_LENGTH = 2000;
+
+/**
+ * Single source of truth for the Albert message constraint.
+ *
+ * The HTTP handler runs this BEFORE booking any cost, so a rejected message can never
+ * spend the daily budget; the generator below runs it again as a safety net. Keeping one
+ * exported implementation is what prevents the two checks from drifting apart — the
+ * earlier split (non-empty at the door, length 2000 only inside the generator) let an
+ * oversized message consume the budget and then be rejected without any generation.
+ */
+export function parseAlbertMessage(request: { message?: unknown }): string {
+  const userText = String(request?.message || "").trim();
+  if (!userText || userText.length > ALBERT_MESSAGE_MAX_LENGTH) {
+    throw new Error("invalid_message");
+  }
+  return userText;
+}
+
 export async function generateAlbertDialogue(
   request: AlbertDialogueRequest,
   _client?: any,
@@ -149,10 +168,7 @@ export async function generateAlbertDialogue(
   timeoutMs: number = 45_000,
   consentReceipt?: {version:string;recordedAt:number}
 ): Promise<AlbertDialogueResponse> {
-  const userText = String(request.message || "").trim();
-  if (!userText || userText.length > 2000) {
-    throw new Error("invalid_message");
-  }
+  const userText = parseAlbertMessage(request);
 
   const envelope = buildCanonicalEnvelopeFromWebContext(request.context, request.history);
   if(consentReceipt) {

@@ -17,12 +17,22 @@ import {
   parsePersonalMythRequest,
 } from "./server/myth";
 import { generateMeetingOfMirrors } from "./server/meeting";
-import { generateAlbertDialogue } from "./server/albert";
+import { generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
 import crypto from "crypto";
 import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge } from "./server/dcsBridge";
 import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
 import { registerDeletionScope, executeDataDeletion } from "./server/deletion";
 import { installConsentRoutes } from './server/consent';
+import {
+  checkAndIncrementRate,
+  consumeDailyBudget,
+  createRateGuard,
+  DAILY_BUDGET_MESSAGE,
+  purgeExpiredRateLimits,
+  rateBuckets,
+  resolveRateMax,
+  resolveRateWindowMs,
+} from './server/rateLimit';
 
 const PERSONAL_MYTH_MODEL = PRIMARY_MODEL;
 const MEETING_MODEL = PRIMARY_MODEL;
@@ -47,12 +57,37 @@ function isCrisisInput(inputs: StoryInputs): boolean {
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
+  // Trust exactly one hop: the loopback nginx proxy (verified topology — the app binds
+  // 127.0.0.1, external access to its port is DROPped by iptables, nginx forwards
+  // X-Forwarded-For with $proxy_add_x_forwarded_for). Never `true`/`*`: trusting
+  // client-supplied headers would let anyone forge req.ip and defeat per-client quotas.
+  // Moving nginx/CDN off this host requires revisiting this line deliberately.
+  app.set('trust proxy', 'loopback');
   const deepseekClient = new RouterAIClient(process.env);
   const meetingClient = deepseekClient.withFallback(MEETING_FALLBACK_MODEL);
   const mythProvider = createRouterAIMythProvider(deepseekClient);
   const personalMythTimeoutMs = Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 75_000));
   const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
-  const mythRate = new Map<string, { windowStartedAt: number; count: number }>();
+
+  // Operational abuse/cost guards (see server/rateLimit.ts for the topology note).
+  // Environment-configurable, no product tiers: defaults leave ordinary use untouched.
+  const rateWindowMs = resolveRateWindowMs();
+  const personalMythRateMax = resolveRateMax('PERSONAL_MYTH_RATE_MAX', 5);
+  const meetingGuard = createRateGuard({
+    name: 'meeting',
+    maxRequests: resolveRateMax('MEETING_RATE_MAX', 12),
+    windowMs: rateWindowMs,
+    message: 'Сейчас слишком много запросов к Встрече зеркал. Ваши результаты сохранены — попробуйте через несколько минут.',
+  });
+  const albertGuard = createRateGuard({
+    name: 'albert',
+    maxRequests: resolveRateMax('ALBERT_RATE_MAX', 30),
+    windowMs: rateWindowMs,
+    message: 'Сейчас слишком много запросов к диалогу. Ваши результаты сохранены — попробуйте через несколько минут.',
+  });
+  // Keeps the client maps bounded on a long-running process.
+  const ratePurgeTimer = setInterval(() => purgeExpiredRateLimits(Date.now(), rateWindowMs), 60 * 60_000);
+  ratePurgeTimer.unref?.();
 
   // Schema reference: "status": "crisis", "story_result": { "mirror": { "mainImage": "", "innerTension": "" } }
   app.use(express.json({ limit: "5mb" }));
@@ -218,19 +253,15 @@ async function startServer() {
     try {
       const now = Date.now();
       const clientKey = req.ip || "unknown";
-      const currentRate = mythRate.get(clientKey);
-      const maxRequests = process.env.NODE_ENV === "production" ? 5 : 100;
-      if (!currentRate || now - currentRate.windowStartedAt > 10 * 60_000) {
-        mythRate.set(clientKey, { windowStartedAt: now, count: 1 });
-      } else if (currentRate.count >= maxRequests) {
+      const rate = checkAndIncrementRate(clientKey, personalMythRateMax, now, rateWindowMs, rateBuckets.myth);
+      if (!rate.allowed) {
+        res.set("Retry-After", String(rate.retryAfterSec));
         return res.status(429).json({
           mode: "story",
           status: "error",
           code: "rate_limit_exceeded",
           ui: { safe_message: "Превышен лимит запросов. Попробуйте через 10 минут." },
         });
-      } else {
-        currentRate.count += 1;
       }
 
       const reqBody = parsePersonalMythRequest(req.body);
@@ -259,6 +290,19 @@ async function startServer() {
           ui: {
             safe_message: "Личный миф временно недоступен (провайдер генерации не настроен). Ваши ответы сохранены.",
           },
+        });
+      }
+
+      // Cost circuit-breaker: consumed here — after validation, after the cache lookup
+      // and after provider readiness — so cached answers and rejected requests never
+      // spend the global generation ceiling.
+      const budget = consumeDailyBudget();
+      if (!budget.allowed) {
+        return res.status(429).json({
+          mode: "story",
+          status: "error",
+          code: "daily_budget_reached",
+          ui: { safe_message: DAILY_BUDGET_MESSAGE },
         });
       }
 
@@ -319,6 +363,16 @@ async function startServer() {
         });
       }
 
+      // Cost circuit-breaker: consumed only when a real synthesis is about to run.
+      const budget = consumeDailyBudget();
+      if (!budget.allowed) {
+        return res.status(429).json({
+          status: "error",
+          code: "daily_budget_reached",
+          ui: { safe_message: DAILY_BUDGET_MESSAGE },
+        });
+      }
+
       const result = await generateMeetingOfMirrors({
         codeData,
         storyData,
@@ -344,7 +398,7 @@ async function startServer() {
     }
   };
 
-  app.post("/api/meeting-of-mirrors", meetingHandler);
+  app.post("/api/meeting-of-mirrors", meetingGuard, meetingHandler);
 
   // Canonical Calculation Endpoint (digital-code-system authority)
   app.post("/api/calculate", async (req, res) => {
@@ -430,8 +484,11 @@ async function startServer() {
   // Dedicated Albert Dialogue Endpoint (RP-1 DeepSeek conversation)
   const albertHandler = async (req: express.Request, res: express.Response) => {
     try {
-      const message = String(req.body?.message || "").trim();
-      if (!message) {
+      // Full message validation (non-empty AND within the generator's 2000-char contract)
+      // before anything else — a rejected message must never reach the daily budget.
+      try {
+        parseAlbertMessage(req.body);
+      } catch {
         return res.status(400).json({
           status: "error",
           code: "invalid_message",
@@ -444,6 +501,16 @@ async function startServer() {
           status: "error",
           code: "albert_provider_not_ready",
           ui: { safe_message: "Собеседник Альберт сейчас недоступен (провайдер генерации не настроен). Ваши результаты сохранены." }
+        });
+      }
+
+      // Cost circuit-breaker: consumed only when a real dialogue generation is about to run.
+      const budget = consumeDailyBudget();
+      if (!budget.allowed) {
+        return res.status(429).json({
+          status: "error",
+          code: "daily_budget_reached",
+          ui: { safe_message: DAILY_BUDGET_MESSAGE },
         });
       }
 
@@ -475,7 +542,7 @@ async function startServer() {
     }
   };
 
-  app.post("/api/albert/dialogue", albertHandler);
+  app.post("/api/albert/dialogue", albertGuard, albertHandler);
 
   // Backward-compatible endpoint for deterministic code calculation
   app.post("/api/generate", async (req, res) => {
