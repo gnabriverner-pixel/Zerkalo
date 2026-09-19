@@ -1,10 +1,10 @@
 {
-  "$comment": "Release compatibility manifest v2. Pins BOTH SHAs of the canonical verified pair. The external release verifier (scripts/release_verifier.sh) is fail-closed against these pins: requested --web-sha/--dcs-sha MUST equal web.pinned_sha/dcs.pinned_sha or verification refuses before any expensive step. Update pins only after a full verifier PASS on the new pair.",
+  "$comment": "Release compatibility manifest v2. Pins BOTH SHAs of the canonical release candidate. Two-phase contract: (1) a metadata-only CANDIDATE pin commit sets web.pinned_sha / dcs.pinned_sha to the candidate pair; (2) scripts/release_verifier.sh is fail-closed against these pins (the requested --web-sha/--dcs-sha MUST equal web.pinned_sha/dcs.pinned_sha or verification refuses before any expensive step) and is run from that clean tree; (3) a PASS promotes the candidate pin to the verified pin, a FAIL restores the previous verified pin and no deploy happens. The verifier always clones and re-verifies the pinned Web SHA itself, so the Web self-pin inside the verified tree is not required — only the DCS pin inside that tree is cross-checked.",
   "version": 2,
   "web": {
     "repo": "gnabriverner-pixel/Zerkalo",
     "branch": "main",
-    "pinned_sha": "c7fc1f8d6c87f44bab86b54d7622c8cd56c97cc1"
+    "pinned_sha": "8297706ebaf48ac586089466da981f0dec49144e"
   },
   "dcs": {
     "repo": "gnabriverner-pixel/digital-code-system",
@@ -16,6 +16,6 @@
     "production_node": "v22.23.2 (observed on the production host 2026-09-18)",
     "note": "Node 24 = canonical verification/CI runtime (verifier and verify_release_local refuse other majors). Node v22.23.2 = observed production runtime. Production runtime is NOT changed by this manifest; it is recorded from server inspection only."
   },
-  "updated_at": "2026-09-18",
-  "note": "Canonical verified pair: Web c7fc1f8 (external verifier PASS 2026-09-18) + DCS fe67002 (deployed). Production rollback Web SHA: 7d9e00f."
+  "updated_at": "2026-09-19",
+  "note": "Candidate pair pending strict external verification: Web 8297706 (merge of PR #33, tree 30700d7f) + DCS fe67002. Previously verified pair: Web c7fc1f8 (external verifier PASS 2026-09-18) + DCS fe67002. Production still runs c7fc1f8 until a cutover is explicitly authorised. Production rollback Web SHA: 7d9e00f."
 }

@@ -56,7 +56,7 @@ scripts/release_verifier.sh --web-sha <40-hex> --dcs-sha <40-hex> [--post-status
 ## Правила Web/DCS pairing
 
 - Пара Web↔DCS проверяется acceptance-тестами (`server/code_v2_acceptance.test.ts`) против конкретного чекаута DCS — не против «какой-то» локальной копии.
-- Менять `release-compatibility.json` можно только после полного PASS внешнего верификатора на новой паре.
+- `release-compatibility.json` меняется двухфазно: metadata-only **candidate pin** commit → strict external verifier на паре из этого пина → **PASS** переводит candidate pin в verified (и только тогда разрешён deploy), **FAIL** возвращает предыдущий verified pin и деплоя не происходит.
 - Деплой одной стороны пары без перепроверки другой — запрещён.
 - Health: `/health` публикует только доступность и версии (включая реальный probe DCS-моста); модели, fallback и прочая операционная деталь — в `/health/ready` и логах, не в публичном payload. Никаких секретов и внутренних URL в публичных health-ответах.
 
