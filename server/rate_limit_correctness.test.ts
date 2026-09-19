@@ -13,13 +13,18 @@ import { consumeDailyBudget, resolveDailyBudgetMax } from './rateLimit';
 
 const repoRoot = path.resolve(__dirname, '..');
 
+// Sequential ports (not random): two servers in this file must never collide on a
+// random draw — a failed bind would otherwise surface as an opaque health timeout.
+let nextPort = 39900;
+
 interface Harness {
   proc: child_process.ChildProcess;
   baseUrl: string;
+  stderr: () => string;
 }
 
 function spawnProductionServer(extraEnv: Record<string, string>): Harness {
-  const port = 39900 + Math.floor(Math.random() * 90);
+  const port = nextPort++;
   const tsxPath = path.join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
   const proc = child_process.spawn(
     process.execPath,
@@ -43,7 +48,11 @@ function spawnProductionServer(extraEnv: Record<string, string>): Harness {
       stdio: ['ignore', 'pipe', 'pipe'],
     }
   );
-  return { proc, baseUrl: `http://127.0.0.1:${port}` };
+  const stderrChunks: string[] = [];
+  proc.stderr?.on('data', chunk => {
+    if (stderrChunks.length < 40) stderrChunks.push(chunk.toString());
+  });
+  return { proc, baseUrl: `http://127.0.0.1:${port}`, stderr: () => stderrChunks.join('') };
 }
 
 async function waitForHealth(harness: Harness, timeoutMs = 20_000): Promise<void> {
@@ -57,7 +66,11 @@ async function waitForHealth(harness: Harness, timeoutMs = 20_000): Promise<void
     }
     await new Promise(resolve => setTimeout(resolve, 200));
   }
-  throw new Error(`server did not become healthy at ${harness.baseUrl}`);
+  const stderrTail = harness.stderr().slice(-800);
+  throw new Error(
+    `server did not become healthy at ${harness.baseUrl}` +
+      (stderrTail ? `\n--- server stderr (tail) ---\n${stderrTail}` : '')
+  );
 }
 
 async function stopServer(harness: Harness): Promise<void> {
