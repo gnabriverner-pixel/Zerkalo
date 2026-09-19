@@ -86,8 +86,8 @@ async function run() {
     // Verify title and clean orientation entry
     const title = await page.title();
     console.log('Page Title:', title);
-    await page.waitForSelector('text=Карта Цифрового Кода', { timeout: 10000 });
-    await page.waitForSelector('button:has-text("Рассчитать")', { timeout: 10000 });
+    await page.waitForSelector('text=Ваш Цифровой Код', { timeout: 10000 });
+    await page.waitForSelector('button:has-text("Открыть мой Код")', { timeout: 10000 });
 
     // Capture clean preview desktop screenshot
     await page.screenshot({
@@ -107,7 +107,7 @@ async function run() {
     const mobilePage = await mobileContext.newPage();
     await mobilePage.goto(`http://localhost:${PORT}/?preview=v2`, { waitUntil: 'networkidle' });
     await passConsentIfPresent(mobilePage);
-    await mobilePage.waitForSelector('text=Карта Цифрового Кода', { timeout: 10000 });
+    await mobilePage.waitForSelector('text=Ваш Цифровой Код', { timeout: 10000 });
 
     await mobilePage.screenshot({
       path: path.join(SCREENSHOT_DIR, 'mobile_preview_v2_clean.png'),
@@ -120,14 +120,14 @@ async function run() {
     await page.goto(`http://localhost:${PORT}/?preview=v2`, { waitUntil: 'networkidle' });
     await passConsentIfPresent(page);
     await enterDobAndCalculate(page, '06.05.1986');
-    await page.waitForSelector('text=Как устроен ваш Цифровой Код', { timeout: 15000 });
+    await page.waitForSelector('text=Пять позиций вашей карты', { timeout: 15000 });
     console.log('06.05.1986 rendered: Orientation & 5 Numbers active!');
 
     // Test expanding arithmetic chain
-    const calcButton = page.locator('text=Откуда взялись эти числа?');
+    const calcButton = page.locator('button:has-text("Вот откуда это взялось")');
     if (await calcButton.isVisible()) {
       await calcButton.click();
-      await page.waitForSelector('text=Пошаговая прозрачная цепочка вычислений');
+      await page.waitForSelector('text=Откуда взялись эти числа:');
       console.log('Arithmetic chain expanded successfully!');
     }
 
@@ -139,7 +139,7 @@ async function run() {
     console.log('Saved desktop_code_v2_06_05_1986.png');
 
     // Test expanding life scenes
-    const sceneButton = page.locator('button:has-text("Показать ситуации в жизни")').first();
+    const sceneButton = page.locator('button:has-text("Посмотреть баланс сил и ситуации из жизни")').first();
     if (await sceneButton.isVisible()) {
       await sceneButton.click();
       await page.waitForTimeout(300);
@@ -147,7 +147,7 @@ async function run() {
     }
 
     // Test opening Albert dialogue
-    const albertButton = page.locator('button:has-text("Поговорить с Альбертом о моей карте")');
+    const albertButton = page.locator('button:has-text("Поговорить с Альбертом")');
     await albertButton.scrollIntoViewIfNeeded();
     await albertButton.click();
     await page.waitForSelector('text=Альберт Вяземский', { timeout: 5000 });
@@ -171,7 +171,7 @@ async function run() {
     await mobilePage.goto(`http://localhost:${PORT}/?preview=v2`, { waitUntil: 'networkidle' });
     await passConsentIfPresent(mobilePage);
     await enterDobAndCalculate(mobilePage, '06.05.1986');
-    await mobilePage.waitForSelector('text=Как устроен ваш Цифровой Код', { timeout: 15000 });
+    await mobilePage.waitForSelector('text=Пять позиций вашей карты', { timeout: 15000 });
     await mobilePage.screenshot({
       path: path.join(SCREENSHOT_DIR, 'mobile_code_v2_06_05_1986.png'),
       fullPage: true,
@@ -183,7 +183,7 @@ async function run() {
     await page.goto(`http://localhost:${PORT}/?preview=v2`, { waitUntil: 'networkidle' });
     await passConsentIfPresent(page);
     await enterDobAndCalculate(page, '19.08.1991');
-    await page.waitForSelector('text=Как устроен ваш Цифровой Код', { timeout: 15000 });
+    await page.waitForSelector('text=Пять позиций вашей карты', { timeout: 15000 });
     await page.screenshot({
       path: path.join(SCREENSHOT_DIR, 'desktop_code_v2_out_of_sample_19_08_1991.png'),
       fullPage: true,
@@ -194,14 +194,22 @@ async function run() {
     console.log('--- 6. Testing QA Mode Presets (/?preview=v2&qa=1) ---');
     await page.goto(`http://localhost:${PORT}/?preview=v2&qa=1`, { waitUntil: 'networkidle' });
     await passConsentIfPresent(page);
+    // The QA surface is a dev-only module loaded through a compile-time DEV branch;
+    // wait for it to resolve before touching the presets.
     await page.waitForSelector('text=Контрольные даты для проверки', { timeout: 10000 });
 
     const presets = ['06.05.1986', '06.09.1991', '18.12.1989', '01.10.1990'];
     for (const dob of presets) {
       console.log(`--- Testing Preset ${dob} ---`);
+      // The QA preset picker renders on the entry screen only: once a calculation
+      // succeeds the results view replaces it, so every preset is exercised from a
+      // fresh entry instead of assuming the picker is still on screen.
+      await page.goto(`http://localhost:${PORT}/?preview=v2&qa=1`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('text=Контрольные даты для проверки', { timeout: 10000 });
       const presetBtn = page.locator(`button:has-text("${dob}")`);
       await presetBtn.click();
-      await page.waitForSelector(`text=(${dob})`, { timeout: 10000 });
+      // The calculated result shows the DOB in the header span (results view).
+      await page.waitForSelector(`span.font-mono:text-is("${dob}")`, { timeout: 15000 });
       console.log(`Preset ${dob} loaded and calculated!`);
     }
 
