@@ -224,6 +224,22 @@ describe('Daily cost budget semantics (LLM_DAILY_MAX)', () => {
       expect((await res.json()).code).not.toBe('daily_budget_reached');
     }
 
+    // Albert: OVERSIZED message (2001 chars) — the handler must apply the generator's
+    // 2000-char contract before the budget is touched. Previously this passed the door
+    // check, consumed the ceiling and only then failed inside the generator.
+    const oversized = 'я'.repeat(2001);
+    for (let i = 0; i < 3; i += 1) {
+      const res = await postJson(harness, '/api/albert/dialogue', cookie, { message: oversized }, '203.0.113.26');
+      expect(res.status).toBe(400);
+      expect((await res.json()).code).toBe('invalid_message');
+    }
+
+    // Albert: exactly at the limit is still a valid request shape (not a rejection path).
+    const atLimit = 'я'.repeat(2000);
+    const boundary = await postJson(harness, '/api/albert/dialogue', cookie, { message: atLimit }, '203.0.113.27');
+    expect(boundary.status).toBe(503);
+    expect((await boundary.json()).code).toBe('albert_provider_not_ready');
+
     // Meeting: payload precondition only -> 200 with status error, never the budget code.
     for (let i = 0; i < 3; i += 1) {
       const res = await postJson(harness, '/api/meeting-of-mirrors', cookie, {}, '203.0.113.21');

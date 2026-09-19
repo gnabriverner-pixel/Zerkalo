@@ -17,7 +17,7 @@ import {
   parsePersonalMythRequest,
 } from "./server/myth";
 import { generateMeetingOfMirrors } from "./server/meeting";
-import { generateAlbertDialogue } from "./server/albert";
+import { generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
 import crypto from "crypto";
 import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge } from "./server/dcsBridge";
 import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
@@ -484,8 +484,11 @@ async function startServer() {
   // Dedicated Albert Dialogue Endpoint (RP-1 DeepSeek conversation)
   const albertHandler = async (req: express.Request, res: express.Response) => {
     try {
-      const message = String(req.body?.message || "").trim();
-      if (!message) {
+      // Full message validation (non-empty AND within the generator's 2000-char contract)
+      // before anything else — a rejected message must never reach the daily budget.
+      try {
+        parseAlbertMessage(req.body);
+      } catch {
         return res.status(400).json({
           status: "error",
           code: "invalid_message",
