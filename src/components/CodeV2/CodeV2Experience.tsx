@@ -67,6 +67,7 @@ export function CodeV2Experience({
   onBackToCollection,
   onSwitchToV1
 }: CodeV2ExperienceProps) {
+  const isQaEffective = Boolean(isQaMode && import.meta.env.DEV);
   const [day, setDay] = useState(() => (initialDate ? initialDate.split('.')[0] || '' : ''));
   const [month, setMonth] = useState(() => (initialDate ? initialDate.split('.')[1] || '' : ''));
   const [year, setYear] = useState(() => (initialDate ? initialDate.split('.')[2] || '' : ''));
@@ -204,7 +205,7 @@ export function CodeV2Experience({
         {/* ========================================================= */}
         {/* TOP BAR - QA MODE ONLY */}
         {/* ========================================================= */}
-        {isQaMode && (
+        {isQaEffective && (
           <div className="flex flex-wrap items-center justify-between w-full gap-3 mb-8 pb-4 border-b border-white/5">
             <div className="flex items-center gap-2.5">
               <span className="w-2 h-2 rounded-full bg-[var(--color-antique-gold)] animate-pulse" />
@@ -250,8 +251,8 @@ export function CodeV2Experience({
               </div>
             </div>
 
-            {/* QA Presets: Only shown if isQaMode */}
-            {isQaMode && (
+            {/* QA Presets: Only shown if isQaEffective */}
+            {isQaEffective && (
               <div className="w-full mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
                 <div className="text-[13px] font-mono uppercase tracking-wider text-amber-300/80 mb-3 flex items-center justify-between">
                   <span>Контрольные даты для проверки (QA Режим):</span>
@@ -820,7 +821,7 @@ export function CodeV2Experience({
                     className="bg-black/30 border border-white/5 hover:border-white/10 rounded-xl p-5 flex flex-col justify-between transition-all"
                   >
                     <div>
-                      {isQaMode && (
+                      {isQaEffective && (
                         <div className="text-[13px] font-mono text-stone-400 mb-2">
                           {inter.category} · {inter.positions_label}
                         </div>

@@ -164,7 +164,7 @@ export function MeetingOfMirrors({
     setErrorMessage('');
 
     try {
-      const response = await fetch('/api/lab/meeting/generate', {
+      const response = await fetch('/api/meeting-of-mirrors', {
         signal: controller.signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

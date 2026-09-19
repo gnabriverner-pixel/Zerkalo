@@ -21,10 +21,21 @@ async function click(text: string) {
   expect(button, text).toBeDefined();
   await act(async () => { button!.click(); });
 }
+async function enterSyntheticDob(values = ['18', '12', '1989']) {
+  const fields = [...container.querySelectorAll('input')].slice(0, 3);
+  expect(fields).toHaveLength(3);
+  await act(async () => {
+    fields.forEach((field, i) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(field, values[i]);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  });
+  await click('Открыть мой Код');
+}
 beforeEach(() => {
   localStorage.clear(); sessionStorage.clear();
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
-  window.history.replaceState({}, '', '/?preview=v2&dob=18.12.1989');
+  window.history.replaceState({}, '', '/?preview=v2');
   window.matchMedia = vi.fn(() => ({matches:true,addEventListener:vi.fn(),removeEventListener:vi.fn()})) as any;
   Element.prototype.scrollIntoView = vi.fn(); window.scrollTo = vi.fn();
   container = document.createElement('div'); document.body.append(container); root = createRoot(container);
@@ -36,6 +47,7 @@ describe('actual V2 journey', () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({status:'ok', payload}), {status:200}));
     vi.stubGlobal('fetch', fetchMock);
     await act(async () => { root.render(React.createElement(App)); });
+    await enterSyntheticDob();
     expect(container.textContent).toContain(payload.central_motif);
     expect(loadTransientDraft()?.codeResult).toEqual(payload.calculation.canonical_result);
     const journey = loadTransientDraft()?.journeyId;
@@ -67,16 +79,7 @@ describe('actual V2 journey', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     await click('Продолжить тестовую встречу');
     // Enter the synthetic date using React input events, as the browser would.
-    const values = ['18', '12', '1989'];
-    const fields = [...container.querySelectorAll('input')];
-    expect(fields).toHaveLength(3);
-    await act(async () => {
-      fields.forEach((field, i) => {
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(field, values[i]);
-        field.dispatchEvent(new Event('input', {bubbles:true}));
-      });
-    });
-    await click('Открыть мой Код');
+    await enterSyntheticDob();
     await click('Открыть Встречу зеркал');
     expect(container.textContent).not.toContain('Не рассчитано');
     expect(loadTransientDraft()?.storyResult).toEqual(before?.storyResult);
@@ -86,6 +89,7 @@ describe('actual V2 journey', () => {
     const payload = await calculateCanonicalCodeV2('18.12.1989');
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({status:'ok',payload}))));
     await act(async () => root.render(React.createElement(App)));
+    await enterSyntheticDob();
     expect(loadTransientDraft()?.codeV2Payload).toBeDefined();
     await click('Изменить дату');
     expect(loadTransientDraft()).toBeNull();
@@ -112,6 +116,7 @@ describe('actual V2 journey', () => {
     };
     const ariaClick = async (label: string) => { await act(async () => (container.querySelector(`[aria-label="${label}"]`) as HTMLButtonElement).click()); };
     await act(async () => root.render(React.createElement(App)));
+    await enterSyntheticDob();
     await click('Обсудить с Альбертом');
     await fill('input[placeholder^="Задайте"]', 'Это не про меня');
     await ariaClick('Отправить сообщение');
