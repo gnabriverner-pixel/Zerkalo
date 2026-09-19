@@ -161,9 +161,12 @@ async function startServer() {
     });
   });
 
-  // Fixtures for A/B testing
-  app.get("/api/ab-fixtures", (req, res) => {
-    res.json({
+  // Fixtures for A/B testing (internal / development only)
+  app.get("/api/ab-fixtures", (_req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(404).json({ status: "error", code: "not_found", message: "Not found" });
+    }
+    return res.json({
       status: "ok",
       fixtures: AB_FIXTURES
     });
@@ -342,7 +345,6 @@ async function startServer() {
   };
 
   app.post("/api/meeting-of-mirrors", meetingHandler);
-  app.post("/api/lab/meeting/generate", meetingHandler);
 
   // Canonical Calculation Endpoint (digital-code-system authority)
   app.post("/api/calculate", async (req, res) => {
@@ -474,7 +476,6 @@ async function startServer() {
   };
 
   app.post("/api/albert/dialogue", albertHandler);
-  app.post("/api/lab/albert/dialogue", albertHandler);
 
   // Backward-compatible endpoint for deterministic code calculation
   app.post("/api/generate", async (req, res) => {

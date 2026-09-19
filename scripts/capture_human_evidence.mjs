@@ -25,6 +25,16 @@ async function ensureConsent(page) {
   }
 }
 
+// DOB is entered through the real form fields — never through the URL
+// (?dob= is ignored and sanitized by the app since release hygiene).
+async function enterDobAndCalculate(p, dob) {
+  const [d, m, y] = dob.split('.');
+  await p.fill('input[placeholder="ДД"]', d);
+  await p.fill('input[placeholder="ММ"]', m);
+  await p.fill('input[placeholder="ГГГГ"]', y);
+  await p.locator('button:has-text("Открыть мой Код")').click();
+}
+
 async function run() {
   const browser = await chromium.launch({
     headless: true,
@@ -46,11 +56,12 @@ async function run() {
   await page1.screenshot({ path: path1, fullPage: false });
   await page1.close();
 
-  // 2. 06.05.1986 first meaningful screen
+  // 2. 06.05.1986 first meaningful screen (entered via form)
   console.log('Capturing 2: 06.05.1986 first meaningful screen...');
   const page2 = await context.newPage();
-  await page2.goto('http://localhost:3088/?preview=v2&dob=06.05.1986', { waitUntil: 'networkidle' });
+  await page2.goto('http://localhost:3088/?preview=v2', { waitUntil: 'networkidle' });
   await ensureConsent(page2);
+  await enterDobAndCalculate(page2, '06.05.1986');
   await page2.waitForSelector('text=Пять позиций вашей карты', { timeout: 15000 });
   await page2.waitForTimeout(800);
   const path2 = path.join(outDir, '02_06_05_1986_first_meaningful_screen.png');
@@ -83,8 +94,9 @@ async function run() {
     hasTouch: true
   });
   const page3 = await mobileContext.newPage();
-  await page3.goto('http://localhost:3088/?preview=v2&dob=06.05.1986', { waitUntil: 'networkidle' });
+  await page3.goto('http://localhost:3088/?preview=v2', { waitUntil: 'networkidle' });
   await ensureConsent(page3);
+  await enterDobAndCalculate(page3, '06.05.1986');
   await page3.waitForSelector('text=Пять позиций вашей карты', { timeout: 15000 });
   await page3.waitForTimeout(800);
   const path5 = path.join(outDir, '05_mobile_first_meaningful_screen.png');
