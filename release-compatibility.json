@@ -17,5 +17,6 @@
     "note": "Node 24 = canonical verification/CI runtime (verifier and verify_release_local refuse other majors). Node v22.23.2 = observed production runtime. Production runtime is NOT changed by this manifest; it is recorded from server inspection only."
   },
   "updated_at": "2026-09-19",
-  "note": "Candidate pair pending strict external verification: Web 8297706 (merge of PR #33, tree 30700d7f) + DCS fe67002. Previously verified pair: Web c7fc1f8 (external verifier PASS 2026-09-18) + DCS fe67002. Production still runs c7fc1f8 until a cutover is explicitly authorised. Production rollback Web SHA: 7d9e00f."
+  "verified_at": "2026-09-19T22:46:03Z",
+  "note": "Verified pair: Web 8297706 (merge of PR #33, tree 30700d7f) + DCS fe67002 — strict external verifier PASS 2026-09-19T22:46:03Z, evidence in evidence/verify-20260919-224603-rc8297706/ (fail-closed pair gate: web_pin_match=true, dcs_pin_match=true, pinned_pair_match=true, sources_clean=true; 11/11 checks PASS; manifest 2606a33). Previous verified pair: Web c7fc1f8 (external verifier PASS 2026-09-18) + DCS fe67002. Production still runs c7fc1f8 until a cutover is explicitly authorised. Production rollback Web SHA: 7d9e00f."
 }
