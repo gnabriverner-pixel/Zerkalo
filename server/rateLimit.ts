@@ -140,9 +140,18 @@ export interface RateGuardOptions {
   code?: string;
 }
 
+export const DAILY_BUDGET_MESSAGE =
+  'На сегодня достигнут общий предел генераций. Ваши результаты сохранены — попробуйте завтра.';
+
 /**
  * Per-client guard middleware. Keys on `req.ip`, which under the verified topology
  * (trust proxy = 'loopback') is the real client address.
+ *
+ * NOTE: this guard deliberately does NOT consume the daily cost budget. It runs before
+ * request validation, so consuming here would let malformed traffic spend the global
+ * generation ceiling without ever calling a model. The budget is consumed by the
+ * handlers immediately before a real generation (after validation, provider readiness
+ * and cache handling) — see `consumeDailyBudget` call sites in server.ts.
  */
 export function createRateGuard(options: RateGuardOptions): RequestHandler {
   const { name, maxRequests, message, windowMs = DEFAULT_WINDOW_MS, code = 'rate_limit_exceeded' } = options;
@@ -158,18 +167,6 @@ export function createRateGuard(options: RateGuardOptions): RequestHandler {
         status: 'error',
         code,
         ui: { safe_message: message },
-      });
-    }
-
-    const budget = consumeDailyBudget();
-    if (!budget.allowed) {
-      return res.status(429).json({
-        status: 'error',
-        code: 'daily_budget_reached',
-        ui: {
-          safe_message:
-            'На сегодня достигнут общий предел генераций. Ваши результаты сохранены — попробуйте завтра.',
-        },
       });
     }
 

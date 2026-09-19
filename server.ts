@@ -25,7 +25,9 @@ import { registerDeletionScope, executeDataDeletion } from "./server/deletion";
 import { installConsentRoutes } from './server/consent';
 import {
   checkAndIncrementRate,
+  consumeDailyBudget,
   createRateGuard,
+  DAILY_BUDGET_MESSAGE,
   purgeExpiredRateLimits,
   rateBuckets,
   resolveRateMax,
@@ -291,6 +293,19 @@ async function startServer() {
         });
       }
 
+      // Cost circuit-breaker: consumed here — after validation, after the cache lookup
+      // and after provider readiness — so cached answers and rejected requests never
+      // spend the global generation ceiling.
+      const budget = consumeDailyBudget();
+      if (!budget.allowed) {
+        return res.status(429).json({
+          mode: "story",
+          status: "error",
+          code: "daily_budget_reached",
+          ui: { safe_message: DAILY_BUDGET_MESSAGE },
+        });
+      }
+
       const generated = await generatePersonalMyth(reqBody, mythProvider, personalMythTimeoutMs);
       const payload = {
         mode: "story",
@@ -345,6 +360,16 @@ async function startServer() {
           status: "error",
           code: "meeting_provider_not_ready",
           ui: { safe_message: "Встреча зеркал сейчас недоступна (провайдер генерации не настроен). Ваши результаты сохранены — попробуйте снова позже." }
+        });
+      }
+
+      // Cost circuit-breaker: consumed only when a real synthesis is about to run.
+      const budget = consumeDailyBudget();
+      if (!budget.allowed) {
+        return res.status(429).json({
+          status: "error",
+          code: "daily_budget_reached",
+          ui: { safe_message: DAILY_BUDGET_MESSAGE },
         });
       }
 
@@ -473,6 +498,16 @@ async function startServer() {
           status: "error",
           code: "albert_provider_not_ready",
           ui: { safe_message: "Собеседник Альберт сейчас недоступен (провайдер генерации не настроен). Ваши результаты сохранены." }
+        });
+      }
+
+      // Cost circuit-breaker: consumed only when a real dialogue generation is about to run.
+      const budget = consumeDailyBudget();
+      if (!budget.allowed) {
+        return res.status(429).json({
+          status: "error",
+          code: "daily_budget_reached",
+          ui: { safe_message: DAILY_BUDGET_MESSAGE },
         });
       }
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import child_process from 'child_process';
 import path from 'path';
+import { consumeDailyBudget, resolveDailyBudgetMax } from './rateLimit';
 
 // Proxy / rate-limit correctness suite (production mode, real server processes).
 //
@@ -30,6 +31,10 @@ function spawnProductionServer(extraEnv: Record<string, string>): Harness {
         PORT: String(port),
         HOST: '127.0.0.1',
         NODE_ENV: 'production',
+        // Pin the provider to "not ready" so the suite can never make a real LLM call
+        // (dotenv does not override variables that are already set).
+        ROUTERAI_API_KEY: '',
+        DEEPSEEK_API_KEY: '',
         DCS_ROOT: process.env.DCS_ROOT || path.resolve(repoRoot, '..', 'digital-code-system'),
         CONTINUATION_CLAIM_SECRET: 'test-secret-at-least-16-chars-long!',
         DELETION_LOOKUP_SECRET: 'test-deletion-secret-at-least-16-chars!',
@@ -184,7 +189,7 @@ describe('Proxy / rate-limit correctness (production mode)', () => {
   }, 30_000);
 });
 
-describe('Optional daily budget circuit-breaker (LLM_DAILY_MAX)', () => {
+describe('Daily cost budget semantics (LLM_DAILY_MAX)', () => {
   let harness: Harness;
   let cookie = '';
 
@@ -198,12 +203,86 @@ describe('Optional daily budget circuit-breaker (LLM_DAILY_MAX)', () => {
     if (harness) await stopServer(harness);
   });
 
-  it('is disabled unless the operator sets LLM_DAILY_MAX, and then fails closed', async () => {
-    const first = await postJson(harness, '/api/albert/dialogue', cookie, {}, '203.0.113.20');
-    expect(first.status).not.toBe(429);
+  it('is never spent by requests that fail validation', async () => {
+    // Albert: empty message -> 400 invalid_message, never the budget code.
+    for (let i = 0; i < 3; i += 1) {
+      const res = await postJson(harness, '/api/albert/dialogue', cookie, {}, '203.0.113.20');
+      expect(res.status).toBe(400);
+      expect((await res.json()).code).not.toBe('daily_budget_reached');
+    }
 
-    const second = await postJson(harness, '/api/albert/dialogue', cookie, {}, '203.0.113.21');
-    expect(second.status).toBe(429);
-    expect((await second.json()).code).toBe('daily_budget_reached');
-  }, 30_000);
+    // Meeting: payload precondition only -> 200 with status error, never the budget code.
+    for (let i = 0; i < 3; i += 1) {
+      const res = await postJson(harness, '/api/meeting-of-mirrors', cookie, {}, '203.0.113.21');
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.status).toBe('error');
+      expect(body.code).not.toBe('daily_budget_reached');
+    }
+
+    // Personal Myth: malformed answers -> 400 invalid_*, never the budget code.
+    for (let i = 0; i < 3; i += 1) {
+      const res = await postJson(harness, '/api/personal-myth', cookie, { answers: {} }, '203.0.113.22');
+      expect(res.status).toBe(400);
+      expect((await res.json()).code).not.toBe('daily_budget_reached');
+    }
+  }, 40_000);
+
+  it('is never spent when nothing was generated (provider not ready)', async () => {
+    // Valid request shapes, no LLM provider in this environment: the handlers must answer
+    // 503 provider_not_ready WITHOUT touching the global ceiling. Under the previous
+    // middleware-level placement the second request here already returned
+    // daily_budget_reached — this is the regression guard.
+    const mythBody = {
+      request_id: 'budget-semantics-test-0001',
+      answers: {
+        q1: 'первый развёрнутый ответ',
+        q2: 'второй развёрнутый ответ',
+        q3: 'третий развёрнутый ответ',
+        q4: 'четвёртый развёрнутый ответ',
+      },
+    };
+    for (let i = 0; i < 2; i += 1) {
+      const res = await postJson(harness, '/api/personal-myth', cookie, mythBody, '203.0.113.23');
+      expect(res.status).toBe(503);
+      expect((await res.json()).code).toBe('personal_myth_provider_not_ready');
+    }
+
+    const meetingBody = { codeData: { calc: {} }, storyData: { storyInputs: {}, storyResult: {} } };
+    for (let i = 0; i < 2; i += 1) {
+      const res = await postJson(harness, '/api/meeting-of-mirrors', cookie, meetingBody, '203.0.113.24');
+      expect(res.status).toBe(503);
+      expect((await res.json()).code).toBe('meeting_provider_not_ready');
+    }
+
+    const albertBody = { message: 'Расскажите подробнее о моей карте' };
+    for (let i = 0; i < 2; i += 1) {
+      const res = await postJson(harness, '/api/albert/dialogue', cookie, albertBody, '203.0.113.25');
+      expect(res.status).toBe(503);
+      expect((await res.json()).code).toBe('albert_provider_not_ready');
+    }
+  }, 40_000);
+
+  it('enforces the ceiling and resets on the next UTC day (in-process semantics)', () => {
+    const original = process.env.LLM_DAILY_MAX;
+    try {
+      delete process.env.LLM_DAILY_MAX;
+      expect(resolveDailyBudgetMax()).toBe(0);
+      for (let i = 0; i < 5; i += 1) expect(consumeDailyBudget().allowed).toBe(true);
+
+      process.env.LLM_DAILY_MAX = '2';
+      const dayOne = Date.parse('2030-01-01T10:00:00Z');
+      expect(consumeDailyBudget(dayOne).allowed).toBe(true);
+      expect(consumeDailyBudget(dayOne).allowed).toBe(true);
+      const third = consumeDailyBudget(dayOne);
+      expect(third.allowed).toBe(false);
+      expect(third.limit).toBe(2);
+
+      const nextDay = Date.parse('2030-01-02T00:05:00Z');
+      expect(consumeDailyBudget(nextDay).allowed).toBe(true);
+    } finally {
+      if (original === undefined) delete process.env.LLM_DAILY_MAX;
+      else process.env.LLM_DAILY_MAX = original;
+    }
+  });
 });
