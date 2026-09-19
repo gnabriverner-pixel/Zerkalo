@@ -54,8 +54,8 @@ export function installConsentRoutes(app:Express) {
     }catch{return res.status(503).json({code:'consent_unavailable'});}
   });
   app.delete('/api/consent',(_req,res)=>{res.clearCookie(COOKIE,{path:'/'});res.json({accepted:false});});
-  const protectedPaths=new Set(['/api/calculate','/api/code-v2','/api/preview/code-v2','/api/personal-myth','/api/meeting-of-mirrors','/api/lab/meeting/generate',
-    '/api/albert/dialogue','/api/lab/albert/dialogue','/api/handoff/create-claim','/api/generate','/api/feedback']);
+  const protectedPaths=new Set(['/api/calculate','/api/code-v2','/api/preview/code-v2','/api/personal-myth','/api/meeting-of-mirrors',
+    '/api/albert/dialogue','/api/handoff/create-claim','/api/generate','/api/feedback']);
   app.use((req,res,next)=>{
     if(req.method!=='POST'||!protectedPaths.has(req.path))return next();
     const r=receipt(req);

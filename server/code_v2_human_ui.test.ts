@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { cleanPositionEssence, CodeV2Experience } from '../src/components/CodeV2/CodeV2Experience';
+import { QaPresetPicker, QaTopBar } from '../src/components/CodeV2/qaPanel';
 import { calculateCanonicalCodeV2 } from './dcsBridge';
 
 const FORBIDDEN_NORMAL_TERMS = [
@@ -152,8 +153,28 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(html).toContain('Это не готовая черта характера, а направление практики');
   });
 
-  it('QA mode (?preview=v2&qa=1) exposes QA controls and presets', () => {
-    const html = renderToString(
+  // Release hygiene: the QA surface (top bar + preset dates) moved to the dev-only
+  // module ../src/components/CodeV2/qaPanel, which CodeV2Experience loads through a
+  // COMPILE-TIME `import.meta.env.DEV` dynamic import — the production build cannot
+  // contain it. renderToString does not run effects, so the QA contract is asserted
+  // against the module itself, and the component tree is asserted to be free of QA
+  // copy on its own.
+  it('QA mode (?preview=v2&qa=1) surfaces live in the dev-only module, not in the component tree', () => {
+    const qaHtml = renderToString(
+      React.createElement(
+        React.Fragment,
+        null,
+        React.createElement(QaTopBar, { onSwitchToV1: () => {} }),
+        React.createElement(QaPresetPicker, { currentDob: '', onSelect: () => {} })
+      )
+    );
+
+    expect(qaHtml).toContain('QA Режим');
+    expect(qaHtml).toContain('Контрольные даты для проверки');
+    expect(qaHtml).toContain('06.05.1986');
+    expect(qaHtml).toContain('Переключить на V1');
+
+    const componentHtml = renderToString(
       React.createElement(CodeV2Experience, {
         isQaMode: true,
         onOpenAlbert: () => {},
@@ -161,9 +182,8 @@ describe('Code V2 Human Product Experience UI Contract', () => {
       })
     );
 
-    expect(html).toContain('QA Режим');
-    expect(html).toContain('Контрольные даты для проверки');
-    expect(html).toContain('06.05.1986');
-    expect(html).toContain('Переключить на V1');
+    expect(componentHtml).not.toContain('QA Режим');
+    expect(componentHtml).not.toContain('Контрольные даты для проверки');
+    expect(componentHtml).not.toContain('06.05.1986');
   });
 });

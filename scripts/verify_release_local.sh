@@ -99,11 +99,15 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
   log "3/5 Production build"
   npm run build
 
+  log "3b/5 Production bundle hygiene gate"
+  bash "$REPO_ROOT/scripts/bundle_hygiene_gate.sh" "$REPO_ROOT"
+
   log "4/5 Immutable artifact packaging + boot-check"
   node scripts/package_release.cjs
 
   log "5/5 Release identity"
   EXPECTED_SHA="$(git rev-parse HEAD)"
+  export EXPECTED_SHA
   node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("dist/release.json","utf8"));if(p.release_sha!==process.env.EXPECTED_SHA||p.dirty!==false){console.error(p);process.exit(1)}' \
     || fail "release.json identity mismatch (expected $EXPECTED_SHA, dirty must be false)"
   echo "  release.json sha == HEAD ($EXPECTED_SHA), dirty=false"

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import PersonalMyth from './components/PersonalMyth';
 import { MeetingOfMirrors } from './components/MeetingOfMirrors';
-import { ModelComparisonHarness } from './components/ModelComparisonHarness';
 import { LabEntryView } from './components/LabEntryView';
 import { MetaphorLibrary } from './components/MetaphorLibrary';
 import { AboutMethod } from './components/AboutMethod';
@@ -22,11 +21,24 @@ import {
 } from './services/myMirrorStorage';
 import { firstMirrorFromV2 } from './services/codeV2Session';
 import { truthJourneyKey } from './services/albertTruthState';
+import { loadQaPanel, type QaPanelModule } from './components/CodeV2/qaPanelLoader';
 import { EmblemDefs } from './art/emblem';
 
+function sanitizeUrlDob(): void {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('dob')) {
+    params.delete('dob');
+    const cleanSearch = params.toString();
+    const newUrl = `${window.location.pathname}${cleanSearch ? `?${cleanSearch}` : ''}${window.location.hash}`;
+    window.history.replaceState(window.history.state, '', newUrl);
+  }
+}
+
 export default function App() {
-  const [mode, setMode] = useState<'entry' | 'myth' | 'meeting' | 'alabaster' | 'ab-test'>(() => {
+  const [mode, setMode] = useState<'entry' | 'myth' | 'meeting' | 'alabaster'>(() => {
     if (typeof window === 'undefined') return 'entry';
+    sanitizeUrlDob();
     const params = new URLSearchParams(window.location.search);
     if (params.get('preview') === 'v2' || params.get('v') === '2') {
       return 'alabaster';
@@ -39,27 +51,41 @@ export default function App() {
   // Digital Code V2 Preview State
   const [isPreviewV2, setIsPreviewV2] = useState(true);
   const [isQaMode, setIsQaMode] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === 'undefined' || !import.meta.env.DEV) return false;
     const params = new URLSearchParams(window.location.search);
     return params.get('qa') === '1';
   });
-  const [previewDob, setPreviewDob] = useState<string>(() => {
-    if (typeof window === 'undefined') return '';
-    const params = new URLSearchParams(window.location.search);
-    return params.get('dob') || '';
-  });
+  // DEV-ONLY QA surface module (the owner's V2 preview badge). Loaded through a
+  // compile-time `import.meta.env.DEV` branch inside loadQaPanel(): the production
+  // bundle contains neither the module nor its copy.
+  const [qaPanel, setQaPanel] = useState<QaPanelModule | null>(null);
+  useEffect(() => {
+    if (!isQaMode || !import.meta.env.DEV) {
+      setQaPanel(null);
+      return;
+    }
+    let cancelled = false;
+    loadQaPanel()
+      .then(m => {
+        if (!cancelled) setQaPanel(m);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isQaMode]);
   const [isAlbertV2Open, setIsAlbertV2Open] = useState(false);
   const [codeV2Payload, setCodeV2Payload] = useState<CodeV2Payload | null>(null);
 
   // Auto-activate preview on direct landing with ?preview=v2 or ?v=2
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    sanitizeUrlDob();
     const params = new URLSearchParams(window.location.search);
     if (params.get('preview') === 'v2' || params.get('v') === '2') {
       setIsPreviewV2(true);
-      setIsQaMode(params.get('qa') === '1');
-      if (params.get('dob')) {
-        setPreviewDob(params.get('dob') || '');
+      if (import.meta.env.DEV) {
+        setIsQaMode(params.get('qa') === '1');
       }
       setMode('alabaster');
     }
@@ -89,8 +115,9 @@ export default function App() {
   useEffect(() => {
     switch (mode) {
       case 'alabaster':
+        // QA-режим (dev-only) меняет титул из qaPanel-модуля; здесь базовый титул.
         document.title = isPreviewV2
-          ? (isQaMode ? 'Цифровой Код V2 · QA Режим | Зеркало Себя' : 'Цифровой Код | Зеркало Себя')
+          ? 'Цифровой Код | Зеркало Себя'
           : 'Цифровой Код · Алебастровое святилище | Зеркало Себя';
         break;
       case 'myth':
@@ -104,7 +131,7 @@ export default function App() {
         document.title = 'Зеркало Себя — Ведическая нумерология и Личный миф';
         break;
     }
-  }, [mode, isPreviewV2]);
+  }, [mode, isPreviewV2, isQaMode]);
 
   const refreshSavedSnapshot = () => {
     setSavedSnapshot(loadMyMirrorSnapshot());
@@ -165,8 +192,8 @@ export default function App() {
     setMeetingResult(draft.meetingResult ?? null);
     setMeetingUserNote(draft.meetingUserNote ?? '');
 
-    if (draft.mode && draft.mode !== 'entry') {
-      setMode(draft.mode);
+    if (draft.mode && draft.mode !== 'entry' && (draft.mode as string) !== 'ab-test') {
+      setMode(draft.mode as 'alabaster' | 'myth' | 'meeting');
     } else if (draft.codeResult && draft.storyResult) {
       setMode('meeting');
     } else if (draft.codeResult) {
@@ -180,7 +207,6 @@ export default function App() {
     clearTransientDraft();
     setTransientDraft(null);
     setCodeDate('');
-    setPreviewDob('');
     setCodeV2Payload(null);
     setJourneyId(crypto.randomUUID());
     setCodeResult(null);
@@ -229,26 +255,19 @@ export default function App() {
             </span>
           </button>
 
-          {/* Owner preview toggle badge - QA Mode only */}
-          {isQaMode && (
-            <button
-              type="button"
-              onClick={() => {
+          {/* Owner preview toggle badge — QA Mode only. Rendered from the dev-only
+              module (compile-time DEV branch): no QA copy is shipped in production. */}
+          {qaPanel && (
+            <qaPanel.QaPreviewToggle
+              isPreviewV2={isPreviewV2}
+              onToggle={() => {
                 const next = !isPreviewV2;
                 setIsPreviewV2(next);
                 if (next && mode !== 'alabaster') {
                   setMode('alabaster');
                 }
               }}
-              className={`min-h-[30px] px-2.5 py-1 rounded-full text-[13px] font-mono tracking-wider uppercase transition-all cursor-pointer border ${
-                isPreviewV2
-                  ? 'bg-[var(--color-antique-gold)]/20 border-[var(--color-antique-gold)] text-amber-200 shadow-xs'
-                  : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
-              }`}
-              title="Переключить вертикальный срез Digital Code V2"
-            >
-              V2 PREVIEW {isPreviewV2 ? '●' : '○'}
-            </button>
+            />
           )}
         </div>
 
@@ -354,11 +373,10 @@ export default function App() {
             >
               {isPreviewV2 ? (
                 <CodeV2Experience
-                  initialDate={codeDate || previewDob || ''}
+                  initialDate={codeDate || ''}
                   initialPayload={codeV2Payload || undefined}
                   onCalculated={(payload) => {
                     setCodeDate(payload.calculation.date);
-                    setPreviewDob('');
                     setCodeResult(payload.calculation.canonical_result);
                     setFirstMirror(firstMirrorFromV2(payload));
                     setCodeV2Payload(payload);
@@ -368,7 +386,6 @@ export default function App() {
                     clearTransientDraft();
                     setTransientDraft(null);
                     setCodeDate('');
-                    setPreviewDob('');
                     setCodeResult(null);
                     setFirstMirror(null);
                     setCodeV2Payload(null);
@@ -378,7 +395,7 @@ export default function App() {
                   }}
                   onContinue={() => setMode(hasMyth ? 'meeting' : 'myth')}
                   continueLabel={hasMyth ? 'Открыть Встречу зеркал' : 'Перейти к Личному мифу'}
-                  isQaMode={isQaMode}
+                  isQaMode={isQaMode && import.meta.env.DEV}
                   onOpenAlbert={(p) => {
                     setCodeV2Payload(p);
                     setIsAlbertV2Open(true);
@@ -430,7 +447,6 @@ export default function App() {
                 onSelectMode={(m, initialDate) => {
                   if (initialDate && initialDate !== codeDate) {
                     setCodeDate(initialDate);
-                    setPreviewDob('');
                     setCodeV2Payload(null);
                     setJourneyId(crypto.randomUUID());
                     setCodeResult(null);
@@ -440,7 +456,9 @@ export default function App() {
                   } else if (initialDate) {
                     setCodeDate(initialDate);
                   }
-                  setMode(m === 'code' ? 'alabaster' : m);
+                  if ((m as string) !== 'ab-test') {
+                    setMode(m === 'code' ? 'alabaster' : (m as 'alabaster' | 'myth' | 'meeting' | 'entry'));
+                  }
                 }}
               />
             </motion.div>
@@ -500,19 +518,6 @@ export default function App() {
                 onOpenCode={() => setMode('alabaster')}
                 onOpenMyth={() => setMode('myth')}
               />
-            </motion.div>
-          )}
-
-          {mode === 'ab-test' && (
-            <motion.div
-              key="ab-test"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="w-full"
-            >
-              <ModelComparisonHarness />
             </motion.div>
           )}
 
