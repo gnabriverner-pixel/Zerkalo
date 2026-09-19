@@ -141,7 +141,7 @@ describe("Release Hygiene Production Server Suite", () => {
       const unauth = await fetch(`${baseUrl}/api/calculate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dob: "06.05.1986" }),
+        body: JSON.stringify({ dob: "17.04.1995" }),
       });
       expect(unauth.status).toBe(403);
 
@@ -149,12 +149,12 @@ describe("Release Hygiene Production Server Suite", () => {
       const auth = await fetch(`${baseUrl}/api/calculate`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Cookie: consentCookie },
-        body: JSON.stringify({ dob: "06.05.1986" }),
+        body: JSON.stringify({ dob: "17.04.1995" }),
       });
       expect(auth.status).toBe(200);
       const json = await auth.json();
       expect(json.status).toBe("ok");
-      expect(json.result.soul).toBe(6);
+      expect(json.result.soul).toBe(8);
     });
 
     it("POST /api/code-v2 is active and protected by consent", async () => {
@@ -162,7 +162,7 @@ describe("Release Hygiene Production Server Suite", () => {
       const unauth = await fetch(`${baseUrl}/api/code-v2`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dob: "06.05.1986" }),
+        body: JSON.stringify({ dob: "17.04.1995" }),
       });
       expect(unauth.status).toBe(403);
 
@@ -170,12 +170,12 @@ describe("Release Hygiene Production Server Suite", () => {
       const auth = await fetch(`${baseUrl}/api/code-v2`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Cookie: consentCookie },
-        body: JSON.stringify({ dob: "06.05.1986" }),
+        body: JSON.stringify({ dob: "17.04.1995" }),
       });
       expect(auth.status).toBe(200);
       const json = await auth.json();
       expect(json.status).toBe("ok");
-      expect(json.payload.calculation.five_numbers.soul).toBe(6);
+      expect(json.payload.calculation.five_numbers.soul).toBe(8);
     });
   });
 });

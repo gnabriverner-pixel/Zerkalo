@@ -99,6 +99,9 @@ if [[ "$SKIP_BUILD" -eq 0 ]]; then
   log "3/5 Production build"
   npm run build
 
+  log "3b/5 Production bundle hygiene gate"
+  bash "$REPO_ROOT/scripts/bundle_hygiene_gate.sh" "$REPO_ROOT"
+
   log "4/5 Immutable artifact packaging + boot-check"
   node scripts/package_release.cjs
 

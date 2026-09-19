@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 
 const PORT = 3088;
-const DCS_ROOT = '/Users/artemkrysin/Documents/New project/digital-code-product-journey';
+const DCS_ROOT = process.env.DCS_ROOT || '/Users/artemkrysin/code/digital-code-system';
 const SCREENSHOT_DIR = path.resolve('docs/screenshots');
 
 if (!fs.existsSync(SCREENSHOT_DIR)) {
@@ -69,6 +69,16 @@ async function run() {
       }
     }
 
+    // DOB is entered through the real form fields — never through the URL
+    // (?dob= is ignored and sanitized by the app since release hygiene).
+    async function enterDobAndCalculate(p, dob) {
+      const [d, m, y] = dob.split('.');
+      await p.fill('input[placeholder="ДД"]', d);
+      await p.fill('input[placeholder="ММ"]', m);
+      await p.fill('input[placeholder="ГГГГ"]', y);
+      await p.locator('button:has-text("Открыть мой Код")').click();
+    }
+
     await page.goto(`http://localhost:${PORT}/?preview=v2`, { waitUntil: 'networkidle' });
     console.log('Loaded http://localhost:3088/?preview=v2');
     await passConsentIfPresent(page);
@@ -105,10 +115,11 @@ async function run() {
     });
     console.log('Saved mobile_preview_v2_clean.png');
 
-    // 3. Desktop: Owner acceptance map (06.05.1986)
-    console.log('--- 3. Testing Owner DOB 06.05.1986 (/?preview=v2&dob=06.05.1986) ---');
-    await page.goto(`http://localhost:${PORT}/?preview=v2&dob=06.05.1986`, { waitUntil: 'networkidle' });
+    // 3. Desktop: Owner acceptance map (06.05.1986, entered via form)
+    console.log('--- 3. Testing Owner DOB 06.05.1986 (form input) ---');
+    await page.goto(`http://localhost:${PORT}/?preview=v2`, { waitUntil: 'networkidle' });
     await passConsentIfPresent(page);
+    await enterDobAndCalculate(page, '06.05.1986');
     await page.waitForSelector('text=Как устроен ваш Цифровой Код', { timeout: 15000 });
     console.log('06.05.1986 rendered: Orientation & 5 Numbers active!');
 
@@ -155,10 +166,11 @@ async function run() {
       await page.waitForTimeout(300);
     }
 
-    // Mobile: Owner acceptance map (06.05.1986)
+    // Mobile: Owner acceptance map (06.05.1986, entered via form)
     console.log('--- 4. Testing Mobile Owner DOB 06.05.1986 ---');
-    await mobilePage.goto(`http://localhost:${PORT}/?preview=v2&dob=06.05.1986`, { waitUntil: 'networkidle' });
+    await mobilePage.goto(`http://localhost:${PORT}/?preview=v2`, { waitUntil: 'networkidle' });
     await passConsentIfPresent(mobilePage);
+    await enterDobAndCalculate(mobilePage, '06.05.1986');
     await mobilePage.waitForSelector('text=Как устроен ваш Цифровой Код', { timeout: 15000 });
     await mobilePage.screenshot({
       path: path.join(SCREENSHOT_DIR, 'mobile_code_v2_06_05_1986.png'),
@@ -166,10 +178,11 @@ async function run() {
     });
     console.log('Saved mobile_code_v2_06_05_1986.png');
 
-    // 4. Desktop: Out-of-sample validation date (19.08.1991)
+    // 4. Desktop: Out-of-sample validation date (19.08.1991, entered via form)
     console.log('--- 5. Testing Out-of-Sample Date 19.08.1991 ---');
-    await page.goto(`http://localhost:${PORT}/?preview=v2&dob=19.08.1991`, { waitUntil: 'networkidle' });
+    await page.goto(`http://localhost:${PORT}/?preview=v2`, { waitUntil: 'networkidle' });
     await passConsentIfPresent(page);
+    await enterDobAndCalculate(page, '19.08.1991');
     await page.waitForSelector('text=Как устроен ваш Цифровой Код', { timeout: 15000 });
     await page.screenshot({
       path: path.join(SCREENSHOT_DIR, 'desktop_code_v2_out_of_sample_19_08_1991.png'),

@@ -224,6 +224,7 @@ run_check WEB npm_ci "$WORK/web" npm ci --no-audit --no-fund
 run_check WEB typecheck "$WORK/web" npm run lint
 run_check WEB tests "$WORK/web" npm test
 run_check WEB build "$WORK/web" npm run build
+run_check WEB bundle_hygiene "$WORK/web" bash scripts/bundle_hygiene_gate.sh "$WORK/web"
 run_check WEB package_boot_check "$WORK/web" node scripts/package_release.cjs
 run_check WEB release_identity "$WORK/web" node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("dist/release.json","utf8"));if(p.release_sha!==process.env.WEB_SHA||p.dirty!==false)process.exit(1)' 2>/dev/null
 

@@ -4,6 +4,7 @@ import { CodeV2Payload, CodeV2Position, CodeV2Interaction } from '../../types';
 import { EmblemPlate } from '../../art/emblem';
 import { hasCanonicalV2Result } from '../../services/codeV2Session';
 import { validateBirthDate } from '../../services/birthDate';
+import { loadQaPanel, type QaPanelModule } from './qaPanelLoader';
 import {
   Calculator,
   ChevronDown,
@@ -14,7 +15,6 @@ import {
   Loader2,
   Sparkles,
   Eye,
-  RotateCcw,
   AlertCircle
 } from 'lucide-react';
 
@@ -47,12 +47,11 @@ export function cleanPositionEssence(text: string): string {
     .trim();
 }
 
-const PRESET_DOBS = [
-  { label: '06.05.1986', note: 'Венера 6 / Сатурн 8' },
-  { label: '06.09.1991', note: 'Венера 6 / Сатурн 8 (усиление)' },
-  { label: '18.12.1989', note: 'Марс 9 / Юпитер 3' },
-  { label: '01.10.1990', note: 'Солнце 1 / Юпитер 3' }
-];
+// DEV-ONLY QA surfaces (top bar + preset picker) live in ./qaPanel and are loaded
+// through loadQaPanel() (compile-time `import.meta.env.DEV` branch), so the
+// production build physically excludes them: no QA copy, no preset dates in the bundle.
+// The preset dates mirror the canonical acceptance fixtures of the server acceptance
+// suite (the documented golden case).
 
 export function CodeV2Experience({
   initialDate = '',
@@ -68,6 +67,25 @@ export function CodeV2Experience({
   onSwitchToV1
 }: CodeV2ExperienceProps) {
   const isQaEffective = Boolean(isQaMode && import.meta.env.DEV);
+  const [qaPanel, setQaPanel] = useState<QaPanelModule | null>(null);
+  useEffect(() => {
+    if (!isQaEffective) {
+      setQaPanel(null);
+      return;
+    }
+    let cancelled = false;
+    loadQaPanel()
+      .then(m => {
+        if (!cancelled && m) {
+          setQaPanel(m);
+          document.title = m.QA_DOCUMENT_TITLE;
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isQaEffective]);
   const [day, setDay] = useState(() => (initialDate ? initialDate.split('.')[0] || '' : ''));
   const [month, setMonth] = useState(() => (initialDate ? initialDate.split('.')[1] || '' : ''));
   const [year, setYear] = useState(() => (initialDate ? initialDate.split('.')[2] || '' : ''));
@@ -205,29 +223,7 @@ export function CodeV2Experience({
         {/* ========================================================= */}
         {/* TOP BAR - QA MODE ONLY */}
         {/* ========================================================= */}
-        {isQaEffective && (
-          <div className="flex flex-wrap items-center justify-between w-full gap-3 mb-8 pb-4 border-b border-white/5">
-            <div className="flex items-center gap-2.5">
-              <span className="w-2 h-2 rounded-full bg-[var(--color-antique-gold)] animate-pulse" />
-              <span className="text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]">
-                Digital Code V2 · QA Режим
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {onSwitchToV1 && (
-                <button
-                  type="button"
-                  onClick={onSwitchToV1}
-                  className="text-xs text-stone-400 hover:text-stone-200 transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Переключить на V1</span>
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        {qaPanel && <qaPanel.QaTopBar onSwitchToV1={onSwitchToV1} />}
 
         {/* ========================================================= */}
         {/* ENTRY SCREEN (WHEN NO PAYLOAD) */}
@@ -251,34 +247,12 @@ export function CodeV2Experience({
               </div>
             </div>
 
-            {/* QA Presets: Only shown if isQaEffective */}
-            {isQaEffective && (
-              <div className="w-full mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
-                <div className="text-[13px] font-mono uppercase tracking-wider text-amber-300/80 mb-3 flex items-center justify-between">
-                  <span>Контрольные даты для проверки (QA Режим):</span>
-                  <span className="text-[13px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">qa=1</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {PRESET_DOBS.map(preset => {
-                    const isActive = `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}` === preset.label;
-                    return (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() => handleSelectPreset(preset.label)}
-                        className={`px-3 py-2 rounded-xl text-left border transition-all duration-200 cursor-pointer ${
-                          isActive
-                            ? 'bg-[var(--color-antique-gold)]/15 border-[var(--color-antique-gold)] text-amber-200 shadow-sm'
-                            : 'bg-white/5 border-white/5 hover:border-white/15 text-stone-300 hover:text-stone-100'
-                        }`}
-                      >
-                        <div className="text-xs font-mono font-medium">{preset.label}</div>
-                        <div className="text-[13px] text-stone-400 truncate">{preset.note}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+            {/* QA Presets: dev-only module, physically absent from production build */}
+            {qaPanel && (
+              <qaPanel.QaPresetPicker
+                currentDob={day && month && year ? `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}` : ''}
+                onSelect={handleSelectPreset}
+              />
             )}
 
             {/* Date input form */}

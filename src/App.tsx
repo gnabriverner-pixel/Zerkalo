@@ -21,6 +21,7 @@ import {
 } from './services/myMirrorStorage';
 import { firstMirrorFromV2 } from './services/codeV2Session';
 import { truthJourneyKey } from './services/albertTruthState';
+import { loadQaPanel, type QaPanelModule } from './components/CodeV2/qaPanelLoader';
 import { EmblemDefs } from './art/emblem';
 
 function sanitizeUrlDob(): void {
@@ -54,6 +55,25 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return params.get('qa') === '1';
   });
+  // DEV-ONLY QA surface module (the owner's V2 preview badge). Loaded through a
+  // compile-time `import.meta.env.DEV` branch inside loadQaPanel(): the production
+  // bundle contains neither the module nor its copy.
+  const [qaPanel, setQaPanel] = useState<QaPanelModule | null>(null);
+  useEffect(() => {
+    if (!isQaMode || !import.meta.env.DEV) {
+      setQaPanel(null);
+      return;
+    }
+    let cancelled = false;
+    loadQaPanel()
+      .then(m => {
+        if (!cancelled) setQaPanel(m);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isQaMode]);
   const [isAlbertV2Open, setIsAlbertV2Open] = useState(false);
   const [codeV2Payload, setCodeV2Payload] = useState<CodeV2Payload | null>(null);
 
@@ -95,8 +115,9 @@ export default function App() {
   useEffect(() => {
     switch (mode) {
       case 'alabaster':
+        // QA-режим (dev-only) меняет титул из qaPanel-модуля; здесь базовый титул.
         document.title = isPreviewV2
-          ? (isQaMode && import.meta.env.DEV ? 'Цифровой Код V2 · QA Режим | Зеркало Себя' : 'Цифровой Код | Зеркало Себя')
+          ? 'Цифровой Код | Зеркало Себя'
           : 'Цифровой Код · Алебастровое святилище | Зеркало Себя';
         break;
       case 'myth':
@@ -234,26 +255,19 @@ export default function App() {
             </span>
           </button>
 
-          {/* Owner preview toggle badge - QA Mode only */}
-          {isQaMode && (
-            <button
-              type="button"
-              onClick={() => {
+          {/* Owner preview toggle badge — QA Mode only. Rendered from the dev-only
+              module (compile-time DEV branch): no QA copy is shipped in production. */}
+          {qaPanel && (
+            <qaPanel.QaPreviewToggle
+              isPreviewV2={isPreviewV2}
+              onToggle={() => {
                 const next = !isPreviewV2;
                 setIsPreviewV2(next);
                 if (next && mode !== 'alabaster') {
                   setMode('alabaster');
                 }
               }}
-              className={`min-h-[30px] px-2.5 py-1 rounded-full text-[13px] font-mono tracking-wider uppercase transition-all cursor-pointer border ${
-                isPreviewV2
-                  ? 'bg-[var(--color-antique-gold)]/20 border-[var(--color-antique-gold)] text-amber-200 shadow-xs'
-                  : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
-              }`}
-              title="Переключить вертикальный срез Digital Code V2"
-            >
-              V2 PREVIEW {isPreviewV2 ? '●' : '○'}
-            </button>
+            />
           )}
         </div>
 

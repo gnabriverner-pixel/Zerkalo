@@ -45,8 +45,8 @@ afterEach(async () => {
 
 describe('Release Hygiene Frontend Suite', () => {
   it('sanitizes ?dob= from URL query immediately and does NOT use it as input', async () => {
-    // Simulate user landing with sensitive DOB in URL
-    window.history.replaceState({}, '', '/?preview=v2&dob=18.12.1989');
+    // Simulate user landing with a sensitive DOB in the URL (synthetic fixture)
+    window.history.replaceState({}, '', '/?preview=v2&dob=03.03.2003');
 
     await act(async () => {
       root.render(React.createElement(App));
@@ -84,6 +84,9 @@ describe('Release Hygiene Frontend Suite', () => {
       expect(container.textContent).not.toContain('Digital Code V2 · QA Режим');
       expect(container.textContent).not.toContain('Контрольные даты для проверки (QA Режим)');
       expect(container.textContent).not.toContain('qa=1');
+      // The owner's V2 preview badge is QA-only copy and is loaded from the same
+      // dev-only module — it must not render in production either.
+      expect(container.textContent).not.toContain('V2 PREVIEW');
       expect(document.title).not.toContain('QA Режим');
     } finally {
       (import.meta.env as any).DEV = originalDev;
