@@ -207,6 +207,19 @@ export function computeCanonicalFallback(dob: string): CanonicalCalculationResul
 const codeV2Cache = new Map<string, CodeV2Payload>();
 
 /**
+ * Purges in-memory canonical calculation caches for a given key (e.g. date of birth).
+ * Registered with the central deletion architecture in server/deletion.ts.
+ */
+export function purgeCanonicalCaches(tokenOrKey: string): number {
+  const trimmed = String(tokenOrKey || "").trim();
+  if (!trimmed) return 0;
+  let count = 0;
+  if (calculationCache.delete(trimmed)) count++;
+  if (codeV2Cache.delete(trimmed)) count++;
+  return count;
+}
+
+/**
  * Calculates structured Code V2 payload strictly using DCS canonical engine & V2 library.
  * Authority: digital-code-system/scripts/code_v2_payload.py::assemble_code_v2_payload
  */

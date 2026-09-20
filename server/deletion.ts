@@ -38,7 +38,9 @@ export interface DeletionScopesFileEnvelope {
 
 export const DELETION_SCOPE_MAX_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // 90 days (matches MAX_LINKED_DATA_RETENTION)
 
-const SCOPES_FILE = path.join(process.cwd(), "data", "deletion_scopes.json");
+export function getScopesFilePath(): string {
+  return process.env.DELETION_SCOPES_FILE || path.join(process.cwd(), "data", "deletion_scopes.json");
+}
 
 export function getDeletionLookupSecret(): string {
   const secret = process.env.DELETION_LOOKUP_SECRET;
@@ -60,9 +62,10 @@ export function deriveLookupKey(raw: string): string {
 
 function loadScopesFromDisk(): Map<string, StoredDeletionScope> {
   const map = new Map<string, StoredDeletionScope>();
+  const scopesFile = getScopesFilePath();
   try {
-    if (fs.existsSync(SCOPES_FILE)) {
-      const raw = fs.readFileSync(SCOPES_FILE, "utf-8");
+    if (fs.existsSync(scopesFile)) {
+      const raw = fs.readFileSync(scopesFile, "utf-8");
       const parsed = JSON.parse(raw);
       let list: StoredDeletionScope[] = [];
       let savedFingerprint: string | undefined;
@@ -99,8 +102,9 @@ function loadScopesFromDisk(): Map<string, StoredDeletionScope> {
 }
 
 export function verifyDeletionSecretStability(): void {
-  if (fs.existsSync(SCOPES_FILE)) {
-    const raw = fs.readFileSync(SCOPES_FILE, "utf-8");
+  const scopesFile = getScopesFilePath();
+  if (fs.existsSync(scopesFile)) {
+    const raw = fs.readFileSync(scopesFile, "utf-8");
     const parsed = JSON.parse(raw);
     let list: StoredDeletionScope[] = [];
     let savedFingerprint: string | undefined;
@@ -125,14 +129,15 @@ export function verifyDeletionSecretStability(): void {
 
 function saveScopesToDisk(map: Map<string, StoredDeletionScope>): boolean {
   let tmpPath: string | null = null;
+  const scopesFile = getScopesFilePath();
   try {
-    const dir = path.dirname(SCOPES_FILE);
+    const dir = path.dirname(scopesFile);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
     // Verify writability of directory and existing file
     fs.accessSync(dir, fs.constants.W_OK);
-    if (fs.existsSync(SCOPES_FILE)) {
-      fs.accessSync(SCOPES_FILE, fs.constants.W_OK);
+    if (fs.existsSync(scopesFile)) {
+      fs.accessSync(scopesFile, fs.constants.W_OK);
     }
 
     const uniqueMap = new Map<string, StoredDeletionScope>();
@@ -147,9 +152,9 @@ function saveScopesToDisk(map: Map<string, StoredDeletionScope>): boolean {
       secret_fingerprint: getDeletionSecretFingerprint(),
       scopes: list,
     };
-    tmpPath = `${SCOPES_FILE}.tmp.${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    tmpPath = `${scopesFile}.tmp.${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     fs.writeFileSync(tmpPath, JSON.stringify(envelope, null, 2), "utf-8");
-    fs.renameSync(tmpPath, SCOPES_FILE);
+    fs.renameSync(tmpPath, scopesFile);
     return true;
   } catch (err) {
     if (tmpPath) {
@@ -165,7 +170,7 @@ const deletionScopes = loadScopesFromDisk();
 
 export function registerDeletionScope(
   deletionToken: string,
-  data: { anonymousId?: string; sessionToken?: string; cacheKey?: string }
+  data: { anonymousId?: string; sessionToken?: string; cacheKey?: string; cacheKeys?: string[] }
 ): void {
   const token = String(deletionToken || "").trim();
   if (!token) return;
@@ -194,8 +199,19 @@ export function registerDeletionScope(
       scope.opaque_session_identifiers.push(opaqueSessionId);
     }
   }
-  if (data.cacheKey && !scope.cache_keys.includes(data.cacheKey)) {
-    scope.cache_keys.push(data.cacheKey);
+  if (data.cacheKey) {
+    const trimmedKey = String(data.cacheKey).trim();
+    if (trimmedKey && !scope.cache_keys.includes(trimmedKey)) {
+      scope.cache_keys.push(trimmedKey);
+    }
+  }
+  if (Array.isArray(data.cacheKeys)) {
+    for (const k of data.cacheKeys) {
+      const trimmedK = String(k || "").trim();
+      if (trimmedK && !scope.cache_keys.includes(trimmedK)) {
+        scope.cache_keys.push(trimmedK);
+      }
+    }
   }
 
   deletionScopes.set(lookupKey, scope);
@@ -236,6 +252,53 @@ export function linkAnonymousIdToDeletionToken(tokenOrSession: string, anonymous
   }
   deletionScopes.set(lookupKey, scope);
   deletionScopes.set(deriveLookupKey(anon), scope);
+
+  saveScopesToDisk(deletionScopes);
+}
+
+/**
+ * Binds server-authenticated calculation cache keys from a session (e.g. consent eventId)
+ * to a client deletion token. Client cannot dictate cache keys directly; they are only
+ * inherited from calculations actually executed on the server in this session.
+ */
+export function bindSessionCalculationsToToken(token: string, sessionId: string): void {
+  const cleanToken = String(token || "").trim();
+  const cleanSession = String(sessionId || "").trim();
+  if (!cleanToken || !cleanSession) return;
+
+  const sessionLookup = deriveLookupKey(cleanSession);
+  const sessionScope = deletionScopes.get(sessionLookup);
+
+  const tokenLookup = deriveLookupKey(cleanToken);
+  let tokenScope = deletionScopes.get(tokenLookup);
+  const now = Date.now();
+
+  if (!tokenScope) {
+    tokenScope = {
+      lookup_key: tokenLookup,
+      anonymous_ids: [],
+      opaque_session_identifiers: [],
+      cache_keys: [],
+      created_at: now,
+      expires_at: now + DELETION_SCOPE_MAX_RETENTION_MS,
+    };
+  }
+
+  if (sessionScope && Array.isArray(sessionScope.cache_keys)) {
+    for (const key of sessionScope.cache_keys) {
+      if (!tokenScope.cache_keys.includes(key)) {
+        tokenScope.cache_keys.push(key);
+      }
+    }
+  }
+
+  const opaqueSession = deriveLookupKey(cleanSession);
+  if (!tokenScope.opaque_session_identifiers.includes(opaqueSession)) {
+    tokenScope.opaque_session_identifiers.push(opaqueSession);
+  }
+
+  deletionScopes.set(tokenLookup, tokenScope);
+  deletionScopes.set(sessionLookup, tokenScope);
 
   saveScopesToDisk(deletionScopes);
 }

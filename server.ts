@@ -19,10 +19,10 @@ import {
 import { generateMeetingOfMirrors } from "./server/meeting";
 import { generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
 import crypto from "crypto";
-import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge } from "./server/dcsBridge";
+import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge, purgeCanonicalCaches } from "./server/dcsBridge";
 import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
-import { registerDeletionScope, executeDataDeletion } from "./server/deletion";
-import { installConsentRoutes } from './server/consent';
+import { registerDeletionScope, executeDataDeletion, registerCachePurger, bindSessionCalculationsToToken } from "./server/deletion";
+import { installConsentRoutes, verifyConsent } from './server/consent';
 import {
   checkAndIncrementRate,
   consumeDailyBudget,
@@ -55,6 +55,7 @@ function isCrisisInput(inputs: StoryInputs): boolean {
 }
 
 async function startServer() {
+  registerCachePurger(purgeCanonicalCaches);
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
   // Trust exactly one hop: the loopback nginx proxy (verified topology — the app binds
@@ -405,6 +406,18 @@ async function startServer() {
     try {
       const dob = String(req.body?.dob || "").trim();
       const result = await calculateCanonicalDigitalCode(dob);
+
+      // Server-trusted cache binding:
+      // Cache key is bound to deletion scope only when the calculation actually runs on the server.
+      const deletionToken = String(req.headers["x-deletion-token"] || req.body?.token || "").trim();
+      if (deletionToken) {
+        registerDeletionScope(deletionToken, { cacheKey: dob });
+      }
+      const consentReceipt = res.locals.consent;
+      if (consentReceipt?.eventId) {
+        registerDeletionScope(consentReceipt.eventId, { cacheKey: dob });
+      }
+
       return res.status(200).json({ status: "ok", result });
     } catch (err: any) {
       const isUnavailable = err?.message?.includes("dcs_canonical_engine_unavailable");
@@ -421,6 +434,17 @@ async function startServer() {
     try {
       const dob = String(req.body?.dob || "").trim();
       const payload = await calculateCanonicalCodeV2(dob);
+
+      // Server-trusted cache binding:
+      const deletionToken = String(req.headers["x-deletion-token"] || req.body?.token || "").trim();
+      if (deletionToken) {
+        registerDeletionScope(deletionToken, { cacheKey: dob });
+      }
+      const consentReceipt = res.locals.consent;
+      if (consentReceipt?.eventId) {
+        registerDeletionScope(consentReceipt.eventId, { cacheKey: dob });
+      }
+
       return res.status(200).json({ status: "ok", payload });
     } catch (err: any) {
       const isUnavailable = err?.message?.includes("dcs_canonical_code_v2_unavailable");
@@ -459,7 +483,18 @@ async function startServer() {
     try {
       const token = req.body?.token || crypto.randomBytes(24).toString("hex");
       const { anonymousId, sessionToken } = req.body || {};
+      // Strict trust boundary: client cannot dictate arbitrary cache keys.
+      // Cache keys are bound ONLY through server-trusted calculation flows.
       registerDeletionScope(token, { anonymousId, sessionToken });
+
+      // If client presents a valid server-signed consent cookie, inherit calculations from that session
+      const cookieHeader = req.headers.cookie || "";
+      const consentCookie = cookieHeader.split(";").map(v => v.trim()).find(v => v.startsWith("zerkalo_consent="))?.slice("zerkalo_consent=".length);
+      const consentReceipt = consentCookie ? verifyConsent(consentCookie) : null;
+      if (consentReceipt?.eventId) {
+        bindSessionCalculationsToToken(token, consentReceipt.eventId);
+      }
+
       return res.status(200).json({ status: "ok", token });
     } catch (err: any) {
       return res.status(500).json({ status: "error", message: err.message });
