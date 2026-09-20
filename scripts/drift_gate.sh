@@ -23,8 +23,8 @@ PROHIBITED_PATTERNS=(
 
 echo "-> 1. Scanning tracked source files for prohibited path patterns..."
 
-# Filter tracked files: scan source/config/tests/scripts, excluding historical registries in docs/ and tests/setup.ts (which contains the rejection guard)
-TRACKED_SOURCE_FILES=$(git ls-files | grep -v -E '^(docs/CANONICAL_ENGINEERING_TRUTH\.md|docs/ENGINEERING_DRIFT_REGISTRY\.md|archive/|docs/archive/|tests/setup\.ts)')
+# Filter tracked files: scan source/config/tests/scripts, excluding historical registries in docs/, setup guard, and the drift gate itself
+TRACKED_SOURCE_FILES=$(git ls-files | grep -v -E '^(docs/CANONICAL_ENGINEERING_TRUTH\.md|docs/ENGINEERING_DRIFT_REGISTRY\.md|archive/|docs/archive/|tests/setup\.ts|scripts/drift_gate\.sh|tests/drift_gate\.test\.ts)')
 
 for pattern in "${PROHIBITED_PATTERNS[@]}"; do
   matches=$(echo "$TRACKED_SOURCE_FILES" | xargs grep -n -F "$pattern" 2>/dev/null || true)

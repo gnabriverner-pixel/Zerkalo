@@ -68,7 +68,9 @@ describe("Drift Gate: Path & Toolchain Truth (Web)", () => {
       .filter((f) => !f.startsWith("docs/ENGINEERING_DRIFT_REGISTRY.md"))
       .filter((f) => !f.startsWith("docs/archive/"))
       .filter((f) => !f.startsWith("archive/"))
-      .filter((f) => f !== "tests/setup.ts");
+      .filter((f) => f !== "tests/setup.ts")
+      .filter((f) => f !== "scripts/drift_gate.sh")
+      .filter((f) => f !== "tests/drift_gate.test.ts");
 
     for (const pattern of prohibitedPatterns) {
       const violations: string[] = [];
