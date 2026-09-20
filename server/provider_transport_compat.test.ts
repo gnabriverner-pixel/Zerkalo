@@ -1,6 +1,6 @@
 import {describe,it,expect,vi} from 'vitest';
 import fs from 'node:fs';
-import {RouterAIClient,PRIMARY_MODEL,FALLBACK_MODEL,MEETING_FALLBACK_MODEL,transportResponseFormat,fallbackEligible,type ProviderEvent} from './routerai';
+import {RouterAIClient,PRIMARY_MODEL,FALLBACK_MODEL,MEETING_FALLBACK_MODEL,transportResponseFormat,normalizeUpstreamLabel,fallbackEligible,type ProviderEvent} from './routerai';
 import {strictFormat,MYTH_SCHEMA,MEETING_SCHEMA} from './structuredOutput';
 import {createRouterAIMythProvider,generatePersonalMyth,parsePersonalMythRequest} from './myth';
 import {generateMeetingOfMirrors} from './meeting';
@@ -99,5 +99,40 @@ describe('DeepSeek chat-completions transport compatibility',()=>{
       expect(f.events[0].outcome).toMatch(/provider_(upstream|model)_mismatch/);
       expect(fallbackEligible(err)).toBe(false);
     }
+  });
+  it('normalizes only the confirmed RouterAI provider labels (no wildcards or prefixes)',()=>{
+    expect(normalizeUpstreamLabel('claude platform on aws')).toBe('claude-on-aws');
+    expect(normalizeUpstreamLabel('claude-on-aws')).toBe('claude-on-aws');
+    // RouterAI distinguishes Claude-on-AWS from Amazon Bedrock: generic AWS-like labels stay as-is
+    // and therefore keep failing the canonical comparison below.
+    for(const raw of ['amazon bedrock','some aws provider','aws','deepseek','openai']){
+      expect(normalizeUpstreamLabel(raw)).toBe(raw);
+    }
+  });
+  it('accepts the approved Anthropic fallback under its confirmed labels only',async()=>{
+    for(const provider of ['Claude Platform on AWS','claude-on-aws','Anthropic']){
+      const f=fixture([()=>new Response('',{status:503}),()=>jsonReply(myth,FALLBACK_MODEL,{provider})]);
+      const result=await runMyth(f.client);
+      expect(result.model).toBe(FALLBACK_MODEL);
+      expect(f.bodies).toHaveLength(2);
+      expect(f.events[1]).toMatchObject({outcome:'success',upstream:provider.toLowerCase()});
+    }
+  });
+  it('still rejects unknown AWS-like labels on the fallback route',async()=>{
+    for(const provider of ['Amazon Bedrock','some aws provider','aws']){
+      const f=fixture([()=>new Response('',{status:503}),()=>jsonReply(myth,FALLBACK_MODEL,{provider})]);
+      const err:any=await runMyth(f.client).catch(e=>e);
+      expect(String(err?.message)).toBe('provider_upstream_mismatch');
+      expect(f.bodies).toHaveLength(2);
+    }
+  });
+  it('does not weaken DeepSeek or OpenAI routing assertions',async()=>{
+    const primary=fixture([()=>jsonReply(myth,PRIMARY_MODEL,{provider:'Amazon Bedrock'})]);
+    expect(String((await runMyth(primary.client).catch(e=>e))?.message)).toBe('provider_upstream_mismatch');
+
+    const openai=fixture([()=>new Response('',{status:503}),()=>jsonReply(meeting,MEETING_FALLBACK_MODEL,{provider:'Claude Platform on AWS'})]);
+    const err:any=await runMeeting(openai.client).catch(e=>e);
+    expect(String(err?.message)).toBe('provider_upstream_mismatch');
+    expect(openai.bodies).toHaveLength(2);
   });
 });

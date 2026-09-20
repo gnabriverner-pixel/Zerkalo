@@ -33,6 +33,18 @@ export function fallbackEligible(error: unknown): boolean {
 
 type RequestedResponseFormat = NonNullable<DeepSeekRequestOptions['response_format']>;
 
+// RouterAI reports the routed provider as a human-readable label. Only the confirmed aliases of
+// the approved routes are normalized; every other value stays fail-closed (no wildcards, no
+// prefixes): RouterAI distinguishes "Claude Platform on AWS" from Amazon Bedrock, so a generic
+// AWS-like label must never satisfy the Anthropic fallback route.
+const CONFIRMED_UPSTREAM_ALIASES: Record<string, string> = {
+  'claude platform on aws': 'claude-on-aws',
+  'claude-on-aws': 'claude-on-aws',
+};
+export function normalizeUpstreamLabel(label: string): string {
+  return CONFIRMED_UPSTREAM_ALIASES[label] ?? label;
+}
+
 /** Transport compatibility, not a product contract change. The frozen DeepSeek model is reached
  * through /chat/completions, whose current official contract accepts response_format text|json_object
  * only (json_schema belongs to a different transport, the Responses API). The strict product schema
@@ -113,9 +125,10 @@ export class RouterAIClient implements ChatClient {
       // Only bounded metadata, never raw responses, prompts, keys or reasoning.
       const upstream = String(payload?.provider ?? payload?.provider_name ?? '').toLowerCase();
       event.upstream = /^[a-z][a-z0-9 -]{0,40}$/.test(upstream) ? upstream : null;
-      if (!secondary && event.upstream !== 'deepseek') throw new Error('provider_upstream_mismatch');
-      if (this.defaultModel === FALLBACK_MODEL && !['anthropic', 'claude-on-aws', 'aws'].includes(event.upstream ?? '')) throw new Error('provider_upstream_mismatch');
-      if (this.defaultModel === MEETING_FALLBACK_MODEL && event.upstream !== 'openai') throw new Error('provider_upstream_mismatch');
+      const routedUpstream = normalizeUpstreamLabel(event.upstream ?? '');
+      if (!secondary && routedUpstream !== 'deepseek') throw new Error('provider_upstream_mismatch');
+      if (this.defaultModel === FALLBACK_MODEL && !['anthropic', 'claude-on-aws'].includes(routedUpstream)) throw new Error('provider_upstream_mismatch');
+      if (this.defaultModel === MEETING_FALLBACK_MODEL && routedUpstream !== 'openai') throw new Error('provider_upstream_mismatch');
       // Official DeepSeek returns upstream alias deepseek-flash in the proven transport.
       const validModels = !secondary ? [PRIMARY_MODEL, 'deepseek-flash'] : [this.defaultModel];
       if (!validModels.includes(payload?.model)) throw new Error('provider_model_mismatch');
