@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 class MemoryStorage implements Storage {
   private store = new Map<string, string>();
   get length() { return this.store.size; }
@@ -16,4 +19,32 @@ Object.defineProperty(globalThis, 'sessionStorage', { value: session, writable: 
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'localStorage', { value: local, writable: true, configurable: true });
   Object.defineProperty(window, 'sessionStorage', { value: session, writable: true, configurable: true });
+}
+
+// Fail-closed DCS test environment resolution
+const canonicalSiblingDcs = path.resolve(process.cwd(), "..", "digital-code-system");
+if (!process.env.DCS_ROOT) {
+  if (fs.existsSync(canonicalSiblingDcs)) {
+    process.env.DCS_ROOT = canonicalSiblingDcs;
+  } else {
+    // Poison stale legacy fallback so dcsBridge.ts never silently uses obsolete clone
+    process.env.DCS_ROOT = "/dev/null/dcs_not_configured";
+  }
+} else if (process.env.DCS_ROOT.includes("digital-code-product-journey")) {
+  throw new Error(
+    `[Test Setup] Stale DCS clone detected in DCS_ROOT: "${process.env.DCS_ROOT}". Canonical repo is digital-code-system.`
+  );
+}
+
+// Deterministic Python 3.12+ binary resolution for tests
+if (!process.env.PYTHON_BIN) {
+  const brewPython = "/opt/homebrew/bin/python3.12";
+  if (fs.existsSync(brewPython)) {
+    process.env.PYTHON_BIN = brewPython;
+  }
+}
+
+// Ensure DELETION_LOOKUP_SECRET is configured for all test suites
+if (!process.env.DELETION_LOOKUP_SECRET || process.env.DELETION_LOOKUP_SECRET.length < 16) {
+  process.env.DELETION_LOOKUP_SECRET = "test-deletion-secret-at-least-32-chars-long!";
 }

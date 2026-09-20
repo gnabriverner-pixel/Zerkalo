@@ -458,8 +458,17 @@ async function startServer() {
   app.post("/api/privacy/register-session", (req, res) => {
     try {
       const token = req.body?.token || crypto.randomBytes(24).toString("hex");
-      const { anonymousId, sessionToken } = req.body || {};
-      registerDeletionScope(token, { anonymousId, sessionToken });
+      const { anonymousId, sessionToken, cacheKey, cacheKeys, dob } = req.body || {};
+      const keys: string[] = [];
+      if (typeof cacheKey === "string" && cacheKey.trim()) keys.push(cacheKey.trim());
+      if (typeof dob === "string" && dob.trim() && !keys.includes(dob.trim())) keys.push(dob.trim());
+      if (Array.isArray(cacheKeys)) {
+        for (const k of cacheKeys) {
+          const trimmed = String(k || "").trim();
+          if (trimmed && !keys.includes(trimmed)) keys.push(trimmed);
+        }
+      }
+      registerDeletionScope(token, { anonymousId, sessionToken, cacheKeys: keys });
       return res.status(200).json({ status: "ok", token });
     } catch (err: any) {
       return res.status(500).json({ status: "error", message: err.message });

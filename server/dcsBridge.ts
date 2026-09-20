@@ -5,6 +5,8 @@ import { promisify } from "util";
 import { validateBirthDate } from "../src/services/birthDate";
 import type { CalculationResult, CodeV2Payload } from "../src/types";
 
+import { registerCachePurger } from "./deletion";
+
 const execFileAsync = promisify(execFile);
 
 function getDcsConfig() {
@@ -205,6 +207,21 @@ export function computeCanonicalFallback(dob: string): CanonicalCalculationResul
 }
 
 const codeV2Cache = new Map<string, CodeV2Payload>();
+
+/**
+ * Purges in-memory canonical calculation caches for a given key (e.g. date of birth).
+ * Registered with the central deletion architecture in server/deletion.ts.
+ */
+export function purgeCanonicalCaches(tokenOrKey: string): number {
+  const trimmed = String(tokenOrKey || "").trim();
+  if (!trimmed) return 0;
+  let count = 0;
+  if (calculationCache.delete(trimmed)) count++;
+  if (codeV2Cache.delete(trimmed)) count++;
+  return count;
+}
+
+registerCachePurger(purgeCanonicalCaches);
 
 /**
  * Calculates structured Code V2 payload strictly using DCS canonical engine & V2 library.

@@ -165,7 +165,7 @@ const deletionScopes = loadScopesFromDisk();
 
 export function registerDeletionScope(
   deletionToken: string,
-  data: { anonymousId?: string; sessionToken?: string; cacheKey?: string }
+  data: { anonymousId?: string; sessionToken?: string; cacheKey?: string; cacheKeys?: string[] }
 ): void {
   const token = String(deletionToken || "").trim();
   if (!token) return;
@@ -194,8 +194,19 @@ export function registerDeletionScope(
       scope.opaque_session_identifiers.push(opaqueSessionId);
     }
   }
-  if (data.cacheKey && !scope.cache_keys.includes(data.cacheKey)) {
-    scope.cache_keys.push(data.cacheKey);
+  if (data.cacheKey) {
+    const trimmedKey = String(data.cacheKey).trim();
+    if (trimmedKey && !scope.cache_keys.includes(trimmedKey)) {
+      scope.cache_keys.push(trimmedKey);
+    }
+  }
+  if (Array.isArray(data.cacheKeys)) {
+    for (const k of data.cacheKeys) {
+      const trimmedK = String(k || "").trim();
+      if (trimmedK && !scope.cache_keys.includes(trimmedK)) {
+        scope.cache_keys.push(trimmedK);
+      }
+    }
   }
 
   deletionScopes.set(lookupKey, scope);
