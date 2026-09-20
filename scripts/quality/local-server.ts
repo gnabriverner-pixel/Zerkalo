@@ -6,10 +6,15 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {spawn} from 'node:child_process';
 
-const root=process.env.DCS_ROOT||'/Users/artemkrysin/Documents/New project/digital-code-product-journey';
+const canonicalSibling = path.resolve(process.cwd(), '..', 'digital-code-system');
+const root = process.env.DCS_ROOT || (fs.existsSync(canonicalSibling) ? canonicalSibling : '');
+if (!root || !fs.existsSync(root)) {
+  throw new Error(`[Quality Local Server] Canonical DCS root not found at "${root}". Set DCS_ROOT.`);
+}
+const pythonBin = process.env.PYTHON_BIN || (fs.existsSync(path.join(root, '.venv312/bin/python')) ? path.join(root, '.venv312/bin/python') : (fs.existsSync('/opt/homebrew/bin/python3.12') ? '/opt/homebrew/bin/python3.12' : 'python3'));
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'zerkalo-quality-'));
 const env={...process.env,NODE_ENV:process.env.QUALITY_STATIC==='1'?'production':'development',PORT:'3017',DCS_ROOT:root,PYTHONPATH:root,
-  PYTHON_BIN:path.join(root,'.venv312/bin/python'),DCS_BRIDGE_URL:'http://127.0.0.1:39517',
+  PYTHON_BIN:pythonBin,DCS_BRIDGE_URL:'http://127.0.0.1:39517',
   SHARED_CLAIMS_DIR:path.join(temp,'claims'),CONTINUATION_CLAIM_SECRET:crypto.randomBytes(32).toString('hex')};
 const bridge=spawn(env.PYTHON_BIN,['-m','integration.dcs_service','--host','127.0.0.1','--port','39517'],{cwd:root,env,stdio:'ignore'});
 const web=spawn(process.execPath,['--import','tsx','server.ts'],{cwd:process.cwd(),env,stdio:['ignore','pipe','pipe']});

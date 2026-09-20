@@ -1,3 +1,14 @@
+# [HISTORICAL DRAFT SPECIFICATION — SUPERSEDED]
+> **Status Note (2026-09-20)**: This document is an early historical draft specification.
+> Actual production engineering reality:
+> - **Zero-PII / Local-First**: No Firebase Firestore, Firebase Auth, or external database; in-memory cache with HMAC keys and data deletion lifecycle.
+> - **AI Gateway**: Unified RouterAI (`https://routerai.ru/api/v1`) with primary model `deepseek/deepseek-v4.1-flash` (not Google Gemini API).
+> - **Calculation Engine**: Canonical Python DCS (`code/digital-code-system/engine.py`) via `dcsBridge.ts` (not a TypeScript math rewrite).
+>
+> Preserved for historical methodology context only. Do not use for current implementation decisions.
+
+---
+
 # ПРОЕКТ: ЦИФРОВОЙ КОД (DIGITAL CODE)
 **Стратегия разработки, архитектура и методология продукта**
 

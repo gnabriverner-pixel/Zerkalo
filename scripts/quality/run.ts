@@ -14,8 +14,12 @@ import { buildCanonicalEnvelopeFromWebContext } from '../../server/albert';
 
 const exec = promisify(execFile);
 if (process.env.QUALITY_LIVE !== '1') throw new Error('Set QUALITY_LIVE=1 to authorize synthetic provider calls');
-const root = process.env.DCS_ROOT || '/Users/artemkrysin/Documents/New project/digital-code-product-journey';
-const python = process.env.PYTHON_BIN || path.join(root, '.venv312/bin/python');
+const canonicalSibling = path.resolve(process.cwd(), '..', 'digital-code-system');
+const root = process.env.DCS_ROOT || (fs.existsSync(canonicalSibling) ? canonicalSibling : '');
+if (!root || !fs.existsSync(root)) {
+  throw new Error(`[Quality Benchmark] Canonical DCS root not found at "${root}". Set DCS_ROOT.`);
+}
+const python = process.env.PYTHON_BIN || (fs.existsSync(path.join(root, '.venv312/bin/python')) ? path.join(root, '.venv312/bin/python') : (fs.existsSync('/opt/homebrew/bin/python3.12') ? '/opt/homebrew/bin/python3.12' : 'python3'));
 const out = process.env.QUALITY_OUTPUT || 'docs/evidence/quality-2026-09/baseline';
 const limit = Math.min(18, Number(process.env.QUALITY_LIMIT || 18));
 const selected = personas.filter(p=>!process.env.QUALITY_CASES || process.env.QUALITY_CASES.split(',').includes(p.id)).slice(0,limit);

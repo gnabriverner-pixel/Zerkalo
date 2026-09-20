@@ -16,8 +16,12 @@ import {startBudgetProxy} from './routeraiBudgetProxy';
 const exec=promisify(execFile);
 if(process.env.QUALITY_LIVE!=='1')throw new Error('explicit_quality_live_required');
 if(!process.env.ROUTERAI_API_KEY?.trim())throw new Error('routerai_not_ready');
-const root=process.env.DCS_ROOT || path.resolve('../digital-code-product-journey');
-const python=path.join(root,'.venv312/bin/python');
+const canonicalSibling = path.resolve(process.cwd(), '..', 'digital-code-system');
+const root = process.env.DCS_ROOT || (fs.existsSync(canonicalSibling) ? canonicalSibling : '');
+if (!root || !fs.existsSync(root)) {
+  throw new Error(`[RouterAI Release] Canonical DCS root not found at "${root}". Set DCS_ROOT.`);
+}
+const python = process.env.PYTHON_BIN || (fs.existsSync(path.join(root, '.venv312/bin/python')) ? path.join(root, '.venv312/bin/python') : (fs.existsSync('/opt/homebrew/bin/python3.12') ? '/opt/homebrew/bin/python3.12' : 'python3'));
 const out=path.resolve(process.env.QUALITY_OUTPUT || '../routerai-release-acceptance-2026-09');
 const sha=async(cwd:string)=>(await exec('git',['rev-parse','HEAD'],{cwd})).stdout.trim();
 for(const cwd of [process.cwd(),root]) {
