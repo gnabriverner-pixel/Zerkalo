@@ -58,7 +58,7 @@ With the approved key already loaded securely in the process environment:
 QUALITY_LIVE=1 node --import tsx scripts/quality/routeraiRelease.ts
 ```
 
-Default sibling DCS checkout: `../digital-code-product-journey` (override `DCS_ROOT`
+Default sibling DCS checkout: `../digital-code-system` (override `DCS_ROOT`
 only when necessary). Output: sibling `routerai-release-acceptance-2026-09`.
 Both checkouts must have committed, unchanged source. A manifest mismatch stops
 the run; existing scenario records are not overwritten or silently regenerated.

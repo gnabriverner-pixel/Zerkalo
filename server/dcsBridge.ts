@@ -16,9 +16,16 @@ export { deriveCacheKey };
 const execFileAsync = promisify(execFile);
 
 function getDcsConfig() {
-  const sibling = path.resolve(process.cwd(), "..", "digital-code-product-journey");
-  const fallback = "/Users/artemkrysin/Documents/New project/digital-code-product-journey";
-  const root = process.env.DCS_ROOT || (fs.existsSync(sibling) ? sibling : fallback);
+  const forbiddenClone = ["digital-code", "product-journey"].join("-");
+  if (process.env.DCS_ROOT && process.env.DCS_ROOT.includes(forbiddenClone)) {
+    throw new Error(`[DCS Bridge] Stale DCS clone rejected in DCS_ROOT: "${process.env.DCS_ROOT}". Canonical repo is digital-code-system.`);
+  }
+  const sibling = path.resolve(process.cwd(), "..", "digital-code-system");
+  const canonicalDefault = "/Users/artemkrysin/code/digital-code-system";
+  const root = process.env.DCS_ROOT || (fs.existsSync(sibling) ? sibling : (fs.existsSync(canonicalDefault) ? canonicalDefault : ""));
+  if (!root || !fs.existsSync(root)) {
+    throw new Error(`[DCS Bridge] Canonical DCS root not found at "${root}". Set DCS_ROOT environment variable.`);
+  }
   const bridgeScript = path.join(root, "integration", "zerkalo_bridge.py");
   const pythonBin = process.env.PYTHON_BIN || "python3";
   const url = process.env.DCS_BRIDGE_URL || "http://127.0.0.1:39500";
@@ -58,7 +65,20 @@ export async function calculateCanonicalDigitalCode(dob: string, ownerId?: strin
     return cached;
   }
 
-  const { root, bridgeScript, pythonBin, url: dcsUrl } = getDcsConfig();
+  let root: string;
+  let bridgeScript: string;
+  let pythonBin: string;
+  let dcsUrl: string;
+  try {
+    const config = getDcsConfig();
+    root = config.root;
+    bridgeScript = config.bridgeScript;
+    pythonBin = config.pythonBin;
+    dcsUrl = config.url;
+  } catch (err: any) {
+    console.error(`[dcsBridge] DCS configuration failed: ${err?.message}`);
+    throw new Error("dcs_canonical_engine_unavailable");
+  }
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6000);

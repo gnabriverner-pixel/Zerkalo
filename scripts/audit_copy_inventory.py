@@ -2,7 +2,7 @@ import os
 import re
 import json
 
-repo_root = '/Users/artemkrysin/Documents/Hermes_agent/zerkalo-lab'
+repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 target_files = [
     ('src/data/numberKnowledge.ts', 'Code / Archetypes', 'вы'),
