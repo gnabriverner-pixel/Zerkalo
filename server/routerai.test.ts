@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import {RouterAIClient,PRIMARY_MODEL,FALLBACK_MODEL,MEETING_FALLBACK_MODEL,fallbackEligible,type ProviderEvent} from './routerai';
 import {createRouterAIMythProvider,generatePersonalMyth,parsePersonalMythRequest} from './myth';
 import {generateMeetingOfMirrors} from './meeting';
+import {strictFormat,MEETING_SCHEMA} from './structuredOutput';
 
 const saved = JSON.parse(fs.readFileSync('docs/evidence/quality-2026-09/final-18/synthetic_career.json','utf8'));
 const stripContrasts = (s: any): any => typeof s === 'string' ? s.replace(/(?:^|[\s«"(])не\s+[^.!?\n]{1,100}?,?\s+а\s+([а-яё])/giu, ' $1') : s;
@@ -35,10 +36,10 @@ const runMyth = (client:RouterAIClient)=>generatePersonalMyth(request(),createRo
 const runMeeting = (client:RouterAIClient)=>generateMeetingOfMirrors({client:client.withFallback(MEETING_FALLBACK_MODEL),codeData:saved.code,storyData:{storyInputs:saved.answers,storyResult:saved.myth.result},totalBudgetMs:1000});
 
 describe('RouterAI frozen release policy',()=>{
-  it('one primary call, strict schema, low reasoning, safe cost/model evidence',async()=>{
+  it('one primary call, json_object transport under the local strict contract, safe cost/model evidence',async()=>{
     const f=fixture([()=>jsonReply(myth)]);const result=await runMyth(f.client);
     expect(result.model).toBe(PRIMARY_MODEL);expect(f.bodies).toHaveLength(1);
-    expect(f.bodies[0]).toMatchObject({model:PRIMARY_MODEL,include_reasoning:false,thinking:{type:'disabled'},provider:{only:['deepseek'],allow_fallbacks:false},response_format:{type:'json_schema',json_schema:{strict:true}}});
+    expect(f.bodies[0]).toMatchObject({model:PRIMARY_MODEL,include_reasoning:false,thinking:{type:'disabled'},provider:{only:['deepseek'],allow_fallbacks:false},response_format:{type:'json_object'}});
     expect(JSON.stringify(f.events)).not.toContain('fixture-key');expect(f.events[0]).toMatchObject({costRub:0.01,model:PRIMARY_MODEL,outcome:'success'});
   });
   it.each([408,429,500,502,503])('falls back once on HTTP %s, official upstream and no hidden reasoning',async status=>{
@@ -84,7 +85,8 @@ describe('RouterAI frozen release policy',()=>{
   it('meeting uses strict contract and 6000 budget without changing prompt',async()=>{
     const f=fixture([()=>jsonReply(meeting)]);const result=await runMeeting(f.client);
     expect(result.model).toBe(PRIMARY_MODEL);expect(f.bodies[0].max_tokens).toBe(6000);
-    expect(f.bodies[0].response_format.json_schema.name).toBe('meeting');
+    expect(f.bodies[0].response_format).toEqual({type:'json_object'});
+    expect(strictFormat('meeting',MEETING_SCHEMA).json_schema.name).toBe('meeting');
   });
   it('unwraps only the observed redundant meeting envelope then validates',async()=>{
     const wrapped=JSON.stringify({result:JSON.parse(meeting)});

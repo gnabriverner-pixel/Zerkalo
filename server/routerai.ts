@@ -9,6 +9,8 @@ export interface ProviderEvent {
   responseModel: string | null;
   outcome: string; latencyMs: number; costRub: number | null;
   inputTokens: number | null; outputTokens: number | null;
+  /** Bounded gateway error code when the transport refused without an upstream answer. */
+  gatewayCode: number | null;
 }
 export interface ChatClient {
   readonly name?: string;
@@ -26,7 +28,24 @@ export function fallbackEligible(error: unknown): boolean {
       'paragraph_count_out_of_contract_3_to_6','one_step_contract','journal_question_contract','mirror_contract']);
     return code.slice('personal_myth_quality_failed:'.length).split('|').every(reason=>structural.has(reason));
   }
-  return /^(provider_(?:http_(?:408|429|5\d\d)|call_timeout|unavailable|empty_output|invalid_json|truncated)|meeting_(?:timeout|malformed_response)|personal_myth_quality_failed:repair_parse_error)(?::|$)/.test(code);
+  return /^(provider_(?:http_(?:408|429|5\d\d)|call_timeout|unavailable|empty_output|invalid_json|truncated|gateway_error)|meeting_(?:timeout|malformed_response)|personal_myth_quality_failed:repair_parse_error)(?::|$)/.test(code);
+}
+
+type RequestedResponseFormat = NonNullable<DeepSeekRequestOptions['response_format']>;
+
+/** Transport compatibility, not a product contract change. The frozen DeepSeek model is reached
+ * through /chat/completions, whose current official contract accepts response_format text|json_object
+ * only (json_schema belongs to a different transport, the Responses API). The strict product schema
+ * therefore stays a local contract — strictFormat() callers, parsers, quality gates and repair
+ * budgets are untouched — while the primary transport requests json_object. Approved secondary
+ * fallbacks keep the caller's requested strict format until evidence shows incompatibility. */
+export function transportResponseFormat(
+  format: RequestedResponseFormat | undefined,
+  model: string = PRIMARY_MODEL,
+): RequestedResponseFormat | undefined {
+  if (!format) return undefined;
+  if (model !== PRIMARY_MODEL) return format;
+  return format.type === 'json_schema' ? { type: 'json_object' } : format;
 }
 
 /** One gateway, two frozen models. Fallback is owned by the validated operation,
@@ -64,14 +83,15 @@ export class RouterAIClient implements ChatClient {
         ? {reasoning:{effort:'low'},provider:{only:['openai'],allow_fallbacks:false}}
         : {reasoning:{effort:'low'},provider:{order:['claude-on-aws'],allow_fallbacks:false}};
     const event: ProviderEvent = {gateway:'routerai',model:this.defaultModel,upstream:null,responseModel:null,
-      outcome:'provider_unavailable',latencyMs:0,costRub:null,inputTokens:null,outputTokens:null};
+      outcome:'provider_unavailable',latencyMs:0,costRub:null,inputTokens:null,outputTokens:null,gatewayCode:null};
+    const responseFormat = transportResponseFormat(options.response_format, this.defaultModel);
     try {
       const response = await this.transport(`${ROUTERAI_URL}/chat/completions`, {
         method:'POST', headers:{Authorization:`Bearer ${this.env.ROUTERAI_API_KEY!.trim()}`,'Content-Type':'application/json'},
         signal:AbortSignal.timeout(timeout),
         body:JSON.stringify({model:this.defaultModel,messages:options.messages,
           temperature:options.temperature ?? 0.7,max_tokens:options.max_tokens ?? 4000,
-          ...(options.response_format ? {response_format:options.response_format} : {}),
+          ...(responseFormat ? {response_format:responseFormat} : {}),
           include_reasoning:false,
           ...providerPolicy,
         }),
@@ -83,6 +103,13 @@ export class RouterAIClient implements ChatClient {
       event.costRub = typeof usage?.cost === 'number' ? usage.cost : null;
       event.inputTokens = typeof usage?.prompt_tokens === 'number' ? usage.prompt_tokens : null;
       event.outputTokens = typeof usage?.completion_tokens === 'number' ? usage.completion_tokens : null;
+      // RouterAI can answer HTTP 200 with a payload-level error envelope instead of an upstream
+      // completion. That is an explicit gateway/provider error, never routing drift.
+      if (payload?.error) {
+        const gatewayCode = Number((payload.error as any)?.code);
+        event.gatewayCode = Number.isFinite(gatewayCode) ? gatewayCode : null;
+        throw new Error('provider_gateway_error');
+      }
       // Only bounded metadata, never raw responses, prompts, keys or reasoning.
       const upstream = String(payload?.provider ?? payload?.provider_name ?? '').toLowerCase();
       event.upstream = /^[a-z][a-z0-9 -]{0,40}$/.test(upstream) ? upstream : null;
