@@ -4,6 +4,14 @@ import path from "path";
 import { promisify } from "util";
 import { validateBirthDate } from "../src/services/birthDate";
 import type { CalculationResult, CodeV2Payload } from "../src/types";
+import {
+  HardenedPrivacyCache,
+  deriveCacheKey,
+  isDobFormat,
+} from "./cache";
+import { registerCachePurger, registerCacheOwnerBinder } from "./deletion";
+
+export { deriveCacheKey };
 
 const execFileAsync = promisify(execFile);
 
@@ -24,7 +32,9 @@ export interface CanonicalCalculationResult extends CalculationResult {
   canonicalAuthority: string;
 }
 
-const calculationCache = new Map<string, CanonicalCalculationResult>();
+const calculationCache = new HardenedPrivacyCache<CanonicalCalculationResult>({
+  name: "calculationCache",
+});
 
 function validateDobFormat(dob: string): void {
   const parts = typeof dob === 'string' ? dob.trim().split('.') : [];
@@ -38,11 +48,12 @@ function validateDobFormat(dob: string): void {
  * Calculates personality architecture strictly using digital-code-system canonical engine.
  * Authority: digital-code-system/engine.py::full_analysis
  */
-export async function calculateCanonicalDigitalCode(dob: string): Promise<CanonicalCalculationResult> {
+export async function calculateCanonicalDigitalCode(dob: string, ownerId?: string): Promise<CanonicalCalculationResult> {
   const trimmed = dob.trim();
   validateDobFormat(trimmed);
 
-  const cached = calculationCache.get(trimmed);
+  const cacheKey = deriveCacheKey(trimmed);
+  const cached = calculationCache.get(cacheKey, ownerId);
   if (cached) {
     return cached;
   }
@@ -66,7 +77,7 @@ export async function calculateCanonicalDigitalCode(dob: string): Promise<Canoni
           ...data.result,
           canonicalAuthority: "digital-code-system/engine.py::full_analysis",
         };
-        calculationCache.set(trimmed, result);
+        calculationCache.set(cacheKey, result, ownerId);
         return result;
       }
     }
@@ -99,7 +110,7 @@ export async function calculateCanonicalDigitalCode(dob: string): Promise<Canoni
           canonicalAuthority: "digital-code-system/engine.py::full_analysis",
         };
 
-        calculationCache.set(trimmed, result);
+        calculationCache.set(cacheKey, result, ownerId);
         return result;
       }
     } catch (cliErr: any) {
@@ -204,30 +215,90 @@ export function computeCanonicalFallback(dob: string): CanonicalCalculationResul
   };
 }
 
-const codeV2Cache = new Map<string, CodeV2Payload>();
+const codeV2Cache = new HardenedPrivacyCache<CodeV2Payload>({
+  name: "codeV2Cache",
+});
 
 /**
- * Purges in-memory canonical calculation caches for a given key (e.g. date of birth).
+ * Purges in-memory canonical calculation caches for a given key or DOB.
  * Registered with the central deletion architecture in server/deletion.ts.
  */
-export function purgeCanonicalCaches(tokenOrKey: string): number {
+export function purgeCanonicalCaches(tokenOrKey: string, ownerIds?: string | string[]): number {
   const trimmed = String(tokenOrKey || "").trim();
   if (!trimmed) return 0;
+  const cacheKey = isDobFormat(trimmed) ? deriveCacheKey(trimmed) : trimmed;
   let count = 0;
-  if (calculationCache.delete(trimmed)) count++;
-  if (codeV2Cache.delete(trimmed)) count++;
+  if (calculationCache.delete(cacheKey, ownerIds)) count++;
+  if (codeV2Cache.delete(cacheKey, ownerIds)) count++;
   return count;
+}
+
+/**
+ * Binds an owner (e.g. deletion token) to canonical cache entries for a given key or DOB.
+ */
+export function bindCanonicalCacheOwner(key: string, ownerId: string): void {
+  const cleanKey = isDobFormat(key) ? deriveCacheKey(key) : key;
+  calculationCache.addOwner(cleanKey, ownerId);
+  codeV2Cache.addOwner(cleanKey, ownerId);
+}
+
+/**
+ * Returns active keys from calculationCache for inspection/adversarial tests.
+ */
+export function getCalculationCacheKeys(): string[] {
+  return calculationCache.keys();
+}
+
+/**
+ * Returns active keys from codeV2Cache for inspection/adversarial tests.
+ */
+export function getCodeV2CacheKeys(): string[] {
+  return codeV2Cache.keys();
+}
+
+/**
+ * Clears all canonical caches (useful for test resets).
+ */
+export function resetCanonicalCaches(): void {
+  calculationCache.clear();
+  codeV2Cache.clear();
+}
+
+/**
+ * Returns runtime statistics and limits for the canonical caches.
+ */
+export function getCanonicalCacheStats(): {
+  maxEntries: number;
+  ttlMs: number;
+  calculationCacheSize: number;
+  codeV2CacheSize: number;
+} {
+  return {
+    maxEntries: calculationCache.maxEntries,
+    ttlMs: calculationCache.ttlMs,
+    calculationCacheSize: calculationCache.size,
+    codeV2CacheSize: codeV2Cache.size,
+  };
+}
+
+/**
+ * Dynamically adjusts canonical cache capacity (for testing or runtime tuning).
+ */
+export function setCanonicalCacheCapacity(limit: number): void {
+  calculationCache.setMaxEntries(limit);
+  codeV2Cache.setMaxEntries(limit);
 }
 
 /**
  * Calculates structured Code V2 payload strictly using DCS canonical engine & V2 library.
  * Authority: digital-code-system/scripts/code_v2_payload.py::assemble_code_v2_payload
  */
-export async function calculateCanonicalCodeV2(dob: string): Promise<CodeV2Payload> {
+export async function calculateCanonicalCodeV2(dob: string, ownerId?: string): Promise<CodeV2Payload> {
   const trimmed = dob.trim();
   validateDobFormat(trimmed);
 
-  const cached = codeV2Cache.get(trimmed);
+  const cacheKey = deriveCacheKey(trimmed);
+  const cached = codeV2Cache.get(cacheKey, ownerId);
   if (cached) {
     return cached;
   }
@@ -249,7 +320,7 @@ export async function calculateCanonicalCodeV2(dob: string): Promise<CodeV2Paylo
     if (response.ok) {
       const data = (await response.json()) as any;
       if (data.status === "ok" && data.payload) {
-        codeV2Cache.set(trimmed, data.payload);
+        codeV2Cache.set(cacheKey, data.payload, ownerId);
         return data.payload;
       }
     }
@@ -267,7 +338,7 @@ export async function calculateCanonicalCodeV2(dob: string): Promise<CodeV2Paylo
 
     const parsed = JSON.parse(stdout.trim());
     if (parsed && parsed.status === "ok" && parsed.calculation && parsed.positions) {
-      codeV2Cache.set(trimmed, parsed as CodeV2Payload);
+      codeV2Cache.set(cacheKey, parsed as CodeV2Payload, ownerId);
       return parsed as CodeV2Payload;
     }
     throw new Error("invalid_dcs_code_v2_payload");
@@ -315,4 +386,9 @@ export async function probeDcsBridge(timeoutMs = 1_200): Promise<DcsBridgeHealth
   dcsHealthCache = { at: Date.now(), value };
   return value;
 }
+
+// Auto-register canonical caches with the deletion subsystem
+registerCachePurger(purgeCanonicalCaches);
+registerCacheOwnerBinder(bindCanonicalCacheOwner);
+
 

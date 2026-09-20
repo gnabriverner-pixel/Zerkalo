@@ -3,6 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import { deleteEventsForAnonymousId } from "./analytics";
 import { deleteQualitativeFeedback } from "./feedback";
+import { deriveCacheKey, isDobFormat } from "./cache";
 
 export interface DeletionResult {
   status: "ok" | "error";
@@ -14,11 +15,22 @@ export interface DeletionResult {
   retryable?: boolean;
 }
 
-type CachePurger = (tokenOrKey: string) => number;
+type CachePurger = (tokenOrKey: string, ownerIds?: string | string[]) => number;
 const cachePurgers: CachePurger[] = [];
 
 export function registerCachePurger(purger: CachePurger): void {
-  cachePurgers.push(purger);
+  if (!cachePurgers.includes(purger)) {
+    cachePurgers.push(purger);
+  }
+}
+
+type CacheOwnerBinder = (key: string, ownerId: string) => void;
+const cacheOwnerBinders: CacheOwnerBinder[] = [];
+
+export function registerCacheOwnerBinder(binder: CacheOwnerBinder): void {
+  if (!cacheOwnerBinders.includes(binder)) {
+    cacheOwnerBinders.push(binder);
+  }
 }
 
 export interface StoredDeletionScope {
@@ -88,6 +100,9 @@ function loadScopesFromDisk(): Map<string, StoredDeletionScope> {
 
       for (const item of list) {
         if (item && item.lookup_key) {
+          if (Array.isArray(item.cache_keys)) {
+            item.cache_keys = item.cache_keys.map((k) => (isDobFormat(k) ? deriveCacheKey(k) : k));
+          }
           map.set(item.lookup_key, item);
         }
       }
@@ -200,16 +215,26 @@ export function registerDeletionScope(
     }
   }
   if (data.cacheKey) {
-    const trimmedKey = String(data.cacheKey).trim();
-    if (trimmedKey && !scope.cache_keys.includes(trimmedKey)) {
-      scope.cache_keys.push(trimmedKey);
+    const rawKey = String(data.cacheKey).trim();
+    const finalKey = isDobFormat(rawKey) ? deriveCacheKey(rawKey) : rawKey;
+    if (finalKey && !scope.cache_keys.includes(finalKey)) {
+      scope.cache_keys.push(finalKey);
+    }
+    for (const binder of cacheOwnerBinders) {
+      binder(finalKey, token);
+      if (data.sessionToken) binder(finalKey, data.sessionToken);
     }
   }
   if (Array.isArray(data.cacheKeys)) {
     for (const k of data.cacheKeys) {
-      const trimmedK = String(k || "").trim();
-      if (trimmedK && !scope.cache_keys.includes(trimmedK)) {
-        scope.cache_keys.push(trimmedK);
+      const rawK = String(k || "").trim();
+      const finalK = isDobFormat(rawK) ? deriveCacheKey(rawK) : rawK;
+      if (finalK && !scope.cache_keys.includes(finalK)) {
+        scope.cache_keys.push(finalK);
+      }
+      for (const binder of cacheOwnerBinders) {
+        binder(finalK, token);
+        if (data.sessionToken) binder(finalK, data.sessionToken);
       }
     }
   }
@@ -289,6 +314,9 @@ export function bindSessionCalculationsToToken(token: string, sessionId: string)
       if (!tokenScope.cache_keys.includes(key)) {
         tokenScope.cache_keys.push(key);
       }
+      for (const binder of cacheOwnerBinders) {
+        binder(key, cleanToken);
+      }
     }
   }
 
@@ -353,6 +381,7 @@ export async function executeDataDeletion(tokenOrAnonymousId: string): Promise<D
   const cacheKeysToPurge = new Set<string>([cleanId]);
 
   for (const anon of scope.anonymous_ids) targetIds.add(anon);
+  for (const opaqueSession of scope.opaque_session_identifiers) targetIds.add(opaqueSession);
   for (const key of scope.cache_keys) cacheKeysToPurge.add(key);
   const targetIdList = Array.from(targetIds);
 
@@ -367,7 +396,7 @@ export async function executeDataDeletion(tokenOrAnonymousId: string): Promise<D
   for (const key of cacheKeysToPurge) {
     for (const purger of cachePurgers) {
       try {
-        purgedCacheCount += purger(key);
+        purgedCacheCount += purger(key, targetIdList);
       } catch {
         // ignore
       }

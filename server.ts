@@ -19,9 +19,9 @@ import {
 import { generateMeetingOfMirrors } from "./server/meeting";
 import { generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
 import crypto from "crypto";
-import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge, purgeCanonicalCaches } from "./server/dcsBridge";
+import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge, purgeCanonicalCaches, deriveCacheKey, bindCanonicalCacheOwner } from "./server/dcsBridge";
 import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
-import { registerDeletionScope, executeDataDeletion, registerCachePurger, bindSessionCalculationsToToken } from "./server/deletion";
+import { registerDeletionScope, executeDataDeletion, registerCachePurger, registerCacheOwnerBinder, bindSessionCalculationsToToken } from "./server/deletion";
 import { installConsentRoutes, verifyConsent } from './server/consent';
 import {
   checkAndIncrementRate,
@@ -56,6 +56,7 @@ function isCrisisInput(inputs: StoryInputs): boolean {
 
 async function startServer() {
   registerCachePurger(purgeCanonicalCaches);
+  registerCacheOwnerBinder(bindCanonicalCacheOwner);
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
   // Trust exactly one hop: the loopback nginx proxy (verified topology — the app binds
@@ -405,17 +406,20 @@ async function startServer() {
   app.post("/api/calculate", async (req, res) => {
     try {
       const dob = String(req.body?.dob || "").trim();
-      const result = await calculateCanonicalDigitalCode(dob);
+      const deletionToken = String(req.headers["x-deletion-token"] || req.body?.token || "").trim();
+      const consentReceipt = res.locals.consent;
+      const ownerToken = deletionToken || consentReceipt?.eventId;
+
+      const result = await calculateCanonicalDigitalCode(dob, ownerToken);
 
       // Server-trusted cache binding:
       // Cache key is bound to deletion scope only when the calculation actually runs on the server.
-      const deletionToken = String(req.headers["x-deletion-token"] || req.body?.token || "").trim();
+      const cacheKey = deriveCacheKey(dob);
       if (deletionToken) {
-        registerDeletionScope(deletionToken, { cacheKey: dob });
+        registerDeletionScope(deletionToken, { cacheKey });
       }
-      const consentReceipt = res.locals.consent;
       if (consentReceipt?.eventId) {
-        registerDeletionScope(consentReceipt.eventId, { cacheKey: dob });
+        registerDeletionScope(consentReceipt.eventId, { cacheKey });
       }
 
       return res.status(200).json({ status: "ok", result });
@@ -433,16 +437,19 @@ async function startServer() {
   app.post(["/api/code-v2", "/api/preview/code-v2"], async (req, res) => {
     try {
       const dob = String(req.body?.dob || "").trim();
-      const payload = await calculateCanonicalCodeV2(dob);
+      const deletionToken = String(req.headers["x-deletion-token"] || req.body?.token || "").trim();
+      const consentReceipt = res.locals.consent;
+      const ownerToken = deletionToken || consentReceipt?.eventId;
+
+      const payload = await calculateCanonicalCodeV2(dob, ownerToken);
 
       // Server-trusted cache binding:
-      const deletionToken = String(req.headers["x-deletion-token"] || req.body?.token || "").trim();
+      const cacheKey = deriveCacheKey(dob);
       if (deletionToken) {
-        registerDeletionScope(deletionToken, { cacheKey: dob });
+        registerDeletionScope(deletionToken, { cacheKey });
       }
-      const consentReceipt = res.locals.consent;
       if (consentReceipt?.eventId) {
-        registerDeletionScope(consentReceipt.eventId, { cacheKey: dob });
+        registerDeletionScope(consentReceipt.eventId, { cacheKey });
       }
 
       return res.status(200).json({ status: "ok", payload });
