@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import child_process from 'child_process';
+import net from 'node:net';
 import path from 'path';
 import { consumeDailyBudget, resolveDailyBudgetMax } from './rateLimit';
 
@@ -13,9 +14,21 @@ import { consumeDailyBudget, resolveDailyBudgetMax } from './rateLimit';
 
 const repoRoot = path.resolve(__dirname, '..');
 
-// Sequential ports (not random): two servers in this file must never collide on a
-// random draw — a failed bind would otherwise surface as an opaque health timeout.
-let nextPort = 39900;
+// Ephemeral per-spawn ports reserved from the OS. A fixed base let a concurrent run of this same
+// suite (or a stale server) answer on our port: the other instance's boot failed silently while its
+// requests were served by the first process, which surfaced as false 429s or a false green.
+function reserveFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.unref();
+    probe.on('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      const port = typeof address === 'object' && address ? address.port : 0;
+      probe.close(() => (port ? resolve(port) : reject(new Error('no_free_port'))));
+    });
+  });
+}
 
 interface Harness {
   proc: child_process.ChildProcess;
@@ -23,8 +36,8 @@ interface Harness {
   stderr: () => string;
 }
 
-function spawnProductionServer(extraEnv: Record<string, string>): Harness {
-  const port = nextPort++;
+async function spawnProductionServer(extraEnv: Record<string, string>): Promise<Harness> {
+  const port = await reserveFreePort();
   const tsxPath = path.join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
   const proc = child_process.spawn(
     process.execPath,
@@ -58,6 +71,7 @@ function spawnProductionServer(extraEnv: Record<string, string>): Harness {
 async function waitForHealth(harness: Harness, timeoutMs = 20_000): Promise<void> {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
+    if (harness.proc.exitCode !== null) break; // died before serving: report now, not after the timeout
     try {
       const res = await fetch(`${harness.baseUrl}/health`);
       if (res.ok) return;
@@ -74,11 +88,28 @@ async function waitForHealth(harness: Harness, timeoutMs = 20_000): Promise<void
 }
 
 async function stopServer(harness: Harness): Promise<void> {
-  if (!harness.proc.killed) {
+  if (harness.proc.exitCode === null && !harness.proc.killed) {
     harness.proc.kill('SIGTERM');
     await new Promise(resolve => setTimeout(resolve, 400));
-    if (!harness.proc.killed) harness.proc.kill('SIGKILL');
+    if (harness.proc.exitCode === null) harness.proc.kill('SIGKILL');
   }
+}
+
+// Bounded retry: a spawn that dies before serving (for example because its reserved port was
+// taken between reservation and bind) must not fail the suite with an opaque timeout.
+async function startServer(extraEnv: Record<string, string>): Promise<Harness> {
+  let lastError: unknown = new Error('server did not start');
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const harness = await spawnProductionServer(extraEnv);
+    try {
+      await waitForHealth(harness);
+      return harness;
+    } catch (error) {
+      lastError = error;
+      await stopServer(harness);
+    }
+  }
+  throw lastError;
 }
 
 async function acceptConsent(harness: Harness): Promise<string> {
@@ -116,13 +147,12 @@ describe('Proxy / rate-limit correctness (production mode)', () => {
   let cookie = '';
 
   beforeAll(async () => {
-    harness = spawnProductionServer({
+    harness = await startServer({
       MEETING_RATE_MAX: '2',
       ALBERT_RATE_MAX: '1',
       PERSONAL_MYTH_RATE_MAX: '2',
       LLM_RATE_WINDOW_MS: '600000',
     });
-    await waitForHealth(harness);
     cookie = await acceptConsent(harness);
   }, 30_000);
 
@@ -207,8 +237,7 @@ describe('Daily cost budget semantics (LLM_DAILY_MAX)', () => {
   let cookie = '';
 
   beforeAll(async () => {
-    harness = spawnProductionServer({ LLM_DAILY_MAX: '1', NODE_ENV: 'production' });
-    await waitForHealth(harness);
+    harness = await startServer({ LLM_DAILY_MAX: '1', NODE_ENV: 'production' });
     cookie = await acceptConsent(harness);
   }, 30_000);
 
