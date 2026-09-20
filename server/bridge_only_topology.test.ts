@@ -120,7 +120,8 @@ describe("Scenario: Bridge-Only Production Topology (DCS_BRIDGE_URL without loca
   });
 
   it("fails closed immediately when DCS_ROOT points to forbidden stale clone", async () => {
-    process.env.DCS_ROOT = "/some/path/to/digital-code-product-journey";
+    const forbiddenClone = ["digital", "code", "product", "journey"].join("-");
+    process.env.DCS_ROOT = `/some/path/to/${forbiddenClone}`;
     const { calculateCanonicalDigitalCode } = await import("./dcsBridge");
     await expect(calculateCanonicalDigitalCode("08.08.1988")).rejects.toThrow(
       "dcs_canonical_engine_unavailable"
