@@ -41,7 +41,7 @@ const runMyth = (client:RouterAIClient)=>generatePersonalMyth(request(),createRo
 const runMeeting = (client:RouterAIClient)=>generateMeetingOfMirrors({client:client.withFallback(MEETING_FALLBACK_MODEL),codeData:saved.code,storyData:{storyInputs:saved.answers,storyResult:saved.myth.result},totalBudgetMs:1000});
 
 describe('DeepSeek chat-completions transport compatibility',()=>{
-  it('downgrades the frozen primary transport only, keeping the strict schema as a local contract',()=>{
+  it('downgrades the frozen primary transport only, keeping strictFormat() for providers that support it',()=>{
     expect(transportResponseFormat(strictFormat('personal_myth',MYTH_SCHEMA),PRIMARY_MODEL)).toEqual({type:'json_object'});
     expect(transportResponseFormat(strictFormat('meeting',MEETING_SCHEMA),PRIMARY_MODEL)).toEqual({type:'json_object'});
     expect(transportResponseFormat({type:'json_object'},PRIMARY_MODEL)).toEqual({type:'json_object'});
@@ -72,7 +72,8 @@ describe('DeepSeek chat-completions transport compatibility',()=>{
     const incomplete=()=>jsonReply(JSON.stringify({mode:'story',status:'ok',writer_version:'fixture'}));
     const f=fixture([incomplete,incomplete,incomplete]);
     const err:any=await runMyth(f.client).catch(e=>e);
-    // The local product contract, not the transport, decides what counts as a delivered payload.
+    // The local parser + normalization + quality/safety gates, not the transport, decide what
+    // counts as a delivered payload.
     expect(String(err?.message)).toMatch(/^personal_myth_quality_failed:(title_length|story_word_count_out_of_contract_300_to_800)/);
     expect(err?.result).toBeUndefined();
     expect(f.bodies.length).toBeLessThanOrEqual(3);

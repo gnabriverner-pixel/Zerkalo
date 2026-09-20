@@ -47,10 +47,13 @@ export function normalizeUpstreamLabel(label: string): string {
 
 /** Transport compatibility, not a product contract change. The frozen DeepSeek model is reached
  * through /chat/completions, whose current official contract accepts response_format text|json_object
- * only (json_schema belongs to a different transport, the Responses API). The strict product schema
- * therefore stays a local contract — strictFormat() callers, parsers, quality gates and repair
- * budgets are untouched — while the primary transport requests json_object. Approved secondary
- * fallbacks keep the caller's requested strict format until evidence shows incompatibility. */
+ * only (json_schema belongs to a different transport, the Responses API). The structured product
+ * contract remains enforced locally by the existing parser, normalization and quality/safety gates
+ * (parsePersonalMythResult() is deliberately tolerant — root/nested shapes, aliases, a safe default
+ * for a missing field — it is NOT a literal MYTH_SCHEMA validator), while the primary transport
+ * requests json_object; strictFormat() stays the canonical transport schema for providers that
+ * support it. Approved secondary fallbacks keep the caller's requested strict format until evidence
+ * shows incompatibility. */
 export function transportResponseFormat(
   format: RequestedResponseFormat | undefined,
   model: string = PRIMARY_MODEL,

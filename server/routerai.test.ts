@@ -36,7 +36,7 @@ const runMyth = (client:RouterAIClient)=>generatePersonalMyth(request(),createRo
 const runMeeting = (client:RouterAIClient)=>generateMeetingOfMirrors({client:client.withFallback(MEETING_FALLBACK_MODEL),codeData:saved.code,storyData:{storyInputs:saved.answers,storyResult:saved.myth.result},totalBudgetMs:1000});
 
 describe('RouterAI frozen release policy',()=>{
-  it('one primary call, json_object transport under the local strict contract, safe cost/model evidence',async()=>{
+  it('one primary call, json_object transport under the local parser and quality gates, safe cost/model evidence',async()=>{
     const f=fixture([()=>jsonReply(myth)]);const result=await runMyth(f.client);
     expect(result.model).toBe(PRIMARY_MODEL);expect(f.bodies).toHaveLength(1);
     expect(f.bodies[0]).toMatchObject({model:PRIMARY_MODEL,include_reasoning:false,thinking:{type:'disabled'},provider:{only:['deepseek'],allow_fallbacks:false},response_format:{type:'json_object'},max_tokens:8000});
