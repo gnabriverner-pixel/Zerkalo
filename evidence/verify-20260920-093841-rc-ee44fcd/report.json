@@ -1,0 +1,22 @@
+{
+  "verdict": "PASS",
+  "pair": {
+    "web_repo": "gnabriverner-pixel/Zerkalo", "web_sha": "ee44fcda9b0bbf0289cb9b54349e0c2a1065eaca",
+    "dcs_repo": "gnabriverner-pixel/digital-code-system", "dcs_sha": "fe67002ce2a2f9d05fa9faf205ef45264f05a931",
+    "web_pin_match": true,
+    "dcs_pin_match": true,
+    "pinned_pair_match": true,
+    "manifest_sha": "43c37a3405c51fc047fc3ffcb3446cabef2d080c"
+  },
+  "environment": { "node": "v24.15.0", "canonical_node_major": 24, "python_base": "Python 3.12.13", "host": "local-verification-host" },
+  "sources_clean": true,
+  "started_at": "2026-09-20T09:32:14Z", "finished_at": "2026-09-20T09:38:41Z", "duration_seconds": 387,
+  "checks": {
+    "web": { "npm_ci":{"status":"PASS","seconds":5},"typecheck":{"status":"PASS","seconds":5},"tests":{"status":"PASS","seconds":9},"build":{"status":"PASS","seconds":3},"bundle_hygiene":{"status":"PASS","seconds":0},"package_boot_check":{"status":"PASS","seconds":2},"release_identity":{"status":"PASS","seconds":0},"manifest_pair_consistency":{"status":"PASS","seconds":0} },
+    "dcs": { "pip_install":{"status":"PASS","seconds":15},"pytest_full":{"status":"PASS","seconds":246},"code_v2_payload":{"status":"PASS","seconds":0} }
+  },
+  "policy": {
+    "github_actions": "EXTERNAL_BLOCKED: GitHub account billing lock; this verifier is the independent release gate",
+    "fail_closed": true
+  }
+}
