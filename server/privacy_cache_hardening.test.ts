@@ -10,6 +10,7 @@ import {
   getCodeV2CacheKeys,
   resetCanonicalCaches,
   getCanonicalCacheStats,
+  setCanonicalCacheCapacity,
 } from "./dcsBridge";
 import {
   registerDeletionScope,
@@ -108,25 +109,43 @@ describe("TASK-T2: Privacy Cache Hardening & Memory Lifecycle", () => {
   });
 
   it("3. bounded-size eviction: deterministic eviction when capacity is reached", async () => {
-    // Fill up cache or test bounded capacity
-    const stats = getCanonicalCacheStats();
-    const capacity = stats.maxEntries;
-    expect(capacity).toBeGreaterThan(0);
-    expect(capacity).toBeLessThanOrEqual(1000);
+    const defaultStats = getCanonicalCacheStats();
+    expect(defaultStats.maxEntries).toBe(1000);
 
-    // Insert 3 test entries with known order
+    // Set small bounded capacity for testing deterministic LRU eviction
+    setCanonicalCacheCapacity(3);
+
     const dob1 = "01.01.1961";
     const dob2 = "02.02.1962";
     const dob3 = "03.03.1963";
+    const dob4 = "04.04.1964";
 
     await calculateCanonicalDigitalCode(dob1);
     await calculateCanonicalDigitalCode(dob2);
     await calculateCanonicalDigitalCode(dob3);
 
-    const keys = getCalculationCacheKeys();
-    expect(keys).toContain(deriveCacheKey(dob1));
-    expect(keys).toContain(deriveCacheKey(dob2));
-    expect(keys).toContain(deriveCacheKey(dob3));
+    const initialKeys = getCalculationCacheKeys();
+    expect(initialKeys.length).toBe(3);
+    expect(initialKeys).toContain(deriveCacheKey(dob1));
+    expect(initialKeys).toContain(deriveCacheKey(dob2));
+    expect(initialKeys).toContain(deriveCacheKey(dob3));
+
+    // Access dob1 to make it the most recently used (LRU head)
+    // dob2 now becomes the least recently used (LRU tail)
+    await calculateCanonicalDigitalCode(dob1);
+
+    // Insert 4th entry; capacity is 3 so the oldest entry (dob2) must be evicted
+    await calculateCanonicalDigitalCode(dob4);
+
+    const keysAfter = getCalculationCacheKeys();
+    expect(keysAfter.length).toBe(3);
+    expect(keysAfter).toContain(deriveCacheKey(dob1)); // refreshed, kept
+    expect(keysAfter).not.toContain(deriveCacheKey(dob2)); // evicted by deterministic LRU
+    expect(keysAfter).toContain(deriveCacheKey(dob3)); // kept
+    expect(keysAfter).toContain(deriveCacheKey(dob4)); // newly inserted
+
+    // Restore standard production capacity
+    setCanonicalCacheCapacity(defaultStats.maxEntries);
   });
 
   it("3b. bounded-size eviction: deterministic LRU eviction when small capacity fills up", () => {
@@ -195,10 +214,19 @@ describe("TASK-T2: Privacy Cache Hardening & Memory Lifecycle", () => {
     const calcVictim1 = await calculateCanonicalDigitalCode(DOB_VICTIM, tokenVictim);
     registerDeletionScope(tokenVictim, { cacheKey: deriveCacheKey(DOB_VICTIM) });
 
-    // Attacker registers session attempting to bind victim's cacheKey
+    // Attack Vector A: Direct unauthorized purge with attacker token
+    const victimKey = deriveCacheKey(DOB_VICTIM);
+    const unauthorizedPurgeCount = purgeCanonicalCaches(victimKey, [tokenAttacker]);
+    expect(unauthorizedPurgeCount).toBe(0);
+
+    // Attack Vector B: Empty or invalid ownerIds cannot bypass ownership
+    const emptyOwnerPurgeCount = purgeCanonicalCaches(victimKey, []);
+    expect(emptyOwnerPurgeCount).toBe(0);
+
+    // Attack Vector C: Attacker registers session attempting to bind victim's cacheKey
     registerDeletionScope(tokenAttacker, {
       anonymousId: "anon_attacker",
-      // Attacker tries to inject victim's cacheKey
+      sessionToken: "session_attacker_12345",
     });
 
     // Attacker deletes
@@ -207,6 +235,27 @@ describe("TASK-T2: Privacy Cache Hardening & Memory Lifecycle", () => {
     // Victim's cache MUST remain intact
     const calcVictim2 = await calculateCanonicalDigitalCode(DOB_VICTIM, tokenVictim);
     expect(calcVictim2).toBe(calcVictim1);
+  });
+
+  it("6b. injection defence: HardenedPrivacyCache refuses deletion with empty or unauthorized ownerIds", () => {
+    const cache = new HardenedPrivacyCache<string>();
+    cache.set("key1", "val1", "legitimate_owner");
+
+    // Empty owner list MUST NOT unconditionally purge
+    expect(cache.delete("key1", [])).toBe(false);
+    expect(cache.get("key1")).toBe("val1");
+
+    // Whitespace only MUST NOT purge
+    expect(cache.delete("key1", ["   "])).toBe(false);
+    expect(cache.get("key1")).toBe("val1");
+
+    // Foreign owner MUST NOT purge
+    expect(cache.delete("key1", ["attacker_owner"])).toBe(false);
+    expect(cache.get("key1")).toBe("val1");
+
+    // Legitimate owner MUST purge
+    expect(cache.delete("key1", ["legitimate_owner"])).toBe(true);
+    expect(cache.get("key1")).toBeUndefined();
   });
 
   it("7. same-DOB two-session behaviour: safe sharing and independent deletion lifecycle", async () => {
@@ -247,24 +296,38 @@ describe("TASK-T2: Privacy Cache Hardening & Memory Lifecycle", () => {
     expect(v2Fresh).not.toBe(v2B1);
   });
 
-  it("8. restart semantics: persisted scopes survive restart, cache repopulates safely", async () => {
+  it("8. restart semantics: persisted scopes survive restart, cache repopulates safely with same-DOB isolation", async () => {
     const DOB_RESTART = "20.10.1980";
-    const tokenRestart = "token_restart_semantics_123456789";
+    const tokenA = "token_restart_user_a_123456789";
+    const tokenB = "token_restart_user_b_123456789";
 
-    await calculateCanonicalDigitalCode(DOB_RESTART, tokenRestart);
-    registerDeletionScope(tokenRestart, { cacheKey: deriveCacheKey(DOB_RESTART) });
+    // 1. User A calculates DOB and registers deletion scope before restart
+    const calcA1 = await calculateCanonicalDigitalCode(DOB_RESTART, tokenA);
+    registerDeletionScope(tokenA, { cacheKey: deriveCacheKey(DOB_RESTART) });
 
-    // Simulate process restart: wipe in-memory cache, scopes remain on disk
+    // 2. Simulate process restart: wipe in-memory cache, scopes remain on disk
     resetCanonicalCaches?.();
     expect(getCalculationCacheKeys().length).toBe(0);
 
-    // Delete after restart succeeds using persisted disk scopes
-    const delRes = await executeDataDeletion(tokenRestart);
-    expect(delRes.status).toBe("ok");
+    // 3. User B (with same DOB) calculates after restart, populating fresh in-memory cache
+    const calcB1 = await calculateCanonicalDigitalCode(DOB_RESTART, tokenB);
+    expect(calcB1).toBeDefined();
+    registerDeletionScope(tokenB, { cacheKey: deriveCacheKey(DOB_RESTART) });
 
-    // Subsequent calculation works normally
-    const calcNew = await calculateCanonicalDigitalCode(DOB_RESTART);
-    expect(calcNew).toBeDefined();
+    // 4. User A sends deletion request using pre-restart token (loaded from disk)
+    const delResA = await executeDataDeletion(tokenA);
+    expect(delResA.status).toBe("ok");
+
+    // 5. User B's cache MUST remain intact: User A cannot wipe post-restart User B's cache
+    const calcB2 = await calculateCanonicalDigitalCode(DOB_RESTART, tokenB);
+    expect(calcB2).toBe(calcB1);
+
+    // 6. When User B deletes, cache entry is now purged
+    const delResB = await executeDataDeletion(tokenB);
+    expect(delResB.status).toBe("ok");
+
+    const calcFresh = await calculateCanonicalDigitalCode(DOB_RESTART);
+    expect(calcFresh).not.toBe(calcB1);
   });
 
   it("9. idempotent deletion: repeated deletion requests fail cleanly without corrupting state", async () => {

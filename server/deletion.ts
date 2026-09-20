@@ -19,14 +19,18 @@ type CachePurger = (tokenOrKey: string, ownerIds?: string | string[]) => number;
 const cachePurgers: CachePurger[] = [];
 
 export function registerCachePurger(purger: CachePurger): void {
-  cachePurgers.push(purger);
+  if (!cachePurgers.includes(purger)) {
+    cachePurgers.push(purger);
+  }
 }
 
 type CacheOwnerBinder = (key: string, ownerId: string) => void;
 const cacheOwnerBinders: CacheOwnerBinder[] = [];
 
 export function registerCacheOwnerBinder(binder: CacheOwnerBinder): void {
-  cacheOwnerBinders.push(binder);
+  if (!cacheOwnerBinders.includes(binder)) {
+    cacheOwnerBinders.push(binder);
+  }
 }
 
 export interface StoredDeletionScope {

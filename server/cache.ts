@@ -16,14 +16,10 @@ export interface CacheOptions {
 
 export function getCacheSecret(): string {
   const secret = process.env.DELETION_LOOKUP_SECRET;
-  if (secret && secret.trim().length >= 16) {
-    return secret.trim();
+  if (!secret || secret.trim().length < 16) {
+    throw new Error("CRITICAL: DELETION_LOOKUP_SECRET is required and must be at least 16 characters (no fallback allowed)");
   }
-  // Safe fallback for testing environment if not explicitly set
-  if (process.env.NODE_ENV !== "production") {
-    return "test-deletion-secret-at-least-32-chars-long!";
-  }
-  throw new Error("CRITICAL: DELETION_LOOKUP_SECRET is required and must be at least 16 characters");
+  return secret.trim();
 }
 
 export function deriveCacheKey(dob: string, namespace = "canonical_calc"): string {
@@ -51,7 +47,7 @@ export function isDobFormat(val: unknown): boolean {
  */
 export class HardenedPrivacyCache<T> {
   private store = new Map<string, CacheEntry<T>>();
-  readonly maxEntries: number;
+  maxEntries: number;
   readonly ttlMs: number;
   readonly name: string;
 
@@ -63,6 +59,16 @@ export class HardenedPrivacyCache<T> {
     this.ttlMs = options?.ttlMs || (Number.isFinite(envTtl) && envTtl > 0 ? envTtl : 3_600_000); // 1 hour default
 
     this.name = options?.name || "cache";
+  }
+
+  setMaxEntries(limit: number): void {
+    if (!Number.isFinite(limit) || limit <= 0) return;
+    this.maxEntries = limit;
+    while (this.store.size > this.maxEntries) {
+      const oldestKey = this.store.keys().next().value;
+      if (oldestKey === undefined) break;
+      this.store.delete(oldestKey);
+    }
   }
 
   get(key: string, ownerId?: string): T | undefined {
@@ -138,18 +144,11 @@ export class HardenedPrivacyCache<T> {
     if (!entry) return false;
 
     // If ownerId(s) specified
-    if (ownerIds) {
+    if (ownerIds !== undefined) {
       const ids = Array.isArray(ownerIds) ? ownerIds : [ownerIds];
       const validIds = ids.map((id) => String(id || "").trim()).filter(Boolean);
       if (validIds.length === 0) {
-        this.store.delete(key);
-        return true;
-      }
-
-      // If entry was created anonymously (no owners registered)
-      if (entry.owners.size === 0) {
-        this.store.delete(key);
-        return true;
+        return false;
       }
 
       let found = false;

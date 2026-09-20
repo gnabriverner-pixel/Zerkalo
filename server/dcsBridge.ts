@@ -9,6 +9,7 @@ import {
   deriveCacheKey,
   isDobFormat,
 } from "./cache";
+import { registerCachePurger, registerCacheOwnerBinder } from "./deletion";
 
 export { deriveCacheKey };
 
@@ -281,6 +282,14 @@ export function getCanonicalCacheStats(): {
 }
 
 /**
+ * Dynamically adjusts canonical cache capacity (for testing or runtime tuning).
+ */
+export function setCanonicalCacheCapacity(limit: number): void {
+  calculationCache.setMaxEntries(limit);
+  codeV2Cache.setMaxEntries(limit);
+}
+
+/**
  * Calculates structured Code V2 payload strictly using DCS canonical engine & V2 library.
  * Authority: digital-code-system/scripts/code_v2_payload.py::assemble_code_v2_payload
  */
@@ -377,4 +386,9 @@ export async function probeDcsBridge(timeoutMs = 1_200): Promise<DcsBridgeHealth
   dcsHealthCache = { at: Date.now(), value };
   return value;
 }
+
+// Auto-register canonical caches with the deletion subsystem
+registerCachePurger(purgeCanonicalCaches);
+registerCacheOwnerBinder(bindCanonicalCacheOwner);
+
 
