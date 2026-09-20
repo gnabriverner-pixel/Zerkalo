@@ -163,12 +163,25 @@ MD="$OUT_DIR/report.md"
 
 # ---- Phase C: pair pin gates (fail-closed before any expensive step).
 WEB_PIN_MATCH=false; DCS_PIN_MATCH=false; PINNED_PAIR_MATCH=false
-[[ "$WEB_SHA" == "$WEB_PIN" ]] || fail_evidence "requested web SHA != pinned web SHA ($WEB_SHA != $WEB_PIN)"
+RELEASE_IS_METADATA_CHILD=false
+
+CONTRACT_OUT=""
+if ! CONTRACT_OUT="$("$SCRIPT_DIR/verify_metadata_contract.sh" \
+  --repo-root "$REPO_ROOT" \
+  --web-sha "$WEB_SHA" \
+  --web-pin "$WEB_PIN" \
+  --dcs-sha "$DCS_SHA" \
+  --dcs-pin "$DCS_PIN" 2>&1)"; then
+  fail_evidence "$CONTRACT_OUT"
+fi
+
 WEB_PIN_MATCH=true
-[[ "$DCS_SHA" == "$DCS_PIN" ]] || fail_evidence "requested dcs SHA != pinned dcs SHA ($DCS_SHA != $DCS_PIN)"
 DCS_PIN_MATCH=true
 PINNED_PAIR_MATCH=true
-say "Pair gate PASS: web+dcs pins match manifest @ ${MANIFEST_SHA:0:7}; node v$NODE_MAJOR (canonical)"
+if [[ "$WEB_SHA" != "$WEB_PIN" ]]; then
+  RELEASE_IS_METADATA_CHILD=true
+fi
+say "Pair gate PASS: $CONTRACT_OUT @ ${MANIFEST_SHA:0:7}; node v$NODE_MAJOR (canonical)"
 
 say "External release verifier"
 say "  Web SHA: $WEB_SHA"
@@ -228,18 +241,21 @@ run_check WEB bundle_hygiene "$WORK/web" bash scripts/bundle_hygiene_gate.sh "$W
 run_check WEB package_boot_check "$WORK/web" node scripts/package_release.cjs
 run_check WEB release_identity "$WORK/web" node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("dist/release.json","utf8"));if(p.release_sha!==process.env.WEB_SHA||p.dirty!==false)process.exit(1)' 2>/dev/null
 
-# Cross-check: the manifest inside the verified Web SHA must pin the same DCS SHA
-# (guards against drift between the verifier repo's manifest and the verified tree).
-if [[ -f "$WORK/web/release-compatibility.json" ]]; then
-  TREE_PIN="$(node -e 'const m=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log((m.dcs&&m.dcs.pinned_sha)||"")' "$WORK/web/release-compatibility.json" 2>/dev/null || echo "")"
-  if [[ "$TREE_PIN" == "$DCS_SHA" ]]; then
-    RESULTS_WEB+=" manifest_pair_consistency=PASS:0"
-    say "[WEB] PASS  manifest_pair_consistency (tree pins $DCS_SHA)"
-  else
-    RESULTS_WEB+=" manifest_pair_consistency=FAIL:0:pin"
-    STEP_FAIL=1
-    say "[WEB] FAIL  manifest_pair_consistency (verified tree pins '${TREE_PIN:-<none>}' != $DCS_SHA)"
-  fi
+# Cross-check: the manifest inside the verified Web SHA must satisfy the metadata contract
+# and pin the same DCS SHA.
+WORK_CONTRACT_OUT=""
+if ! WORK_CONTRACT_OUT="$("$SCRIPT_DIR/verify_metadata_contract.sh" \
+  --repo-root "$WORK/web" \
+  --web-sha "$WEB_SHA" \
+  --web-pin "$WEB_PIN" \
+  --dcs-sha "$DCS_SHA" \
+  --dcs-pin "$DCS_PIN" 2>&1)"; then
+  RESULTS_WEB+=" manifest_pair_consistency=FAIL:0:contract"
+  STEP_FAIL=1
+  say "[WEB] FAIL  manifest_pair_consistency ($WORK_CONTRACT_OUT)"
+else
+  RESULTS_WEB+=" manifest_pair_consistency=PASS:0"
+  say "[WEB] PASS  manifest_pair_consistency ($WORK_CONTRACT_OUT)"
 fi
 
 # ------------------------------------------------------- verdict
@@ -265,6 +281,8 @@ cat > "$JSON" <<EOF
   "verdict": "$VERDICT",
   "pair": {
     "web_repo": "$WEB_REPO", "web_sha": "$WEB_SHA",
+    "web_application_sha": "$WEB_PIN",
+    "is_metadata_release_child": $RELEASE_IS_METADATA_CHILD,
     "dcs_repo": "$DCS_REPO", "dcs_sha": "$DCS_SHA",
     "web_pin_match": $WEB_PIN_MATCH,
     "dcs_pin_match": $DCS_PIN_MATCH,
@@ -290,7 +308,9 @@ EOF
   echo "# External Release Verification — $VERDICT"
   echo
   echo "- Date: $FINISHED_ISO (duration ${DURATION}s)"
-  echo "- Web: \`$WEB_SHA\` ($WEB_REPO)"
+  echo "- Web Release: \`$WEB_SHA\` ($WEB_REPO)"
+  echo "- Web Application Pin: \`$WEB_PIN\`"
+  echo "- Metadata Release Child: \`$RELEASE_IS_METADATA_CHILD\`"
   echo "- DCS: \`$DCS_SHA\` ($DCS_REPO)"
   echo "- Pinned pair (manifest \`$MANIFEST_SHA\`): web=$WEB_PIN_MATCH dcs=$DCS_PIN_MATCH pair=$PINNED_PAIR_MATCH"
   echo "- Sources at pinned SHAs: clean checkouts"
