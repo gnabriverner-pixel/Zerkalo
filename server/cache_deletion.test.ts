@@ -1,27 +1,21 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2 } from "./dcsBridge";
-import { registerDeletionScope, executeDataDeletion } from "./deletion";
+import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, purgeCanonicalCaches } from "./dcsBridge";
+import { registerDeletionScope, executeDataDeletion, registerCachePurger, bindSessionCalculationsToToken } from "./deletion";
 
 describe("T1 Regression: Web DOB Cache Deletion Invariant", () => {
-  const scopesFile = path.join(process.cwd(), "data", "deletion_scopes.json");
-  const backupFile = path.join(process.cwd(), "data", "deletion_scopes.json.bak.cache_test");
-
   beforeAll(() => {
-    if (fs.existsSync(scopesFile)) {
-      fs.copyFileSync(scopesFile, backupFile);
-    }
     if (!process.env.DELETION_LOOKUP_SECRET || process.env.DELETION_LOOKUP_SECRET.length < 16) {
       process.env.DELETION_LOOKUP_SECRET = "test-deletion-secret-at-least-32-chars-long!";
     }
+    registerCachePurger(purgeCanonicalCaches);
   });
 
   afterAll(() => {
-    if (fs.existsSync(backupFile)) {
-      fs.copyFileSync(backupFile, scopesFile);
-      try { fs.unlinkSync(backupFile); } catch {}
-    } else if (fs.existsSync(scopesFile)) {
+    const scopesFile = process.env.DELETION_SCOPES_FILE;
+    if (scopesFile && fs.existsSync(scopesFile)) {
       try { fs.unlinkSync(scopesFile); } catch {}
     }
   });
@@ -107,21 +101,26 @@ describe("T1 Regression: Web DOB Cache Deletion Invariant", () => {
     const app = express();
     app.use(express.json());
 
-    // Mount session registration and deletion endpoints matching server.ts
+    // Mount endpoints matching server.ts with server-trusted binding
+    app.post("/api/calculate", async (req, res) => {
+      try {
+        const dob = String(req.body?.dob || "").trim();
+        const result = await calculateCanonicalDigitalCode(dob);
+        const deletionToken = String(req.headers["x-deletion-token"] || req.body?.token || "").trim();
+        if (deletionToken) {
+          registerDeletionScope(deletionToken, { cacheKey: dob });
+        }
+        return res.status(200).json({ status: "ok", result });
+      } catch (err: any) {
+        return res.status(400).json({ status: "error", message: err.message });
+      }
+    });
+
     app.post("/api/privacy/register-session", (req, res) => {
       try {
         const token = req.body?.token || "test_token_http_" + Date.now();
-        const { anonymousId, sessionToken, cacheKey, cacheKeys, dob } = req.body || {};
-        const keys: string[] = [];
-        if (typeof cacheKey === "string" && cacheKey.trim()) keys.push(cacheKey.trim());
-        if (typeof dob === "string" && dob.trim() && !keys.includes(dob.trim())) keys.push(dob.trim());
-        if (Array.isArray(cacheKeys)) {
-          for (const k of cacheKeys) {
-            const trimmed = String(k || "").trim();
-            if (trimmed && !keys.includes(trimmed)) keys.push(trimmed);
-          }
-        }
-        registerDeletionScope(token, { anonymousId, sessionToken, cacheKeys: keys });
+        const { anonymousId, sessionToken } = req.body || {};
+        registerDeletionScope(token, { anonymousId, sessionToken });
         return res.status(200).json({ status: "ok", token });
       } catch (err: any) {
         return res.status(500).json({ status: "error", message: err.message });
@@ -150,30 +149,31 @@ describe("T1 Regression: Web DOB Cache Deletion Invariant", () => {
 
     try {
       const HTTP_DOB = "05.05.1955";
+      const HTTP_TOKEN = "http_test_token_123456789";
+
+      // 1. Calculate DOB with server-trusted token binding over HTTP
+      const calcResp = await fetch(`${baseUrl}/api/calculate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-deletion-token": HTTP_TOKEN },
+        body: JSON.stringify({ dob: HTTP_DOB }),
+      });
+      expect(calcResp.status).toBe(200);
+
+      // Verify calculation is cached
       const calc1 = await calculateCanonicalDigitalCode(HTTP_DOB);
 
-      // Register session with cacheKey over HTTP
-      const regResp = await fetch(`${baseUrl}/api/privacy/register-session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: "http_test_token_123456789", cacheKey: HTTP_DOB }),
-      });
-      expect(regResp.status).toBe(200);
-      const regData = await regResp.json();
-      expect(regData.status).toBe("ok");
-
-      // Delete data over HTTP
+      // 2. Delete data over HTTP
       const delResp = await fetch(`${baseUrl}/api/delete-data`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: "http_test_token_123456789" }),
+        body: JSON.stringify({ token: HTTP_TOKEN }),
       });
       expect(delResp.status).toBe(200);
       const delData = await delResp.json();
       expect(delData.status).toBe("ok");
       expect(delData.purgedCacheCount).toBeGreaterThanOrEqual(1);
 
-      // Verify cache was purged (fresh reference)
+      // 3. Verify cache was purged (fresh reference)
       const calc2 = await calculateCanonicalDigitalCode(HTTP_DOB);
       expect(calc2).not.toBe(calc1);
     } finally {
@@ -186,30 +186,23 @@ describe("T1 Regression: Web DOB Cache Deletion Invariant", () => {
     const app = express();
     app.use(express.json());
 
-    app.post("/api/privacy/register-session", (req, res) => {
+    app.post("/api/calculate", async (req, res) => {
       try {
-        const token = req.body?.token || "test_token_http_" + Date.now();
-        const { anonymousId, sessionToken, cacheKey, cacheKeys, dob } = req.body || {};
-        const keys: string[] = [];
-        if (typeof cacheKey === "string" && cacheKey.trim()) keys.push(cacheKey.trim());
-        if (typeof dob === "string" && dob.trim() && !keys.includes(dob.trim())) keys.push(dob.trim());
-        if (Array.isArray(cacheKeys)) {
-          for (const k of cacheKeys) {
-            const trimmed = String(k || "").trim();
-            if (trimmed && !keys.includes(trimmed)) keys.push(trimmed);
-          }
+        const dob = String(req.body?.dob || "").trim();
+        const result = await calculateCanonicalDigitalCode(dob);
+        const deletionToken = String(req.headers["x-deletion-token"] || req.body?.token || "").trim();
+        if (deletionToken) {
+          registerDeletionScope(deletionToken, { cacheKey: dob });
         }
-        registerDeletionScope(token, { anonymousId, sessionToken, cacheKeys: keys });
-        return res.status(200).json({ status: "ok", token });
+        return res.status(200).json({ status: "ok", result });
       } catch (err: any) {
-        return res.status(500).json({ status: "error", message: err.message });
+        return res.status(400).json({ status: "error", message: err.message });
       }
     });
 
     app.post("/api/delete-data", async (req, res) => {
       try {
         const token = String(req.body?.token || "").trim();
-        // Server strictly binds deletion to server-side scope; client-supplied arbitrary keys are NOT added
         const result = await executeDataDeletion(token);
         if (result.status === "error") {
           const isInput = result.code === "invalid_token" || result.code === "deletion_scope_not_found";
@@ -230,29 +223,27 @@ describe("T1 Regression: Web DOB Cache Deletion Invariant", () => {
     try {
       const DOB_VICTIM_B = "07.07.1957";
       const DOB_ATTACKER_A = "08.08.1958";
+      const tokenA = "attacker_token_scope_a_123456789";
+      const tokenB = "victim_token_scope_b_123456789";
 
-      // 1. Populate caches for Victim B
+      // 1. Legitimate calculation for Victim B with tokenB
+      await fetch(`${baseUrl}/api/calculate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-deletion-token": tokenB },
+        body: JSON.stringify({ dob: DOB_VICTIM_B }),
+      });
       const calcB1 = await calculateCanonicalDigitalCode(DOB_VICTIM_B);
       const v2B1 = await calculateCanonicalCodeV2(DOB_VICTIM_B);
 
-      // 2. Populate caches for Attacker A
+      // 2. Legitimate calculation for Attacker A with tokenA
+      await fetch(`${baseUrl}/api/calculate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-deletion-token": tokenA },
+        body: JSON.stringify({ dob: DOB_ATTACKER_A }),
+      });
       const calcA1 = await calculateCanonicalDigitalCode(DOB_ATTACKER_A);
 
-      // 3. Register legitimate scopes via HTTP
-      const tokenA = "attacker_token_scope_a_123456789";
-      const tokenB = "victim_token_scope_b_123456789";
-      await fetch(`${baseUrl}/api/privacy/register-session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: tokenA, cacheKey: DOB_ATTACKER_A }),
-      });
-      await fetch(`${baseUrl}/api/privacy/register-session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: tokenB, cacheKey: DOB_VICTIM_B }),
-      });
-
-      // 4. Attacker A calls delete with their own valid tokenA, but maliciously injects DOB_VICTIM_B in body
+      // 3. Attacker A calls delete with their own valid tokenA, but maliciously injects DOB_VICTIM_B in body
       const attackResp = await fetch(`${baseUrl}/api/delete-data`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -260,15 +251,116 @@ describe("T1 Regression: Web DOB Cache Deletion Invariant", () => {
       });
       expect(attackResp.status).toBe(200);
 
-      // 5. Attacker A's own cache WAS purged
+      // 4. Attacker A's own cache WAS purged
       const calcA2 = await calculateCanonicalDigitalCode(DOB_ATTACKER_A);
       expect(calcA2).not.toBe(calcA1);
 
-      // 6. Victim B's caches MUST REMAIN INTACT (identical object references)
+      // 5. Victim B's caches MUST REMAIN INTACT (identical object references)
       const calcB2 = await calculateCanonicalDigitalCode(DOB_VICTIM_B);
       const v2B2 = await calculateCanonicalCodeV2(DOB_VICTIM_B);
       expect(calcB2).toBe(calcB1);
       expect(v2B2).toBe(v2B1);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it("User A cannot bind User B cache key during registration and later purge B using A deletion token", async () => {
+    const express = (await import("express")).default;
+    const app = express();
+    app.use(express.json());
+
+    // Matches secure server.ts: client-supplied dob / cacheKey in register-session are ignored
+    app.post("/api/calculate", async (req, res) => {
+      try {
+        const dob = String(req.body?.dob || "").trim();
+        const result = await calculateCanonicalDigitalCode(dob);
+        const deletionToken = String(req.headers["x-deletion-token"] || req.body?.token || "").trim();
+        if (deletionToken) {
+          registerDeletionScope(deletionToken, { cacheKey: dob });
+        }
+        return res.status(200).json({ status: "ok", result });
+      } catch (err: any) {
+        return res.status(400).json({ status: "error", message: err.message });
+      }
+    });
+
+    app.post("/api/privacy/register-session", (req, res) => {
+      try {
+        const token = req.body?.token || "test_token_reg_" + Date.now();
+        const { anonymousId, sessionToken } = req.body || {};
+        // Secure trust boundary: client-supplied dob/cacheKey/cacheKeys are strictly ignored
+        registerDeletionScope(token, { anonymousId, sessionToken });
+        return res.status(200).json({ status: "ok", token });
+      } catch (err: any) {
+        return res.status(500).json({ status: "error", message: err.message });
+      }
+    });
+
+    app.post("/api/delete-data", async (req, res) => {
+      try {
+        const token = String(req.body?.token || "").trim();
+        const result = await executeDataDeletion(token);
+        if (result.status === "error") {
+          const isInput = result.code === "invalid_token" || result.code === "deletion_scope_not_found";
+          return res.status(isInput ? 400 : 503).json(result);
+        }
+        return res.status(200).json(result);
+      } catch (err: any) {
+        return res.status(503).json({ status: "error", code: "deletion_incomplete", retryable: true, message: err.message });
+      }
+    });
+
+    const server = await new Promise<any>((resolve) => {
+      const s = app.listen(0, "127.0.0.1", () => resolve(s));
+    });
+    const port = server.address().port;
+    const baseUrl = `http://127.0.0.1:${port}`;
+
+    try {
+      const DOB_VICTIM_B = "09.09.1959";
+      const DOB_ATTACKER_A = "10.10.1960";
+      const tokenA = "attacker_token_reg_attack_123456789";
+      const tokenB = "victim_token_reg_victim_123456789";
+
+      // 1. Populate cache for Victim B with legitimate tokenB
+      await fetch(`${baseUrl}/api/calculate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-deletion-token": tokenB },
+        body: JSON.stringify({ dob: DOB_VICTIM_B }),
+      });
+      const calcB1 = await calculateCanonicalDigitalCode(DOB_VICTIM_B);
+
+      // 2. Populate cache for Attacker A with legitimate tokenA
+      await fetch(`${baseUrl}/api/calculate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-deletion-token": tokenA },
+        body: JSON.stringify({ dob: DOB_ATTACKER_A }),
+      });
+      const calcA1 = await calculateCanonicalDigitalCode(DOB_ATTACKER_A);
+
+      // 3. Attacker A calls register-session with tokenA, attempting to maliciously bind Victim B's DOB
+      await fetch(`${baseUrl}/api/privacy/register-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: tokenA, cacheKey: DOB_VICTIM_B, dob: DOB_VICTIM_B }),
+      });
+
+      // 4. Attacker A calls delete-data with tokenA
+      const delResp = await fetch(`${baseUrl}/api/delete-data`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: tokenA }),
+      });
+      expect(delResp.status).toBe(200);
+
+      // 5. Attacker A's own cache WAS purged
+      const calcA2 = await calculateCanonicalDigitalCode(DOB_ATTACKER_A);
+      expect(calcA2).not.toBe(calcA1);
+
+      // 6. Victim B's cache MUST REMAIN INTACT (server refused to bind Victim B's key to User A)
+      const calcB2 = await calculateCanonicalDigitalCode(DOB_VICTIM_B);
+      expect(calcB2).toBe(calcB1);
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }

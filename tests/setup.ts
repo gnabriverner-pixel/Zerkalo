@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 class MemoryStorage implements Storage {
@@ -47,4 +48,9 @@ if (!process.env.PYTHON_BIN) {
 // Ensure DELETION_LOOKUP_SECRET is configured for all test suites
 if (!process.env.DELETION_LOOKUP_SECRET || process.env.DELETION_LOOKUP_SECRET.length < 16) {
   process.env.DELETION_LOOKUP_SECRET = "test-deletion-secret-at-least-32-chars-long!";
+}
+
+// Isolate deletion scopes storage per test worker process to prevent parallel collisions
+if (!process.env.DELETION_SCOPES_FILE) {
+  process.env.DELETION_SCOPES_FILE = path.join(os.tmpdir(), `zerkalo_test_scopes_${process.pid}.json`);
 }

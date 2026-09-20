@@ -5,8 +5,6 @@ import { promisify } from "util";
 import { validateBirthDate } from "../src/services/birthDate";
 import type { CalculationResult, CodeV2Payload } from "../src/types";
 
-import { registerCachePurger } from "./deletion";
-
 const execFileAsync = promisify(execFile);
 
 function getDcsConfig() {
@@ -220,8 +218,6 @@ export function purgeCanonicalCaches(tokenOrKey: string): number {
   if (codeV2Cache.delete(trimmed)) count++;
   return count;
 }
-
-registerCachePurger(purgeCanonicalCaches);
 
 /**
  * Calculates structured Code V2 payload strictly using DCS canonical engine & V2 library.
