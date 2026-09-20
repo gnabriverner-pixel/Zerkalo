@@ -678,7 +678,12 @@ export class DeepSeekMythProvider implements PersonalMythProvider {
         { role: "user", content: prompt },
       ],
       temperature: 0.6,
-      max_tokens: 5000,
+      // Live RouterAI/DeepSeek V4.1 Flash spends a large share of the completion budget on hidden
+      // reasoning tokens: at the previous 5000 cap two attempts ended with finish_reason=length
+      // (4514 of 5000 tokens were reasoning, with no reasoning field in the message). The same
+      // request shape with 8000 completes (5143 reasoning + ~1300 content), parses, and passes the
+      // local quality contract. Bounded headroom, not a prompt or contract change.
+      max_tokens: 8000,
       response_format: this.name === 'routerai' ? strictFormat('personal_myth', MYTH_SCHEMA) : { type: "json_object" },
       timeoutMs,
     });

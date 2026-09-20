@@ -39,7 +39,7 @@ describe('RouterAI frozen release policy',()=>{
   it('one primary call, json_object transport under the local strict contract, safe cost/model evidence',async()=>{
     const f=fixture([()=>jsonReply(myth)]);const result=await runMyth(f.client);
     expect(result.model).toBe(PRIMARY_MODEL);expect(f.bodies).toHaveLength(1);
-    expect(f.bodies[0]).toMatchObject({model:PRIMARY_MODEL,include_reasoning:false,thinking:{type:'disabled'},provider:{only:['deepseek'],allow_fallbacks:false},response_format:{type:'json_object'}});
+    expect(f.bodies[0]).toMatchObject({model:PRIMARY_MODEL,include_reasoning:false,thinking:{type:'disabled'},provider:{only:['deepseek'],allow_fallbacks:false},response_format:{type:'json_object'},max_tokens:8000});
     expect(JSON.stringify(f.events)).not.toContain('fixture-key');expect(f.events[0]).toMatchObject({costRub:0.01,model:PRIMARY_MODEL,outcome:'success'});
   });
   it.each([408,429,500,502,503])('falls back once on HTTP %s, official upstream and no hidden reasoning',async status=>{
