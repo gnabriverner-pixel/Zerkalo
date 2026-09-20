@@ -20,16 +20,33 @@ function getDcsConfig() {
   if (process.env.DCS_ROOT && process.env.DCS_ROOT.includes(forbiddenClone)) {
     throw new Error(`[DCS Bridge] Stale DCS clone rejected in DCS_ROOT: "${process.env.DCS_ROOT}". Canonical repo is digital-code-system.`);
   }
-  const sibling = path.resolve(process.cwd(), "..", "digital-code-system");
-  const canonicalDefault = "/Users/artemkrysin/code/digital-code-system";
-  const root = process.env.DCS_ROOT || (fs.existsSync(sibling) ? sibling : (fs.existsSync(canonicalDefault) ? canonicalDefault : ""));
-  if (!root || !fs.existsSync(root)) {
-    throw new Error(`[DCS Bridge] Canonical DCS root not found at "${root}". Set DCS_ROOT environment variable.`);
-  }
-  const bridgeScript = path.join(root, "integration", "zerkalo_bridge.py");
   const pythonBin = process.env.PYTHON_BIN || "python3";
   const url = process.env.DCS_BRIDGE_URL || "http://127.0.0.1:39500";
+  const sibling = path.resolve(process.cwd(), "..", "digital-code-system");
+  const canonicalDefault = "/Users/artemkrysin/code/digital-code-system";
+  const candidateRoot = process.env.DCS_ROOT || (fs.existsSync(sibling) ? sibling : (fs.existsSync(canonicalDefault) ? canonicalDefault : ""));
+  const root = candidateRoot && fs.existsSync(candidateRoot) ? candidateRoot : "";
+  const bridgeScript = root ? path.join(root, "integration", "zerkalo_bridge.py") : "";
   return { root, bridgeScript, pythonBin, url };
+}
+
+function getDcsCliExecutionTarget(): { root: string; bridgeScript: string; pythonBin: string } {
+  const forbiddenClone = ["digital-code", "product-journey"].join("-");
+  if (process.env.DCS_ROOT && process.env.DCS_ROOT.includes(forbiddenClone)) {
+    throw new Error(`[DCS Bridge] Stale DCS clone rejected in DCS_ROOT: "${process.env.DCS_ROOT}". Canonical repo is digital-code-system.`);
+  }
+  const sibling = path.resolve(process.cwd(), "..", "digital-code-system");
+  const canonicalDefault = "/Users/artemkrysin/code/digital-code-system";
+  const candidateRoot = process.env.DCS_ROOT || (fs.existsSync(sibling) ? sibling : (fs.existsSync(canonicalDefault) ? canonicalDefault : ""));
+  if (!candidateRoot || !fs.existsSync(candidateRoot)) {
+    throw new Error(`[DCS Bridge] Canonical DCS root not found at "${candidateRoot}". Set DCS_ROOT environment variable.`);
+  }
+  const bridgeScript = path.join(candidateRoot, "integration", "zerkalo_bridge.py");
+  if (!fs.existsSync(bridgeScript)) {
+    throw new Error(`[DCS Bridge] Bridge script not found at "${bridgeScript}".`);
+  }
+  const pythonBin = process.env.PYTHON_BIN || "python3";
+  return { root: candidateRoot, bridgeScript, pythonBin };
 }
 
 export interface CanonicalCalculationResult extends CalculationResult {
@@ -65,15 +82,9 @@ export async function calculateCanonicalDigitalCode(dob: string, ownerId?: strin
     return cached;
   }
 
-  let root: string;
-  let bridgeScript: string;
-  let pythonBin: string;
   let dcsUrl: string;
   try {
     const config = getDcsConfig();
-    root = config.root;
-    bridgeScript = config.bridgeScript;
-    pythonBin = config.pythonBin;
     dcsUrl = config.url;
   } catch (err: any) {
     console.error(`[dcsBridge] DCS configuration failed: ${err?.message}`);
@@ -104,6 +115,7 @@ export async function calculateCanonicalDigitalCode(dob: string, ownerId?: strin
   } catch (httpErr: any) {
     // If HTTP loopback service is down, try direct CLI bridge as backup process boundary
     try {
+      const { root, bridgeScript, pythonBin } = getDcsCliExecutionTarget();
       const { stdout } = await execFileAsync(pythonBin, [bridgeScript, "calculate", "--dob", trimmed], {
         timeout: 8_000,
         env: { ...process.env, PYTHONPATH: root },
@@ -323,7 +335,7 @@ export async function calculateCanonicalCodeV2(dob: string, ownerId?: string): P
     return cached;
   }
 
-  const { root, bridgeScript, pythonBin, url: dcsUrl } = getDcsConfig();
+  const { url: dcsUrl } = getDcsConfig();
 
   // 1. Try loopback service first if available
   try {
@@ -350,6 +362,7 @@ export async function calculateCanonicalCodeV2(dob: string, ownerId?: string): P
 
   // 2. Direct CLI bridge execution (canonical process boundary)
   try {
+    const { root, bridgeScript, pythonBin } = getDcsCliExecutionTarget();
     const { stdout } = await execFileAsync(pythonBin, [bridgeScript, "code-v2", "--dob", trimmed], {
       timeout: 10_000,
       cwd: root,

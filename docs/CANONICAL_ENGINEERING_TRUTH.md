@@ -141,14 +141,15 @@ A primary source of engineering confusion has been conflating development HEADs 
 Web connects to DCS to perform Vedic numerology calculations and continuity handling:
 - **Canonical Bridge Script**: `integration/zerkalo_bridge.py` or HTTP service `integration/dcs_service.py`.
 - **Environment Variables**:
+  - `DCS_BRIDGE_URL`: HTTP endpoint for the running DCS daemon (default: `http://127.0.0.1:39500`). Web uses `DCS_BRIDGE_URL` as its primary communication channel with DCS in production bridge-only deployment.
   - `DCS_ROOT`: Root of the DCS repository.
-    * In production: Injected by systemd service.
-    * In test mode (`tests/setup.ts`): Resolves to canonical sibling `path.resolve(process.cwd(), "..", "digital-code-system")`.
-    * In runtime (`server/dcsBridge.ts`): Must resolve strictly to `process.env.DCS_ROOT` or canonical sibling `../digital-code-system`.
+    * In production bridge-only deployment: Not required as an environment variable when `DCS_BRIDGE_URL` is healthy.
+    * In local CLI/fallback/test paths (`tests/setup.ts`): Required for direct in-process/CLI execution; resolves to `process.env.DCS_ROOT` or canonical sibling `path.resolve(process.cwd(), "..", "digital-code-system")`.
   - `PYTHON_BIN`: Python interpreter executable (canonical: `/opt/homebrew/bin/python3.12` or `python3`).
-  - `DCS_BRIDGE_URL`: HTTP endpoint for the running DCS daemon (default: `http://127.0.0.1:39500`).
-- **Fail-Closed Resolution Rule**:
-  If `DCS_ROOT` is unset and the canonical sibling directory does not exist, the bridge must throw an explicit error immediately. Falling back to legacy directories (`digital-code-product-journey`) is strictly prohibited.
+- **Fail-Closed Resolution & Fallback Rules**:
+  - In bridge-only production topology, Web communicates exclusively via HTTP bridge (`DCS_BRIDGE_URL`). The absence of a local `DCS_ROOT` does NOT fail HTTP operations or health probes.
+  - If execution must fall back to local CLI/Python execution (e.g. when HTTP bridge is unreachable), a canonical DCS repository checkout is strictly required. If canonical `DCS_ROOT` is missing, execution fails closed immediately.
+  - Explicitly passing a stale or forbidden clone path (e.g. `digital-code-product-journey`) in `DCS_ROOT` is rejected immediately fail-closed. Falling back to legacy clones is strictly prohibited.
 
 ---
 
