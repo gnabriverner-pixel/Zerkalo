@@ -4,7 +4,7 @@
   "web": {
     "repo": "gnabriverner-pixel/Zerkalo",
     "branch": "main",
-    "pinned_sha": "8297706ebaf48ac586089466da981f0dec49144e"
+    "pinned_sha": "ee44fcda9b0bbf0289cb9b54349e0c2a1065eaca"
   },
   "dcs": {
     "repo": "gnabriverner-pixel/digital-code-system",
@@ -16,7 +16,7 @@
     "production_node": "v22.23.2 (observed on the production host 2026-09-18)",
     "note": "Node 24 = canonical verification/CI runtime (verifier and verify_release_local refuse other majors). Node v22.23.2 = observed production runtime. Production runtime is NOT changed by this manifest; it is recorded from server inspection only."
   },
-  "updated_at": "2026-09-19",
+  "updated_at": "2026-09-20",
   "verified_at": "2026-09-19T22:46:03Z",
-  "note": "Verified pair: Web 8297706 (merge of PR #33, tree 30700d7f) + DCS fe67002 — strict external verifier PASS 2026-09-19T22:46:03Z, evidence in evidence/verify-20260919-224603-rc8297706/ (fail-closed pair gate: web_pin_match=true, dcs_pin_match=true, pinned_pair_match=true, sources_clean=true; 11/11 checks PASS; manifest 2606a33). Previous verified pair: Web c7fc1f8 (external verifier PASS 2026-09-18) + DCS fe67002. Production still runs c7fc1f8 until a cutover is explicitly authorised. Production rollback Web SHA: 7d9e00f."
+  "note": "CANDIDATE pair awaiting verification: Web ee44fcd (merge of PR #34 — DeepSeek chat/completions format compatibility: json_object transport for the frozen primary, confirmed-alias normalization for the Anthropic fallback, bounded Myth completion budget 8000) + DCS fe67002. scripts/release_verifier.sh is fail-closed against this candidate pin; a PASS promotes it to the verified pin. Previous verified pair: Web 8297706 + DCS fe67002 (external verifier PASS 2026-09-19T22:46:03Z, evidence/verify-20260919-224603-rc8297706/) — that pair was deployment-blocked by the live-provider preflight of 2026-09-20 (the upstream refused response_format json_schema; fixed by PR #34). Production still runs c7fc1f8 until a cutover is explicitly authorised. Production rollback Web SHA: 7d9e00f."
 }
