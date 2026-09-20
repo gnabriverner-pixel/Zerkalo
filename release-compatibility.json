@@ -4,11 +4,11 @@
   "web": {
     "repo": "gnabriverner-pixel/Zerkalo",
     "branch": "main",
-    "pinned_sha": "ee44fcda9b0bbf0289cb9b54349e0c2a1065eaca"
+    "pinned_sha": "54d84cf2cc555a91730776a379070bed48a392cf"
   },
   "dcs": {
     "repo": "gnabriverner-pixel/digital-code-system",
-    "pinned_sha": "fe67002ce2a2f9d05fa9faf205ef45264f05a931",
+    "pinned_sha": "de78eb346a32da5b9f2fe6b5d40e10c85309c93f",
     "production_branch": "release/routerai-acceptance"
   },
   "runtime": {
@@ -16,7 +16,7 @@
     "production_node": "v22.23.2 (observed on the production host 2026-09-18)",
     "note": "Node 24 = canonical verification/CI runtime (verifier and verify_release_local refuse other majors). Node v22.23.2 = observed production runtime. Production runtime is NOT changed by this manifest; it is recorded from server inspection only."
   },
-  "updated_at": "2026-09-20",
+  "updated_at": "2026-09-21",
   "verified_at": "2026-09-20T09:38:41Z",
   "note": "Verified pair: Web ee44fcd (merge of PR #34 — DeepSeek chat/completions format compatibility: json_object transport for the frozen primary, confirmed-alias normalization for the Anthropic fallback, bounded Myth completion budget 8000) + DCS fe67002 — strict external verifier PASS 2026-09-20T09:38:41Z, evidence in evidence/verify-20260920-093841-rc-ee44fcd/ (fail-closed pair gate: web_pin_match=true, dcs_pin_match=true, pinned_pair_match=true, sources_clean=true; 11/11 checks PASS; manifest 43c37a3). Isolated live smoke on the exact merge SHA passed the real user path (Myth → Meeting → Albert, all 200 ok on the frozen primary upstream). Previous verified pair: Web 8297706 + DCS fe67002 (external verifier PASS 2026-09-19T22:46:03Z, evidence/verify-20260919-224603-rc8297706/) — deployment-blocked by the live-provider preflight of 2026-09-20 and superseded by #34. Production Web is `ee44fcda9b0bbf0289cb9b54349e0c2a1065eaca` (cutover completed 2026-09-20 ~10:16 UTC; the public synthetic user path Myth → Meeting → Albert was accepted on the primary upstream). Immediate production rollback: `c7fc1f8d6c87f44bab86b54d7622c8cd56c97cc1`; second level: `7d9e00f08e9c65167d8e40195f2d5bd1bfd63cd1`."
 }
