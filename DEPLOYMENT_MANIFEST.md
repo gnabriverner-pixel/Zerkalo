@@ -49,6 +49,16 @@ scripts/release_verifier.sh --web-sha ee44fcda9b0bbf0289cb9b54349e0c2a1065eaca \
                             --dcs-sha fe67002ce2a2f9d05fa9faf205ef45264f05a931
 ```
 
+## DCS release dependency environment contract (T6 hardening, 2026-09-21)
+
+Every DCS release directory (`/opt/digital-code-releases/<sha>`) MUST satisfy the T6 dependency contract before service cutover:
+1. **Release-local `.venv`**: each release owns its isolated virtual environment built from `requirements-lock.txt` (exact 45-package baseline). Symlinks to donor releases (pre-T6 practice) are strictly FORBIDDEN.
+2. **Mandatory pre-cutover gate**:
+   - `PYTHON_BIN=python3.11 scripts/prepare_release_env.sh <release-dir>`
+   - `PYTHON_BIN=python3.11 scripts/verify_release_env.sh --verify-packages <release-dir>`
+   (or `scripts/stage_and_verify_release.sh <release-dir>`).
+3. **Fail-closed**: if verification fails, service cutover (`digital-code-bridge.service`) is prohibited.
+
 ## Rollback
 
 Релизные каталоги на хосте иммутабельны (`/opt/zerkalo-releases/<sha>`,
