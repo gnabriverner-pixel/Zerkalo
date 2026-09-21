@@ -4,7 +4,7 @@
 canonical_source_repository: digital-code-system
 canonical_source_path: docs/harness/PROJECT_CONTEXT.md
 canonical_source_sha256: 7189326317d26569b7c15f3eb2d4a37236cef6b765638ccc021611045e5085d7
-source_commit_advisory: 008cf6818a789e122590a41227ce6b105da7aea9
+source_commit_advisory: 277fc5d02432f35ce65723b357f373a2b23ce332
 <!-- END_ZERKALO_HARNESS_BOOTSTRAP_PROVENANCE -->
 
 <!-- BEGIN_ZERKALO_HARNESS_BOOTSTRAP_CORE -->
