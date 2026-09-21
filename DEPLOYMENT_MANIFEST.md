@@ -49,6 +49,18 @@ scripts/release_verifier.sh --web-sha ee44fcda9b0bbf0289cb9b54349e0c2a1065eaca \
                             --dcs-sha fe67002ce2a2f9d05fa9faf205ef45264f05a931
 ```
 
+## DCS release dependency environment contract (T6 hardening, 2026-09-21)
+
+Every DCS release directory (`/opt/digital-code-releases/<sha>`) MUST satisfy the T6 dependency contract before service cutover:
+1. **Release-local `.venv`**: each release owns its isolated virtual environment built from `requirements-lock.txt` (exact 45-package production baseline). Symlinks to donor releases (pre-T6 practice) are strictly FORBIDDEN.
+2. **Runtime namespace & interpreter**: DCS executes inside `chroot /media/vda1` using Python 3.12.x. Host Python 3.11 MUST NOT be used to construct the DCS release virtualenv.
+3. **Mandatory pre-cutover gate**:
+   - Stage exact DCS release on host into `/media/vda1/opt/digital-code-releases/<sha>`
+   - Enter chroot and execute the gate as user `digitalcode`:
+     `/usr/sbin/chroot /media/vda1 /bin/bash -c "su -s /bin/bash digitalcode -c '/opt/digital-code-releases/<sha>/scripts/stage_and_verify_release.sh /opt/digital-code-releases/<sha>'"`
+4. **Fail-closed**: cutover (`digital-code-bridge.service`) is authorized only after outputting `=== DCS RELEASE ENVIRONMENT GATE: PASSED ===`.
+See canonical DCS deployment guide: `DEPLOY_RUNBOOK.md` in digital-code-system.
+
 ## Rollback
 
 Релизные каталоги на хосте иммутабельны (`/opt/zerkalo-releases/<sha>`,

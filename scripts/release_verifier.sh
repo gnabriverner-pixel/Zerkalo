@@ -243,6 +243,10 @@ PYEOF
   run_check DCS code_v2_payload "$WORK/dcs" bash -c "\"$VENV_PY\" scripts/code_v2_payload.py --dob 01.07.1990 --indent 0 > /tmp/verifier-code-v2.json && \"$VENV_PY\" \"$WORK/check_payload.py\" /tmp/verifier-code-v2.json"
 fi
 
+if [[ -f "$WORK/dcs/requirements-lock.txt" && -f "$WORK/dcs/scripts/verify_release_env.sh" ]]; then
+  run_check DCS release_lock_check "$WORK/dcs" bash -c "grep -qE '^[A-Za-z0-9][A-Za-z0-9._-]*==' requirements-lock.txt && test -x scripts/verify_release_env.sh"
+fi
+
 # ------------------------------------------------------- Web checks
 export DCS_ROOT="$WORK/dcs"
 export DCS_BRIDGE_URL="$DEAD_BRIDGE_URL"
