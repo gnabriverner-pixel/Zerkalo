@@ -17,6 +17,27 @@
 - Release gate: внешний верификатор `scripts/release_verifier.sh` — **fail-closed по пинам пары** (`release-compatibility.json` v2, оба SHA) + канонический runtime Node 24. GitHub Actions помечены `EXTERNAL_BLOCKED: GitHub account billing lock`; отсутствие зелёного Actions-рана не является дефектом проверенного SHA.
 - Runtime прода: Node `v22.23.2` (наблюдение с сервера; канонический runtime *верификации* — Node 24, паритет с CI; прод не менялся).
 
+## Production smoke policy (T6 hardening, 2026-09-21)
+
+**DO NOT USE REAL USER DOB in production smoke — ever.** Every production
+smoke run (manual or scripted) must use the documented synthetic fixture only:
+
+- **`SYNTHETIC_SMOKE_DOB = 01.07.1990`** — deterministic, synthetic, tied to no
+  real person: adult (18+ with a wide margin), valid DD.MM.YYYY with day ≤ 28,
+  not a leap day, not a year boundary, not the calculation canon golden case,
+  and no test anywhere pins numeric results for it.
+- Canonical procedure: `scripts/production_smoke.sh [--base-url <url>]` —
+  consent (synthetic session) → `/api/calculate` → `/api/code-v2`, asserting
+  **structure only**: HTTP success, `status: ok`, canonical authority
+  (`engine.py::full_analysis`), expected schema/positions, absence of server
+  errors. Never psychological/numerological content of a specific person.
+- Forbidden in smoke: Telegram sends, payment flows, delete-data calls for
+  real users, real owner/user DOB.
+- Enforcement: `server/production_smoke_fixture.test.ts` (Vitest) fails if a
+  smoke/release script reintroduces a known real or QA-preset DOB.
+- Historical smoke entries below that mention `dob 06.05.1986` record the
+  pre-policy practice of 2026-09-18 and **must not be repeated**.
+
 ## Verification commands
 
 ```bash
@@ -52,7 +73,7 @@ scripts/release_verifier.sh --web-sha ee44fcda9b0bbf0289cb9b54349e0c2a1065eaca \
 | Cutover | `current` → `c7fc1f8…`, `systemctl start zerkalo.service` → active, NRestarts=0 | 16:24 |
 | Public `https://zerkalosebya.ru/health` | 200: sha `c7fc1f8…`, `dcs_bridge {ready, fe67002…}` | 16:25 |
 | Public `https://zerkalosebya.ru/health/ready` | 200 `ready`: llm_provider=true, dcs_bridge=true/ready/fe67002 | 16:25 |
-| **Реальный пользовательский smoke** | consent → `POST /api/calculate` (dob 06.05.1986) → `status: ok`, authority `engine.py::full_analysis`, числа 6/2/8/5/1, missing [2,3,4,7] — **живой путь через DCS-мост, не mock** | 16:25 |
+| **Реальный пользовательский smoke** *(pre-policy record — real-DOB smoke no longer permitted, see Production smoke policy)* | consent → `POST /api/calculate` (dob 06.05.1986) → `status: ok`, authority `engine.py::full_analysis`, числа 6/2/8/5/1, missing [2,3,4,7] — **живой путь через DCS-мост, не mock** | 16:25 |
 | Мониторинг установлен | `/usr/local/bin/zerkalo-health-monitor.sh`, state `/var/lib/zerkalo-health-monitor`, токены из production.env (значения не печатались), timer активен (каждые 5 мин) | 16:26 |
 | Цикл мониторинга | переходы: alert при healthy→failed и failed→healthy; **повторы без алертов**; getMe с retry; baseline NRestarts: zerkalo=0, bridge=0, v2-prod=49019 (рост → алерт) | 16:28 |
 | Rollback SHA | `7d9e00f08e9c65167d8e40195f2d5bd1bfd63cd1` (каталог существует; откат = flip `current` + restart) | — |

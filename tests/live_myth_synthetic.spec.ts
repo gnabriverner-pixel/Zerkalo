@@ -2,7 +2,12 @@ import { test, expect } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 
-test.describe('Live Personal Myth Generation for DOB 06.05.1986', () => {
+// DO NOT USE REAL USER DOB — this live acceptance spec sends only the
+// documented synthetic smoke fixture (see server/production_smoke_fixture.test.ts).
+const SYNTHETIC_SMOKE_DOB = '01.07.1990';
+const [DOB_DAY, DOB_MONTH, DOB_YEAR] = SYNTHETIC_SMOKE_DOB.split('.');
+
+test.describe('Live Personal Myth Generation (synthetic fixture)', () => {
   test('Live RouterAI Myth Generation & Verification', async ({ page }) => {
     test.setTimeout(180000);
 
@@ -48,16 +53,16 @@ test.describe('Live Personal Myth Generation for DOB 06.05.1986', () => {
       await page.waitForTimeout(500);
     }
 
-    // 2. Date input for 06.05.1986
-    console.log('Filling DOB 06.05.1986...');
+    // 2. Date input for the synthetic fixture (DO NOT USE REAL USER DOB)
+    console.log(`Filling synthetic DOB ${SYNTHETIC_SMOKE_DOB}...`);
     const dayInput = page.getByPlaceholder('ДД', { exact: true });
     const monthInput = page.getByPlaceholder('ММ', { exact: true });
     const yearInput = page.getByPlaceholder('ГГГГ', { exact: true });
 
     await dayInput.waitFor({ state: 'visible' });
-    await dayInput.fill('06');
-    await monthInput.fill('05');
-    await yearInput.fill('1986');
+    await dayInput.fill(DOB_DAY);
+    await monthInput.fill(DOB_MONTH);
+    await yearInput.fill(DOB_YEAR);
 
     const calcBtn = page.getByRole('button', { name: 'Рассчитать код', exact: true });
     await calcBtn.click();
@@ -153,15 +158,15 @@ test.describe('Live Personal Myth Generation for DOB 06.05.1986', () => {
     console.log(`[Journal Question]: ${journalQuestion}`);
 
     // Take screenshots
-    const mythScreenPath = path.join(outDir, '01_personal_myth_06051986_live.png');
-    const mythArticlePath = path.join(outDir, '02_personal_myth_06051986_article.png');
+    const mythScreenPath = path.join(outDir, '01_personal_myth_synthetic_live.png');
+    const mythArticlePath = path.join(outDir, '02_personal_myth_synthetic_article.png');
     await page.screenshot({ path: mythScreenPath, fullPage: true });
     await article.screenshot({ path: mythArticlePath });
 
     // Save evidence JSON
     const evidence = {
       timestamp: new Date().toISOString(),
-      dob: '06.05.1986',
+      dob: SYNTHETIC_SMOKE_DOB,
       inputs: steps.map((s) => ({ step: s.tag, answer: s.answer })),
       api: {
         status: mythApiStatus,
@@ -183,7 +188,7 @@ test.describe('Live Personal Myth Generation for DOB 06.05.1986', () => {
     };
 
     fs.writeFileSync(
-      path.join(outDir, 'live_myth_06051986_evidence.json'),
+      path.join(outDir, 'live_myth_synthetic_evidence.json'),
       JSON.stringify(evidence, null, 2),
       'utf-8'
     );

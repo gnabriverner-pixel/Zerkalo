@@ -5,6 +5,12 @@ import fs from 'fs/promises';
 const BASE_URL = process.env.APP_URL || 'http://localhost:3005';
 const SCREENSHOTS_DIR = path.join(process.cwd(), 'docs/evidence/v1_1-final/screenshots');
 
+// DO NOT USE REAL USER DOB — synthetic fixture only (documented and enforced
+// by server/production_smoke_fixture.test.ts). The browser smoke checks UI
+// structure, not personal content.
+const SYNTHETIC_SMOKE_DOB = '01.07.1990';
+const [DOB_DAY, DOB_MONTH, DOB_YEAR] = SYNTHETIC_SMOKE_DOB.split('.');
+
 async function runBrowserSmoke() {
   console.log('=== STARTING REAL BROWSER SMOKE TEST (DESKTOP, ALBERT & MOBILE) ===');
   await fs.mkdir(SCREENSHOTS_DIR, { recursive: true });
@@ -45,10 +51,10 @@ async function runBrowserSmoke() {
     await desktopPage.locator('nav button:has-text("Код")').first().click();
     await desktopPage.waitForTimeout(600);
 
-    // Enter DOB 06.05.1986
-    await desktopPage.locator('input[placeholder="ДД"]').first().fill('06');
-    await desktopPage.locator('input[placeholder="ММ"]').first().fill('05');
-    await desktopPage.locator('input[placeholder="ГГГГ"]').first().fill('1986');
+    // Enter the synthetic smoke fixture (DO NOT USE REAL USER DOB)
+    await desktopPage.locator('input[placeholder="ДД"]').first().fill(DOB_DAY);
+    await desktopPage.locator('input[placeholder="ММ"]').first().fill(DOB_MONTH);
+    await desktopPage.locator('input[placeholder="ГГГГ"]').first().fill(DOB_YEAR);
     await desktopPage.waitForTimeout(300);
     await desktopPage.locator('button:has-text("Открыть свой код"), form button[type="submit"]').first().click();
     await desktopPage.waitForTimeout(1500);
@@ -261,10 +267,10 @@ async function runBrowserSmoke() {
     await mobilePage.locator('nav button:has-text("Код")').first().click();
     await mobilePage.waitForTimeout(600);
 
-    // Enter DOB 29.02.2000 on mobile
-    await mobilePage.locator('input[placeholder="ДД"]').first().fill('29');
-    await mobilePage.locator('input[placeholder="ММ"]').first().fill('02');
-    await mobilePage.locator('input[placeholder="ГГГГ"]').first().fill('2000');
+    // Enter the synthetic smoke fixture on mobile (DO NOT USE REAL USER DOB)
+    await mobilePage.locator('input[placeholder="ДД"]').first().fill(DOB_DAY);
+    await mobilePage.locator('input[placeholder="ММ"]').first().fill(DOB_MONTH);
+    await mobilePage.locator('input[placeholder="ГГГГ"]').first().fill(DOB_YEAR);
     await mobilePage.waitForTimeout(300);
     await mobilePage.locator('button:has-text("Открыть свой код"), form button[type="submit"]').first().click();
     await mobilePage.waitForTimeout(1200);

@@ -218,14 +218,29 @@ run_check DCS pytest_full "$WORK/dcs" env PYTHONDONTWRITEBYTECODE=1 "$VENV_PY" -
   --ignore=archive --ignore=.venv --ignore=.venv312 --ignore=.venv-e2e --ignore=venv --ignore=node_modules
 
 if [[ -f "$WORK/dcs/scripts/code_v2_payload.py" ]]; then
+  # Synthetic release fixture — DO NOT USE REAL USER DOB here or anywhere in
+  # this verifier. The payload check asserts STRUCTURE ONLY (status, schema,
+  # positions), never content tied to a specific person.
   cat > "$WORK/check_payload.py" <<'PYEOF'
 import json, sys
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
-result = next(item for item in payload["positions"] if item["position"] == "result")
-assert result["role"] == "Возможный горизонт", result["role"]
-assert payload["synthesis"]["mature_integration"]["title"] == "Число Результата: возможный горизонт"
+assert payload.get("status") == "ok", payload.get("status")
+calc = payload.get("calculation") or {}
+five = calc.get("five_numbers") or {}
+assert set(five) == {"soul", "expression", "path", "direction", "result"}, five
+assert all(isinstance(v, int) and v >= 1 for v in five.values()), five
+positions = payload.get("positions") or []
+assert len(positions) == 5, len(positions)
+for p in positions:
+    assert p.get("position"), p
+    assert isinstance(p.get("public_name"), str) and p["public_name"], p
+    assert isinstance(p.get("role"), str) and p["role"], p
+synthesis = payload.get("synthesis")
+assert isinstance(synthesis, dict) and synthesis, synthesis
+mature = synthesis.get("mature_integration")
+assert isinstance(mature, dict) and isinstance(mature.get("title"), str) and mature["title"], mature
 PYEOF
-  run_check DCS code_v2_payload "$WORK/dcs" bash -c "\"$VENV_PY\" scripts/code_v2_payload.py --dob 06.05.1986 --indent 0 > /tmp/verifier-code-v2.json && \"$VENV_PY\" \"$WORK/check_payload.py\" /tmp/verifier-code-v2.json"
+  run_check DCS code_v2_payload "$WORK/dcs" bash -c "\"$VENV_PY\" scripts/code_v2_payload.py --dob 01.07.1990 --indent 0 > /tmp/verifier-code-v2.json && \"$VENV_PY\" \"$WORK/check_payload.py\" /tmp/verifier-code-v2.json"
 fi
 
 # ------------------------------------------------------- Web checks
