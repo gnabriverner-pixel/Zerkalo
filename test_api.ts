@@ -1,18 +1,23 @@
+// Ad-hoc canonical API check — synthetic fixture only.
+//
+// DO NOT USE REAL USER DOB. The date below is the documented synthetic smoke
+// fixture (see server/production_smoke_fixture.test.ts for its enforced
+// properties). Prefer scripts/production_smoke.sh for the full structural
+// production smoke; this file stays as a minimal one-shot canonical check.
+const SYNTHETIC_SMOKE_DOB = '01.07.1990';
+
 async function test() {
-  const res = await fetch('http://localhost:3000/api/generate-reading', {
+  const consent = await fetch('http://localhost:3000/api/consent', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      date: "06.05.1986",
-      calc: {
-        soul: 6, soulComposite: "6",
-        path: 8, pathComposite: "35/8",
-        direction: 5, directionComposite: "41/5",
-        expression: 2, expressionComposite: "11/2",
-        result: 1, resultComposite: "82/10/1",
-        detailedMatrix: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0, "0": 0 }
-      }
-    })
+    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:3000' },
+    body: JSON.stringify({ accepted: true, adult: true, version: 'zerkalo-2026-09-v1', scope: 'core' }),
+  });
+  const cookie = consent.headers.get('set-cookie')?.split(';')[0] || '';
+
+  const res = await fetch('http://localhost:3000/api/calculate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ dob: SYNTHETIC_SMOKE_DOB }),
   });
   const data = await res.json();
   console.log(data);
