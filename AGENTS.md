@@ -1,5 +1,25 @@
 # Agent Operating Contract — Zerkalo (Web)
 
+<!-- BEGIN_ZERKALO_HARNESS_BOOTSTRAP_PROVENANCE -->
+canonical_source_repository: digital-code-system
+canonical_source_path: docs/harness/PROJECT_CONTEXT.md
+canonical_source_sha256: 7189326317d26569b7c15f3eb2d4a37236cef6b765638ccc021611045e5085d7
+source_commit_advisory: 277fc5d02432f35ce65723b357f373a2b23ce332
+<!-- END_ZERKALO_HARNESS_BOOTSTRAP_PROVENANCE -->
+
+<!-- BEGIN_ZERKALO_HARNESS_BOOTSTRAP_CORE -->
+### ZERKALO HARNESS BOOTSTRAP CORE
+- **Harness Fingerprint / Version**: `ZERKALO-HARNESS-V1`
+- **Canonical Harness Location**: `/Users/artemkrysin/code/digital-code-system/docs/harness/`
+- **Production DCS Namespace**: `chroot /media/vda1` (user: `digitalcode`, internal path: `/opt/digital-code-releases/<sha>`)
+- **Canonical Production Python Major/Minor**: Python `3.12.x` (observed baseline: `3.12.3` inside Ubuntu 24.04 chroot; host Python 3.11 forbidden)
+- **Donor Virtualenv Prohibition**: Borrowing or symlinking `.venv` from another release is strictly forbidden; every release directory must own its release-local `.venv` built from `requirements-lock.txt`
+- **Synthetic Production Smoke Invariant**: Production smoke tests must use synthetic fixtures only; real DOBs, real user PII, real payment flows, and Telegram bot interactions are strictly forbidden in release smoke
+- **Context Loading Requirement**: Zero-context agents MUST load the full canonical context from `docs/harness/` before executing any release-sensitive work, deployment, or contract modification
+<!-- END_ZERKALO_HARNESS_BOOTSTRAP_CORE -->
+
+> **Harness Context Notice**: Канонический источник проектного контекста и контрактов находится в репозитории DCS: `digital-code-system/docs/harness/PROJECT_CONTEXT.md`. Данный файл (`AGENTS.md`) является адаптером взаимодействия. Перед выполнением любых задач, влияющих на релиз или контракты взаимодействия, агент обязан загрузить полный канонический контекст.
+
 Инженерный контракт для кодинг-агентов, работающих в этом репозитории.
 Продуктовая персона Альберта (мастер-промпт генерации, режимы, языковой канон,
 голосовые антипаттерны) живёт отдельно: [`prompts/albert_persona.md`](prompts/albert_persona.md) —
