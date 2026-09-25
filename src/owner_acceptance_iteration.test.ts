@@ -763,4 +763,232 @@ describe('Owner acceptance iteration: personal question, direct address, and loc
       } as any)
     ).resolves.toBe(false);
   });
+
+  it('V5 Defect 1: accurately distinguishes q3 real experience, q3 imaginative scene, q3 unknown resource, q4 wish, colleague quote, and Myth-only details', () => {
+    const baseMeetingEnvelope = {
+      status: 'ok',
+      result: {
+        summary: 'В вашем вопросе вы описываете рабочее напряжение вокруг сроков.',
+        hasStrongParallels: true,
+        confidenceNote: 'Сопоставление ответов и гипотезы Кода.',
+        possibleSupport: 'Можно проверить короткую паузу перед ответом.',
+        parallels: [
+          {
+            theme: 'Ритм включения',
+            codeAnchor: 'Гипотеза Кода предлагает проверить границу ответственности.',
+            mythAnchor: 'В вашем ответе звучит внимание к паузе.',
+            synthesis: 'Для вашей ситуации это открывает выбор темпа.',
+          },
+        ],
+        divergences: [],
+        albertInsight: 'В вашей ситуации можно различить немедленный подхват задачи и предварительное согласование рамок.',
+        reflectiveQuestion: 'Какой один признак подскажет вам, что задачу стоит уточнить до начала работы?',
+        disclaimer: 'Код и Миф — два независимых взгляда.',
+      },
+    };
+
+    // 1. Real action in q3 -> allowed to retell as user's own reported real experience
+    const realQ3Context = {
+      userQuestion: 'Перегружаюсь на общих созвонах',
+      storyInputs: {
+        q1: 'На общих созвонах беру лишние задачи',
+        q2: 'Тяжёлый портфель',
+        q3: 'На работе по утрам спокойно разбираю сложные сметы один на один с ведущим инженером',
+        q4: 'Спокойного делегирования',
+      },
+      storyResult: {
+        title: 'Утренний стол',
+        story: 'Ты открываешь папку и смотришь на цифры.',
+      },
+    };
+    const validRealQ3 = parseMeetingResponse(
+      {
+        status: 'ok',
+        result: {
+          ...baseMeetingEnvelope.result,
+          possibleSupport:
+            'Вы рассказали, что на работе по утрам спокойно разбираете сложные сметы один на один с ведущим инженером; можно проверить, как перенести этот формат короткого разбора один на один перед общим созвоном.',
+        },
+      },
+      realQ3Context,
+    );
+    expect(validRealQ3.status).toBe('ok');
+
+    // 2. Imaginative scene in q3 -> rejected as already-tested real behavior, allowed when labeled as image
+    const imageQ3Context = {
+      userQuestion: 'Срываюсь при горящих сроках',
+      storyInputs: {
+        q1: 'Срываюсь при горящих сроках',
+        q2: 'Комната с плотными шторами',
+        q3: 'Когда на вершине маяка в шторм закрываю тяжёлую дверь и забираю папку у курьера',
+        q4: 'Спокойствия',
+      },
+      storyResult: { title: 'Маяк', story: 'Ты стоишь у двери маяка.' },
+    };
+    expect(() =>
+      parseMeetingResponse(
+        {
+          status: 'ok',
+          result: {
+            ...baseMeetingEnvelope.result,
+            possibleSupport:
+              'Возможно опереться на то, как вы это делаете, когда забираете папку у курьера на маяке — это уже испытанный вами способ.',
+          },
+        },
+        imageQ3Context,
+      ),
+    ).toThrow(/meeting_source_conflation|meeting_unsupported_support_claim/);
+
+    // 3. Unknown resource in q3 -> rejected if claiming tested support already exists, allowed when acknowledging unknown resource
+    const unknownQ3Context = {
+      userQuestion: 'Теряю фокус при авралах',
+      storyInputs: {
+        q1: 'Теряю фокус при авралах',
+        q2: 'Шумный перекрёсток',
+        q3: 'Не знаю, ничего конкретного не вспоминается',
+        q4: 'Тишины на полчаса',
+      },
+      storyResult: { title: 'Перекрёсток', story: 'Ты останавливаешься у края дороги.' },
+    };
+    expect(() =>
+      parseMeetingResponse(
+        {
+          status: 'ok',
+          result: {
+            ...baseMeetingEnvelope.result,
+            possibleSupport:
+              'Возможно опереться на уже испытанный вами способ удерживать фокус, как вы уже делаете в работе.',
+          },
+        },
+        unknownQ3Context,
+      ),
+    ).toThrow(/meeting_source_conflation|meeting_unsupported_support_claim/);
+
+    const validUnknownQ3 = parseMeetingResponse(
+      {
+        status: 'ok',
+        result: {
+          ...baseMeetingEnvelope.result,
+          possibleSupport:
+            'Пока в вашем ответе не видно уже испытанной опоры в реальной ситуации, но в качестве желаемого направления вы назвали полчаса тишины — можно проверить одну короткую паузу перед ответом.',
+        },
+      },
+      unknownQ3Context,
+    );
+    expect(validUnknownQ3.status).toBe('ok');
+
+    // 4. Wish in q4 -> rejected if desired direction in q4 is turned into an already mastered ability
+    expect(() =>
+      parseMeetingResponse(
+        {
+          status: 'ok',
+          result: {
+            ...baseMeetingEnvelope.result,
+            possibleSupport:
+              'Возможно опереться на то, что вы уже умеете спокойно делегировать задачи — это ваш освоенный навык.',
+          },
+        },
+        realQ3Context,
+      ),
+    ).toThrow(/meeting_source_conflation|meeting_unsupported_support_claim/);
+
+    // 5. Colleague quote/action -> rejected if colleague's action is attributed to the user
+    const colleagueContext = {
+      userQuestion: 'Коллега на планерке кричит: «я бросаю проект и увольняюсь», а я молча доделываю отчёт',
+      storyInputs: {
+        q1: 'Коллега на планерке кричит: «я бросаю проект и увольняюсь», а я молча доделываю отчёт',
+        q2: 'Стол с бумагами',
+        q3: 'На работе спокойно сверяю цифры в таблице',
+        q4: 'Ясных границ',
+      },
+      storyResult: { title: 'Отчёт', story: 'Ты закрываешь таблицу.' },
+    };
+    expect(() =>
+      parseMeetingResponse(
+        {
+          status: 'ok',
+          result: {
+            ...baseMeetingEnvelope.result,
+            summary: 'В вашей рабочей ситуации вы кричите на планерке и бросаете проект.',
+          },
+        },
+        colleagueContext,
+      ),
+    ).toThrow('meeting_source_conflation');
+
+    const validColleague = parseMeetingResponse(
+      {
+        status: 'ok',
+        result: {
+          ...baseMeetingEnvelope.result,
+          summary:
+            'В вашем вопросе вы описали ситуацию, где коллега на планерке кричит о желании бросить проект, а вы молча доделываете отчёт.',
+        },
+      },
+      colleagueContext,
+    );
+    expect(validColleague.status).toBe('ok');
+
+    // 6. Detail appearing ONLY in Myth -> rejected if attributed to user's own answer, allowed when attributed to Myth text
+    const mythOnlyDetailContext = {
+      userQuestion: 'Трудно выбрать приоритет',
+      storyInputs: {
+        q1: 'Трудно выбрать приоритет между двумя задачами',
+        q2: 'Деревянный стол',
+        q3: 'В жизни утром выписываю три главных пункта на лист',
+        q4: 'Ясности',
+      },
+      storyResult: {
+        title: 'Медный компас',
+        story: 'На подоконнике ты находишь старинный медный компас с тяжёлой стрелкой.',
+      },
+    };
+    expect(() =>
+      parseMeetingResponse(
+        {
+          status: 'ok',
+          result: {
+            ...baseMeetingEnvelope.result,
+            summary: 'В вашем ответе вы назвали старинный медный компас со стрелкой на подоконнике.',
+          },
+        },
+        mythOnlyDetailContext,
+      ),
+    ).toThrow('meeting_source_conflation');
+
+    const validMythDetail = parseMeetingResponse(
+      {
+        status: 'ok',
+        result: {
+          ...baseMeetingEnvelope.result,
+          summary:
+            'В тексте Мифа появляется образ старинного медного компаса, а в вашем ответе о реальном опыте вы назвали утренний список из трёх пунктов.',
+        },
+      },
+      mythOnlyDetailContext,
+    );
+    expect(validMythDetail.status).toBe('ok');
+  });
+
+  it('V5 Defect 2: intercepts self-quotation and mixed external-quote + self-danger inputs while ignoring third-party artistic quotes, negations, and metaphors', () => {
+    // Exact V5 architectural matrix
+    expect(containsCrisisLanguageText('Я хочу умереть')).toBe(true);
+    expect(containsCrisisLanguageText('Я сейчас думаю: «хочу умереть». Это про меня.')).toBe(true);
+    expect(containsCrisisLanguageText('В романе герой говорит: «хочу умереть».')).toBe(false);
+    expect(containsCrisisLanguageText('Я не хочу умереть')).toBe(false);
+    expect(containsCrisisLanguageText('Это профессиональное самоубийство')).toBe(false);
+
+    // Additional self-quoting and combined external quote + self-danger cases
+    expect(containsCrisisLanguageText('Я говорю себе: «не хочу больше жить».')).toBe(true);
+    expect(containsCrisisLanguageText('В романе герой говорит: «хочу умереть», и это про меня.')).toBe(true);
+    expect(
+      containsCrisisLanguageText('В романе герой говорит: «хочу умереть», а я сегодня решил покончить с собой.'),
+    ).toBe(true);
+    expect(
+      containsMeetingCrisisInput(
+        { storyInputs: { q1: 'Тяжёлая неделя', q2: 'Стол', q3: 'Пауза', q4: 'Тишина' } },
+        'Я сейчас думаю: «хочу умереть». Это про меня.',
+      ),
+    ).toBe(true);
+  });
 });

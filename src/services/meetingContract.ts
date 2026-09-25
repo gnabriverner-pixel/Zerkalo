@@ -33,7 +33,42 @@ const UNGROUNDED_OUTCOME_PROMISE = /(?:ночн[а-яё]*\s+переделк[а-
 
 const IMAGE_AS_TESTED_REAL_BEHAVIOR = /(?:удерживать\s+паузу,\s+как\s+вы\s+это\s+делаете,\s+когда\s+молча\s+забираете\s+папку|как\s+вы\s+это\s+делаете,\s+когда\s+(?:молча\s+)?(?:забираете\s+папку|закрываете\s+дверь)|вы\s+забираете\s+папку\s+и\s+закрываете\s+дверь[^.]*это\s+уже\s+испытанн[а-яё]*\s+вами\s+способ|это\s+уже\s+испытанн[а-яё]*\s+вами\s+способ)/iu;
 
-const EXPLICIT_IMAGE_ORIGIN_MARKER = /(?:в\s+(?:выбранном\s+вами\s+)?образе|в\s+образной\s+сцене|в\s+вашей\s+метафоре|в\s+метафорической\s+сцене|в\s+сюжете\s+мифа|в\s+сцене\s+мифа|внутри\s+образа)/iu;
+const EXPLICIT_IMAGE_ORIGIN_MARKER =
+  /(?:в\s+(?:выбранном\s+вами\s+)?образе|в\s+образной\s+сцене|в\s+вашей\s+метафоре|в\s+метафорической\s+сцене|в\s+сюжете\s+мифа|в\s+сцене\s+мифа|внутри\s+образа)/iu;
+
+const EXPLICIT_NEUTRAL_HYPOTHESIS_MARKER =
+  /(?:в\s+вашем\s+ответе[^.!?]{0,120}(?:можно\s+проверить|как\s+гипотез|стоит\s+проверить)|можно\s+проверить,\s+пригодится\s+ли)/iu;
+
+const UNKNOWN_RESOURCE_ANSWER =
+  /(?:^|[\s,])(?:не\s+знаю|ничего(?:\s+конкретного|\s+такого)?\s+не\s+(?:вспоминается|приходит)|не\s+могу\s+вспомнить|трудно\s+сказать|нет\s+такой\s+точки)(?:[.!\s,]|$)/iu;
+
+const EXPLICIT_REAL_EXPERIENCE_IN_Q3 =
+  /(?<![а-яё])(?:на\s+работе|в\s+рабочей\s+практике|в\s+жизни|в\s+реальности|по\s+утрам|по\s+вечерам|дома|с\s+командой|с\s+инженер[а-яё]*|с\s+клиент[а-яё]*|с\s+коллег[а-яё]*|с\s+заказчик[а-яё]*|на\s+созвон[а-яё]*|на\s+встреч[а-яё]*|когда\s+(?:я\s+)?(?:разбираю\s+смет|пишу\s+код|веду\s+ревью|обсуждаю\s+задач|готовлю\s+ужин|чиню|тренируюсь|гуляю\s+в\s+парке|работаю\s+в\s+мастерской|провод[а-яё]*\s+разбор))(?![а-яё])/iu;
+
+const SCENIC_METAPHOR_CUE_IN_Q3 =
+  /(?<![а-яё])(?:курьер[а-яё]*|папк[а-яё]*|плотн[а-яё]*\s+штор[а-яё]*|маяк[а-яё]*|остров[а-яё]*|шторм[а-яё]*|башн[а-яё]*|зам[ока][а-яё]*|корабл[а-яё]*|парус[а-яё]*|пещер[а-яё]*|манти[а-яё]*|сундук[а-яё]*|факел[а-яё]*)(?![а-яё])/iu;
+
+export type Q3ContentClassification = "unknown_resource" | "real_experience" | "imaginative_scene" | "ambiguous";
+
+export function classifyQ3Content(q3Raw?: string, q2Raw?: string): Q3ContentClassification {
+  const q3 = (q3Raw || "").trim();
+  if (!q3 || UNKNOWN_RESOURCE_ANSWER.test(q3)) {
+    return "unknown_resource";
+  }
+  const tokenize = (s: string) =>
+    (s.match(/[а-яё]{5,}/giu) || []).map((w) => w.toLowerCase().slice(0, 6));
+  const q2Stems = new Set(tokenize(q2Raw || ""));
+  const q3Stems = tokenize(q3);
+  const sharesQ2MetaphorStem = q3Stems.some((st) => q2Stems.has(st));
+
+  if (SCENIC_METAPHOR_CUE_IN_Q3.test(q3) || sharesQ2MetaphorStem) {
+    return "imaginative_scene";
+  }
+  if (EXPLICIT_REAL_EXPERIENCE_IN_Q3.test(q3)) {
+    return "real_experience";
+  }
+  return "ambiguous";
+}
 
 export interface MeetingSourceContext {
   userQuestion?: string;
@@ -64,36 +99,139 @@ export function hasSourceOriginConflation(
     return false;
   }
 
-  const realContextText = `${sourceContext.userQuestion || ""} ${sourceContext.storyInputs.q1 || ""}`.toLowerCase();
-  const imageContextText = `${sourceContext.storyInputs.q2 || ""} ${sourceContext.storyInputs.q3 || ""} ${sourceContext.storyInputs.q4 || ""}`.toLowerCase();
-  const mythFictionText = `${sourceContext.storyResult?.title || ""} ${sourceContext.storyResult?.story || ""}`.toLowerCase();
-
-  // Extract content tokens (>= 5 letters) that appear in image (q2-q4) or Myth fiction, but NOT in realContextText
   const tokenize = (s: string) =>
     (s.match(/[а-яё]{5,}/giu) || []).map((w) => w.toLowerCase().slice(0, 6));
-  const realStems = new Set(tokenize(realContextText));
-  const imageOnlyStems = new Set(tokenize(imageContextText).filter((stem) => !realStems.has(stem)));
-  const userAllStems = new Set([...realStems, ...imageOnlyStems]);
-  const mythOnlyStems = new Set(tokenize(mythFictionText).filter((stem) => !userAllStems.has(stem)));
 
-  const lowerVal = value.toLowerCase();
-  const valStems = tokenize(lowerVal);
+  const q1AndQuestion = [sourceContext.userQuestion, sourceContext.storyInputs.q1]
+    .filter(Boolean)
+    .join(".\n");
+  const q2Text = sourceContext.storyInputs.q2 || "";
+  const q3Text = sourceContext.storyInputs.q3 || "";
+  const q4Text = sourceContext.storyInputs.q4 || "";
+  const q3Kind = classifyQ3Content(q3Text, q2Text);
+
+  // Separate colleague/third-party clauses inside q1AndQuestion from user's own actions
+  const colleagueClauses: string[] = [];
+  const userRealText = q1AndQuestion.replace(
+    /(?:коллег[а-яё]*|начальник[а-яё]*|руководител[а-яё]*|партн[её]р[а-яё]*|клиент[а-яё]*|заказчик[а-яё]*|сосед[а-яё]*)[^.!?\n;]{0,120}/giu,
+    (match) => {
+      // Split if user's own clause follows after ", а я " or "; я "
+      const splitIdx = match.search(/,\s*(?:а|но)\s+я(?![а-яё])/iu);
+      if (splitIdx >= 0) {
+        colleagueClauses.push(match.slice(0, splitIdx));
+        return match.slice(splitIdx);
+      }
+      colleagueClauses.push(match);
+      return " ";
+    },
+  );
+
+  // Real experience context includes user's own q1/userQuestion PLUS q3 ONLY when q3 is an explicit real experience
+  const realExperienceText =
+    q3Kind === "real_experience" ? `${userRealText} ${q3Text}` : userRealText;
+  const realStems = new Set(tokenize(realExperienceText));
+
+  // Image stems come from q2, plus q3 when q3 is an imaginative scene
+  const imageSourceText =
+    q3Kind === "imaginative_scene" ? `${q2Text} ${q3Text}` : q2Text;
+  const imageOnlyStems = new Set(
+    tokenize(imageSourceText).filter((stem) => !realStems.has(stem)),
+  );
+
+  // Ambiguous q3 stems (neither explicitly real nor purely scenic metaphor)
+  const ambiguousQ3Stems = new Set(
+    q3Kind === "ambiguous"
+      ? tokenize(q3Text).filter((stem) => !realStems.has(stem) && !imageOnlyStems.has(stem))
+      : [],
+  );
+
+  // Desired direction stems from q4 (excluding stems already in real experience)
+  const q4WishOnlyStems = new Set(
+    tokenize(q4Text).filter(
+      (stem) => !realStems.has(stem) && !imageOnlyStems.has(stem) && !ambiguousQ3Stems.has(stem),
+    ),
+  );
+
+  // Colleague-only stems from colleague clauses in q1/userQuestion
+  const colleagueOnlyStems = new Set(
+    tokenize(colleagueClauses.join(" ")).filter((stem) => !realStems.has(stem)),
+  );
+
+  const allUserProvidedStems = new Set([
+    ...realStems,
+    ...imageOnlyStems,
+    ...ambiguousQ3Stems,
+    ...q4WishOnlyStems,
+    ...colleagueOnlyStems,
+  ]);
+
+  const mythFictionText = `${sourceContext.storyResult?.title || ""} ${sourceContext.storyResult?.story || ""} ${Object.values(sourceContext.storyResult?.mirror || {}).join(" ")}`;
+  const mythOnlyStems = new Set(
+    tokenize(mythFictionText).filter((stem) => !allUserProvidedStems.has(stem)),
+  );
+
+  const valStems = tokenize(value.toLowerCase());
   const referencesImageOnly = valStems.some((stem) => imageOnlyStems.has(stem));
+  const referencesAmbiguousQ3 = valStems.some((stem) => ambiguousQ3Stems.has(stem));
+  const referencesQ4WishOnly = valStems.some((stem) => q4WishOnlyStems.has(stem));
+  const referencesColleagueOnly = valStems.some((stem) => colleagueOnlyStems.has(stem));
   const referencesMythOnly = valStems.some((stem) => mythOnlyStems.has(stem));
 
-  // 1. If text references image-only stems and claims it is already practiced real-life behavior without image attribution
-  const claimsAlreadyPracticedInRealLife = /(?:как\s+вы\s+(?:это\s+)?делаете|уже\s+испытанн[а-яё]*\s+вами\s+способ|вы\s+уже\s+применяете\s+в\s+работе|ваша\s+привычк[а-яё]*\s+в\s+реальности)/iu.test(
-    value,
-  );
-  if (referencesImageOnly && claimsAlreadyPracticedInRealLife && !EXPLICIT_IMAGE_ORIGIN_MARKER.test(value)) {
+  const claimsAlreadyPracticedInRealLife =
+    /(?:как\s+вы\s+(?:это\s+|уже\s+)?делаете|уже\s+испытанн[а-яё]*\s+вами\s+(?:способ|при[её]м|опыт|опор)|вы\s+уже\s+(?:умеете|применяете|делаете|освоили|владеете)|ваш[а-яё]*\s+(?:освоенн[а-яё]*\s+навык|привычк[а-яё]*\s+в\s+реальности)|в\s+вас\s+уже\s+есть\s+(?:способность|навык|опора))/iu.test(
+      value,
+    );
+
+  // 1. Unknown resource in q3: must not claim the user already named a tested real-life support/skill
+  if (q3Kind === "unknown_resource" && claimsAlreadyPracticedInRealLife) {
     return true;
   }
 
-  // 2. If text claims the user themselves said/told a detail that exists ONLY in Myth fiction
-  const claimsUserToldMythFiction = /(?:вы\s+(?:сами\s+)?(?:рассказали|назвали|описали|упомянули)|в\s+вашем\s+ответе\s+вы\s+назвали)/iu.test(
-    value,
-  );
-  if (referencesMythOnly && !referencesImageOnly && claimsUserToldMythFiction && !/(?:в\s+мифе|в\s+истории|в\s+сказке)/iu.test(value)) {
+  // 2. Image in q2 or imaginative scene in q3: must not claim it is already practiced in real life without image attribution
+  if (
+    referencesImageOnly &&
+    claimsAlreadyPracticedInRealLife &&
+    !EXPLICIT_IMAGE_ORIGIN_MARKER.test(value)
+  ) {
+    return true;
+  }
+
+  // 3. Ambiguous q3: must not assert proven biographical habit unless framed neutrally as "в вашем ответе... можно проверить"
+  if (
+    referencesAmbiguousQ3 &&
+    claimsAlreadyPracticedInRealLife &&
+    !EXPLICIT_NEUTRAL_HYPOTHESIS_MARKER.test(value) &&
+    !EXPLICIT_IMAGE_ORIGIN_MARKER.test(value)
+  ) {
+    return true;
+  }
+
+  // 4. Desired direction in q4: never turn wished-for direction into an already mastered ability
+  if (referencesQ4WishOnly && claimsAlreadyPracticedInRealLife) {
+    return true;
+  }
+
+  // 5. Events with colleagues: never attribute colleague's actions directly to the user ("вы кричите и бросаете проект")
+  const mentionsColleagueActor =
+    /(?:коллег[а-яё]*|начальник[а-яё]*|руководител[а-яё]*|партн[её]р[а-яё]*|клиент[а-яё]*|заказчик[а-яё]*|другой\s+человек)/iu.test(
+      value,
+    );
+  if (referencesColleagueOnly && !mentionsColleagueActor && /(?<![а-яё])вы\s+[а-яё]+/iu.test(value)) {
+    return true;
+  }
+
+  // 6. Myth-only detail: never attribute literary details from storyResult to the user's own answers
+  const claimsUserToldMythFiction =
+    /(?:вы\s+(?:сами\s+)?(?:рассказали|назвали|описали|упомянули)|в\s+вашем\s+ответе\s+вы\s+(?:назвали|описали|упомянули))/iu.test(
+      value,
+    );
+  if (
+    referencesMythOnly &&
+    !referencesImageOnly &&
+    !referencesAmbiguousQ3 &&
+    claimsUserToldMythFiction &&
+    !/(?:в\s+(?:тексте\s+|сюжете\s+|истории\s+)?мифа|в\s+истории|в\s+сказке)/iu.test(value)
+  ) {
     return true;
   }
 

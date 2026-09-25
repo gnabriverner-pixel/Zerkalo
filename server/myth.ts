@@ -80,17 +80,45 @@ const CRISIS_LANGUAGE = [
 export const SAFE_CRISIS_MESSAGE =
   "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой.";
 
+const SELF_DANGER_ENDORSEMENT =
+  /(?<![а-яё])(?:это\s+(?:как\s+раз\s+|прямо\s+|точно\s+)?про\s+меня|и\s+это\s+про\s+меня|про\s+себя\s+могу\s+сказать|я\s+(?:сейчас\s+|сегодня\s+|тоже\s+|сам[аи]?\s+)*(?:так\s+же\s+)?(?:думаю|чувствую|ощущаю|решил[аи]?|говорю\s+себе|пишу\s+о\s+себе)|в\s+моей\s+голове|мо[яи]\s+мысл[ьи])(?![а-яё])/iu;
+
+const THIRD_PARTY_QUOTE_ATTRIBUTION =
+  /(?:цитат[а-яё]*|процитировал[а-яё]*|в\s+(?:книге|песне|фильме|романе|статье|стихах|пьесе)|(?:автор|герой|персонаж|коллега|начальник|руководитель|клиент|друг|подруга|сосед|он|она)\s+(?:на\s+[а-яё]+\s+|в\s+[а-яё]+\s+)?(?:пишет|говорит|сказал[а-яё]*|написал[а-яё]*|кричит|произнёс|произнесла|процитировал[а-яё]*)|строчк[а-яё]*\s+из\s+(?:песни|книги|стихов))[^.!?\n«"“]{0,60}[\s:,-]*$/iu;
+
 export function containsCrisisLanguageText(rawText: string): boolean {
   if (!rawText || typeof rawText !== "string") return false;
-  let text = rawText.trim();
+  const text = rawText.trim();
   if (!text) return false;
 
-  // 1. Strip quoted segments when accompanied by surrounding unquoted text or explicit citation markers
-  const strippedQuotes = text
-    .replace(/(?:цитат[а-яё]*|процитировал[а-яё]*|в\s+(?:книге|песне|фильме|романе|статье|стихах)[^.!?\n]{0,50}|автор\s+пишет|герой\s+говорит|сказал[а-яё]*|строчк[а-яё]*|фраз[а-яё]*)[\s:,-]*(?:«[^»]*»|"[^"]*"|“[^”]*”)/giu, " ")
-    .replace(/«[^»]*»/gu, (match) => (text.replace(match, "").trim().length > 10 ? " " : match))
-    .replace(/"[^"]*"/gu, (match) => (text.replace(match, "").trim().length > 10 ? " " : match))
-    .replace(/“[^”]*”/gu, (match) => (text.replace(match, "").trim().length > 10 ? " " : match));
+  const hasSelfEndorsement = SELF_DANGER_ENDORSEMENT.test(text);
+
+  // 1. Only strip a quoted span if its immediate prefix attributes it to an external artistic source
+  // or another person (colleague/character) AND the message does not endorse the quote as being about oneself.
+  // Never strip quotes based on surrounding text length, and never strip first-person quotes ("Я думаю: «...»").
+  const strippedQuotes = text.replace(
+    /(«[^»]*»|"[^"]*"|“[^”]*”)/gu,
+    (quotedSpan, _group, offset: number, fullString: string) => {
+      if (hasSelfEndorsement) {
+        // Unwrap quotes so the inner text is checked as the speaker's own thought
+        return ` ${quotedSpan.slice(1, -1)} `;
+      }
+      const prefix = fullString.slice(Math.max(0, offset - 120), offset);
+      // restrict prefix to the current sentence/clause unless colon connects them
+      const lastSentenceBreak = Math.max(
+        prefix.lastIndexOf("."),
+        prefix.lastIndexOf("!"),
+        prefix.lastIndexOf("?"),
+        prefix.lastIndexOf("\n"),
+      );
+      const localPrefix = lastSentenceBreak >= 0 ? prefix.slice(lastSentenceBreak + 1) : prefix;
+      const isFirstPersonPrefix = /(?<![а-яё])(?:я|мне|мо[яйеи]|себе)(?![а-яё])/iu.test(localPrefix);
+      if (!isFirstPersonPrefix && THIRD_PARTY_QUOTE_ATTRIBUTION.test(localPrefix)) {
+        return " ";
+      }
+      return ` ${quotedSpan.slice(1, -1)} `;
+    },
+  );
 
   // 2. Strip work/colloquial metaphors
   const strippedMetaphors = strippedQuotes
