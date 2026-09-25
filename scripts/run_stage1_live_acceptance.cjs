@@ -46,7 +46,13 @@ function parseArgs() {
     }
   }
 
-  return { outDirArg, dcsRootArg, explicitWebPort, explicitDcsPort, allowDirty };
+  const parsedWebPort = explicitWebPort ? parseValidPort(explicitWebPort, "webPort") : null;
+  const parsedDcsPort = explicitDcsPort ? parseValidPort(explicitDcsPort, "dcsPort") : null;
+  if (parsedWebPort !== null && parsedDcsPort !== null && parsedWebPort === parsedDcsPort) {
+    throw new Error(`[stage1-live] Invalid port configuration: webPort (${parsedWebPort}) and dcsPort (${parsedDcsPort}) must be distinct.`);
+  }
+
+  return { outDirArg, dcsRootArg, parsedWebPort, parsedDcsPort, allowDirty };
 }
 
 function git(cwd, ...gitArgs) {
@@ -73,7 +79,12 @@ function canBindPort(host, port) {
   return new Promise((resolve) => {
     const srv = net.createServer();
     srv.once("error", () => resolve(false));
-    srv.listen(port, host, () => srv.close(() => resolve(true)));
+    const onListen = () => srv.close(() => resolve(true));
+    if (host) {
+      srv.listen(port, host, onListen);
+    } else {
+      srv.listen(port, onListen);
+    }
   });
 }
 
@@ -81,6 +92,8 @@ async function isPortAvailable(port) {
   if (await canConnectTcp("127.0.0.1", port)) return false;
   if (await canConnectTcp("::1", port)) return false;
   if (!(await canBindPort("127.0.0.1", port))) return false;
+  if (!(await canBindPort("0.0.0.0", port))) return false;
+  if (!(await canBindPort(undefined, port))) return false;
   return true;
 }
 
@@ -112,6 +125,16 @@ function isPidAlive(pid) {
   }
 }
 
+function killPidAndGroup(pid, signal) {
+  if (!pid || typeof pid !== "number" || pid <= 0) return;
+  try {
+    process.kill(-pid, signal);
+  } catch {}
+  try {
+    process.kill(pid, signal);
+  } catch {}
+}
+
 async function getJson(url) {
   const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
   return { status: response.status, ok: response.ok, body: await response.json().catch(() => null) };
@@ -129,7 +152,38 @@ const synthetic = {
   note: "В знакомых задачах я решаю быстро; хочу проверить, где пауза действительно полезна.",
 };
 
-async function startFreshManagedPair({ dcsRoot, webPort, dcsPort, actualWebSha, actualDcsSha, outDir, allowDirty = false }) {
+let activeManagedPair = null;
+
+function refreshPidsFromStatusFile(managedPair) {
+  if (!managedPair || !managedPair.statusFile) return;
+  try {
+    if (fs.existsSync(managedPair.statusFile)) {
+      const parsed = JSON.parse(fs.readFileSync(managedPair.statusFile, "utf8")) || {};
+      managedPair.pairStatus = parsed;
+      if (parsed.web_pid) managedPair.webPid = parsed.web_pid;
+      if (parsed.dcs_pid) managedPair.dcsPid = parsed.dcs_pid;
+    }
+  } catch {}
+}
+
+process.on("exit", () => {
+  if (!activeManagedPair) return;
+  refreshPidsFromStatusFile(activeManagedPair);
+  const targetPids = [activeManagedPair.pairPid, activeManagedPair.webPid, activeManagedPair.dcsPid].filter(
+    (p) => typeof p === "number" && p > 0
+  );
+  for (const pid of targetPids) {
+    killPidAndGroup(pid, "SIGKILL");
+  }
+});
+
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.on(sig, () => {
+    void stopManagedPair(activeManagedPair).finally(() => process.exit(1));
+  });
+}
+
+async function startFreshManagedPair(managedPair, { dcsRoot, webPort, dcsPort, actualWebSha, actualDcsSha, outDir, allowDirty = false }) {
   if (!(await isPortAvailable(dcsPort))) {
     throw new Error(`[stage1-live] DCS port ${dcsPort} is already occupied. Refusing to reuse or kill existing process.`);
   }
@@ -143,6 +197,12 @@ async function startFreshManagedPair({ dcsRoot, webPort, dcsPort, actualWebSha, 
   if (fs.existsSync(statusFile)) {
     fs.unlinkSync(statusFile);
   }
+
+  managedPair.webUrl = webUrl;
+  managedPair.dcsUrl = dcsUrl;
+  managedPair.webPort = webPort;
+  managedPair.dcsPort = dcsPort;
+  managedPair.statusFile = statusFile;
 
   const pairArgs = [
     path.join(__dirname, "run_stage1_pair.cjs"),
@@ -167,56 +227,59 @@ async function startFreshManagedPair({ dcsRoot, webPort, dcsPort, actualWebSha, 
     cwd: webRoot,
     env: process.env,
     stdio: ["ignore", "pipe", "pipe"],
+    detached: true,
   });
+  managedPair.managedProc = managedProc;
+  managedPair.pairPid = managedProc.pid;
 
+  const bootTimeoutMs = Number(process.env.STAGE1_PAIR_BOOT_TIMEOUT_MS || 25000);
   await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Timed out waiting for run_stage1_pair.cjs to boot")), 25000);
+    const timeout = setTimeout(() => {
+      refreshPidsFromStatusFile(managedPair);
+      reject(new Error("Timed out waiting for run_stage1_pair.cjs to boot"));
+    }, bootTimeoutMs);
     let logBuf = "";
-    managedProc.stdout.on("data", (chunk) => {
-      logBuf += chunk.toString();
+    const onChunk = (chunk) => {
+      const text = chunk.toString();
+      logBuf += text;
+      const dcsMatch = logBuf.match(/SPAWNED_DCS dcs_pid=(\d+)/);
+      if (dcsMatch) managedPair.dcsPid = Number(dcsMatch[1]);
+      const webMatch = logBuf.match(/SPAWNED_WEB web_pid=(\d+)/);
+      if (webMatch) managedPair.webPid = Number(webMatch[1]);
+      refreshPidsFromStatusFile(managedPair);
       if (logBuf.includes("PAIR_RUNNING")) {
         clearTimeout(timeout);
         resolve();
       }
-    });
-    managedProc.stderr.on("data", (chunk) => {
-      logBuf += chunk.toString();
-    });
+    };
+    managedProc.stdout.on("data", onChunk);
+    managedProc.stderr.on("data", onChunk);
     managedProc.on("exit", (code) => {
       clearTimeout(timeout);
+      refreshPidsFromStatusFile(managedPair);
       reject(new Error(`run_stage1_pair.cjs exited early (${code}): ${logBuf.slice(-500)}`));
     });
   });
 
-  const pairStatus = fs.existsSync(statusFile) ? JSON.parse(fs.readFileSync(statusFile, "utf8")) : {};
-  return {
-    managedProc,
-    webUrl,
-    dcsUrl,
-    webPort,
-    dcsPort,
-    pairStatus,
-    pairPid: managedProc.pid,
-    webPid: pairStatus.web_pid || null,
-    dcsPid: pairStatus.dcs_pid || null,
-  };
+  refreshPidsFromStatusFile(managedPair);
+  return managedPair;
 }
 
 async function stopManagedPair(managedPair) {
   if (!managedPair) return { terminatedOnExit: false, allChildrenStopped: true };
+  refreshPidsFromStatusFile(managedPair);
   const { managedProc, pairPid, webPid, dcsPid } = managedPair;
   const targetPids = [pairPid, webPid, dcsPid].filter((p) => typeof p === "number" && p > 0);
+  if (targetPids.length === 0) {
+    return { terminatedOnExit: false, allChildrenStopped: true };
+  }
 
   if (managedProc && managedProc.exitCode === null) {
-    try {
-      managedProc.kill("SIGTERM");
-    } catch {}
+    killPidAndGroup(managedProc.pid, "SIGTERM");
   }
   for (const pid of targetPids) {
     if (isPidAlive(pid)) {
-      try {
-        process.kill(pid, "SIGTERM");
-      } catch {}
+      killPidAndGroup(pid, "SIGTERM");
     }
   }
 
@@ -227,9 +290,7 @@ async function stopManagedPair(managedPair) {
 
   for (const pid of targetPids) {
     if (isPidAlive(pid)) {
-      try {
-        process.kill(pid, "SIGKILL");
-      } catch {}
+      killPidAndGroup(pid, "SIGKILL");
     }
   }
   await new Promise((r) => setTimeout(r, 100));
@@ -242,23 +303,18 @@ async function stopManagedPair(managedPair) {
 }
 
 async function main() {
-  const { outDirArg, dcsRootArg, explicitWebPort, explicitDcsPort, allowDirty } = parseArgs();
-  const outDir =
-    outDirArg ||
-    path.resolve(process.env.STAGE1_EVIDENCE_DIR || path.join(webRoot, "../../outputs/convergence-evidence-v2/live-run"));
-  fs.mkdirSync(outDir, { recursive: true });
-  const resultPath = path.join(outDir, "result.json");
+  const { outDirArg, dcsRootArg, parsedWebPort, parsedDcsPort, allowDirty } = parseArgs();
 
   const isLifecycleSelfTest =
     process.env.STAGE1_LIFECYCLE_SELF_TEST === "1" &&
-    process.env.STAGE1_SIMULATE_BROWSER_LAUNCH_FAILURE === "1";
+    (process.env.STAGE1_SIMULATE_BROWSER_LAUNCH_FAILURE === "1" || process.env.STAGE1_HANG_AFTER_DCS_START === "1");
 
   if (allowDirty && !isLifecycleSelfTest) {
     throw new Error("allow_dirty_forbidden_for_live_acceptance: release live acceptance requires clean git working trees.");
   }
 
-  let dcsPort = explicitDcsPort ? parseValidPort(explicitDcsPort, "dcsPort") : await allocateFreePort();
-  let webPort = explicitWebPort ? parseValidPort(explicitWebPort, "webPort") : await allocateFreePort(dcsPort);
+  let dcsPort = parsedDcsPort !== null ? parsedDcsPort : await allocateFreePort();
+  let webPort = parsedWebPort !== null ? parsedWebPort : await allocateFreePort(dcsPort);
   if (webPort === dcsPort) {
     throw new Error(`[stage1-live] Invalid port configuration: webPort (${webPort}) and dcsPort (${dcsPort}) must be distinct.`);
   }
@@ -273,8 +329,26 @@ async function main() {
     throw new Error(`dirty_tree_rejected: webDirty=${webDirty} dcsDirty=${dcsDirty}`);
   }
 
+  const outDir =
+    outDirArg ||
+    path.resolve(process.env.STAGE1_EVIDENCE_DIR || path.join(webRoot, "../../outputs/convergence-evidence-v2/live-run"));
+  fs.mkdirSync(outDir, { recursive: true });
+  const resultPath = path.join(outDir, "result.json");
+
   const startedAt = new Date().toISOString();
-  let managedPair = null;
+  const managedPair = {
+    managedProc: null,
+    webUrl: `http://127.0.0.1:${webPort}`,
+    dcsUrl: `http://127.0.0.1:${dcsPort}`,
+    webPort,
+    dcsPort,
+    statusFile: null,
+    pairStatus: {},
+    pairPid: null,
+    webPid: null,
+    dcsPid: null,
+  };
+  activeManagedPair = managedPair;
   let browser = null;
   let page = null;
 
@@ -296,7 +370,7 @@ async function main() {
   };
 
   try {
-    managedPair = await startFreshManagedPair({
+    await startFreshManagedPair(managedPair, {
       dcsRoot,
       webPort,
       dcsPort,
@@ -461,6 +535,7 @@ async function main() {
     const envConfigCheck = {
       web_env_file_path: pairStatus.web_env_file_path || path.join(webRoot, ".env"),
       web_env_file_exists: Boolean(pairStatus.web_env_file_exists),
+      routerai_key_in_web_env_file: Boolean(pairStatus.routerai_key_in_web_env_file),
       routerai_api_key_configured: Boolean(pairStatus.routerai_key_configured_in_env),
       provider_configured: Boolean(readyBefore.body?.provider_configured),
     };

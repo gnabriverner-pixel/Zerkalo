@@ -99,9 +99,21 @@ describe("Stage 1 Runner Lifecycle, Key Source & Contract Regression Gate", () =
       expect(res.code).toBe(1);
       expect(res.stderr).toMatch(/Invalid (webPort|dcsPort|port configuration)/);
     }
+
+    const nonexistentDir = path.join(os.tmpdir(), `stage1-should-not-create-${Date.now()}`);
+    expect(fs.existsSync(nonexistentDir)).toBe(false);
+    const liveInvalidRes = await runNodeScript(
+      liveScript,
+      ["--web-port", "invalid", "--OutputDir", nonexistentDir],
+      {},
+      5000
+    );
+    expect(liveInvalidRes.code).toBe(1);
+    expect(liveInvalidRes.stderr).toMatch(/Invalid webPort/);
+    expect(fs.existsSync(nonexistentDir)).toBe(false);
   });
 
-  it("never kills a foreign process occupying a port and fails closed with a clear error", async () => {
+  it("never kills a foreign process occupying a port (including wildcard 0.0.0.0) and fails closed with a clear error", async () => {
     const occupiedPort = await allocateFreePort();
     const freeDcsPort = await allocateFreePort(occupiedPort);
 
@@ -111,7 +123,7 @@ describe("Stage 1 Runner Lifecycle, Key Source & Contract Regression Gate", () =
         "-e",
         `const http = require("node:http");
          const srv = http.createServer((_req, res) => { res.writeHead(200); res.end("foreign-alive"); });
-         srv.listen(${occupiedPort}, "127.0.0.1", () => console.log("HOLDER_LISTENING"));`,
+         srv.listen(${occupiedPort}, "0.0.0.0", () => console.log("HOLDER_LISTENING"));`,
       ],
       { stdio: ["ignore", "pipe", "pipe"] }
     );
@@ -126,19 +138,26 @@ describe("Stage 1 Runner Lifecycle, Key Source & Contract Regression Gate", () =
 
       expect(isPidAlive(holderProc.pid)).toBe(true);
 
-      const res = await runNodeScript(
+      // Pause foreign holder with SIGSTOP so TCP connect times out; bind check on 0.0.0.0 must still detect occupation
+      process.kill(holderProc.pid!, "SIGSTOP");
+      const pausedRes = await runNodeScript(
         pairScript,
         ["--web-port", String(occupiedPort), "--dcs-port", String(freeDcsPort), "--allow-dirty"],
         {},
         10000
       );
+      process.kill(holderProc.pid!, "SIGCONT");
 
-      expect(res.code).toBe(1);
-      expect(res.stderr).toContain(`port ${occupiedPort} is already occupied`);
+      expect(pausedRes.code).toBe(1);
+      expect(pausedRes.stderr).toContain(`port ${occupiedPort} is already occupied`);
       expect(isPidAlive(holderProc.pid)).toBe(true);
+
       const checkResp = await fetch(`http://127.0.0.1:${occupiedPort}`);
       expect(await checkResp.text()).toBe("foreign-alive");
     } finally {
+      try {
+        process.kill(holderProc.pid!, "SIGCONT");
+      } catch {}
       try {
         holderProc.kill("SIGTERM");
       } catch {}
@@ -204,10 +223,13 @@ describe("Stage 1 Runner Lifecycle, Key Source & Contract Regression Gate", () =
     expect(res.stderr).not.toContain(secrets.CONTINUATION_CLAIM_SECRET);
     const statusContent = fs.readFileSync(statusFile, "utf8");
     expect(statusContent).not.toContain(secrets.CONTINUATION_CLAIM_SECRET);
+    const parsedStatus = JSON.parse(statusContent);
+    expect(isPidAlive(parsedStatus.web_pid)).toBe(false);
+    expect(isPidAlive(parsedStatus.dcs_pid)).toBe(false);
     fs.unlinkSync(statusFile);
   }, 40000);
 
-  it("live acceptance rejects --allow-dirty in normal mode, spawns its own fresh pair with initial live_generation=false, and cleans up on browser launch failure", async () => {
+  it("live acceptance rejects --allow-dirty in normal mode, spawns its own fresh pair with initial live_generation=false, and cleans up on boot timeout or browser launch failure", async () => {
     const dcsRoot = resolveDcsRoot();
     expect(fs.existsSync(path.join(dcsRoot, "engine.py"))).toBe(true);
 
@@ -231,7 +253,30 @@ describe("Stage 1 Runner Lifecycle, Key Source & Contract Regression Gate", () =
     await new Promise<void>((resolve) => fakeServer.listen(0, "127.0.0.1", () => resolve()));
 
     const tmpOutDir = fs.mkdtempSync(path.join(os.tmpdir(), "stage1-live-test-"));
+    const tmpTimeoutDir = fs.mkdtempSync(path.join(os.tmpdir(), "stage1-live-timeout-"));
     try {
+      // 3. Verify boot timeout in startFreshManagedPair still cleans up pairPid and dcsPid
+      const timeoutRes = await runNodeScript(
+        liveScript,
+        ["--dcs-root", dcsRoot, "--OutputDir", tmpTimeoutDir],
+        {
+          STAGE1_LIFECYCLE_SELF_TEST: "1",
+          STAGE1_HANG_AFTER_DCS_START: "1",
+          STAGE1_PAIR_BOOT_TIMEOUT_MS: "2500",
+        },
+        25000
+      );
+      expect(timeoutRes.code).toBe(1);
+      const timeoutJson = JSON.parse(fs.readFileSync(path.join(tmpTimeoutDir, "result.json"), "utf8"));
+      expect(timeoutJson.failedStage).toBe("pair_bootstrap");
+      expect(timeoutJson.managedProcesses.pairPid).toBeGreaterThan(0);
+      expect(timeoutJson.managedProcesses.dcsPid).toBeGreaterThan(0);
+      expect(timeoutJson.managedProcesses.terminatedOnExit).toBe(true);
+      expect(timeoutJson.managedProcesses.allChildrenStopped).toBe(true);
+      expect(isPidAlive(timeoutJson.managedProcesses.pairPid)).toBe(false);
+      expect(isPidAlive(timeoutJson.managedProcesses.dcsPid)).toBe(false);
+
+      // 4. Verify fresh pair startup + browser launch failure cleanup
       const res = await runNodeScript(
         liveScript,
         ["--dcs-root", dcsRoot, "--OutputDir", tmpOutDir],
@@ -260,8 +305,9 @@ describe("Stage 1 Runner Lifecycle, Key Source & Contract Regression Gate", () =
     } finally {
       fakeServer.close();
       fs.rmSync(tmpOutDir, { recursive: true, force: true });
+      fs.rmSync(tmpTimeoutDir, { recursive: true, force: true });
     }
-  }, 45000);
+  }, 60000);
 
   it("documents PR #115 central_motif object incompatibility against current Web envelope builder", () => {
     const canonicalEnv = buildCanonicalEnvelopeFromWebContext(

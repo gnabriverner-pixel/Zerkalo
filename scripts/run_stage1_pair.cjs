@@ -4,14 +4,11 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const net = require("node:net");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 const dotenv = require("dotenv");
 
 const webRoot = path.resolve(__dirname, "..");
 const webEnvPath = path.join(webRoot, ".env");
-const webEnvFileExists = fs.existsSync(webEnvPath);
-if (webEnvFileExists) {
-  dotenv.config({ path: webEnvPath, override: false });
-}
 
 function parseValidPort(rawValue, label) {
   const str = String(rawValue ?? "").trim();
@@ -30,6 +27,8 @@ function parseArgs() {
   let dcsRootArg = "";
   let webShaArg = "";
   let dcsShaArg = "";
+  let explicitWebPort = "";
+  let explicitDcsPort = "";
   let rawWebPort = process.env.PORT || process.env.STAGE1_WEB_PORT || "3018";
   let rawDcsPort = process.env.DCS_PORT || process.env.STAGE1_DCS_PORT || "39500";
   let statusFile = "";
@@ -49,10 +48,12 @@ function parseArgs() {
       dcsShaArg = args[i + 1].trim();
       i += 1;
     } else if ((a === "--web-port" || a === "--port") && args[i + 1] !== undefined) {
-      rawWebPort = args[i + 1];
+      explicitWebPort = args[i + 1];
+      rawWebPort = explicitWebPort;
       i += 1;
     } else if (a === "--dcs-port" && args[i + 1] !== undefined) {
-      rawDcsPort = args[i + 1];
+      explicitDcsPort = args[i + 1];
+      rawDcsPort = explicitDcsPort;
       i += 1;
     } else if ((a === "--StatusFile" || a === "--status-file") && args[i + 1] !== undefined) {
       statusFile = path.resolve(args[i + 1]);
@@ -75,7 +76,38 @@ function parseArgs() {
     throw new Error(`[stage1-pair] Invalid port configuration: webPort (${webPort}) and dcsPort (${dcsPort}) must be distinct.`);
   }
 
-  return { dcsRootArg, webShaArg, dcsShaArg, webPort, dcsPort, statusFile, checkOnly, allowDirty, autoPorts };
+  return {
+    dcsRootArg,
+    webShaArg,
+    dcsShaArg,
+    explicitWebPort,
+    explicitDcsPort,
+    webPort,
+    dcsPort,
+    statusFile,
+    checkOnly,
+    allowDirty,
+    autoPorts,
+  };
+}
+
+function loadAllowedWebEnv() {
+  const webEnvFileExists = fs.existsSync(webEnvPath);
+  let parsedWebEnv = {};
+  if (webEnvFileExists) {
+    try {
+      parsedWebEnv = dotenv.parse(fs.readFileSync(webEnvPath, "utf8"));
+    } catch {
+      parsedWebEnv = {};
+    }
+    for (const [k, v] of Object.entries(parsedWebEnv)) {
+      if (process.env[k] === undefined || String(process.env[k]).trim() === "") {
+        process.env[k] = String(v);
+      }
+    }
+  }
+  const routerAiKeyInWebEnvFile = Boolean(parsedWebEnv.ROUTERAI_API_KEY && String(parsedWebEnv.ROUTERAI_API_KEY).trim());
+  return { webEnvFileExists, parsedWebEnv, routerAiKeyInWebEnvFile };
 }
 
 function git(cwd, ...gitArgs) {
@@ -102,7 +134,12 @@ function canBindPort(host, port) {
   return new Promise((resolve) => {
     const srv = net.createServer();
     srv.once("error", () => resolve(false));
-    srv.listen(port, host, () => srv.close(() => resolve(true)));
+    const onListen = () => srv.close(() => resolve(true));
+    if (host) {
+      srv.listen(port, host, onListen);
+    } else {
+      srv.listen(port, onListen);
+    }
   });
 }
 
@@ -110,6 +147,8 @@ async function isPortAvailable(port) {
   if (await canConnectTcp("127.0.0.1", port)) return false;
   if (await canConnectTcp("::1", port)) return false;
   if (!(await canBindPort("127.0.0.1", port))) return false;
+  if (!(await canBindPort("0.0.0.0", port))) return false;
+  if (!(await canBindPort(undefined, port))) return false;
   return true;
 }
 
@@ -215,16 +254,36 @@ async function waitHttpJson(url, timeoutMs = 20000, shouldAbort = () => false) {
 const children = [];
 let shuttingDown = false;
 
+function isPidAlive(pid) {
+  if (!pid || typeof pid !== "number" || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function isChildRunning(child) {
-  return Boolean(child && child.exitCode === null && child.signalCode === null);
+  if (!child) return false;
+  if (child.exitCode === null && child.signalCode === null) return true;
+  return isPidAlive(child.pid);
+}
+
+function killChildProcess(child, signal) {
+  if (!child || !child.pid) return;
+  try {
+    process.kill(-child.pid, signal);
+  } catch {}
+  try {
+    child.kill(signal);
+  } catch {}
 }
 
 async function stopAllChildren() {
   for (const child of children) {
     if (isChildRunning(child)) {
-      try {
-        child.kill("SIGTERM");
-      } catch {}
+      killChildProcess(child, "SIGTERM");
     }
   }
   const deadline = Date.now() + 1500;
@@ -233,9 +292,7 @@ async function stopAllChildren() {
   }
   for (const child of children) {
     if (isChildRunning(child)) {
-      try {
-        child.kill("SIGKILL");
-      } catch {}
+      killChildProcess(child, "SIGKILL");
     }
   }
 }
@@ -267,17 +324,34 @@ process.on("unhandledRejection", (err) => {
 process.on("exit", () => {
   for (const child of children) {
     if (isChildRunning(child)) {
-      try {
-        child.kill("SIGKILL");
-      } catch {}
+      killChildProcess(child, "SIGKILL");
     }
   }
 });
 
+function writeStatusSnapshot(statusFile, payload) {
+  if (!statusFile) return;
+  try {
+    fs.mkdirSync(path.dirname(statusFile), { recursive: true });
+    fs.writeFileSync(statusFile, JSON.stringify(payload, null, 2));
+  } catch {}
+}
+
 async function main() {
   const parsed = parseArgs();
-  const { dcsRootArg, webShaArg, dcsShaArg, statusFile, checkOnly, allowDirty, autoPorts } = parsed;
+  const { dcsRootArg, webShaArg, dcsShaArg, explicitWebPort, explicitDcsPort, statusFile, checkOnly, allowDirty, autoPorts } = parsed;
   let { webPort, dcsPort } = parsed;
+
+  const { webEnvFileExists, parsedWebEnv, routerAiKeyInWebEnvFile } = loadAllowedWebEnv();
+  if (!explicitWebPort && (parsedWebEnv.PORT || parsedWebEnv.STAGE1_WEB_PORT)) {
+    webPort = parseValidPort(parsedWebEnv.PORT || parsedWebEnv.STAGE1_WEB_PORT, "webPort");
+  }
+  if (!explicitDcsPort && (parsedWebEnv.DCS_PORT || parsedWebEnv.STAGE1_DCS_PORT)) {
+    dcsPort = parseValidPort(parsedWebEnv.DCS_PORT || parsedWebEnv.STAGE1_DCS_PORT, "dcsPort");
+  }
+  if (webPort === dcsPort) {
+    throw new Error(`[stage1-pair] Invalid port configuration: webPort (${webPort}) and dcsPort (${dcsPort}) must be distinct.`);
+  }
 
   const nodeMajor = process.versions.node.split(".")[0];
   if (nodeMajor !== "24") {
@@ -378,9 +452,11 @@ async function main() {
     ROUTERAI_API_KEY: routerAiKeyValue,
     GOOGLE_API_KEY: googleApiKeyValue,
     GEMINI_API_KEY: geminiApiKeyValue,
+    TELEGRAM_V2_ALBERT_API_KEY: process.env.TELEGRAM_V2_ALBERT_API_KEY ? String(process.env.TELEGRAM_V2_ALBERT_API_KEY).trim() : "",
   };
 
   const hasRouterAiKey = Boolean(routerAiKeyValue);
+  const startedAt = new Date().toISOString();
   console.log(
     `[stage1-pair] Starting verified pair: Web=${actualWebSha.slice(0, 7)} (port ${webPort}), DCS=${actualDcsSha.slice(0, 7)} (port ${dcsPort}), webEnvFile=${webEnvFileExists ? "present" : "missing"}, ROUTERAI_API_KEY=${hasRouterAiKey ? "configured" : "unconfigured"}`
   );
@@ -389,9 +465,25 @@ async function main() {
   const dcsProc = spawn(
     pythonBin,
     ["-m", "integration.dcs_service", "--host", "127.0.0.1", "--port", String(dcsPort)],
-    { cwd: dcsRoot, env: { ...env, RELEASE_SHA: actualDcsSha, DCS_RELEASE_SHA: actualDcsSha }, stdio: "inherit" }
+    {
+      cwd: dcsRoot,
+      env: { ...env, RELEASE_SHA: actualDcsSha, DCS_RELEASE_SHA: actualDcsSha },
+      stdio: "inherit",
+      detached: true,
+    }
   );
   children.push(dcsProc);
+  console.log(`SPAWNED_DCS dcs_pid=${dcsProc.pid}`);
+  writeStatusSnapshot(statusFile, {
+    started_at: startedAt,
+    stage: "dcs_spawned",
+    pair_pid: process.pid,
+    dcs_pid: dcsProc.pid,
+    web_pid: null,
+    web_port: webPort,
+    dcs_port: dcsPort,
+  });
+
   dcsProc.on("exit", (code, signal) => {
     childExitedEarly = true;
     if (!shuttingDown) {
@@ -424,9 +516,30 @@ async function main() {
     return;
   }
 
-  const tsxCli = path.join(webRoot, "node_modules", "tsx", "dist", "cli.mjs");
-  const webProc = spawn(process.execPath, [tsxCli, "server.ts"], { cwd: webRoot, env, stdio: "inherit" });
+  if (process.env.STAGE1_HANG_AFTER_DCS_START === "1") {
+    console.error(`[stage1-pair] Simulated hang after DCS startup (dcs_pid=${dcsProc.pid}).`);
+    await new Promise((r) => setTimeout(r, 60000));
+  }
+
+  const tsxLoaderUrl = pathToFileURL(path.join(webRoot, "node_modules", "tsx", "dist", "loader.mjs")).href;
+  const webProc = spawn(process.execPath, ["--import", tsxLoaderUrl, "server.ts"], {
+    cwd: webRoot,
+    env,
+    stdio: "inherit",
+    detached: true,
+  });
   children.push(webProc);
+  console.log(`SPAWNED_WEB web_pid=${webProc.pid}`);
+  writeStatusSnapshot(statusFile, {
+    started_at: startedAt,
+    stage: "web_spawned",
+    pair_pid: process.pid,
+    dcs_pid: dcsProc.pid,
+    web_pid: webProc.pid,
+    web_port: webPort,
+    dcs_port: dcsPort,
+  });
+
   webProc.on("exit", (code, signal) => {
     childExitedEarly = true;
     if (!shuttingDown) {
@@ -464,7 +577,7 @@ async function main() {
   }
 
   const pairStatus = {
-    started_at: new Date().toISOString(),
+    started_at: startedAt,
     pair_pid: process.pid,
     web_pid: webProc.pid,
     dcs_pid: dcsProc.pid,
@@ -482,6 +595,7 @@ async function main() {
     dcs_url: bridgeUrl,
     web_env_file_path: webEnvPath,
     web_env_file_exists: webEnvFileExists,
+    routerai_key_in_web_env_file: routerAiKeyInWebEnvFile,
     routerai_key_configured_in_env: hasRouterAiKey,
     runtime_secrets_path: path.relative(webRoot, secretsFile),
     runtime_secrets_mode: "0600",
@@ -495,10 +609,7 @@ async function main() {
     health_ready_body: webReadyResp.body,
   };
 
-  if (statusFile) {
-    fs.mkdirSync(path.dirname(statusFile), { recursive: true });
-    fs.writeFileSync(statusFile, JSON.stringify(pairStatus, null, 2));
-  }
+  writeStatusSnapshot(statusFile, pairStatus);
 
   console.log(
     `PAIR_RUNNING web=${actualWebSha} dcs=${actualDcsSha} web_url=${webUrl} dcs_url=${bridgeUrl} pair_pid=${process.pid} web_pid=${webProc.pid} dcs_pid=${dcsProc.pid} transport_ready=${pairStatus.transport_ready} provider_configured=${pairStatus.provider_configured}`
