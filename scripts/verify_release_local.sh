@@ -29,7 +29,7 @@ fail() { printf '\033[1;31m[verify] FAIL:\033[0m %s\n' "$*" >&2; exit 1; }
 # Priority: --dcs-root flag > DCS_ROOT env > canonical sibling checkout.
 DCS_ROOT="${DCS_ROOT_ARG:-${DCS_ROOT:-}}"
 if [[ -z "$DCS_ROOT" ]]; then
-  for candidate in "$REPO_ROOT/../digital-code-system" "$HOME/code/digital-code-system"; do
+  for candidate in "$REPO_ROOT/../dcs-canonical-732" "$REPO_ROOT/../digital-code-system" "$HOME/code/digital-code-system"; do
     if [[ -d "$candidate/.git" ]]; then DCS_ROOT="$(cd "$candidate" && pwd)"; break; fi
   done
 fi

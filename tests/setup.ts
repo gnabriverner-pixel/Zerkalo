@@ -23,9 +23,12 @@ if (typeof window !== 'undefined') {
 }
 
 // Fail-closed DCS test environment resolution
+const canonicalWorktreeDcs = path.resolve(process.cwd(), "..", "dcs-canonical-732");
 const canonicalSiblingDcs = path.resolve(process.cwd(), "..", "digital-code-system");
 if (!process.env.DCS_ROOT) {
-  if (fs.existsSync(canonicalSiblingDcs)) {
+  if (fs.existsSync(canonicalWorktreeDcs)) {
+    process.env.DCS_ROOT = canonicalWorktreeDcs;
+  } else if (fs.existsSync(canonicalSiblingDcs)) {
     process.env.DCS_ROOT = canonicalSiblingDcs;
   } else {
     // Poison stale legacy fallback so dcsBridge.ts never silently uses obsolete clone
@@ -39,8 +42,11 @@ if (!process.env.DCS_ROOT) {
 
 // Deterministic Python 3.12+ binary resolution for tests
 if (!process.env.PYTHON_BIN) {
+  const dcsVenvPython = path.join(process.env.DCS_ROOT || "", ".venv", "bin", "python");
   const brewPython = "/opt/homebrew/bin/python3.12";
-  if (fs.existsSync(brewPython)) {
+  if (fs.existsSync(dcsVenvPython)) {
+    process.env.PYTHON_BIN = dcsVenvPython;
+  } else if (fs.existsSync(brewPython)) {
     process.env.PYTHON_BIN = brewPython;
   }
 }
