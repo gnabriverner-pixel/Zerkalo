@@ -30,6 +30,7 @@ import {
 export interface MeetingOfMirrorsProps {
   codeDate?: string;
   codeV2Payload?: CodeV2Payload | null;
+  codeReactions?: Record<string, 'confirmed' | 'rejected'>;
   journeyId?: string;
   userQuestion?: string;
   onUserQuestionChange?: (question: string) => void;
@@ -51,6 +52,7 @@ export interface MeetingOfMirrorsProps {
 export function MeetingOfMirrors({
   codeDate,
   codeV2Payload,
+  codeReactions,
   journeyId,
   userQuestion,
   onUserQuestionChange,
@@ -133,6 +135,7 @@ export function MeetingOfMirrors({
       userQuestion: userQuestion?.trim() || undefined,
       codeResult,
       codeV2Payload,
+      codeReactions: codeReactions && Object.keys(codeReactions).length > 0 ? codeReactions : undefined,
       journeyId,
       firstMirror: currentFirstMirror,
       storyInputs,
@@ -179,7 +182,8 @@ export function MeetingOfMirrors({
           codeData: {
             calc: codeResult,
             firstMirror: currentFirstMirror,
-            codeV2Payload: codeV2Payload || undefined
+            codeV2Payload: codeV2Payload || undefined,
+            codeReactions: codeReactions && Object.keys(codeReactions).length > 0 ? codeReactions : undefined
           },
           storyData: {
             storyInputs,
@@ -677,6 +681,7 @@ export function MeetingOfMirrors({
         journeyId={journeyId}
         codeV2Payload={codeV2Payload}
         codeV2Context={codeV2Payload?.albert_context}
+        codeReactions={codeReactions}
         userQuestion={userQuestion}
         onUserQuestionChange={onUserQuestionChange}
         userNote={userNote}

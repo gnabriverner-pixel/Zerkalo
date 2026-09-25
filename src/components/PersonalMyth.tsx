@@ -29,6 +29,9 @@ export default function PersonalMyth({
 }: PersonalMythProps = {}) {
   const protectedFetch = useProtectedFetch();
   const [step, setStep] = useState(initialResult ? 6 : 0);
+  const hasPrefilledFromQuestionRef = useRef<boolean>(
+    Boolean(initialInputs?.q1?.trim() || userQuestion?.trim())
+  );
   const [inputs, setInputs] = useState<StoryInputs>(() => {
     const base = initialInputs || { q1: '', q2: '', q3: '', q4: '' };
     const prefilledQ1 = base.q1.trim() ? base.q1 : (userQuestion?.trim() || '');
@@ -54,11 +57,21 @@ export default function PersonalMyth({
   }, [initialResult]);
 
   useEffect(() => {
+    if (!initialInputs && inputs.q1.trim()) {
+      onInputsChange?.(inputs);
+    }
+  }, []);
+
+  useEffect(() => {
     if (initialInputs) {
       setInputs((prev) => {
-        const nextQ1 = initialInputs.q1.trim()
-          ? initialInputs.q1
-          : (prev.q1.trim() ? prev.q1 : (userQuestion?.trim() || ''));
+        let nextQ1 = initialInputs.q1;
+        if (!nextQ1.trim() && !hasPrefilledFromQuestionRef.current && userQuestion?.trim()) {
+          nextQ1 = userQuestion.trim();
+          hasPrefilledFromQuestionRef.current = true;
+        } else if (nextQ1.trim()) {
+          hasPrefilledFromQuestionRef.current = true;
+        }
         return {
           q1: nextQ1,
           q2: initialInputs.q2,
@@ -66,7 +79,8 @@ export default function PersonalMyth({
           q4: initialInputs.q4,
         };
       });
-    } else if (userQuestion?.trim()) {
+    } else if (!hasPrefilledFromQuestionRef.current && userQuestion?.trim()) {
+      hasPrefilledFromQuestionRef.current = true;
       setInputs((prev) => {
         const next = prev.q1.trim() ? prev : { ...prev, q1: userQuestion.trim() };
         onInputsChange?.(next);

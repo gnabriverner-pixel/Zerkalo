@@ -102,6 +102,7 @@ function AppContent() {
   // Shared state between lenses
   const [codeDate, setCodeDate] = useState<string>('');
   const [userQuestion, setUserQuestion] = useState<string>('');
+  const [codeReactions, setCodeReactions] = useState<Record<string, 'confirmed' | 'rejected'>>({});
   const [codeResult, setCodeResult] = useState<CalculationResult | null>(null);
   const [firstMirror, setFirstMirror] = useState<FirstMirror | null>(null);
   const [storyInputs, setStoryInputs] = useState<StoryInputs | null>(null);
@@ -158,6 +159,7 @@ function AppContent() {
         mode,
         codeDate,
         userQuestion,
+        codeReactions,
         codeResult,
         codeV2Payload,
         journeyId,
@@ -169,7 +171,7 @@ function AppContent() {
       });
       setTransientDraft(loadTransientDraft());
     }
-  }, [mode, codeDate, userQuestion, codeResult, codeV2Payload, journeyId, firstMirror, storyInputs, storyResult, meetingResult, meetingUserNote]);
+  }, [mode, codeDate, userQuestion, codeReactions, codeResult, codeV2Payload, journeyId, firstMirror, storyInputs, storyResult, meetingResult, meetingUserNote]);
 
   const handleRestoreSavedMirror = () => {
     const snapshot = loadMyMirrorSnapshot();
@@ -179,6 +181,7 @@ function AppContent() {
     setJourneyId(snapshot.journeyId || truthJourneyKey(snapshot.codeResult, snapshot.storyResult, snapshot.meetingResult));
     setCodeDate(snapshot.codeDate);
     setUserQuestion(snapshot.userQuestion ?? '');
+    setCodeReactions(snapshot.codeReactions ?? {});
     setCodeResult(snapshot.codeResult);
     setFirstMirror(snapshot.firstMirror);
     setStoryInputs(snapshot.storyInputs);
@@ -201,6 +204,7 @@ function AppContent() {
     setJourneyId(draft.journeyId || truthJourneyKey(draft.codeResult, draft.storyResult, draft.meetingResult));
     setCodeDate(draft.codeDate ?? '');
     setUserQuestion(draft.userQuestion ?? '');
+    setCodeReactions(draft.codeReactions ?? {});
     setCodeResult(draft.codeResult ?? null);
     setFirstMirror(draft.firstMirror ?? null);
     setStoryInputs(draft.storyInputs ?? null);
@@ -224,6 +228,7 @@ function AppContent() {
     setTransientDraft(null);
     setCodeDate('');
     setUserQuestion('');
+    setCodeReactions({});
     setCodeV2Payload(null);
     setJourneyId(crypto.randomUUID());
     setCodeResult(null);
@@ -394,11 +399,16 @@ function AppContent() {
                   initialPayload={codeV2Payload || undefined}
                   userQuestion={userQuestion}
                   onUserQuestionChange={setUserQuestion}
+                  initialReactions={codeReactions}
+                  onReactionChange={(key, status) => {
+                    setCodeReactions(prev => ({ ...prev, [key]: status }));
+                  }}
                   onCalculated={(payload) => {
                     setCodeDate(payload.calculation.date);
                     setCodeResult(payload.calculation.canonical_result);
                     setFirstMirror(firstMirrorFromV2(payload));
                     setCodeV2Payload(payload);
+                    setCodeReactions({});
                     setMeetingResult(null);
                   }}
                   onChangeDate={() => {
@@ -406,6 +416,7 @@ function AppContent() {
                     setTransientDraft(null);
                     setCodeDate('');
                     setUserQuestion('');
+                    setCodeReactions({});
                     setCodeResult(null);
                     setFirstMirror(null);
                     setCodeV2Payload(null);
@@ -421,6 +432,12 @@ function AppContent() {
                     if (options?.userQuestion !== undefined) {
                       setUserQuestion(options.userQuestion);
                     }
+                    if (options?.reactionItem) {
+                      setCodeReactions(prev => ({
+                        ...prev,
+                        [options.reactionItem!.key]: options.reactionItem!.status
+                      }));
+                    }
                     setAlbertInitialTopic(options?.initialPrompt);
                     setIsAlbertV2Open(true);
                   }}
@@ -434,6 +451,7 @@ function AppContent() {
                   initialReading={firstMirror}
                   onCodeCalculated={(fullDate, calc, reading) => {
                     setCodeV2Payload(null);
+                    setCodeReactions({});
                     setJourneyId(crypto.randomUUID());
                     setCodeDate(fullDate);
                     setCodeResult(calc);
@@ -472,6 +490,7 @@ function AppContent() {
                   if (initialDate && initialDate !== codeDate) {
                     setCodeDate(initialDate);
                     setCodeV2Payload(null);
+                    setCodeReactions({});
                     setJourneyId(crypto.randomUUID());
                     setCodeResult(null);
                     setFirstMirror(null);
@@ -527,6 +546,7 @@ function AppContent() {
                 codeDate={codeDate}
                 userQuestion={userQuestion}
                 onUserQuestionChange={setUserQuestion}
+                codeReactions={codeReactions}
                 codeV2Payload={codeV2Payload}
                 journeyId={journeyId}
                 onOpenAlbert={() => {
@@ -571,6 +591,7 @@ function AppContent() {
         initialTopic={albertInitialTopic}
         userQuestion={userQuestion}
         onUserQuestionChange={setUserQuestion}
+        codeReactions={codeReactions}
         userNote={meetingUserNote}
         onUserNoteChange={setMeetingUserNote}
         storyResult={storyResult}

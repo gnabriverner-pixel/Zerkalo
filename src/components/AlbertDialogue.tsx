@@ -29,6 +29,7 @@ interface AlbertDialogueProps {
   theme?: 'light' | 'dark';
   codeV2Payload?: CodeV2Payload | null;
   codeV2Context?: CodeV2AlbertContext | null;
+  codeReactions?: Record<string, 'confirmed' | 'rejected'>;
 }
 
 interface Message {
@@ -58,7 +59,8 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   initialTopic = '',
   theme = 'light',
   codeV2Payload,
-  codeV2Context
+  codeV2Context,
+  codeReactions = {}
 }) => {
   const protectedFetch = useProtectedFetch();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -76,6 +78,11 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   const requestRef = useRef<AbortController | null>(null);
   useEffect(() => () => requestRef.current?.abort(), []);
   if (truthRef.current.journey !== journeyKey) truthRef.current = { journey: journeyKey, state: loadTruthState(journeyKey) };
+  useEffect(() => {
+    if (isOpen) {
+      truthRef.current = { journey: journeyKey, state: loadTruthState(journeyKey) };
+    }
+  }, [isOpen, journeyKey]);
   useEffect(() => {
     const clear = () => { truthRef.current.state = undefined; truthEpochRef.current += 1; };
     window.addEventListener(TRUTH_CLEARED_EVENT, clear);
@@ -183,7 +190,8 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
       const trimmedUserQuestion = (userQuestion || '').trim().slice(0, 500);
       const contextPayload: Record<string, unknown> = {
         userNote,
-        ...(trimmedUserQuestion ? { userQuestion: trimmedUserQuestion } : {})
+        ...(trimmedUserQuestion ? { userQuestion: trimmedUserQuestion } : {}),
+        ...(codeReactions && Object.keys(codeReactions).length > 0 ? { codeReactions } : {})
       };
       if (meetingResult) {
         contextPayload.meetingSummary = meetingResult.summary;

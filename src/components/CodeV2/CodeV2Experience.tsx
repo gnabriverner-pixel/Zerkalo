@@ -129,6 +129,10 @@ export function CodeV2Experience({
     setLocalQuestion(userQuestion || '');
   }, [userQuestion]);
 
+  useEffect(() => {
+    setReactions(initialReactions || {});
+  }, [initialReactions]);
+
   const handleQuestionInput = (val: string) => {
     const bounded = val.slice(0, 500);
     setLocalQuestion(bounded);
@@ -143,6 +147,7 @@ export function CodeV2Experience({
 
   // Progressive disclosure states (collapsed by default to achieve 450-700 words budget)
   const [showCalcChain, setShowCalcChain] = useState(false);
+  const [showHeroMotifDetails, setShowHeroMotifDetails] = useState(false);
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>(initialExpanded || {});
 
   const soulPos = payload?.positions.find(p => p.position === 'soul');
@@ -472,13 +477,30 @@ export function CodeV2Experience({
                     </React.Fragment>
                   ))}
                 </div>
+
+                {/* Краткое объяснение пяти позиций простым языком */}
+                <div className="mt-4 w-full text-left grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {payload.positions.map((pos) => (
+                    <div
+                      key={`hero-summary-${pos.position}`}
+                      className="rounded-xl border border-white/10 bg-black/25 px-3.5 py-2.5 text-xs sm:text-sm text-stone-200 leading-relaxed"
+                    >
+                      <div className="font-medium text-amber-100/95 mb-0.5">
+                        {pos.public_name} ({pos.energy}, {pos.energy_name}) — <span className="text-stone-300 font-normal">{pos.role}</span>
+                      </div>
+                      <div className="text-stone-300 text-xs sm:text-[13px]">
+                        {getFirstSentence(cleanPositionEssence(pos.essence))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* B & C. Central Human Motif (Heading + Why It Matters) */}
               <div className="pt-6 border-t border-white/10 relative z-10">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <div className="text-[13px] sm:text-sm font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80">
-                    Центральный нерв карты
+                    Центральная гипотеза карты
                   </div>
                   {leadInteractionBadge && (
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[var(--color-antique-gold)]/15 border border-[var(--color-antique-gold)]/35 text-[13px] font-mono text-amber-200">
@@ -491,12 +513,40 @@ export function CodeV2Experience({
                   {payload.albert_context?.strongest_hypothesis || 'Внутренний контраст вашей карты'}
                 </h2>
 
-                <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-base sm:text-[17px] text-stone-200 leading-relaxed font-normal mb-6 space-y-4">
-                  <p className="text-stone-400 text-sm">Гипотеза для проверки, а не вывод о вашей личности.</p>
-                  {(payload.central_motif || payload.synthesis.strongest_motif || '').split('\n\n').map((paragraph, pIdx) => (
-                    <p key={pIdx}>{paragraph}</p>
-                  ))}
-                </div>
+                {(() => {
+                  const motifParagraphs = (payload.central_motif || payload.synthesis.strongest_motif || '')
+                    .split('\n\n')
+                    .map((p) => p.trim())
+                    .filter(Boolean);
+                  const visibleParagraphs = showHeroMotifDetails ? motifParagraphs : motifParagraphs.slice(0, 1);
+                  return (
+                    <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-base sm:text-[17px] text-stone-200 leading-relaxed font-normal mb-6 space-y-3">
+                      <p className="text-stone-400 text-sm">Гипотеза для проверки, а не вывод о вашей личности.</p>
+                      {visibleParagraphs.map((paragraph, pIdx) => (
+                        <p key={pIdx}>{paragraph}</p>
+                      ))}
+                      {motifParagraphs.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowHeroMotifDetails((prev) => !prev)}
+                          className="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)] hover:text-amber-200 transition-colors"
+                        >
+                          {showHeroMotifDetails ? (
+                            <>
+                              <span>Свернуть подробности гипотезы</span>
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </>
+                          ) : (
+                            <>
+                              <span>Раскрыть подробности гипотезы</span>
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Quiet Albert Invitation & Central Hypothesis Reaction */}
                 <div className="pt-5 border-t border-white/10 flex flex-col gap-4">
@@ -733,7 +783,7 @@ export function CodeV2Experience({
                       </div>
 
                       {/* 2. Конкретный пример проявления */}
-                      {firstSceneExample && !isExpanded && (
+                      {firstSceneExample && (
                         <div className="mb-4 pl-3.5 border-l border-[var(--color-antique-gold)]/40 text-sm sm:text-base text-stone-300 leading-relaxed">
                           <span className="text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)]/90 block mb-0.5">
                             Пример

@@ -62,20 +62,39 @@ export function buildPersonalMythPrompt(inputs: StoryInputs): string {
 }
 
 export function buildMeetingOfMirrorsPrompt(
-  codeData: { calc: CalculationResult; firstMirror?: FirstMirror; codeV2Payload?: CodeV2Payload },
+  codeData: {
+    calc: CalculationResult;
+    firstMirror?: FirstMirror;
+    codeV2Payload?: CodeV2Payload;
+    codeReactions?: Record<string, 'confirmed' | 'rejected'>;
+  },
   storyData: { storyInputs: StoryInputs; storyResult: any; userQuestion?: string }
 ): string {
-  const { calc, firstMirror } = codeData;
+  const { calc, firstMirror, codeReactions } = codeData;
   const { storyInputs, storyResult, userQuestion } = storyData;
   const trimmedUserQuestion = typeof userQuestion === 'string' ? userQuestion.trim() : '';
   const pathV2 = codeData.codeV2Payload?.positions.find(position => position.position === 'path');
   const directionV2 = codeData.codeV2Payload?.positions.find(position => position.position === 'direction');
+  const rejectedEntries = Object.entries(codeReactions || {})
+    .filter(([, status]) => status === 'rejected')
+    .map(([key]) => key);
+  const confirmedEntries = Object.entries(codeReactions || {})
+    .filter(([, status]) => status === 'confirmed')
+    .map(([key]) => key);
+  const reactionsNote = (rejectedEntries.length > 0 || confirmedEntries.length > 0) ? [
+    rejectedEntries.length > 0
+      ? `- ВАША ПРАВКА К КОДУ («Не похоже»): вы прямо отметили несогласие по блокам [${rejectedEntries.join(', ')}]. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО возвращать отвергнутые гипотезы как факт о вас или как подтверждённую опору.`
+      : '',
+    confirmedEntries.length > 0
+      ? `- Подтверждённый вами отклик («Похоже»): блоки [${confirmedEntries.join(', ')}].`
+      : ''
+  ].filter(Boolean).join('\n') : '';
   const codeV2Block = codeData.codeV2Payload ? `
-- Центральный мотив текущего Code V2: ${codeData.codeV2Payload.central_motif || codeData.codeV2Payload.synthesis.strongest_motif}
-- Путь как осваиваемый способ действия: ${pathV2?.essence || ''}
-- Направление, сначала через происхождение из Души и Пути: ${directionV2?.direction_compound?.origin.summary || directionV2?.essence || ''}
+- Центральный мотив текущего Code V2${codeReactions?.central_motif === 'rejected' ? ' (ОТКЛОНЕНО ВАМИ КАК «НЕ ПОХОЖЕ» — НЕ ИСПОЛЬЗОВАТЬ КАК ФАКТ)' : ''}: ${codeData.codeV2Payload.central_motif || codeData.codeV2Payload.synthesis.strongest_motif}
+- Путь как осваиваемый способ действия${codeReactions?.path === 'rejected' ? ' (ОТКЛОНЕНО ВАМИ КАК «НЕ ПОХОЖЕ»)' : ''}: ${pathV2?.essence || ''}
+- Направление, сначала через происхождение из Души и Пути${codeReactions?.direction === 'rejected' ? ' (ОТКЛОНЕНО ВАМИ КАК «НЕ ПОХОЖЕ»)' : ''}: ${directionV2?.direction_compound?.origin.summary || directionV2?.essence || ''}
 - Возможные формы Направления (только гипотезы): ${(directionV2?.direction_compound?.possible_forms || []).join(' ')}
-` : '';
+${reactionsNote}` : (reactionsNote ? `\n${reactionsNote}\n` : '');
   const userQuestionBlock = trimmedUserQuestion
     ? `\nВаш прямой личный вопрос (ваши собственные слова с экрана Кода, НЕ сгенерированный системой вопрос): ${JSON.stringify(trimmedUserQuestion)}\n`
     : '';

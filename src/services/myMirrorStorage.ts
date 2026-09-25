@@ -22,6 +22,7 @@ export interface MyMirrorSnapshotV1 {
   savedAt: string;
   codeDate: string;
   userQuestion?: string;
+  codeReactions?: Record<string, 'confirmed' | 'rejected'>;
   codeV2Payload?: CodeV2Payload | null;
   journeyId?: string;
   codeResult: CalculationResult;
@@ -117,6 +118,7 @@ export function saveMyMirrorSnapshot(input: SaveMyMirrorInput): boolean {
       savedAt: new Date().toISOString(),
       codeDate: String(input.codeDate || ''),
       ...(trimmedQuestion ? { userQuestion: trimmedQuestion } : {}),
+      ...(input.codeReactions && Object.keys(input.codeReactions).length > 0 ? { codeReactions: input.codeReactions } : {}),
       codeResult: input.codeResult,
       ...(input.codeV2Payload ? { codeV2Payload: input.codeV2Payload } : {}),
       ...(input.journeyId ? { journeyId: input.journeyId } : {}),
@@ -328,6 +330,7 @@ export interface TransientDraftV1 {
   version: 1;
   updatedAt: string;
   userQuestion?: string;
+  codeReactions?: Record<string, 'confirmed' | 'rejected'>;
   codeV2Payload?: CodeV2Payload | null;
   journeyId?: string;
   mode?: 'entry' | 'alabaster' | 'myth' | 'meeting' | 'ab-test';

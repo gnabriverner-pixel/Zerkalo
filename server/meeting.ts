@@ -19,6 +19,7 @@ export function deriveMeetingCacheKey(codeData: any, storyData: any, userQuestio
         firstMirrorTitle: codeData?.firstMirror?.title || "",
         firstMirrorKeyInsight: codeData?.firstMirror?.keyInsight || "",
         codeV2Motif: codeData?.codeV2Payload?.central_motif || "",
+        codeReactions: codeData?.codeReactions || {},
         storyInputs: storyData?.storyInputs,
         storyTitle: storyData?.storyResult?.title || "",
         storyMirror: storyData?.storyResult?.mirror || {},
@@ -29,7 +30,12 @@ export function deriveMeetingCacheKey(codeData: any, storyData: any, userQuestio
 }
 
 export interface GenerateMeetingParams {
-  codeData: { calc: CalculationResult; firstMirror?: FirstMirror; codeV2Payload?: CodeV2Payload };
+  codeData: {
+    calc: CalculationResult;
+    firstMirror?: FirstMirror;
+    codeV2Payload?: CodeV2Payload;
+    codeReactions?: Record<string, "confirmed" | "rejected">;
+  };
   storyData: { storyInputs: StoryInputs; storyResult: any; userQuestion?: string };
   client: ChatClient;
   model?: string;

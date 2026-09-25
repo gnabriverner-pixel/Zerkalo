@@ -108,29 +108,55 @@ export function buildCanonicalEnvelopeFromWebContext(
     evidence.push(machineClaim(`Мой вопрос: ${trimmedUserQuestion}`, "user_statement", "user.question", now));
   }
 
+  const v2 = (context as any)?.codeV2Payload;
+  const rawReactions = (context as any)?.codeReactions;
+  const reactions: Record<string, "confirmed" | "rejected"> =
+    rawReactions && typeof rawReactions === "object" ? rawReactions : {};
+
+  const reactionStatements: Array<{ sender: "user"; text: string }> = [];
+  const codeHypothesis = v2?.central_motif || v2?.synthesis?.strongest_motif || context?.codeAnchors?.keyInsight;
+  if (typeof codeHypothesis === 'string' && codeHypothesis.trim()) {
+    const snippet = codeHypothesis.trim().slice(0, 300);
+    if (reactions["central_motif"] === "rejected") {
+      const msg = `Отмечено «Не похоже» (центральная гипотеза карты не совпадает с моим опытом): ${snippet}`;
+      evidence.push(machineClaim(msg, "user_statement", "user.reaction.central_motif", now));
+      reactionStatements.push({ sender: "user", text: msg });
+    } else {
+      evidence.push(machineClaim(codeHypothesis.slice(0, 2000), 'code_interpretation', 'code.central_motif', now));
+      if (reactions["central_motif"] === "confirmed") {
+        reactionStatements.push({ sender: "user", text: `Отмечено «Похоже» по центральной гипотезе карты: ${snippet}` });
+      }
+    }
+  }
+  if (Array.isArray(v2?.positions)) {
+    for (const pos of v2.positions.slice(0, 5)) {
+      if (pos && typeof pos.public_name === "string" && typeof pos.essence === "string") {
+        const posKey = String(pos.position || pos.public_name);
+        const summaryText = `${pos.public_name} (${pos.energy}, ${pos.role || ""}): ${pos.essence}`.slice(0, 600);
+        if (reactions[posKey] === "rejected") {
+          const msg = `Отмечено «Не похоже» по позиции ${pos.public_name} (${pos.energy}, ${pos.role || ""}) — не считать это фактом обо мне.`;
+          evidence.push(machineClaim(msg, "user_statement", `user.reaction.${posKey}`, now));
+          reactionStatements.push({ sender: "user", text: msg });
+        } else {
+          evidence.push(machineClaim(summaryText, "code_interpretation", `code.position.${posKey}`, now));
+          if (reactions[posKey] === "confirmed") {
+            reactionStatements.push({ sender: "user", text: `Отмечено «Похоже» по позиции ${pos.public_name} (${pos.energy}).` });
+          }
+        }
+      }
+    }
+  }
+
   const salientStatements = [
     ...(trimmedUserQuestion ? [{ sender: "user", text: `Мой вопрос: ${trimmedUserQuestion}` }] : []),
+    ...reactionStatements,
     ...(context?.userNote ? [{ sender: "user", text: context.userNote }] : []),
     ...(history || []),
   ]
     .filter((h) => h.sender === "user")
     .map((h) => h.text.trim().slice(0, 2000))
     .filter(Boolean)
-    .slice(-5);
-
-  const v2 = (context as any)?.codeV2Payload;
-  const codeHypothesis = v2?.central_motif || v2?.synthesis?.strongest_motif || context?.codeAnchors?.keyInsight;
-  if (typeof codeHypothesis === 'string' && codeHypothesis.trim()) {
-    evidence.push(machineClaim(codeHypothesis.slice(0, 2000), 'code_interpretation', 'code.central_motif', now));
-  }
-  if (Array.isArray(v2?.positions)) {
-    for (const pos of v2.positions.slice(0, 5)) {
-      if (pos && typeof pos.public_name === "string" && typeof pos.essence === "string") {
-        const summaryText = `${pos.public_name} (${pos.energy}, ${pos.role || ""}): ${pos.essence}`.slice(0, 600);
-        evidence.push(machineClaim(summaryText, "code_interpretation", `code.position.${pos.position || pos.public_name}`, now));
-      }
-    }
-  }
+    .slice(-6);
   const systemQuestion = context?.centralQuestion || v2?.albert_context?.opening_question || "Что из увиденного вы хотели бы проверить на своём опыте?";
   const currentQuestion = trimmedUserQuestion || systemQuestion;
   const nextOpenLoop = systemQuestion;
