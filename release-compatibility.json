@@ -4,7 +4,7 @@
   "web": {
     "repo": "gnabriverner-pixel/Zerkalo",
     "branch": "codex/stage1-convergence-candidate",
-    "pinned_sha": "c5967ca4bf584e10e60191b20c6fcb1ec514d175"
+    "pinned_sha": "ea42563b5191404c3731c4a08aca1ed93194ce37"
   },
   "dcs": {
     "repo": "gnabriverner-pixel/digital-code-system",
@@ -17,6 +17,6 @@
     "note": "Node 24 = canonical verification/CI runtime (verifier and verify_release_local refuse other majors). Node v22.23.2 = observed production runtime. Production runtime is NOT changed by this manifest; it is recorded from server inspection only."
   },
   "updated_at": "2026-09-25",
-  "verified_at": "2026-09-25T04:57:56.667Z",
-  "note": "Candidate pin for Stage 1 convergence review branch codex/stage1-convergence-candidate: Web application commit c5967ca4bf584e10e60191b20c6fcb1ec514d175 + canonical DCS 732c14852c96ccbdbeff3bea52647e4b40c759ff (release/routerai-acceptance)."
+  "verified_at": "2026-09-25T05:30:00.000Z",
+  "note": "Candidate pin for Stage 1 convergence review branch codex/stage1-convergence-candidate: Web application commit ea42563b5191404c3731c4a08aca1ed93194ce37 + canonical DCS 732c14852c96ccbdbeff3bea52647e4b40c759ff (release/routerai-acceptance)."
 }
