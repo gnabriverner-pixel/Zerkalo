@@ -21,6 +21,7 @@ export interface MyMirrorSnapshotV1 {
   version: 1;
   savedAt: string;
   codeDate: string;
+  userQuestion?: string;
   codeV2Payload?: CodeV2Payload | null;
   journeyId?: string;
   codeResult: CalculationResult;
@@ -51,6 +52,9 @@ export function isValidMyMirrorSnapshotV1(data: unknown): data is MyMirrorSnapsh
 
   // 3. Code date & result
   if (typeof candidate.codeDate !== 'string' || candidate.codeDate.trim().length === 0) return false;
+  if (candidate.userQuestion !== undefined && (typeof candidate.userQuestion !== 'string' || candidate.userQuestion.length > 500)) {
+    return false;
+  }
   if (!candidate.codeResult || typeof candidate.codeResult !== 'object') return false;
   const calc = candidate.codeResult as Record<string, unknown>;
   if (typeof calc.soul !== 'number' || typeof calc.path !== 'number') return false;
@@ -107,10 +111,12 @@ export function saveMyMirrorSnapshot(input: SaveMyMirrorInput): boolean {
   if (typeof window === 'undefined' || !window.localStorage) return false;
 
   try {
+    const trimmedQuestion = typeof input.userQuestion === 'string' ? input.userQuestion.trim().slice(0, 500) : '';
     const snapshot: MyMirrorSnapshotV1 = {
       version: 1,
       savedAt: new Date().toISOString(),
       codeDate: String(input.codeDate || ''),
+      ...(trimmedQuestion ? { userQuestion: trimmedQuestion } : {}),
       codeResult: input.codeResult,
       ...(input.codeV2Payload ? { codeV2Payload: input.codeV2Payload } : {}),
       ...(input.journeyId ? { journeyId: input.journeyId } : {}),
@@ -187,6 +193,7 @@ export function hasMyMirrorSnapshot(): boolean {
 
 export interface CurrentSessionPayload {
   codeDate?: string;
+  userQuestion?: string;
   codeResult?: CalculationResult | null;
   firstMirror?: FirstMirror | null;
   storyInputs?: StoryInputs | null;
@@ -298,11 +305,18 @@ export function isSnapshotMatchingCurrentSession(
     }
   }
 
-  // 6. User note match (normalize undefined / empty string)
+  // 6. User note & question match (normalize undefined / empty string)
   const snapshotNote = (snapshot.meetingUserNote || '').trim();
   const currentNote = (current.meetingUserNote || '').trim();
   if (snapshotNote !== currentNote) {
     return false;
+  }
+  if (current.userQuestion !== undefined) {
+    const snapshotQuestion = (snapshot.userQuestion || '').trim();
+    const currentQuestion = (current.userQuestion || '').trim();
+    if (snapshotQuestion !== currentQuestion) {
+      return false;
+    }
   }
 
   return true;
@@ -313,6 +327,7 @@ export const TRANSIENT_DRAFT_KEY = 'zerkalo.transientDraft.v1';
 export interface TransientDraftV1 {
   version: 1;
   updatedAt: string;
+  userQuestion?: string;
   codeV2Payload?: CodeV2Payload | null;
   journeyId?: string;
   mode?: 'entry' | 'alabaster' | 'myth' | 'meeting' | 'ab-test';
@@ -332,6 +347,7 @@ export function isValidTransientDraftV1(data: unknown): data is TransientDraftV1
   if (candidate.version !== 1) return false;
   if (typeof candidate.updatedAt !== 'string') return false;
   if (candidate.codeDate != null && typeof candidate.codeDate !== 'string') return false;
+  if (candidate.userQuestion != null && (typeof candidate.userQuestion !== 'string' || candidate.userQuestion.length > 500)) return false;
   if (candidate.meetingUserNote != null && typeof candidate.meetingUserNote !== 'string') return false;
   if (candidate.mode != null && !['entry','alabaster','myth','meeting','ab-test'].includes(candidate.mode as string)) return false;
   return true;

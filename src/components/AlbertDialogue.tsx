@@ -17,6 +17,8 @@ import {
 interface AlbertDialogueProps {
   isOpen: boolean;
   journeyId?: string;
+  userQuestion?: string;
+  onUserQuestionChange?: (question: string) => void;
   userNote?: string;
   onUserNoteChange?: (note: string) => void;
   onClose: () => void;
@@ -37,6 +39,7 @@ interface Message {
 }
 
 const PRESET_QUESTIONS = [
+  'Объясни проще, о чём мой Код',
   'Проверить на моей ситуации',
   'Вот с чем я не согласен',
   'Помоги сделать следующий шаг'
@@ -45,6 +48,7 @@ const PRESET_QUESTIONS = [
 export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   isOpen,
   journeyId,
+  userQuestion = '',
   userNote = '',
   onUserNoteChange,
   onClose,
@@ -77,6 +81,12 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
     window.addEventListener(TRUTH_CLEARED_EVENT, clear);
     return () => window.removeEventListener(TRUTH_CLEARED_EVENT, clear);
   }, []);
+
+  useEffect(() => {
+    if (isOpen && initialTopic) {
+      setInputValue(initialTopic);
+    }
+  }, [isOpen, initialTopic]);
 
   const soul = effectiveCalc?.soul || 1;
   const path = effectiveCalc?.path || 1;
@@ -170,7 +180,11 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         text: m.text
       }));
 
-      const contextPayload: Record<string, unknown> = { userNote };
+      const trimmedUserQuestion = (userQuestion || '').trim().slice(0, 500);
+      const contextPayload: Record<string, unknown> = {
+        userNote,
+        ...(trimmedUserQuestion ? { userQuestion: trimmedUserQuestion } : {})
+      };
       if (meetingResult) {
         contextPayload.meetingSummary = meetingResult.summary;
         contextPayload.confidenceNote = meetingResult.confidenceNote;
@@ -204,6 +218,16 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         contextPayload.codeV2Payload = {
           central_motif: codeV2Payload.central_motif || codeV2Payload.synthesis.strongest_motif,
           albert_context: codeV2Payload.albert_context,
+          calculation: codeV2Payload.calculation
+            ? { canonical_result: codeV2Payload.calculation.canonical_result }
+            : undefined,
+          positions: codeV2Payload.positions.map(pos => ({
+            position: pos.position,
+            public_name: pos.public_name,
+            role: pos.role,
+            energy: pos.energy,
+            essence: pos.essence
+          }))
         };
       }
 
@@ -277,7 +301,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[130] flex items-center justify-center p-2 sm:p-4 md:p-6 overflow-y-auto">
+      <div className="fixed inset-0 z-[130] flex items-center justify-center p-0 sm:p-4 md:p-6 overflow-hidden">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -296,25 +320,25 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
           role="dialog"
           aria-modal="true"
           aria-label="Диалог с Альбертом Вяземским"
-          className={`relative w-full max-w-3xl h-[85vh] flex flex-col rounded-sm shadow-2xl z-10 overflow-hidden border ${
+          className={`relative w-full max-w-3xl h-[100dvh] sm:h-[85vh] max-h-[100dvh] flex flex-col sm:rounded-sm shadow-2xl z-10 overflow-hidden border ${
             isDark 
               ? 'bg-[#0F1412] text-[#EAEAEA] border-[#2A3B33]' 
               : 'bg-[#FCFAF6] text-[#1A1A1A] border-[#E8DFC8]'
           }`}
         >
-          {/* Header */}
-          <div className={`p-5 sm:p-6 flex items-center justify-between border-b ${
+          {/* Header (Service Labels Visually Separated) */}
+          <div className={`px-4 py-3.5 sm:px-6 sm:py-4 flex items-center justify-between border-b shrink-0 ${
             isDark ? 'border-[#2A3B33] bg-[#141B18]' : 'border-[#EAE3D2] bg-[#F7F3EA]'
           }`}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full border border-[var(--color-antique-gold)] flex items-center justify-center bg-[var(--color-antique-gold)]/10 text-[var(--color-antique-gold)]">
-                <Compass className="w-5 h-5" />
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full border border-[var(--color-antique-gold)] flex items-center justify-center bg-[var(--color-antique-gold)]/10 text-[var(--color-antique-gold)] shrink-0">
+                <Compass className="w-4 h-4" />
               </div>
-              <div>
-                <span className="text-[13px] tracking-[0.25em] uppercase font-sans text-[var(--color-antique-gold)]">
-                  Собеседник и Проводник
-                </span>
-                <h3 className="font-serif text-xl sm:text-2xl font-normal">
+              <div className="min-w-0">
+                <div className="text-[11px] tracking-[0.2em] uppercase font-sans text-[var(--color-antique-gold)]/85 truncate">
+                  Собеседник по карте
+                </div>
+                <h3 className="font-serif text-lg sm:text-xl font-normal truncate">
                   Альберт Вяземский
                 </h3>
               </div>
@@ -324,7 +348,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
               ref={closeButtonRef}
               onClick={onClose}
               aria-label="Закрыть диалог"
-              className={`min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
+              className={`min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded-full transition-colors cursor-pointer shrink-0 ${
                 isDark 
                   ? 'text-stone-400 hover:text-white hover:bg-[#1A2621]' 
                   : 'text-stone-500 hover:text-stone-900 hover:bg-stone-200/60'
@@ -334,57 +358,60 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
             </button>
           </div>
 
-          {/* Formula Context Strip */}
-          {calc && (
-            <div className={`px-6 py-2 border-b flex items-center justify-between text-xs font-sans tracking-widest uppercase opacity-80 ${
+          {/* Formula Context Strip (Separated Service Metadata) */}
+          {effectiveCalc && (
+            <div className={`px-4 sm:px-6 py-2 border-b flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono tracking-wider uppercase shrink-0 ${
               isDark ? 'border-[#2A3B33] bg-[#111A16] text-[#A3B8AD]' : 'border-[#EAE3D2] bg-white text-[var(--color-muted)]'
             }`}>
-              <span>Душа: {soul} ({soulInfo?.planet.split(' ')[0] || ''})</span>
-              <span>Путь: {calc.pathComposite || calc.path}</span>
+              <span>Душа: {soul}</span>
+              <span>Путь: {effectiveCalc.pathComposite || path}</span>
               <span>Направление: {dir}</span>
               <span>Итог: {res}</span>
             </div>
           )}
 
           {/* Messages Container */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5 sm:p-6 space-y-5">
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-3.5 ${
-                  msg.sender === 'user' ? 'justify-end' : 'justify-start'
+                className={`flex flex-col ${
+                  msg.sender === 'user' ? 'items-end' : 'items-start'
                 }`}
               >
-                {msg.sender === 'albert' && (
-                  <div className="w-8 h-8 rounded-full border border-[var(--color-antique-gold)] flex items-center justify-center shrink-0 text-[13px] font-serif bg-[var(--color-antique-gold)]/10 text-[var(--color-antique-gold)]">
-                    АВ
-                  </div>
-                )}
+                <div className="flex items-center gap-2 mb-1.5 px-1 text-xs font-mono uppercase tracking-wider opacity-70">
+                  {msg.sender === 'albert' ? (
+                    <span className="text-[var(--color-antique-gold)]">Альберт Вяземский</span>
+                  ) : (
+                    <span className="flex items-center gap-1">
+                      <User className="w-3 h-3" />
+                      <span>Вы</span>
+                    </span>
+                  )}
+                </div>
 
                 <div
-                  className={`max-w-[85%] sm:max-w-[75%] p-4 sm:p-5 rounded-sm font-serif text-sm sm:text-base leading-relaxed whitespace-pre-line shadow-xs ${
+                  style={{
+                    fontSize: msg.sender === 'albert' ? '18px' : '16px',
+                    lineHeight: msg.sender === 'albert' ? 1.6 : 1.5,
+                  }}
+                  className={`w-full max-w-full sm:max-w-[88%] p-4 sm:p-5 rounded-xl whitespace-pre-line break-words shadow-xs ${
                     msg.sender === 'user'
-                      ? 'bg-[var(--color-antique-gold)] text-white font-sans'
+                      ? 'bg-[var(--color-antique-gold)] text-white font-sans text-[16px] leading-[1.5]'
                       : isDark
-                        ? 'bg-[#141C18] border border-[#2A3B33] text-[#EAEAEA]'
-                        : 'bg-white border border-[#E8DFC8] text-[#1A1A1A]'
+                        ? 'bg-[#141C18] border border-[#2A3B33] text-[#EAEAEA] font-serif text-[18px] leading-[1.6]'
+                        : 'bg-white border border-[#E8DFC8] text-[#1A1A1A] font-serif text-[18px] leading-[1.6]'
                   }`}
                 >
                   {msg.text}
                 </div>
-
-                {msg.sender === 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-stone-700 text-white flex items-center justify-center shrink-0 text-xs">
-                    <User className="w-4 h-4" />
-                  </div>
-                )}
               </div>
             ))}
 
             {isLoading && (
               <div className="flex items-center gap-3 text-xs tracking-wider uppercase font-sans text-[var(--color-antique-gold)]">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Альберт сверяется со смысловыми узлами зеркал...</span>
+                <span>Альберт формулирует ответ...</span>
               </div>
             )}
 
@@ -414,7 +441,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                 <textarea aria-label="Моя мысль после разговора" value={userNote} maxLength={2000}
                   onChange={e => onUserNoteChange(e.target.value)} rows={2}
                   placeholder="Своими словами: что стало яснее или с чем я не согласен"
-                  className="w-full rounded border border-white/20 bg-black/20 p-3 text-inherit" />
+                  className="w-full rounded border border-white/20 bg-black/20 p-3 text-[16px] text-inherit" />
                 <span className="block text-xs">Эта заметка останется в текущем исследовании. Сохранение на устройстве — в «Моём зеркале».</span>
               </label>
             )}
@@ -422,13 +449,23 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
           </div>
 
           {/* Suggested Quick Prompts */}
-          <div className={`px-6 py-3 border-t overflow-x-auto flex gap-2 no-scrollbar ${
+          <div className={`px-4 sm:px-6 py-2.5 border-t overflow-x-auto flex gap-2 no-scrollbar shrink-0 ${
             isDark ? 'border-[#2A3B33] bg-[#111A16]' : 'border-[#EAE3D2] bg-[#FAF8F5]'
           }`}>
             {PRESET_QUESTIONS.map((q, idx) => (
               <button
                 key={idx}
-                onClick={() => setInputValue(q === 'Вот с чем я не согласен' ? 'Не согласен с тем, что ' : q === 'Проверить на моей ситуации' ? 'В моей ситуации ' : 'Мне важно сделать следующий шаг в ')}
+                onClick={() =>
+                  setInputValue(
+                    q === 'Объясни проще, о чём мой Код'
+                      ? 'Я ничего не понял, объясни внятно и простыми словами, о чём мой Код.'
+                      : q === 'Вот с чем я не согласен'
+                      ? 'Не согласен с тем, что '
+                      : q === 'Проверить на моей ситуации'
+                      ? 'В моей ситуации '
+                      : 'Мне важно сделать следующий шаг в '
+                  )
+                }
                 disabled={isLoading}
                 className={`text-xs px-3 py-1.5 rounded-full border whitespace-nowrap transition-all text-left disabled:opacity-50 ${
                   isDark 
@@ -442,7 +479,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
           </div>
 
           {/* Input Footer */}
-          <div className={`p-4 sm:p-5 border-t ${
+          <div className={`p-3.5 sm:p-5 border-t shrink-0 ${
             isDark ? 'border-[#2A3B33] bg-[#141B18]' : 'border-[#EAE3D2] bg-[#F7F3EA]'
           }`}>
             <form
@@ -450,16 +487,17 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                 e.preventDefault();
                 handleSend();
               }}
-              className="flex items-center gap-3"
+              className="flex items-center gap-2.5 sm:gap-3"
             >
               <input
                 type="text"
+                style={{ fontSize: '16px' }}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Задайте вопрос Альберту о вашей карте и встрече зеркал..."
-                className={`flex-1 px-4 py-3 rounded-sm border font-sans text-sm outline-none transition-colors ${
+                placeholder="Задайте вопрос Альберту о вашей карте..."
+                className={`flex-1 min-w-0 px-4 py-3 rounded-xl border font-sans text-[16px] outline-none transition-colors ${
                   isDark
-                    ? 'bg-[#0F1412] border-[#2A3B33] text-white placeholder-stone-600 focus:border-[var(--color-antique-gold)]'
+                    ? 'bg-[#0F1412] border-[#2A3B33] text-white placeholder-stone-500 focus:border-[var(--color-antique-gold)]'
                     : 'bg-white border-[#E8DFC8] text-stone-900 placeholder-stone-400 focus:border-[var(--color-antique-gold)]'
                 }`}
               />
@@ -467,7 +505,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                 type="submit"
                 aria-label="Отправить сообщение"
                 disabled={!inputValue.trim() || isLoading}
-                className="px-5 py-3 bg-[var(--color-antique-gold)] text-white hover:bg-[#B8934C] disabled:opacity-30 rounded-sm transition-colors flex items-center justify-center shrink-0"
+                className="min-h-[48px] px-4 sm:px-5 py-3 bg-[var(--color-antique-gold)] text-white hover:bg-[#B8934C] disabled:opacity-30 rounded-xl transition-colors flex items-center justify-center shrink-0 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
               </button>

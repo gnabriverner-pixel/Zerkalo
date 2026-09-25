@@ -80,6 +80,7 @@ function AppContent() {
     };
   }, [isQaMode]);
   const [isAlbertV2Open, setIsAlbertV2Open] = useState(false);
+  const [albertInitialTopic, setAlbertInitialTopic] = useState<string | undefined>(undefined);
   const [codeV2Payload, setCodeV2Payload] = useState<CodeV2Payload | null>(null);
 
   // Auto-activate preview on direct landing with ?preview=v2 or ?v=2
@@ -100,6 +101,7 @@ function AppContent() {
 
   // Shared state between lenses
   const [codeDate, setCodeDate] = useState<string>('');
+  const [userQuestion, setUserQuestion] = useState<string>('');
   const [codeResult, setCodeResult] = useState<CalculationResult | null>(null);
   const [firstMirror, setFirstMirror] = useState<FirstMirror | null>(null);
   const [storyInputs, setStoryInputs] = useState<StoryInputs | null>(null);
@@ -144,11 +146,18 @@ function AppContent() {
 
   // Sync state to transient draft (sessionStorage)
   useEffect(() => {
-    const isMeaningful = !!(codeResult || (codeDate && codeDate.trim().length > 0) || storyResult || (storyInputs && (storyInputs.q1 || storyInputs.q2 || storyInputs.q3 || storyInputs.q4)));
+    const isMeaningful = !!(
+      codeResult ||
+      (codeDate && codeDate.trim().length > 0) ||
+      (userQuestion && userQuestion.trim().length > 0) ||
+      storyResult ||
+      (storyInputs && (storyInputs.q1 || storyInputs.q2 || storyInputs.q3 || storyInputs.q4))
+    );
     if (isMeaningful) {
       saveTransientDraft({
         mode,
         codeDate,
+        userQuestion,
         codeResult,
         codeV2Payload,
         journeyId,
@@ -160,7 +169,7 @@ function AppContent() {
       });
       setTransientDraft(loadTransientDraft());
     }
-  }, [mode, codeDate, codeResult, codeV2Payload, journeyId, firstMirror, storyInputs, storyResult, meetingResult, meetingUserNote]);
+  }, [mode, codeDate, userQuestion, codeResult, codeV2Payload, journeyId, firstMirror, storyInputs, storyResult, meetingResult, meetingUserNote]);
 
   const handleRestoreSavedMirror = () => {
     const snapshot = loadMyMirrorSnapshot();
@@ -169,6 +178,7 @@ function AppContent() {
     setCodeV2Payload(snapshot.codeV2Payload || null);
     setJourneyId(snapshot.journeyId || truthJourneyKey(snapshot.codeResult, snapshot.storyResult, snapshot.meetingResult));
     setCodeDate(snapshot.codeDate);
+    setUserQuestion(snapshot.userQuestion ?? '');
     setCodeResult(snapshot.codeResult);
     setFirstMirror(snapshot.firstMirror);
     setStoryInputs(snapshot.storyInputs);
@@ -190,6 +200,7 @@ function AppContent() {
     setCodeV2Payload(draft.codeV2Payload || null);
     setJourneyId(draft.journeyId || truthJourneyKey(draft.codeResult, draft.storyResult, draft.meetingResult));
     setCodeDate(draft.codeDate ?? '');
+    setUserQuestion(draft.userQuestion ?? '');
     setCodeResult(draft.codeResult ?? null);
     setFirstMirror(draft.firstMirror ?? null);
     setStoryInputs(draft.storyInputs ?? null);
@@ -212,6 +223,7 @@ function AppContent() {
     clearTransientDraft();
     setTransientDraft(null);
     setCodeDate('');
+    setUserQuestion('');
     setCodeV2Payload(null);
     setJourneyId(crypto.randomUUID());
     setCodeResult(null);
@@ -380,6 +392,8 @@ function AppContent() {
                 <CodeV2Experience
                   initialDate={codeDate || ''}
                   initialPayload={codeV2Payload || undefined}
+                  userQuestion={userQuestion}
+                  onUserQuestionChange={setUserQuestion}
                   onCalculated={(payload) => {
                     setCodeDate(payload.calculation.date);
                     setCodeResult(payload.calculation.canonical_result);
@@ -391,6 +405,7 @@ function AppContent() {
                     clearTransientDraft();
                     setTransientDraft(null);
                     setCodeDate('');
+                    setUserQuestion('');
                     setCodeResult(null);
                     setFirstMirror(null);
                     setCodeV2Payload(null);
@@ -401,8 +416,12 @@ function AppContent() {
                   onContinue={() => setMode(hasMyth ? 'meeting' : 'myth')}
                   continueLabel={hasMyth ? 'Открыть Встречу зеркал' : 'Перейти к Личному мифу'}
                   isQaMode={isQaMode && import.meta.env.DEV}
-                  onOpenAlbert={(p) => {
+                  onOpenAlbert={(p, options) => {
                     setCodeV2Payload(p);
+                    if (options?.userQuestion !== undefined) {
+                      setUserQuestion(options.userQuestion);
+                    }
+                    setAlbertInitialTopic(options?.initialPrompt);
                     setIsAlbertV2Open(true);
                   }}
                   onBackToCollection={() => setMode('entry')}
@@ -481,6 +500,8 @@ function AppContent() {
               <PersonalMyth 
                 initialInputs={storyInputs}
                 initialResult={storyResult}
+                userQuestion={userQuestion}
+                onInputsChange={(inputs) => setStoryInputs(inputs)}
                 onOpenAbout={() => setShowAbout(true)}
                 onMythCompleted={(inputs, result) => {
                   setStoryInputs(inputs);
@@ -504,9 +525,14 @@ function AppContent() {
             >
               <MeetingOfMirrors
                 codeDate={codeDate}
+                userQuestion={userQuestion}
+                onUserQuestionChange={setUserQuestion}
                 codeV2Payload={codeV2Payload}
                 journeyId={journeyId}
-                onOpenAlbert={() => setIsAlbertV2Open(true)}
+                onOpenAlbert={() => {
+                  setAlbertInitialTopic(undefined);
+                  setIsAlbertV2Open(true);
+                }}
                 codeResult={codeResult}
                 firstMirror={firstMirror}
                 storyInputs={storyInputs}
@@ -536,9 +562,15 @@ function AppContent() {
       {/* Albert Dialogue Modal for Code V2 Preview */}
       <AlbertDialogue
         isOpen={isAlbertV2Open}
-        onClose={() => setIsAlbertV2Open(false)}
+        onClose={() => {
+          setIsAlbertV2Open(false);
+          setAlbertInitialTopic(undefined);
+        }}
         key={journeyId}
         journeyId={journeyId}
+        initialTopic={albertInitialTopic}
+        userQuestion={userQuestion}
+        onUserQuestionChange={setUserQuestion}
         userNote={meetingUserNote}
         onUserNoteChange={setMeetingUserNote}
         storyResult={storyResult}

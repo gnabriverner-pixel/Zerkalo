@@ -20,7 +20,7 @@ import { generateMeetingOfMirrors } from "./server/meeting";
 import { AlbertCanonicalError, generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
 import crypto from "crypto";
 import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge, purgeCanonicalCaches, deriveCacheKey, bindCanonicalCacheOwner } from "./server/dcsBridge";
-import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
+import { createContinuationClaim, LOCAL_CANDIDATE_TELEGRAM_UNAVAILABLE_MESSAGE, sweepExpiredClaims } from "./server/handoff";
 import { registerDeletionScope, executeDataDeletion, registerCachePurger, registerCacheOwnerBinder, bindSessionCalculationsToToken } from "./server/deletion";
 import { installConsentRoutes, verifyConsent } from './server/consent';
 import {
@@ -37,6 +37,25 @@ import {
 const PERSONAL_MYTH_MODEL = PRIMARY_MODEL;
 const MEETING_MODEL = PRIMARY_MODEL;
 const ALBERT_MODEL = PRIMARY_MODEL;
+const meetingSynthesisCache = new Map<string, { expiresAt: number; payload: any }>();
+
+export function deriveMeetingCacheKey(codeData: any, storyData: any, userQuestion?: string): string {
+  const normalizedQuestion = String(userQuestion ?? storyData?.userQuestion ?? "").trim();
+  return crypto
+    .createHash("sha256")
+    .update(
+      JSON.stringify({
+        calc: codeData?.calc,
+        firstMirrorVersion: codeData?.firstMirror?.interpretationVersion || "",
+        codeV2Motif: codeData?.codeV2Payload?.central_motif || "",
+        storyInputs: storyData?.storyInputs,
+        storyTitle: storyData?.storyResult?.title || "",
+        storyMirror: storyData?.storyResult?.mirror || {},
+        userQuestion: normalizedQuestion,
+      }),
+    )
+    .digest("hex");
+}
 
 function isCrisisInput(inputs: StoryInputs): boolean {
   const combined = `${inputs.q1 || ''} ${inputs.q2 || ''} ${inputs.q3 || ''} ${inputs.q4 || ''}`.toLowerCase();
@@ -415,12 +434,20 @@ async function startServer() {
   const meetingHandler = async (req: express.Request, res: express.Response) => {
     try {
       const { codeData, storyData } = req.body;
+      const explicitUserQuestion = String(storyData?.userQuestion ?? req.body?.userQuestion ?? "").trim();
 
       if (!codeData || !codeData.calc || !storyData || !storyData.storyInputs || !storyData.storyResult) {
         return res.status(200).json({
           status: "error",
           ui: { safe_message: "Для встречи зеркал необходимы готовые результаты обеих линз (Цифрового Кода и Личного Мифа)." }
         });
+      }
+
+      const meetingCacheKey = deriveMeetingCacheKey(codeData, storyData, explicitUserQuestion);
+      const cachedMeeting = meetingSynthesisCache.get(meetingCacheKey);
+      if (cachedMeeting && cachedMeeting.expiresAt > Date.now() && !req.body?.bypassCache) {
+        liveGeneration.meeting = true;
+        return res.status(200).json(cachedMeeting.payload);
       }
 
       if (!deepseekClient.isReady()) {
@@ -444,12 +471,21 @@ async function startServer() {
 
       const result = await generateMeetingOfMirrors({
         codeData,
-        storyData,
+        storyData: {
+          ...storyData,
+          ...(explicitUserQuestion ? { userQuestion: explicitUserQuestion } : {}),
+        },
         client: meetingClient,
         model: MEETING_MODEL,
         totalBudgetMs: 48_000,
       });
 
+      if (result?.status === "ok") {
+        meetingSynthesisCache.set(meetingCacheKey, {
+          expiresAt: Date.now() + 15 * 60_000,
+          payload: result,
+        });
+      }
       liveGeneration.meeting = result?.status === "ok";
       return res.status(200).json(result);
     } catch (error) {
@@ -535,6 +571,18 @@ async function startServer() {
   // Continuation Claim Handoff Endpoint (Web -> Telegram V2)
   app.post("/api/handoff/create-claim", async (req, res) => {
     try {
+      if (
+        process.env.STAGE1_LOCAL_CANDIDATE_MODE === "true" ||
+        process.env.TELEGRAM_HANDOFF_DISABLED === "true" ||
+        (process.env.HOST === "127.0.0.1" && process.env.TELEGRAM_LOCAL_CANDIDATE_CONNECTED !== "true")
+      ) {
+        return res.status(503).json({
+          status: "error",
+          code: "telegram_destination_unavailable",
+          message: LOCAL_CANDIDATE_TELEGRAM_UNAVAILABLE_MESSAGE,
+          ui: { safe_message: LOCAL_CANDIDATE_TELEGRAM_UNAVAILABLE_MESSAGE },
+        });
+      }
       const { codeResult, storyResult, meetingResult, consent, ageVerified, truthState } = req.body || {};
       const claim = await createContinuationClaim({
         codeResult,
@@ -548,7 +596,14 @@ async function startServer() {
       return res.status(200).json({ status: "ok", ...claim });
     } catch (err: any) {
       const msg = err?.message || "claim_creation_failed";
-      if (msg === 'telegram_destination_unavailable') return res.status(503).json({status:'error', code:msg, message:'Переход в Telegram временно недоступен. Ваше исследование остаётся здесь — можно продолжить диалог на сайте.'});
+      if (msg === 'telegram_destination_unavailable') {
+        return res.status(503).json({
+          status: 'error',
+          code: msg,
+          message: LOCAL_CANDIDATE_TELEGRAM_UNAVAILABLE_MESSAGE,
+          ui: { safe_message: LOCAL_CANDIDATE_TELEGRAM_UNAVAILABLE_MESSAGE },
+        });
+      }
       const isInput = msg.includes("consent_required") || msg.includes("age_requirement") || msg.includes("journey_incomplete");
       return res.status(isInput ? 400 : 500).json({ status: "error", code: msg.split(":", 1)[0], message: msg });
     }

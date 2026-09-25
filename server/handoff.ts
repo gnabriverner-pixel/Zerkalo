@@ -32,8 +32,17 @@ export async function sweepExpiredClaims(directory: string = CLAIMS_DIR, now = D
 }
 
 const CLAIMS_DIR = process.env.SHARED_CLAIMS_DIR || path.join(process.cwd(), "data", "claims");
-/** Owner-confirmed public destination; never manufacture a staging username. */
+export const LOCAL_CANDIDATE_TELEGRAM_UNAVAILABLE_MESSAGE =
+  "В этой тестовой версии продолжение в Telegram недоступно. Можно продолжить разговор здесь";
+
+/** Owner-confirmed public destination; never manufacture a staging username or mint links in unconnected local candidate mode. */
 export function getTelegramBotUsername(): string {
+  if (
+    process.env.STAGE1_LOCAL_CANDIDATE_MODE === "true" ||
+    process.env.TELEGRAM_HANDOFF_DISABLED === "true"
+  ) {
+    throw new Error("telegram_destination_unavailable");
+  }
   const username = (process.env.TELEGRAM_BOT_USERNAME || process.env.TELEGRAM_STAGING_BOT_USERNAME || 'digitalcodesystem_bot').trim().replace(/^@/, '');
   if (!/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(username) || username.toLowerCase() === 'zerkalostagingbot') {
     throw new Error('telegram_destination_unavailable');
@@ -251,6 +260,8 @@ export async function createContinuationClaim(params: CreateClaimParams): Promis
   telegramUrl: string;
   expiresAt: string;
 }> {
+  const botUsername = getTelegramBotUsername();
+
   if (!params.consent) {
     throw new Error("consent_required:continuation_requires_explicit_consent");
   }
@@ -260,8 +271,6 @@ export async function createContinuationClaim(params: CreateClaimParams): Promis
   if (!params.codeResult || !params.storyResult || !params.meetingResult) {
     throw new Error("journey_incomplete:all_three_stages_required");
   }
-
-  const botUsername = getTelegramBotUsername();
 
   // 256-bit opaque bearer ID. The full HMAC stays in the server-side record;
   // Telegram receives only a safe 45-character lookup parameter.

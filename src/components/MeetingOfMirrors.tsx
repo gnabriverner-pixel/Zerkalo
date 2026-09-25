@@ -31,6 +31,8 @@ export interface MeetingOfMirrorsProps {
   codeDate?: string;
   codeV2Payload?: CodeV2Payload | null;
   journeyId?: string;
+  userQuestion?: string;
+  onUserQuestionChange?: (question: string) => void;
   onOpenAlbert?: () => void;
   codeResult: CalculationResult | null;
   firstMirror: FirstMirror | null;
@@ -50,6 +52,8 @@ export function MeetingOfMirrors({
   codeDate,
   codeV2Payload,
   journeyId,
+  userQuestion,
+  onUserQuestionChange,
   onOpenAlbert,
   codeResult,
   firstMirror,
@@ -84,6 +88,7 @@ export function MeetingOfMirrors({
     const currentFirstMirror = effectiveFirstMirror();
     const matches = isSnapshotMatchingCurrentSession(current, {
       codeDate,
+      userQuestion,
       codeResult,
       firstMirror: currentFirstMirror,
       storyInputs,
@@ -108,7 +113,7 @@ export function MeetingOfMirrors({
 
   useEffect(() => {
     setSavedAt(checkCurrentSaveStatus());
-  }, [codeDate, codeResult, firstMirror, storyInputs, storyResult, meetingResult, userNote]);
+  }, [codeDate, userQuestion, codeResult, firstMirror, storyInputs, storyResult, meetingResult, userNote]);
 
   const hasCode = !!codeResult;
   const hasMyth = !!storyResult && !!storyInputs;
@@ -125,6 +130,7 @@ export function MeetingOfMirrors({
     if (!currentFirstMirror) return;
     const success = saveMyMirrorSnapshot({
       codeDate: codeDate || `${codeResult.soul}.${codeResult.expression}.${codeResult.path}`,
+      userQuestion: userQuestion?.trim() || undefined,
       codeResult,
       codeV2Payload,
       journeyId,
@@ -177,7 +183,8 @@ export function MeetingOfMirrors({
           },
           storyData: {
             storyInputs,
-            storyResult
+            storyResult,
+            userQuestion: userQuestion?.trim() || undefined
           }
         })
       });
@@ -378,25 +385,42 @@ export function MeetingOfMirrors({
               transition={{ duration: 0.8 }}
               className="w-full space-y-8"
             >
-              {/* Summary & Confidence Header */}
-              <div className="bg-[#0D121D] border border-[var(--color-border-gold)] p-8 sm:p-10 rounded-xs text-left relative overflow-hidden">
-                <div className="space-y-3 mb-5">
+              {/* Summary, New Angle & Grounded Support Header (3-Step Direct Address) */}
+              <div className="bg-[#0D121D] border border-[var(--color-border-gold)] p-8 sm:p-10 rounded-xs text-left relative overflow-hidden space-y-6">
+                <div className="space-y-2">
+                  <span className="text-[13px] uppercase font-mono tracking-[0.22em] text-[var(--color-antique-gold)] block">
+                    01 · Что вы рассказали
+                  </span>
                   <h3 className="font-serif text-xl sm:text-2xl text-[var(--color-antique-gold)] font-normal">
                     Что становится видно рядом
                   </h3>
                   <p className="text-sm sm:text-base text-stone-300 leading-relaxed max-w-2xl">
                     {meetingResult.confidenceNote}
                   </p>
+                  {userQuestion?.trim() && (
+                    <p className="text-xs sm:text-sm text-stone-400 italic">
+                      Ваш вопрос: «{userQuestion.trim()}»
+                    </p>
+                  )}
                 </div>
 
-                <p className="font-serif text-xl sm:text-2xl text-stone-100 font-normal leading-relaxed mb-6">
+                <p className="font-serif text-xl sm:text-2xl text-stone-100 font-normal leading-relaxed">
                   {meetingResult.summary}
                 </p>
 
+                <div className="border-t border-white/[0.08] pt-5 space-y-2">
+                  <span className="text-[13px] uppercase font-mono tracking-[0.22em] text-[var(--color-antique-gold)] block">
+                    02 · Какой новый ракурс можно проверить
+                  </span>
+                  <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed font-normal">
+                    {meetingResult.albertInsight}
+                  </p>
+                </div>
+
                 {meetingResult.possibleSupport && (
-                  <div className="bg-[var(--color-antique-gold)]/[0.07] border border-[var(--color-antique-gold)]/25 p-5 sm:p-6 mb-6 rounded-xs">
+                  <div className="bg-[var(--color-antique-gold)]/[0.07] border border-[var(--color-antique-gold)]/25 p-5 sm:p-6 rounded-xs">
                     <span className="text-[13px] uppercase font-mono tracking-[0.22em] text-[var(--color-antique-gold)] block mb-3">
-                      Возможная опора
+                      03 · На какую конкретную деталь опереться · Возможная опора
                     </span>
                     <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed">
                       {meetingResult.possibleSupport}
@@ -525,17 +549,13 @@ export function MeetingOfMirrors({
                 </div>
               )}
 
-              {/* Albert's Synthesis Insight & Living Question */}
+              {/* Living Question & Reflection */}
               <div className="bg-[#0D121D] border border-white/[0.08] p-8 sm:p-10 rounded-xs space-y-6 text-left">
                 <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
-                  Новое различение
+                  Новое различение · Вопрос для проверки
                 </span>
-                
-                <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed font-normal">
-                  {meetingResult.albertInsight}
-                </p>
 
-                <div className="border-t border-white/[0.06] pt-6">
+                <div className="pt-1">
                   <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
                     Проверка на своём опыте
                   </span>
@@ -570,7 +590,7 @@ export function MeetingOfMirrors({
                   <button
                     onClick={() => {
                       if (onOpenAlbert) { onOpenAlbert(); return; }
-                      setAlbertTopic(meetingResult?.reflectiveQuestion || meetingResult?.albertInsight || 'Продолжение исследования');
+                      setAlbertTopic(userQuestion?.trim() || meetingResult?.reflectiveQuestion || meetingResult?.albertInsight || 'Продолжение исследования');
                       setIsAlbertOpen(true);
                     }}
                     className="w-full sm:w-auto px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.18em] text-sm font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
@@ -657,6 +677,8 @@ export function MeetingOfMirrors({
         journeyId={journeyId}
         codeV2Payload={codeV2Payload}
         codeV2Context={codeV2Payload?.albert_context}
+        userQuestion={userQuestion}
+        onUserQuestionChange={onUserQuestionChange}
         userNote={userNote}
         onUserNoteChange={handleUserNoteChange}
         calc={codeResult}

@@ -34,6 +34,9 @@ function safeTelegramUrl(value: unknown): string | null {
   }
 }
 
+const LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE =
+  'В этой тестовой версии продолжение в Telegram недоступно. Можно продолжить разговор здесь';
+
 export function TelegramContinuation({ codeResult, storyResult, meetingResult, journeyId }: TelegramContinuationProps) {
   const ensureCoreConsent = useCoreConsent();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -43,6 +46,10 @@ export function TelegramContinuation({ codeResult, storyResult, meetingResult, j
   const [telegramUrl, setTelegramUrl] = useState('');
   const [status, setStatus] = useState('');
   const statusRef = useRef<HTMLDivElement>(null);
+
+  const isLocalCandidateHost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost');
 
   useEffect(() => {
     if (status) statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -56,10 +63,12 @@ export function TelegramContinuation({ codeResult, storyResult, meetingResult, j
     setStatus('');
     let telegramTab: Window | null = null;
     try {
-      // Open synchronously from the user's click so popup protection does not
-      // swallow the Telegram deep link after the consent and claim requests.
-      telegramTab = window.open('about:blank', '_blank');
-      if (telegramTab) telegramTab.opener = null;
+      if (!isLocalCandidateHost) {
+        // Open synchronously from the user's click so popup protection does not
+        // swallow the Telegram deep link after the consent and claim requests.
+        telegramTab = window.open('about:blank', '_blank');
+        if (telegramTab) telegramTab.opener = null;
+      }
       if (!(await ensureCoreConsent())) {
         telegramTab?.close();
         return;
@@ -74,12 +83,12 @@ export function TelegramContinuation({ codeResult, storyResult, meetingResult, j
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         if (response.status === 503) {
-          throw new Error('Переход в Telegram временно недоступен. Результаты останутся на сайте — продолжить можно здесь.');
+          throw new Error(payload?.message || payload?.ui?.safe_message || LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE);
         }
         if (response.status === 403) {
           throw new Error('Не удалось подтвердить согласие на перенос. Результаты останутся на сайте.');
         }
-        throw new Error('Не удалось подготовить перенос. Результаты останутся на сайте — попробуйте позже или продолжите здесь.');
+        throw new Error(payload?.message || 'Не удалось подготовить перенос. Результаты останутся на сайте — попробуйте позже или продолжите здесь.');
       }
 
       const safeUrl = safeTelegramUrl(payload?.telegramUrl);
@@ -102,7 +111,7 @@ export function TelegramContinuation({ codeResult, storyResult, meetingResult, j
       }
     } catch (cause) {
       telegramTab?.close();
-      setError(cause instanceof Error ? cause.message : 'Не удалось подготовить переход. Результаты останутся на сайте.');
+      setError(cause instanceof Error ? cause.message : LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE);
     } finally {
       setBusy(false);
     }
@@ -114,12 +123,24 @@ export function TelegramContinuation({ codeResult, storyResult, meetingResult, j
     <>
       <button
         type="button"
-        onClick={() => { setDialogOpen(true); setError(''); }}
+        onClick={() => {
+          if (isLocalCandidateHost) {
+            setStatus(LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE);
+            setError(LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE);
+          }
+          setDialogOpen(true);
+        }}
         className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.18em] text-sm rounded-xs transition-colors inline-flex items-center justify-center gap-2"
       >
         <Send size={14} />
         <span>Продолжить в Telegram</span>
       </button>
+
+      {isLocalCandidateHost && (
+        <p className="w-full text-xs text-stone-400 mt-1" data-testid="telegram-local-candidate-notice">
+          {LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE}
+        </p>
+      )}
 
       {status && (
         <div ref={statusRef} className="w-full" role="status" aria-live="polite">
@@ -146,24 +167,34 @@ export function TelegramContinuation({ codeResult, storyResult, meetingResult, j
               <ShieldCheck size={20} />
               <h3 id="telegram-continuation-title" className="font-serif text-2xl">Продолжить исследование в Telegram?</h3>
             </div>
-            <p className="text-base leading-relaxed text-stone-300">
-              Альберт получит краткую сводку вашего Цифрового кода, Личного мифа, Встречи и открытого вопроса, а также ваши подтверждённые уточнения, если они есть. Дата рождения и исходные ответы Мифа в эту передачу не входят.
-            </p>
-            <p className="text-sm leading-relaxed text-stone-400">
-              Перенос необязателен: можно остаться на сайте и продолжить диалог здесь. Ссылка Telegram одноразовая и действует 15 минут. Подробнее — в <a href="/privacy" target="_blank" rel="noreferrer" className="text-[var(--color-antique-gold)] underline underline-offset-4">условиях обработки данных</a>.
-            </p>
-            <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-relaxed text-stone-200">
-              <input type="checkbox" checked={accepted} onChange={event => setAccepted(event.target.checked)} disabled={busy} className="mt-1 size-5 shrink-0" />
-              Я согласен передать эту краткую сводку Альберту в Telegram.
-            </label>
-            {error && <p role="alert" className="text-sm leading-relaxed text-amber-300">{error}</p>}
+            {isLocalCandidateHost ? (
+              <p role="alert" className="text-base leading-relaxed text-amber-300">
+                {LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE}
+              </p>
+            ) : (
+              <>
+                <p className="text-base leading-relaxed text-stone-300">
+                  Альберт получит краткую сводку вашего Цифрового кода, Личного мифа, Встречи и открытого вопроса, а также ваши подтверждённые уточнения, если они есть. Дата рождения и исходные ответы Мифа в эту передачу не входят.
+                </p>
+                <p className="text-sm leading-relaxed text-stone-400">
+                  Перенос необязателен: можно остаться на сайте и продолжить диалог здесь. Ссылка Telegram одноразовая и действует 15 минут. Подробнее — в <a href="/privacy" target="_blank" rel="noreferrer" className="text-[var(--color-antique-gold)] underline underline-offset-4">условиях обработки данных</a>.
+                </p>
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-relaxed text-stone-200">
+                  <input type="checkbox" checked={accepted} onChange={event => setAccepted(event.target.checked)} disabled={busy} className="mt-1 size-5 shrink-0" />
+                  Я согласен передать эту краткую сводку Альберту в Telegram.
+                </label>
+              </>
+            )}
+            {error && !isLocalCandidateHost && <p role="alert" className="text-sm leading-relaxed text-amber-300">{error}</p>}
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setDialogOpen(false)} disabled={busy} className="min-h-11 px-5 text-sm text-stone-300 underline underline-offset-4 disabled:opacity-50">
                 Остаться на сайте
               </button>
-              <button type="button" onClick={createTransfer} disabled={!accepted || busy} className="min-h-11 rounded-xs bg-[var(--color-antique-gold)] px-5 text-sm font-semibold text-gray-950 disabled:opacity-40">
-                {busy ? 'Готовим перенос…' : 'Согласиться и открыть Telegram'}
-              </button>
+              {!isLocalCandidateHost && (
+                <button type="button" onClick={createTransfer} disabled={!accepted || busy} className="min-h-11 rounded-xs bg-[var(--color-antique-gold)] px-5 text-sm font-semibold text-gray-950 disabled:opacity-40">
+                  {busy ? 'Готовим перенос…' : 'Согласиться и открыть Telegram'}
+                </button>
+              )}
             </div>
           </section>
         </div>

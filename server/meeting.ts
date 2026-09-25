@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import type { CalculationResult, FirstMirror, StoryInputs, MeetingApiResponse, CodeV2Payload } from "../src/types";
 import { buildMeetingOfMirrorsPrompt } from "../src/services/mythPrompts";
 import { parseMeetingResponse } from "../src/services/meetingContract";
@@ -7,9 +8,29 @@ import { MEETING_SCHEMA, strictFormat } from './structuredOutput';
 
 export const MEETING_GLOBAL_TIMEOUT_MS = 48_000; // <= 50s and strictly < 60s nginx proxy timeout
 
+export function deriveMeetingCacheKey(codeData: any, storyData: any, userQuestion?: string): string {
+  const normalizedQuestion = String(userQuestion ?? storyData?.userQuestion ?? "").trim().slice(0, 500);
+  return crypto
+    .createHash("sha256")
+    .update(
+      JSON.stringify({
+        calc: codeData?.calc,
+        firstMirrorVersion: codeData?.firstMirror?.interpretationVersion || "",
+        firstMirrorTitle: codeData?.firstMirror?.title || "",
+        firstMirrorKeyInsight: codeData?.firstMirror?.keyInsight || "",
+        codeV2Motif: codeData?.codeV2Payload?.central_motif || "",
+        storyInputs: storyData?.storyInputs,
+        storyTitle: storyData?.storyResult?.title || "",
+        storyMirror: storyData?.storyResult?.mirror || {},
+        userQuestion: normalizedQuestion,
+      }),
+    )
+    .digest("hex");
+}
+
 export interface GenerateMeetingParams {
   codeData: { calc: CalculationResult; firstMirror?: FirstMirror; codeV2Payload?: CodeV2Payload };
-  storyData: { storyInputs: StoryInputs; storyResult: any };
+  storyData: { storyInputs: StoryInputs; storyResult: any; userQuestion?: string };
   client: ChatClient;
   model?: string;
   totalBudgetMs?: number;
@@ -52,7 +73,7 @@ async function generateMeetingAttempt({
     responseText = await client.call({
       model,
       messages: [
-        { role: "system", content: "Возвращай только валидный JSON без markdown. Сравнивай Код и Миф как два независимых взгляда, не устанавливай свойства человека. Ни один из них не считается истиной о человеке: смотри, какое новое различие появляется, если поставить их рядом. Единственный источник его актуальной ситуации — исходные ответы. Опорой для резонанса и possibleSupport со стороны Мифа могут быть ТОЛЬКО прямые ответы пользователя или действия, прямо их повторяющие. Категорически запрещено использовать декоративные образы (лампы, погоду, обстановку, текстуры, верёвки, листы, вечерний антураж) как свидетельство психологических черт, выгорания, усталости или черт характера. Не подгоняй количество параллелей: 1–2 точные связи или 0 при hasStrongParallels: false намного лучше, чем натянутые параллели. В parallels.synthesis, summary, possibleSupport и albertInsight говори о проверяемых возможностях, а не о свойствах личности. Нельзя называть бытовой выбор парализующим разрывом. Новый ракурс формулируй как способ рассмотреть конкретную задачу, не объяснение истинной личности. PossibleSupport всегда остаётся гипотезой: не объявляй скрытый потенциал, силу, предназначение или способность человека." },
+        { role: "system", content: "Возвращай только валидный JSON без markdown. Сравнивай Код и Миф как два независимых взгляда, не устанавливай свойства личности. Обращайся к человеку НАПРЯМУЮ («вы», «ваш», «в вашем ответе», «для вашей ситуации»); категорически запрещено обсуждать человека в третьем лице («человек», «читатель», «пользователь», «автор ответов»). Строй синтез вокруг трёх опор: 1) что вы рассказали (в summary), 2) какой новый ракурс можно проверить (в albertInsight — различие двух способов действовать в вашей ситуации и один наблюдаемый признак без пересказа Мифа и Кода), 3) на какую конкретную деталь из вашего ответа можно опереться (в possibleSupport). Категорически запрещено использовать декоративные образы (лампы, погоду, обстановку, текстуры, верёвки, листы, вечерний антураж) как свидетельство психологических черт, выгорания, усталости или черт характера. Не подгоняй количество параллелей: 1–2 точные связи или 0 при hasStrongParallels: false намного лучше, чем натянутые параллели. PossibleSupport всегда остаётся гипотезой: не объявляй скрытый потенциал, силу, предназначение или способность." },
         { role: "user", content: prompt },
       ],
       temperature: 0.6,

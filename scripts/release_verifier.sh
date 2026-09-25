@@ -22,8 +22,8 @@ set -uo pipefail
 
 WEB_REPO="gnabriverner-pixel/Zerkalo"
 DCS_REPO="gnabriverner-pixel/digital-code-system"
-WEB_URL="https://github.com/${WEB_REPO}.git"
-DCS_URL="https://github.com/${DCS_REPO}.git"
+WEB_URL="${WEB_URL:-https://github.com/${WEB_REPO}.git}"
+DCS_URL="${DCS_URL:-https://github.com/${DCS_REPO}.git}"
 DEAD_BRIDGE_URL="http://127.0.0.1:9"
 
 WEB_SHA_ARG="" DCS_SHA_ARG="" OUT_DIR_ARG="" POST_STATUS=0

@@ -484,5 +484,48 @@ describe("Personal Myth v1.1 release contract", () => {
       await expect(generatePersonalMyth(request(), provider, 1000)).rejects.toThrow("personal_myth_quality_failed");
       expect(attempts).toBe(2);
     });
+
+    it("accepts direct address ('вы / в вашем ответе') in post-story explanations while rejecting third-person discussion of the user", () => {
+      const directPayload = validPayload();
+      directPayload.story_result.mirror = {
+        mainImage: "В вашем ответе тяжёлая дверь у воды работает как граница перед выбором темпа.",
+        innerTension: "Вы описываете развилку, где хочется сохранить ясность и не форсировать решение.",
+        hiddenResource: "Когда вы опираетесь на прогулку у воды, становится возможным выбрать свой ритм шага.",
+        newView: "Что меняется для вас, если соединить тишину у двери и устойчивость движения вдоль берега?",
+      };
+      directPayload.story_result.meaning = ["Дверь как ваш порог", "Ваш темп как выбор", "Открытый горизонт"];
+      directPayload.story_result.one_step = "В течение двух минут вы можете заметить одну устойчивую деталь вокруг себя.";
+      directPayload.story_result.journal_question = "На какую конкретную деталь из вашего ответа вы можете опереться сегодня?";
+
+      const directResult = parsePersonalMythResult(JSON.stringify(directPayload));
+      const directQuality = validatePersonalMythResult(directResult, request());
+      expect(directQuality.passed).toBe(true);
+      expect(directQuality.blockers).toEqual([]);
+
+      const thirdPersonPayload = structuredClone(directPayload);
+      thirdPersonPayload.story_result.mirror.mainImage = "Пользователь описывает закрытую дверь, а читатель видит в ней границу.";
+      const thirdPersonResult = parsePersonalMythResult(JSON.stringify(thirdPersonPayload));
+      expect(validatePersonalMythResult(thirdPersonResult, request()).blockers).toContain("post_story_third_person_forbidden");
+    });
+
+    it("blocks unprompted crack cliché when absent from user answers, but allows 'трещина' when introduced by the user", () => {
+      const unpromptedCrackPayload = validPayload();
+      unpromptedCrackPayload.story_result.story += "\n\nНа поверхности двери проступает тонкая трещина, пропускающая воздух.";
+      const unpromptedCrackResult = parsePersonalMythResult(JSON.stringify(unpromptedCrackPayload));
+      expect(validatePersonalMythResult(unpromptedCrackResult, request()).blockers).toContain("unprompted_crack_cliche");
+
+      const userCrackRequest = parsePersonalMythRequest({
+        request_id: "req_user_crack_123456",
+        consent_version: PERSONAL_MYTH_WRITER_VERSION,
+        answers: {
+          q1: "Боюсь разрушить хрупкую договоренность в проекте",
+          q2: "Старая фарфоровая чашка с тонкой трещиной на ободке",
+          q3: "Спокойный утренний разговор без спешки",
+          q4: "Устойчивости и простоты",
+        },
+      });
+      expect(validatePersonalMythResult(unpromptedCrackResult, userCrackRequest).blockers).not.toContain("unprompted_crack_cliche");
+    });
   });
 });
+

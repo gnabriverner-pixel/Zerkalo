@@ -9,6 +9,8 @@ import { useProtectedFetch } from './ConsentBoundary';
 interface PersonalMythProps {
   initialInputs?: StoryInputs | null;
   initialResult?: ApiResponse['story_result'] | null;
+  userQuestion?: string;
+  onInputsChange?: (inputs: StoryInputs) => void;
   onOpenAbout?: () => void;
   onMythCompleted?: (inputs: StoryInputs, result: ApiResponse['story_result']) => void;
   onNavigateToMeeting?: () => void;
@@ -18,6 +20,8 @@ interface PersonalMythProps {
 export default function PersonalMyth({ 
   initialInputs,
   initialResult,
+  userQuestion,
+  onInputsChange,
   onOpenAbout,
   onMythCompleted,
   onNavigateToMeeting,
@@ -25,7 +29,16 @@ export default function PersonalMyth({
 }: PersonalMythProps = {}) {
   const protectedFetch = useProtectedFetch();
   const [step, setStep] = useState(initialResult ? 6 : 0);
-  const [inputs, setInputs] = useState<StoryInputs>(initialInputs || { q1: '', q2: '', q3: '', q4: '' });
+  const [inputs, setInputs] = useState<StoryInputs>(() => {
+    const base = initialInputs || { q1: '', q2: '', q3: '', q4: '' };
+    const prefilledQ1 = base.q1.trim() ? base.q1 : (userQuestion?.trim() || '');
+    return {
+      q1: prefilledQ1,
+      q2: base.q2 || '',
+      q3: base.q3 || '',
+      q4: base.q4 || '',
+    };
+  });
   const [result, setResult] = useState<ApiResponse['story_result'] | null>(initialResult || null);
   const [errorText, setErrorText] = useState('');
   const [journalNote, setJournalNote] = useState('');
@@ -42,9 +55,25 @@ export default function PersonalMyth({
 
   useEffect(() => {
     if (initialInputs) {
-      setInputs(initialInputs);
+      setInputs((prev) => {
+        const nextQ1 = initialInputs.q1.trim()
+          ? initialInputs.q1
+          : (prev.q1.trim() ? prev.q1 : (userQuestion?.trim() || ''));
+        return {
+          q1: nextQ1,
+          q2: initialInputs.q2,
+          q3: initialInputs.q3,
+          q4: initialInputs.q4,
+        };
+      });
+    } else if (userQuestion?.trim()) {
+      setInputs((prev) => {
+        const next = prev.q1.trim() ? prev : { ...prev, q1: userQuestion.trim() };
+        onInputsChange?.(next);
+        return next;
+      });
     }
-  }, [initialInputs]);
+  }, [initialInputs, userQuestion]);
 
   const stepMeta = [
     {
@@ -225,8 +254,10 @@ export default function PersonalMyth({
                   rows={3}
                   value={currentInputValue}
                   onChange={(e) => {
-                    setErrorText(null);
-                    setInputs({ ...inputs, [currentQuestion.id]: e.target.value });
+                    setErrorText('');
+                    const next = { ...inputs, [currentQuestion.id]: e.target.value };
+                    setInputs(next);
+                    onInputsChange?.(next);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey && currentInputValue.trim().length >= 3) {
@@ -250,7 +281,7 @@ export default function PersonalMyth({
                   <button
                     type="button"
                     onClick={() => {
-                      setErrorText(null);
+                      setErrorText('');
                       handleGenerate();
                     }}
                     className="px-4 py-2 bg-red-900/60 hover:bg-red-800 text-xs font-mono uppercase tracking-wider text-red-100 rounded-xs transition-colors cursor-pointer"
@@ -273,7 +304,7 @@ export default function PersonalMyth({
                   <span>{step === 4 ? 'Соткать историю' : 'Далее'}</span>
                   <ArrowRight size={14} />
                 </button>
-                <span className="text-[13px] text-stone-400 font-mono">или нажми Enter</span>
+                <span className="text-[13px] text-stone-400 font-mono">или нажмите Enter</span>
               </div>
             </motion.div>
           )}
@@ -292,7 +323,7 @@ export default function PersonalMyth({
                 Собираем метафорическую историю...
               </h3>
               <p className="text-xs text-stone-400 font-normal max-w-sm leading-relaxed">
-                Сказка рождается строго из твоих четырех ответов, без домыслов и шаблонов.
+                Сказка рождается строго из ваших четырёх ответов, без домыслов и шаблонов.
               </p>
             </motion.div>
           )}
@@ -314,7 +345,7 @@ export default function PersonalMyth({
                   Личный Миф · Художественная сцена
                 </span>
                 <p className="text-xs text-stone-400 font-normal mb-4">
-                  Дальше — художественная сцена. Её герой — ты.
+                  В художественной сцене герой — «ты», а в пояснениях ниже мы обращаемся прямо к вам и вашим ответам.
                 </p>
                 
                 <h1 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-4 font-light tracking-tight">
@@ -325,7 +356,7 @@ export default function PersonalMyth({
               {/* PROVENANCE: Из каких образов родилась история */}
               <div className="w-full bg-[#0D121D]/70 border border-white/[0.08] p-6 sm:p-8 rounded-xs">
                 <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]/80 block mb-4">
-                  Символические истоки
+                  Что вы рассказали в четырёх ответах
                 </span>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -352,7 +383,7 @@ export default function PersonalMyth({
               <article className="w-full bg-[#EFE5D3] border border-[#D1B98D]/50 p-8 sm:p-12 rounded-xs shadow-[0_28px_80px_rgba(0,0,0,0.3)]">
                 <div className="mb-8 flex items-center justify-between border-b border-[#7B6545]/20 pb-4 text-[13px] uppercase tracking-[0.25em] text-[#7B6545] font-mono">
                   <span>Личный миф</span>
-                  <span>Чернила · твои четыре образа</span>
+                  <span>Чернила · ваши четыре образа</span>
                 </div>
                 <div className="font-serif text-lg sm:text-[21px] leading-[2] text-[#282019] space-y-8 font-normal max-w-2xl mx-auto tracking-[0.015em]">
                   {result.story.split('\n\n').map((paragraph, idx) => (
@@ -361,34 +392,51 @@ export default function PersonalMyth({
                 </div>
               </article>
 
-              <div className="w-full max-w-2xl mx-auto rounded-xs border border-purple-300/15 bg-purple-300/[0.04] p-6 sm:p-7">
-                <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-purple-200/80 block mb-3">
-                  Что стало возможным
-                </span>
-                <p className="font-serif text-lg text-stone-200 leading-relaxed">
-                  {result.mirror.hiddenResource}
-                </p>
+              <div className="w-full max-w-2xl mx-auto space-y-4">
+                <div className="rounded-xs border border-white/[0.08] bg-[#0D121D]/80 p-6 sm:p-7">
+                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]/80 block mb-2">
+                    Образ в вашем ответе
+                  </span>
+                  <p className="font-serif text-base sm:text-lg text-stone-200 leading-relaxed mb-4">
+                    {result.mirror.mainImage}
+                  </p>
+                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-stone-400 block mb-2">
+                    Новый ракурс для проверки
+                  </span>
+                  <p className="font-serif text-base text-stone-300 leading-relaxed">
+                    {result.mirror.newView}
+                  </p>
+                </div>
+
+                <div className="rounded-xs border border-purple-300/15 bg-purple-300/[0.04] p-6 sm:p-7">
+                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-purple-200/80 block mb-3">
+                    Что стало возможным
+                  </span>
+                  <p className="font-serif text-lg text-stone-200 leading-relaxed">
+                    {result.mirror.hiddenResource}
+                  </p>
+                </div>
               </div>
 
               <p className="max-w-2xl mx-auto text-sm text-stone-400 leading-relaxed text-center">
-                У этой истории нет единственно правильной расшифровки. Можно взять одну деталь, изменить её или решить, что образ вам не подходит — смысл остаётся за вами.
+                У этой истории нет единственно правильной расшифровки. Вы можете взять одну деталь, изменить её или решить, что образ вам не подходит — смысл остаётся за вами.
               </p>
 
               {/* LIVING QUESTION FOR REFLECTION */}
               <div className="w-full bg-[#0D121D]/90 border border-[var(--color-antique-gold)]/20 p-8 sm:p-10 rounded-xs text-center">
                 <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-3">
-                  Вопрос для внутренней тишины
+                  Вопрос для вашей ситуации
                 </span>
                 
                 <p className="font-serif italic text-xl sm:text-2xl text-stone-100 mb-6 font-normal max-w-xl mx-auto">
-                  «{result.journal_question || "Какое крошечное решение из чувства покоя я могу принять прямо сейчас?"}»
+                  «{result.journal_question || "На какую конкретную деталь из вашего ответа вы можете опереться сегодня?"}»
                 </p>
 
                 <textarea 
                   rows={2}
                   value={journalNote}
                   onChange={(e) => setJournalNote(e.target.value)}
-                  placeholder="Запиши здесь свой отклик или мысль..."
+                  placeholder="Запишите здесь свой отклик или мысль..."
                   className="w-full max-w-xl mx-auto bg-transparent border-0 border-b border-white/20 focus:border-[var(--color-antique-gold)] text-sm text-center py-2 outline-none transition-colors text-stone-100 placeholder:text-stone-600 font-normal resize-none block"
                 />
               </div>
@@ -400,12 +448,12 @@ export default function PersonalMyth({
                     Следующее зеркало
                   </span>
                   <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
-                    {hasCodeResult ? 'Встреча двух зеркал' : 'Цифровой код твоей природы'}
+                    {hasCodeResult ? 'Встреча двух зеркал' : 'Цифровой код вашей природы'}
                   </h3>
                   <p className="text-xs sm:text-sm text-stone-400 font-normal max-w-md mx-auto leading-relaxed">
                     {hasCodeResult 
-                      ? 'Твой код уже рассчитан. Можно перейти к синтезу двух независимых отражений.'
-                      : 'Открой независимую линзу через дату рождения, чтобы получить пять ключей и сопоставить их с мифом.'}
+                      ? 'Ваш код уже рассчитан. Можно перейти к синтезу двух независимых отражений.'
+                      : 'Откройте независимую линзу через дату рождения, чтобы получить пять ключей и сопоставить их с вашим мифом.'}
                   </p>
                 </div>
 
@@ -423,7 +471,7 @@ export default function PersonalMyth({
                   <button
                     onClick={() => {
                       setStep(0);
-                      setInputs({ q1: '', q2: '', q3: '', q4: '' });
+                      setInputs({ q1: userQuestion?.trim() || '', q2: '', q3: '', q4: '' });
                       setResult(null);
                       requestIdRef.current = `myth_${crypto.randomUUID().replace(/-/g, '')}`;
                     }}

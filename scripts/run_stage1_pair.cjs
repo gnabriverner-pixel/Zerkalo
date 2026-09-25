@@ -473,6 +473,7 @@ async function main() {
     GOOGLE_API_KEY: googleApiKeyValue,
     GEMINI_API_KEY: geminiApiKeyValue,
     TELEGRAM_V2_ALBERT_API_KEY: process.env.TELEGRAM_V2_ALBERT_API_KEY ? String(process.env.TELEGRAM_V2_ALBERT_API_KEY).trim() : "",
+    STAGE1_LOCAL_CANDIDATE_MODE: process.env.STAGE1_LOCAL_CANDIDATE_MODE || "true",
   };
 
   const hasRouterAiKey = Boolean(routerAiKeyValue);

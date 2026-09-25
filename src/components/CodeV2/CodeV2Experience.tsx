@@ -19,12 +19,33 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+export type CodeV2ReactionStatus = 'confirmed' | 'rejected';
+
+export interface CodeV2AlbertOpenOptions {
+  userQuestion?: string;
+  initialPrompt?: string;
+  reactionItem?: {
+    key: string;
+    status: CodeV2ReactionStatus;
+    claimText: string;
+  };
+}
+
 interface CodeV2ExperienceProps {
   initialDate?: string;
   initialPayload?: CodeV2Payload;
   initialExpanded?: Record<string, boolean>;
   isQaMode?: boolean;
-  onOpenAlbert: (payload: CodeV2Payload) => void;
+  userQuestion?: string;
+  onChangeUserQuestion?: (question: string) => void;
+  onUserQuestionChange?: (question: string) => void;
+  initialReactions?: Record<string, CodeV2ReactionStatus>;
+  onReactionChange?: (
+    key: string,
+    status: CodeV2ReactionStatus,
+    claimText: string
+  ) => void;
+  onOpenAlbert: (payload: CodeV2Payload, options?: CodeV2AlbertOpenOptions) => void;
   onCalculated?: (payload: CodeV2Payload) => void;
   onChangeDate?: () => void;
   onContinue?: () => void;
@@ -59,6 +80,11 @@ export function CodeV2Experience({
   initialPayload,
   initialExpanded,
   isQaMode = false,
+  userQuestion = '',
+  onChangeUserQuestion,
+  onUserQuestionChange,
+  initialReactions = {},
+  onReactionChange,
   onOpenAlbert,
   onCalculated,
   onChangeDate,
@@ -96,6 +122,24 @@ export function CodeV2Experience({
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [payload, setPayload] = useState<CodeV2Payload | null>(initialPayload || null);
+  const [localQuestion, setLocalQuestion] = useState<string>(userQuestion || '');
+  const [reactions, setReactions] = useState<Record<string, CodeV2ReactionStatus>>(initialReactions);
+
+  useEffect(() => {
+    setLocalQuestion(userQuestion || '');
+  }, [userQuestion]);
+
+  const handleQuestionInput = (val: string) => {
+    const bounded = val.slice(0, 500);
+    setLocalQuestion(bounded);
+    onChangeUserQuestion?.(bounded);
+    onUserQuestionChange?.(bounded);
+  };
+
+  const handleMarkReaction = (key: string, status: CodeV2ReactionStatus, claimText: string) => {
+    setReactions(prev => ({ ...prev, [key]: status }));
+    onReactionChange?.(key, status, claimText);
+  };
 
   // Progressive disclosure states (collapsed by default to achieve 450-700 words budget)
   const [showCalcChain, setShowCalcChain] = useState(false);
@@ -454,24 +498,109 @@ export function CodeV2Experience({
                   ))}
                 </div>
 
-                {/* Quiet Albert Invitation right after central motif */}
-                <div className="pt-5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <div className="text-sm text-stone-200 font-medium">
-                      Хотите проверить это на себе?
+                {/* Quiet Albert Invitation & Central Hypothesis Reaction */}
+                <div className="pt-5 border-t border-white/10 flex flex-col gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm text-stone-200 font-medium">
+                        Хотите проверить это на себе?
+                      </div>
+                      <div className="text-xs text-stone-400 font-normal mt-0.5">
+                        {reactions['central_motif'] === 'rejected'
+                          ? 'Отмечено «Не похоже» — ваша поправка важнее исходной гипотезы.'
+                          : reactions['central_motif'] === 'confirmed'
+                          ? 'Отмечено «Похоже» — Альберт учтёт ваш отклик.'
+                          : 'Альберт уже видит вашу карту.'}
+                      </div>
                     </div>
-                    <div className="text-xs text-stone-400 font-normal mt-0.5">
-                      Альберт уже видит вашу карту.
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleMarkReaction(
+                            'central_motif',
+                            'confirmed',
+                            payload.albert_context?.strongest_hypothesis || payload.central_motif || ''
+                          )
+                        }
+                        className={`px-3 py-1.5 rounded-lg text-xs border transition-colors cursor-pointer ${
+                          reactions['central_motif'] === 'confirmed'
+                            ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
+                            : 'bg-white/5 border-white/10 text-stone-300 hover:border-white/25'
+                        }`}
+                      >
+                        Похоже
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleMarkReaction(
+                            'central_motif',
+                            'rejected',
+                            payload.albert_context?.strongest_hypothesis || payload.central_motif || ''
+                          )
+                        }
+                        className={`px-3 py-1.5 rounded-lg text-xs border transition-colors cursor-pointer ${
+                          reactions['central_motif'] === 'rejected'
+                            ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
+                            : 'bg-white/5 border-white/10 text-stone-300 hover:border-white/25'
+                        }`}
+                      >
+                        Не похоже
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenAlbert(payload, {
+                            userQuestion: localQuestion.trim() || undefined,
+                            initialPrompt: localQuestion.trim()
+                              ? `Мой вопрос: ${localQuestion.trim()}`
+                              : undefined
+                          })
+                        }
+                        className="px-3.5 py-1.5 rounded-lg bg-[var(--color-antique-gold)]/15 border border-[var(--color-antique-gold)]/40 hover:bg-[var(--color-antique-gold)]/25 text-amber-200 text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Уточнить</span>
+                      </button>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => onOpenAlbert(payload)}
-                    className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-[var(--color-antique-gold)]/15 border border-[var(--color-antique-gold)]/40 hover:bg-[var(--color-antique-gold)]/25 text-amber-200 text-xs font-mono transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>Уточнить или не согласиться</span>
-                  </button>
+
+                  {/* Personal Question Block */}
+                  <div className="pt-4 border-t border-white/10">
+                    <label
+                      htmlFor="code-v2-user-question"
+                      className="block text-sm font-medium text-stone-200 mb-2"
+                    >
+                      В каком вопросе вы хотите разобраться?
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                      <input
+                        id="code-v2-user-question"
+                        type="text"
+                        maxLength={500}
+                        value={localQuestion}
+                        onChange={e => handleQuestionInput(e.target.value)}
+                        placeholder="Например: почему я откладываю запуск своего дела или решение в отношениях"
+                        className="flex-1 bg-black/40 border border-white/10 focus:border-[var(--color-antique-gold)] rounded-xl px-4 py-3 text-base text-stone-100 placeholder:text-stone-500 outline-none transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenAlbert(payload, {
+                            userQuestion: localQuestion.trim() || undefined,
+                            initialPrompt: localQuestion.trim()
+                              ? localQuestion.trim()
+                              : undefined
+                          })
+                        }
+                        className="min-h-[46px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-medium text-sm hover:brightness-110 transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        <span>Обсудить с Альбертом</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -536,7 +665,7 @@ export function CodeV2Experience({
                 <span>Как это читать</span>
               </div>
               <p className="text-base text-stone-300 font-normal leading-relaxed max-w-2xl">
-                Пять чисел получены из даты рождения. У каждой позиции — своя роль и вопрос для проверки. Ход расчёта раскрывается выше. Описания — гипотезы: уточняйте и оспаривайте их по своему опыту.
+                Пять чисел из даты рождения — гипотезы, а не факты биографии: уточняйте их по своему опыту.
               </p>
             </section>
 
@@ -546,15 +675,17 @@ export function CodeV2Experience({
                 <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
                   Пять позиций вашего кода
                 </h2>
-                <p className="text-sm text-stone-400 font-normal mt-1">
-                  Каждое число отвечает за свой слой жизни и раскрывается по-разному.
-                </p>
               </div>
 
               <div className="space-y-6">
                 {payload.positions.map((pos) => {
                   const isExpanded = !!expandedDetails[pos.position];
                   const publicEssence = cleanPositionEssence(pos.essence);
+                  const rawScene = pos.life_scenes?.[0]?.description || '';
+                  const firstSceneExample = rawScene
+                    ? `${rawScene.split(/[.;!—]/)[0].trim()}.`
+                    : '';
+                  const posReaction = reactions[pos.position];
                   return (
                     <div
                       key={pos.position}
@@ -586,20 +717,30 @@ export function CodeV2Experience({
                         </div>
                       </div>
 
-                      {/* О чём это число */}
-                      <div className="mb-6">
+                      {/* 1. О чём это число (человеческий смысл) */}
+                      <div className="mb-4">
                         <div className="text-xs font-medium text-stone-400 mb-2">
-                          О чём это число
+                          О чём это число ({pos.public_name}, {pos.energy})
                         </div>
                         {pos.position === 'path' && (
                           <p className="mb-3 rounded-xl border border-[var(--color-antique-gold)]/20 bg-[var(--color-antique-gold)]/5 px-4 py-3 text-base text-stone-300 font-normal leading-relaxed">
-                            Это не готовая черта характера, а направление практики: способ действовать, который постепенно осваивается через выборы, поступки и повторяющиеся жизненные задачи.
+                            Это не готовая черта характера, а направление практики.
                           </p>
                         )}
                         <p className="text-base sm:text-[17px] text-stone-200 font-normal leading-relaxed">
                           {isExpanded ? publicEssence : getFirstSentence(publicEssence)}
                         </p>
                       </div>
+
+                      {/* 2. Конкретный пример проявления */}
+                      {firstSceneExample && !isExpanded && (
+                        <div className="mb-4 pl-3.5 border-l border-[var(--color-antique-gold)]/40 text-sm sm:text-base text-stone-300 leading-relaxed">
+                          <span className="text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)]/90 block mb-0.5">
+                            Пример
+                          </span>
+                          <span>{firstSceneExample}</span>
+                        </div>
+                      )}
 
                       {/* Progressive disclosure: Dynamic Forces & Life Scenes */}
                       <AnimatePresence>
@@ -734,7 +875,7 @@ export function CodeV2Experience({
                         )}
                       </AnimatePresence>
 
-                      {/* Проверьте на себе */}
+                      {/* 3. Проверьте на себе (вопрос для проверки) */}
                       <div className="p-4 bg-black/30 rounded-xl border border-white/5 flex items-start gap-3 mb-3">
                         <Compass className="w-4 h-4 text-[var(--color-antique-gold)] flex-shrink-0 mt-0.5" />
                         <div>
@@ -747,8 +888,8 @@ export function CodeV2Experience({
                         </div>
                       </div>
 
-                      {/* Progressive disclosure trigger */}
-                      <div className="pt-2">
+                      {/* Progressive disclosure & position reaction controls */}
+                      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <button
                           type="button"
                           onClick={() => toggleDetails(pos.position)}
@@ -757,11 +898,60 @@ export function CodeV2Experience({
                           <Eye className="w-3.5 h-3.5" />
                           <span>
                             {isExpanded
-                              ? 'Свернуть подробности'
-                              : `Посмотреть баланс сил и ситуации из жизни (${pos.life_scenes?.length || 0})`}
+                              ? 'Свернуть'
+                              : `Подробности (${pos.life_scenes?.length || 0})`}
                           </span>
                           {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleMarkReaction(
+                                pos.position,
+                                'confirmed',
+                                `${pos.public_name} (${pos.energy}): ${getFirstSentence(publicEssence)}`
+                              )
+                            }
+                            className={`px-2.5 py-1 rounded-lg text-xs border transition-colors cursor-pointer ${
+                              posReaction === 'confirmed'
+                                ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
+                                : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
+                            }`}
+                          >
+                            Похоже
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleMarkReaction(
+                                pos.position,
+                                'rejected',
+                                `${pos.public_name} (${pos.energy}): ${getFirstSentence(publicEssence)}`
+                              )
+                            }
+                            className={`px-2.5 py-1 rounded-lg text-xs border transition-colors cursor-pointer ${
+                              posReaction === 'rejected'
+                                ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
+                                : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
+                            }`}
+                          >
+                            Не похоже
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onOpenAlbert(payload, {
+                                userQuestion: localQuestion.trim() || undefined,
+                                initialPrompt: `Хочу уточнить позицию «${pos.public_name}» (${pos.energy}): в моём опыте это проявляется иначе.`
+                              })
+                            }
+                            className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 hover:border-[var(--color-antique-gold)]/40 text-stone-300 text-xs transition-colors cursor-pointer"
+                          >
+                            Уточнить
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -772,44 +962,52 @@ export function CodeV2Experience({
             {onContinue && (
               <div className="rounded-2xl border border-white/10 p-6 space-y-3">
                 <h2 className="font-serif text-2xl">Посмотреть с другой стороны</h2>
-                <p className="text-sm text-stone-300">Личный миф начинается с ваших слов и образов. Его история не подстраивается под числа.</p>
+                <p className="text-sm text-stone-300">Личный миф строится из ваших слов и не подстраивается под числа.</p>
                 <button type="button" onClick={onContinue} className="min-h-[44px] px-5 py-3 rounded-xl bg-[var(--color-antique-gold)] text-[#111622] cursor-pointer">{continueLabel}</button>
               </div>
             )}
 
-            {/* 5. KEY CONNECTIONS */}
+            {/* 5. KEY CONNECTIONS (EXPANDABLE ON DEMAND) */}
             <section className="w-full bg-[#0D1322]/80 border border-white/5 rounded-2xl p-6 sm:p-8 backdrop-blur-md">
-              <div className="max-w-2xl mb-6">
-                <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
-                  Как числа взаимодействуют между собой
+              <button
+                type="button"
+                onClick={() => toggleDetails('interactions')}
+                className="w-full flex items-center justify-between text-left cursor-pointer"
+              >
+                <h2 className="font-serif text-xl sm:text-2xl text-stone-100 font-light">
+                  Связи чисел ({payload.interactions.length})
                 </h2>
-                <p className="text-xs sm:text-sm text-stone-400 font-normal leading-relaxed">
-                  Характер проявляется в том, как разные силы поддерживают или сдерживают друг друга.
-                </p>
-              </div>
+                {expandedDetails['interactions'] ? (
+                  <ChevronUp className="w-4 h-4 text-stone-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-stone-400" />
+                )}
+              </button>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {payload.interactions.map((inter, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-black/30 border border-white/5 hover:border-white/10 rounded-xl p-5 flex flex-col justify-between transition-all"
-                  >
-                    <div>
-                      {isQaEffective && (
-                        <div className="text-[13px] font-mono text-stone-400 mb-2">
-                          {inter.category} · {inter.positions_label}
-                        </div>
-                      )}
-                      <h4 className="font-serif text-lg text-stone-100 font-light mb-3 leading-snug">
-                        {inter.heading}
-                      </h4>
-                      <p className="text-xs text-stone-300 font-normal leading-relaxed">
-                        {getFirstSentence(inter.meaning)}
-                      </p>
+              {expandedDetails['interactions'] && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                  {payload.interactions.map((inter, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-black/30 border border-white/5 hover:border-white/10 rounded-xl p-5 flex flex-col justify-between transition-all"
+                    >
+                      <div>
+                        {isQaEffective && (
+                          <div className="text-[13px] font-mono text-stone-400 mb-2">
+                            {inter.category} · {inter.positions_label}
+                          </div>
+                        )}
+                        <h4 className="font-serif text-lg text-stone-100 font-light mb-3 leading-snug">
+                          {inter.heading}
+                        </h4>
+                        <p className="text-xs text-stone-300 font-normal leading-relaxed">
+                          {getFirstSentence(inter.meaning)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             {/* 8. ALBERT FINAL INVITATION */}
@@ -818,15 +1016,9 @@ export function CodeV2Experience({
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
                 <div className="max-w-xl">
-                  <div className="text-[13px] font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-2">
-                    Диалог по карте
-                  </div>
-                  <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-3">
+                  <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
                     Альберт — собеседник по вашей карте
                   </h3>
-                  <p className="text-sm sm:text-base text-stone-300 font-normal leading-relaxed mb-4">
-                    Он не будет пересказывать числа. Он поможет понять, что действительно про вас, а что стоит уточнить или отбросить.
-                  </p>
                   {payload.albert_context?.opening_statement && (
                     <p className="text-xs sm:text-sm text-stone-400 font-serif italic pl-3 border-l border-[var(--color-antique-gold)]/50 leading-relaxed">
                       «{payload.albert_context.opening_statement}»
@@ -834,14 +1026,31 @@ export function CodeV2Experience({
                   )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => onOpenAlbert(payload)}
-                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-medium text-sm hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2.5 shadow-xl shadow-amber-950/30 whitespace-nowrap"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Поговорить с Альбертом</span>
-                </button>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onOpenAlbert(payload, {
+                        userQuestion: localQuestion.trim() || undefined
+                      })
+                    }
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-medium text-sm hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2.5 shadow-xl shadow-amber-950/30 whitespace-nowrap"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Поговорить с Альбертом</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onOpenAlbert(payload, {
+                        userQuestion: localQuestion.trim() || undefined
+                      })
+                    }
+                    className="w-full sm:w-auto px-4 py-3.5 rounded-xl border border-white/15 bg-white/[0.03] hover:bg-white/[0.08] text-stone-200 font-normal text-xs sm:text-sm transition-all duration-200 cursor-pointer whitespace-nowrap"
+                  >
+                    Уточнить или не согласиться
+                  </button>
+                </div>
               </div>
             </section>
 

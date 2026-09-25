@@ -4,9 +4,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function normalizeDirectUserAddress(input: string): string {
+  return input
+    .replace(/(?<![а-яё])в\s+ответах\s+(?:человека|пользователя|читателя)(?![а-яё])/giu, "в вашем ответе")
+    .replace(/(?<![а-яё])в\s+запросе\s+(?:человека|пользователя|читателя)(?![а-яё])/giu, "в вашем запросе")
+    .replace(/(?<![а-яё])для\s+ситуации\s+(?:человека|пользователя|читателя)(?![а-яё])/giu, "для вашей ситуации")
+    .replace(/(?<![а-яё])в\s+ситуации\s+(?:человека|пользователя|читателя)(?![а-яё])/giu, "в вашей ситуации")
+    .replace(/(?<![а-яё])для\s+(?:самого\s+)?(?:человека|пользователя|читателя)(?![а-яё])/giu, "для вас")
+    .replace(/(?<![а-яё])у\s+(?:самого\s+)?(?:человека|пользователя|читателя)(?![а-яё])/giu, "у вас")
+    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+описывает(?![а-яё])/giu, "вы описываете")
+    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+рассказывает(?![а-яё])/giu, "вы рассказываете")
+    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+называет(?![а-яё])/giu, "вы называете")
+    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+ищет(?![а-яё])/giu, "вы ищете")
+    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+хочет(?![а-яё])/giu, "вы хотите")
+    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+сталкивается(?![а-яё])/giu, "вы сталкиваетесь")
+    .replace(/(?<![а-яё])(?:человеку|пользователю|читателю)(?![а-яё])/giu, "вам")
+    .replace(/(?<![а-яё])(?:пользователя|читателя)(?![а-яё])/giu, "вас")
+    .replace(/(?<![а-яё])(?:пользователь|читатель)(?![а-яё])/giu, "вы");
+}
+
 function text(value: unknown, field: string, max = 2400): string {
   if (typeof value !== "string") throw new Error(`meeting_invalid_${field}`);
-  const normalized = value.replace(/\s+/gu, " ").trim();
+  const normalized = normalizeDirectUserAddress(value.replace(/\s+/gu, " ").trim());
   if (!normalized || normalized.length > max) throw new Error(`meeting_invalid_${field}`);
   return normalized;
 }
