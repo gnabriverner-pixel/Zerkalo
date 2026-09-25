@@ -502,7 +502,11 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                 style={{ fontSize: '16px' }}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Задайте вопрос Альберту о вашей карте..."
+                placeholder={
+                  meetingResult
+                    ? 'Задайте вопрос Альберту о вашей карте и встрече зеркал...'
+                    : 'Задайте вопрос Альберту о вашей карте...'
+                }
                 className={`flex-1 min-w-0 px-4 py-3 rounded-xl border font-sans text-[16px] outline-none transition-colors ${
                   isDark
                     ? 'bg-[#0F1412] border-[#2A3B33] text-white placeholder-stone-500 focus:border-[var(--color-antique-gold)]'

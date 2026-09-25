@@ -192,6 +192,41 @@ describe('Proxy / rate-limit correctness (production mode)', () => {
 
     const clientB = await postJson(harness, '/api/meeting-of-mirrors', cookie, {}, '203.0.113.11');
     expect(clientB.status).toBe(200);
+
+    // Even when clientA (203.0.113.10) has exhausted MEETING_RATE_MAX (third.status === 429),
+    // a crisis userQuestion or storyInputs on /api/meeting-of-mirrors MUST execute BEFORE rate-limit/cache/budget/LLM
+    // and return 200 with status === 'crisis'.
+    const crisisOnRateLimitedClient = await postJson(
+      harness,
+      '/api/meeting-of-mirrors',
+      cookie,
+      {
+        storyData: {
+          userQuestion: 'Я больше не хочу жить, думаю покончить с собой',
+          storyInputs: { q1: 'Тяжело', q2: 'Камень', q3: 'Тишина', q4: 'Покой' },
+        },
+      },
+      clientA
+    );
+    expect(crisisOnRateLimitedClient.status).toBe(200);
+    const crisisJson = await crisisOnRateLimitedClient.json();
+    expect(crisisJson.status).toBe('crisis');
+    expect(crisisJson.ui?.safe_message).toContain('живая поддержка');
+
+    // Conversely, a work metaphor on clientA is NOT a crisis, so it hits the exhausted rate-limit (429) as expected.
+    const metaphorOnRateLimitedClient = await postJson(
+      harness,
+      '/api/meeting-of-mirrors',
+      cookie,
+      {
+        storyData: {
+          userQuestion: 'На работе просто убивают этими правками, проект умер, это профессиональное самоубийство',
+          storyInputs: { q1: 'Выгорел в ноль на созвонах', q2: 'Стол', q3: 'Пауза', q4: 'Покой' },
+        },
+      },
+      clientA
+    );
+    expect(metaphorOnRateLimitedClient.status).toBe(429);
   }, 30_000);
 
   it('Meeting and Albert have independent budgets', async () => {

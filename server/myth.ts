@@ -65,16 +65,51 @@ const AFFIRMATIVE_PREDICTION = /(?:^|[\s.,!?;:«»"—()\[\]])(?:предска�
 const AFFIRMATIVE_DIAGNOSIS = /(?:^|[\s.,!?;:«»"—()\[\]])диагноз\w*/iu;
 
 const CRISIS_LANGUAGE = [
-  /хочу\s+(?:умереть|покончить\s+с\s+собой)/iu,
-  /не\s+хочу\s+жить/iu,
-  /убить\s+себя/iu,
-  /причин(?:ить|ю)\s+(?:себе|другим)\s+вред/iu,
-  /суицид\w*/iu,
-  /самоубийств\w*/iu,
-  /наложить\s+на\s+себя\s+руки/iu,
-  /вскрыть\s+вены/iu,
-  /спрыгнуть\s+с/iu,
+  /(?:хочу|собираюсь|планирую|решил[аи]?|лучше\s+бы\s+мне|мне\s+хочется|пойду)\s+(?:умереть|покончить\s+с\s+собой|убить\s+себя|уйти\s+из\s+жизни|свести\s+сч[её]ты\s+с\s+жизнью|вскрыть\s+вены|спрыгнуть|повеситься|наглотаться\s+таблеток)/iu,
+  /(?:не\s+хочу|больше\s+не\s+могу|незачем)\s+(?:больше\s+|дальше\s+)?жить/iu,
+  /(?:покончить|покончу)\s+с\s+собой/iu,
+  /(?:убить|убью)\s+себя/iu,
+  /(?:причинить|причиню|нанести|нанесу)\s+(?:себе|другим)\s+(?:физический\s+)?вред/iu,
+  /(?:наложить|наложу)\s+на\s+себя\s+руки/iu,
+  /(?:вскрыть|вскрою|порезать|порежу)\s+вены/iu,
+  /(?:спрыгнуть|спрыгну|выпрыгнуть|выпрыгну)\s+с\s+(?:крыши|окна|моста|балкона|высоты|\d+\s+этажа)/iu,
+  /(?:думаю|мысли|намерени[ея]|план\w*|способ\w*|готова?|готов|хочется|тянет)\s+(?:о\s+|про\s+|на\s+|к\s+|совершить\s+)?(?:суицид\w*|самоубийств\w*|самоповрежден\w*)/iu,
+  /(?:^|[\s.,!?;:—()])(?:суицид|самоубийство)(?:$|[\s.,!?;:—()])/iu,
 ];
+
+export const SAFE_CRISIS_MESSAGE =
+  "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой.";
+
+export function containsCrisisLanguageText(rawText: string): boolean {
+  if (!rawText || typeof rawText !== "string") return false;
+  let text = rawText.trim();
+  if (!text) return false;
+
+  // 1. Strip quoted segments when accompanied by surrounding unquoted text or explicit citation markers
+  const strippedQuotes = text
+    .replace(/(?:цитат[а-яё]*|процитировал[а-яё]*|в\s+(?:книге|песне|фильме|романе|статье|стихах)[^.!?\n]{0,50}|автор\s+пишет|герой\s+говорит|сказал[а-яё]*|строчк[а-яё]*|фраз[а-яё]*)[\s:,-]*(?:«[^»]*»|"[^"]*"|“[^”]*”)/giu, " ")
+    .replace(/«[^»]*»/gu, (match) => (text.replace(match, "").trim().length > 10 ? " " : match))
+    .replace(/"[^"]*"/gu, (match) => (text.replace(match, "").trim().length > 10 ? " " : match))
+    .replace(/“[^”]*”/gu, (match) => (text.replace(match, "").trim().length > 10 ? " " : match));
+
+  // 2. Strip work/colloquial metaphors
+  const strippedMetaphors = strippedQuotes
+    .replace(/(?:профессиональн|карьерн|политическ|творческ|финансов|социальн|репутационн)[а-яё]*\s+(?:самоубийств|суицид)[а-яё]*/giu, " ")
+    .replace(/(?:проект|план|идея|дедлайн|рынок|бизнес|сделка|код|сервер)\s+(?:умер[а-яё]*|погиб[а-яё]*|убит[а-яё]*)/giu, " ")
+    .replace(/убива(?:ют|ет)\s+(?:меня\s+)?(?:этим[а-яё]*\s+|бесконечн[а-яё]*\s+)?(?:правк|задач|созвон|дедлайн|отчёт|работ|график|ритм)[а-яё]*/giu, " ")
+    .replace(/(?:просто\s+)?убивают\s+этим[а-яё]*\s+[а-яё]+/giu, " ")
+    .replace(/(?:хочу\s+|можно\s+)?умереть\s+от\s+(?:скуки|смеха|стыда|любопытства|усталости|жары)/giu, " ")
+    .replace(/выгорел[а-яё]*\s+в\s+ноль/giu, " ")
+    .replace(/не\s+хочу\s+жить\s+(?:на\s+работе|в\s+офисе|по\s+чужим\s+правилам|в\s+вечной\s+спешке|в\s+таком\s+ритме|в\s+этом\s+графике)/giu, " ");
+
+  // 3. Strip explicit negations of self-harm / suicide (never matching "не хочу жить")
+  const strippedNegations = strippedMetaphors
+    .replace(/(?:не\s+(?:собираюсь|планирую|буду|думаю|намерен[а-яё]*)|не\s+хочу(?!\s+(?:больше\s+|дальше\s+)?жить)|нет\s+(?:никаких\s+)?(?:мыслей|желания|намерения|планов)|без\s+(?:мыслей|желания|намерения)|никогда\s+не\s+(?:думал[а-яё]*|хотел[а-яё]*(?!\s+жить)|собирался|собиралась))\s+(?:(?:о\s+том\s+чтобы|про\s+то\s+чтобы|о|про|себе)\s+){0,2}(?:причин[а-яё]*\s+(?:себе|другим)\s+вред|уби[а-яё]*\s+себя|покончить\s+с\s+собой|суицид[а-яё]*|самоубийств[а-яё]*|вскры[а-яё]*\s+вен[а-яё]*|умирать|умереть|сводить\s+сч[её]ты)/giu, " ")
+    .replace(/(?:никак[а-яё]*\s+(?:мыслей\s+(?:о|про)\s+)?|это\s+не\s+)(?:суицид[а-яё]*|самоубийств[а-яё]*|самоповрежден[а-яё]*)/giu, " ")
+    .replace(/(?:жить\s+хочется|мне\s+хочется\s+жить|я\s+хочу\s+жить)/giu, " ");
+
+  return CRISIS_LANGUAGE.some((pattern) => pattern.test(strippedNegations));
+}
 
 const SERIAL_FINGERPRINTS = [/впервые\s+за\s+долгое\s+время/iu];
 const NEGATION_CONTRAST_TEMPLATE = /(?:^|[\s«"(])не\s+[^.!?\n]{1,100}?,?\s+а\s+[а-яё]/giu;
@@ -279,7 +314,7 @@ export function parsePersonalMythRequest(value: unknown): PersonalMythRequest {
 
 export function containsCrisisLanguage(answers: StoryInputs): boolean {
   const combined = ANSWER_KEYS.map((key) => answers[key]).join(" ");
-  return CRISIS_LANGUAGE.some((pattern) => pattern.test(combined));
+  return containsCrisisLanguageText(combined);
 }
 
 export function buildPersonalMythPromptV11(
@@ -390,7 +425,7 @@ export function formatBlockerForRepair(blocker: string): string {
     case "template_fingerprint":
       return "Категорически запрещена фраза «впервые за долгое время» и похожие штампы. Удали их из текста.";
     case "unprompted_crack_cliche":
-      return "КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО любое слово с корнем «трещин-» (трещина, трещинка, трещины, трещиной). Пользователь не называл трещину, скол или поломку в своих ответах. Полностью удали корень «трещин-» из всех полей JSON и раскрой реальные свойства предмета из q2 через действие.";
+      return "КАТЕГОРИЧЕСКИ ЗАПРЕЩЁН навязанный сюжет повреждённого предмета («трещина / скол / борозда / щербина / надлом / разлом → починка или принятие изъяна»), если сам пользователь не называл повреждение в ответах q1–q4. Не заменяй слово «трещина» косметическими синонимами («борозда», «скол», «щербина», «надлом», «разлом»). Полностью перепиши этот ход через реальную функцию, грань, вес, положение или ритм предмета из q2.";
     case "post_story_third_person_forbidden":
       return "В пояснениях после истории (mirror, meaning, one_step, journal_question) запрещено обсуждать человека в третьем лице («человек», «читатель», «пользователь», «автор ответов»). Обращайся напрямую («вы», «в вашем ответе»).";
     case "story_word_count_out_of_contract_300_to_800":
@@ -434,31 +469,6 @@ export function formatBlockerForRepair(blocker: string): string {
   }
 }
 
-function replaceUnpromptedCrackWordsInText(value: string): string {
-  return value.replace(/(?<![а-яё])(?<!без\s)трещин([а-яё]*)/giu, (match, suffix: string) => {
-    const isUpper = match[0] === match[0]?.toUpperCase() && match[0] !== match[0]?.toLowerCase();
-    const base = isUpper ? "Борозд" : "борозд";
-    return `${base}${suffix}`;
-  });
-}
-
-export function sanitizeUnpromptedCrackInResult(result: PersonalMythResult): PersonalMythResult {
-  return {
-    ...result,
-    title: replaceUnpromptedCrackWordsInText(result.title),
-    story: replaceUnpromptedCrackWordsInText(result.story),
-    mirror: {
-      mainImage: replaceUnpromptedCrackWordsInText(result.mirror.mainImage),
-      innerTension: replaceUnpromptedCrackWordsInText(result.mirror.innerTension),
-      hiddenResource: replaceUnpromptedCrackWordsInText(result.mirror.hiddenResource),
-      newView: replaceUnpromptedCrackWordsInText(result.mirror.newView),
-    },
-    meaning: result.meaning.map(replaceUnpromptedCrackWordsInText),
-    one_step: replaceUnpromptedCrackWordsInText(result.one_step),
-    journal_question: replaceUnpromptedCrackWordsInText(result.journal_question),
-  };
-}
-
 export function buildPersonalMythRepairPrompt(
   request: PersonalMythRequest,
   previousStory: string,
@@ -471,10 +481,7 @@ export function buildPersonalMythRepairPrompt(
   const lengthRepair=blockers.includes('story_word_count_out_of_contract_300_to_800')
     ? `Измеренный объём story: ${observedWords} слов. Перепиши story в 400–550 слов (сделай 5 развёрнутых абзацев по 85–105 слов каждый, чтобы гарантированно преодолеть порог 300 слов): ${observedWords<300 ? 'добавь полноценное действие и наблюдаемые детали в каждый абзац, не новые факты жизни' : 'сократи повторения и описания'}. Возврат прежнего story без изменения НЕ является исправлением. Остальные поля не считаются объёмом истории.`
     : '';
-  const rawDraftJson = JSON.stringify(previousResult || {story:previousStory,mirror:previousMirror});
-  const draftJson = blockers.includes('unprompted_crack_cliche')
-    ? replaceUnpromptedCrackWordsInText(rawDraftJson)
-    : rawDraftJson;
+  const draftJson = JSON.stringify(previousResult || {story:previousStory,mirror:previousMirror});
   return `Ты — литературный редактор. Предыдущая версия «Личного мифа» содержит конкретные дефекты публикации:
 
 ОБНАРУЖЕННЫЕ НАРУШЕНИЯ И ТРЕБОВАНИЯ К ИСПРАВЛЕНИЮ:
@@ -682,8 +689,9 @@ export function validatePersonalMythResult(result: PersonalMythResult, request?:
   }
   if (request) {
     const userAnswersCombined = ANSWER_KEYS.map((k) => request.answers[k] || "").join(" ");
-    const userIntroducedCrack = /(?<![а-яё])(?:трещин|скол|надлом|разлом|разбит|сломан)[а-яё]*/iu.test(userAnswersCombined);
-    if (!userIntroducedCrack && /(?<![а-яё])(?<!без\s)трещин[а-яё]*/iu.test(nonDisclaimerText)) {
+    const userIntroducedCrack = /(?<![а-яё])(?:трещин[а-яё]*|борозд[а-яё]*|щербин[а-яё]*|надлом[а-яё]*|разлом[а-яё]*|разбит[а-яё]*|сломан[а-яё]*|(?:ра)?скол(?:а|у|ом|е|ы|ов|ам|ами|ах|от[а-яё]*)?)(?![а-яё])/iu.test(userAnswersCombined);
+    const hasUnpromptedDamagedObjectCliche = /(?<![а-яё])(?<!без\s)(?:(?:трещин|борозд|щербин|надлом|разлом)[а-яё]*|(?:ра)?скол(?:а|у|ом|е|ы|ов|ам|ами|ах|от[а-яё]*)?)(?![а-яё])/iu.test(nonDisclaimerText);
+    if (!userIntroducedCrack && hasUnpromptedDamagedObjectCliche) {
       blockers.push("unprompted_crack_cliche");
     }
   }

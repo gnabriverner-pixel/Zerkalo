@@ -30,6 +30,9 @@ export const FORBIDDEN_ANALYTICS_KEYS = [
   "q2",
   "q3",
   "q4",
+  "q5",
+  "userQuestion",
+  "user_question",
   "answers",
   "story",
   "story_result",
@@ -198,6 +201,30 @@ export function setAuthoritativeReleaseSha(sha: string): void {
 const STRICT_ANON_ID_REGEX = /^[a-zA-Z0-9_-]{8,120}$/;
 const SENSITIVE_CONTENT_SNIFFER = /(?:@|\+7|8-800|8800|password|secret|bearer|token|cut_myself|kill_myself|suicide|пореж|убить|суицид|умереть|наглота|нож|лезви|бритв|<|>|script|javascript:|onerror|[{}[\]"\\]|[\r\n\t\x00-\x1F])/i;
 
+const FORBIDDEN_ANALYTICS_KEY_SET = new Set(FORBIDDEN_ANALYTICS_KEYS);
+
+function findForbiddenAnalyticsKeyRecursive(value: unknown, depth = 0): string | null {
+  if (depth > 8 || !value || typeof value !== "object") return null;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findForbiddenAnalyticsKeyRecursive(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  const obj = value as Record<string, unknown>;
+  for (const [key, val] of Object.entries(obj)) {
+    if (FORBIDDEN_ANALYTICS_KEY_SET.has(key) && val !== undefined && val !== null) {
+      return key;
+    }
+    if (val && typeof val === "object") {
+      const nested = findForbiddenAnalyticsKeyRecursive(val, depth + 1);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
+
 export function validateAnalyticsEvent(payload: unknown): { valid: boolean; event?: DecisionAnalyticsEvent; error?: string } {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return { valid: false, error: "invalid_payload_object" };
@@ -205,11 +232,10 @@ export function validateAnalyticsEvent(payload: unknown): { valid: boolean; even
 
   const raw = payload as Record<string, unknown>;
 
-  // Reject if any forbidden sensitive key exists
-  for (const forbiddenKey of FORBIDDEN_ANALYTICS_KEYS) {
-    if (forbiddenKey in raw && raw[forbiddenKey] !== undefined && raw[forbiddenKey] !== null) {
-      return { valid: false, error: `forbidden_sensitive_key_detected:${forbiddenKey}` };
-    }
+  // Reject if any forbidden sensitive key exists at top level or nested (e.g. inside payload/props/metadata)
+  const forbiddenKey = findForbiddenAnalyticsKeyRecursive(raw);
+  if (forbiddenKey) {
+    return { valid: false, error: `forbidden_sensitive_key_detected:${forbiddenKey}` };
   }
 
   // Sniff for sensitive patterns and control characters in all string values (excluding valid ISO timestamp occurred_at)
@@ -341,14 +367,20 @@ export function validateAnalyticsEvent(payload: unknown): { valid: boolean; even
   return { valid: true, event };
 }
 
-export async function logDecisionEvent(event: DecisionAnalyticsEvent): Promise<void> {
+export async function logDecisionEvent(event: DecisionAnalyticsEvent): Promise<boolean> {
   try {
+    const validated = validateAnalyticsEvent(event);
+    if (!validated.valid || !validated.event) {
+      return false;
+    }
     const eventsDir = path.join(process.cwd(), "data", "events");
     await fs.mkdir(eventsDir, { recursive: true });
-    const line = JSON.stringify(event) + "\n";
+    const line = JSON.stringify(validated.event) + "\n";
     await fs.appendFile(path.join(eventsDir, "events.jsonl"), line, "utf-8");
+    return true;
   } catch (err) {
     console.warn("[Analytics] Failed to persist decision event:", err);
+    return false;
   }
 }
 

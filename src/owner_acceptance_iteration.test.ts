@@ -11,10 +11,19 @@ import {
 import { buildMeetingOfMirrorsPrompt } from './services/mythPrompts';
 import { calculateDigitalCode } from './services/calculator';
 import { generateFirstMirror } from './services/interpretation';
-import { deriveMeetingCacheKey } from '../server/meeting';
+import { containsMeetingCrisisInput, deriveMeetingCacheKey } from '../server/meeting';
 import { createContinuationClaim, LOCAL_CANDIDATE_TELEGRAM_UNAVAILABLE_MESSAGE } from '../server/handoff';
 import { buildCanonicalEnvelopeFromWebContext } from '../server/albert';
-import { validatePersonalMythResult } from '../server/myth';
+import {
+  buildPersonalMythRepairPrompt,
+  containsCrisisLanguage,
+  containsCrisisLanguageText,
+  SAFE_CRISIS_MESSAGE,
+  validatePersonalMythResult,
+} from '../server/myth';
+import { parseMeetingResponse } from './services/meetingContract';
+import { FORBIDDEN_ANALYTICS_KEYS, logDecisionEvent, validateAnalyticsEvent } from '../server/analytics';
+import { MeetingOfMirrors } from './components/MeetingOfMirrors';
 import { TelegramContinuation } from './components/TelegramContinuation';
 import { ConsentBoundary } from './components/ConsentBoundary';
 import PersonalMyth from './components/PersonalMyth';
@@ -404,5 +413,354 @@ describe('Owner acceptance iteration: personal question, direct address, and loc
     });
     expect(validation.blockers).not.toContain('register_formal_you_forbidden');
     expect(validation.blockers).not.toContain('post_story_third_person_forbidden');
+  });
+
+  it('Item 1: preserves quotes about another person without mechanical replacement, while rejecting third-person user discussion and broken pronoun agreement', () => {
+    const validWithQuoteAndColleague = {
+      status: 'ok',
+      result: {
+        summary:
+          'В вашем вопросе звучит усталость от ночных переделок, когда рядом всплывает мысль: «Другой человек на этой должности давно бы сдал проект как есть». В выбранном вами образе комната с плотными шторами задаёт тихую дистанцию.',
+        hasStrongParallels: true,
+        confidenceNote: 'Высокий резонанс между вашим вопросом и гипотезой Кода.',
+        possibleSupport:
+          'В выбранном вами образе есть короткая пауза перед тем, как открыть папку; можно проверить, пригодится ли похожая пауза в рабочей ситуации, когда коллега приносит сырую задачу.',
+        parallels: [
+          {
+            theme: 'Момент перед включением в чужую правку',
+            codeAnchor: 'Интерпретация вашего Кода предлагает проверить, как вы держите границу качества.',
+            mythAnchor: 'В вашем ответе вы назвали паузу перед началом работы.',
+            synthesis: 'Для вашей ситуации это подсвечивает выбор между немедленным подхватом и короткой проверкой условий.',
+          },
+        ],
+        divergences: [
+          {
+            theme: 'Темп реакции',
+            codeAspect: 'Гипотеза Кода указывает на быстрый отклик.',
+            mythAspect: 'В вашем ответе звучит потребность в тишине.',
+            reflection: 'Вы можете заметить, в какой момент чужая спешка становится вашей задачей.',
+          },
+        ],
+        albertInsight:
+          'В вашей рабочей ситуации можно различить два хода: сразу забрать сырой черновик в ночную доработку или сначала вернуть автору один конкретный вопрос по критериям готовности.',
+        reflectiveQuestion: 'По какому первому признаку в разговоре вы замечаете, что готовы забрать чужую недоработку на ночь?',
+        disclaimer: 'Код и Миф — два независимых взгляда для саморефлексии.',
+      },
+    };
+
+    const parsed = parseMeetingResponse(validWithQuoteAndColleague);
+    expect(parsed.result?.summary).toContain('«Другой человек на этой должности давно бы сдал проект как есть»');
+    expect(parsed.result?.summary).not.toContain('Другой вы');
+
+    // Third-person discussion of the user himself must be rejected
+    expect(() =>
+      parseMeetingResponse({
+        ...validWithQuoteAndColleague,
+        result: {
+          ...validWithQuoteAndColleague.result,
+          summary: 'Пользователь описывает рабочую перегрузку и ночные переделки за команду.',
+        },
+      })
+    ).toThrow('meeting_third_person_about_user');
+
+    // Broken single-word pronoun substitution («вы описывает», «в ответах вас») must be rejected
+    expect(() =>
+      parseMeetingResponse({
+        ...validWithQuoteAndColleague,
+        result: {
+          ...validWithQuoteAndColleague.result,
+          summary: 'В ответах вас видна усталость, когда вы описывает ночные переделки.',
+        },
+      })
+    ).toThrow('meeting_third_person_about_user');
+  });
+
+  it('Item 1: rejects unprompted crack AND cosmetic борозда/скол substitutions in PersonalMyth when user did not introduce damage, while allowing user-supplied crack imagery', () => {
+    const baseParagraphs = [
+      'Ты выходишь к старому каменному мосту на рассвете, когда утренний туман ещё держится у самой воды и свежий воздух пахнет речной прохладой. Под ладонью ты чувствуешь прохладный серый гранит парапета, а внизу спокойно и ровно расходится глубокое течение реки.',
+      'В руке у тебя тяжёлый черновик рабочего плана: ты кладёшь его на широкий каменный выступ и внимательно смотришь, как вода без суеты обходит массивные опоры моста. Два списка задач лежат рядом, и ты видишь, как ветер слегка приподнимает углы исписанных страниц.',
+      'Ты делаешь глубокий спокойный вдох, аккуратно убираешь лишние листы в сумку и оставляешь перед собой только один чистый разворот. Течение внизу остаётся ровным, и твой шаг по мосту звучит отчётливо и уверенно в утренней тишине.',
+    ];
+    const baseResult: any = {
+      title: 'Мост над тихой водой',
+      story: baseParagraphs.join('\n\n'),
+      mirror: {
+        mainImage: 'В вашем ответе каменный мост и разворот черновика задают спокойную точку опоры.',
+        innerTension: 'В вашем ответе рядом стоят спешка и потребность в ясном ритме.',
+        hiddenResource: 'В сцене стало возможно убрать лишние листы и оставить один конкретный шаг.',
+        newView: 'Вы можете проверить, как меняется темп, когда вы выбираете один разворот.',
+      },
+      meaning: ['В вашей ситуации пауза помогает удержать фокус.'],
+      one_step: 'Сегодня выберите один рабочий лист и отложите остальные на десять минут.',
+      journal_question: 'Что меняется в вашем внимании, когда перед вами остаётся только одна задача?',
+      disclaimer: 'Образный формат для саморефлексии.',
+    };
+
+    const requestWithoutDamage = {
+      request_id: 'req-no-damage-1234',
+      consent_version: 'u1-consent.v1',
+      answers: {
+        q1: 'Выбираю между двумя проектами и хочу сохранить рабочий ритм.',
+        q2: 'Каменный мост и рабочий блокнот на парапете.',
+        q3: 'Когда оставляю на столе только один лист.',
+        q4: 'Спокойной собранности.',
+      },
+    };
+
+    // 1. Unprompted «борозда» (cosmetic substitute for «трещина») must fail with unprompted_crack_cliche
+    const withUnpromptedBorozda = {
+      ...baseResult,
+      story: baseResult.story.replace('прохладный серый гранит', 'глубокую борозду на камне'),
+    };
+    const borozdaCheck = validatePersonalMythResult(withUnpromptedBorozda, requestWithoutDamage);
+    expect(borozdaCheck.passed).toBe(false);
+    expect(borozdaCheck.blockers).toContain('unprompted_crack_cliche');
+
+    // 2. buildPersonalMythRepairPrompt must pass untouched draft text (preserving «трещина») and forbid «борозда/скол»
+    const withUnpromptedCrack = {
+      ...baseResult,
+      story: baseResult.story.replace('прохладный серый гранит', 'глубокую трещину на камне'),
+    };
+    const repairPrompt = buildPersonalMythRepairPrompt(
+      requestWithoutDamage,
+      withUnpromptedCrack.story,
+      withUnpromptedCrack.mirror,
+      ['unprompted_crack_cliche'],
+      withUnpromptedCrack
+    );
+    expect(repairPrompt).toContain('глубокую трещину на камне');
+    expect(repairPrompt).toContain('Не заменяй слово «трещина» косметическими синонимами («борозда», «скол»');
+
+    // 3. When the user explicitly introduces «трещина» in q2, crack imagery IS allowed
+    const requestWithUserCrack = {
+      ...requestWithoutDamage,
+      answers: {
+        ...requestWithoutDamage.answers,
+        q2: 'Старая чашка с тонкой трещиной на краю.',
+      },
+    };
+    const allowedCheck = validatePersonalMythResult(withUnpromptedCrack, requestWithUserCrack);
+    expect(allowedCheck.blockers).not.toContain('unprompted_crack_cliche');
+  });
+
+  it('Item 2: enforces strict source separation in MeetingOfMirrors for the courier/folder scenario', () => {
+    const courierStoryData = {
+      userQuestion: 'Срываюсь на команду при горящих сроках, а потом сам переделываю всё ночью',
+      storyInputs: {
+        q1: 'Срываюсь на команду при горящих сроках, а потом сам переделываю всё ночью',
+        q2: 'Комната с плотными шторами и стопка чертежей под лампой',
+        q3: 'Когда закрываю дверь изнутри и молча забираю папку у курьера',
+        q4: 'Спокойной паузы перед решением',
+      },
+      storyResult: {
+        title: 'Лампа над чертежами',
+        story: 'Ты закрываешь дверь изнутри и кладёшь папку курьера на край стола под тёплый свет лампы.',
+      },
+    };
+
+    const baseCourierEnvelope = {
+      status: 'ok',
+      result: {
+        summary:
+          'В вашем вопросе речь идёт о реальной рабочей перегрузке — срывах при горящих сроках и ночных переделках за команду. В выбранном вами образе (q2–q3) этому противопоставлена закрытая дверь, стол под лампой и пауза перед тем, как открыть папку.',
+        hasStrongParallels: true,
+        confidenceNote: 'Сопоставление реального рабочего вопроса и выбранного вами образа дистанции.',
+        possibleSupport:
+          'В выбранном вами образе есть пауза перед тем, как открыть папку курьера; можно проверить, пригодится ли похожая двухминутная пауза в рабочей ситуации, прежде чем забирать сырую задачу на ночь.',
+        parallels: [
+          {
+            theme: 'Граница между приёмом задачи и немедленной переделкой',
+            codeAnchor: 'Интерпретация вашего Кода предлагает проверить, как вы распределяете ответственность за результат.',
+            mythAnchor: 'В выбранном вами образе вы сначала кладёте папку на край стола, не открывая её сразу.',
+            synthesis: 'Для вашей рабочей ситуации это ставит вопрос: можно ли разделить момент получения черновика и решение переделывать его самому ночью.',
+          },
+        ],
+        divergences: [
+          {
+            theme: 'Режим уединения в образе и командный процесс в жизни',
+            codeAspect: 'Гипотеза Кода опирается на прямой контакт и ясные условия в диалоге.',
+            mythAspect: 'В вашем образе покой появляется только за закрытой изнутри дверью.',
+            reflection: 'В реальной работе с командой нельзя просто закрыть дверь, но можно проверить короткую паузу перед ответом.',
+          },
+        ],
+        albertInsight:
+          'В вашей ситуации со сроками можно различить два способа действовать: сразу на эмоциях забрать сырой материал и переписать его ночью самому — или в момент приёма назвать один конкретный критерий, без которого задача не принимается в работу.',
+        reflectiveQuestion: 'Какой один вопрос к автору черновика вы можете задать до того, как возьмёте задачу в ночную доработку?',
+        disclaimer: 'Код и Миф — два независимых взгляда.',
+      },
+    };
+
+    // Properly attributed image hypothesis passes
+    const valid = parseMeetingResponse(baseCourierEnvelope, courierStoryData);
+    expect(valid.status).toBe('ok');
+    expect(valid.result?.possibleSupport).toContain('В выбранном вами образе есть пауза');
+
+    // Conflating the imaginary courier/folder action with already-practiced real-life behavior must fail
+    expect(() =>
+      parseMeetingResponse(
+        {
+          status: 'ok',
+          result: {
+            ...baseCourierEnvelope.result,
+            possibleSupport:
+              'Вы уже умеете выдерживать границу — как вы это делаете, когда молча забираете папку у курьера и закрываете дверь изнутри; это уже испытанный вами способ.',
+          },
+        },
+        courierStoryData
+      )
+    ).toThrow(/meeting_unsupported_support_claim|meeting_source_conflation/);
+
+    // Promising an ungrounded outcome («ночная переделка становится менее неизбежной») must fail
+    expect(() =>
+      parseMeetingResponse(
+        {
+          status: 'ok',
+          result: {
+            ...baseCourierEnvelope.result,
+            albertInsight:
+              'Если вы перенесёте этот жест с папкой в рабочий день, ночная переделка становится менее неизбежной и конфликты исчезнут.',
+          },
+        },
+        courierStoryData
+      )
+    ).toThrow(/meeting_unsupported_support_claim|meeting_source_conflation/);
+  });
+
+  it('Owner Addition 1: detects direct crisis language while ignoring quotes, negations, and work metaphors, and renders crisis state calmly in MeetingOfMirrors', async () => {
+    // 1. Direct crisis / self-harm intent -> true
+    expect(containsCrisisLanguageText('Я больше не хочу жить, думаю покончить с собой сегодня вечером')).toBe(true);
+    expect(
+      containsMeetingCrisisInput(
+        {
+          storyInputs: { q1: 'Устал от работы', q2: 'Стол', q3: 'Пауза', q4: 'Покой' },
+        },
+        'Хочу причинить себе вред и уйти из жизни'
+      )
+    ).toBe(true);
+
+    // 2. Quote -> false
+    expect(
+      containsCrisisLanguageText(
+        'Коллега на встрече процитировал фразу из книги: «не хочу жить в таком графике», но мы спокойно пересобрали план'
+      )
+    ).toBe(false);
+
+    // 3. Explicit negation -> false
+    expect(
+      containsCrisisLanguageText(
+        'Я точно не собираюсь причинять себе вред и не хочу умирать, мне важно просто выспаться и сменить ритм'
+      )
+    ).toBe(false);
+
+    // 4. Colloquial work metaphor -> false
+    expect(
+      containsCrisisLanguageText(
+        'На работе просто убивают этими правками, старый проект умер, я выгорел в ноль на созвонах, брать ещё один релиз — это профессиональное самоубийство'
+      )
+    ).toBe(false);
+    expect(
+      containsMeetingCrisisInput(
+        {
+          storyInputs: {
+            q1: 'На работе просто убивают этими правками, проект умер',
+            q2: 'Выгорел в ноль на созвонах',
+            q3: 'Сделал паузу',
+            q4: 'Ясности',
+          },
+        },
+        'Брать второй проект без людей — это профессиональное самоубийство'
+      )
+    ).toBe(false);
+
+    // 5. UI rendering of status === 'crisis' in MeetingOfMirrors
+    const calc = calculateDigitalCode('14.08.1991');
+    const firstMirror = generateFirstMirror(calc);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/meeting-of-mirrors')) {
+          return new Response(
+            JSON.stringify({
+              status: 'crisis',
+              ui: { safe_message: SAFE_CRISIS_MESSAGE },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(JSON.stringify({ accepted: true }), { status: 200 });
+      })
+    );
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ConsentBoundary,
+          null,
+          React.createElement(MeetingOfMirrors, {
+            codeDate: '14.08.1991',
+            userQuestion: 'Тяжёлый момент',
+            codeResult: calc,
+            firstMirror,
+            storyInputs: { q1: 'Ситуация', q2: 'Мост', q3: 'Шаг', q4: 'Покой' },
+            storyResult: {
+              title: 'Мост',
+              story: 'Ты стоишь у моста.',
+              mirror: { mainImage: 'Мост', innerTension: 'Вопрос', hiddenResource: 'Шаг', newView: 'Взгляд' },
+              meaning: ['Смысл'],
+              one_step: 'Шаг',
+              journal_question: 'Вопрос?',
+              disclaimer: 'Дисклеймер',
+            },
+            onOpenCode: () => {},
+            onOpenMyth: () => {},
+          })
+        )
+      );
+    });
+
+    const runBtn = [...container.querySelectorAll('button')].find(b => b.textContent?.includes('Провести Встречу зеркал'));
+    expect(runBtn).toBeTruthy();
+    await act(async () => {
+      runBtn!.click();
+    });
+
+    const crisisSupportBox = container.querySelector('[data-testid="meeting-crisis-support"]');
+    expect(crisisSupportBox).toBeTruthy();
+    expect(crisisSupportBox?.textContent).toContain(SAFE_CRISIS_MESSAGE);
+    expect(container.textContent).not.toContain('Сопоставляем отражения...');
+  });
+
+  it('Owner Addition 2: forbids userQuestion and user_question in analytics events (top-level and nested) without enabling analytics', async () => {
+    expect(FORBIDDEN_ANALYTICS_KEYS).toContain('userQuestion');
+    expect(FORBIDDEN_ANALYTICS_KEYS).toContain('user_question');
+    expect(FORBIDDEN_ANALYTICS_KEYS).toContain('q5');
+
+    expect(
+      validateAnalyticsEvent({
+        event_name: 'code_calculated',
+        userQuestion: 'Секретный личный вопрос',
+      })
+    ).toEqual({ valid: false, error: 'forbidden_sensitive_key_detected:userQuestion' });
+
+    expect(
+      validateAnalyticsEvent({
+        event_name: 'meeting_completed',
+        payload: {
+          nested: [{ user_question: 'Секретный личный вопрос' }],
+        },
+      })
+    ).toEqual({ valid: false, error: 'forbidden_sensitive_key_detected:user_question' });
+
+    await expect(
+      logDecisionEvent({
+        event_name: 'code_calculated',
+        timestamp: new Date().toISOString(),
+        anonymous_id: 'anon_123',
+        session_id: 'sess_123',
+        funnel_version: 'v1',
+        userQuestion: 'Не должен попасть в лог',
+      } as any)
+    ).resolves.toBe(false);
   });
 });

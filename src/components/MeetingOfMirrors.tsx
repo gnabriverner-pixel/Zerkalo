@@ -74,6 +74,7 @@ export function MeetingOfMirrors({
   const [meetingResult, setMeetingResult] = useState<MeetingOfMirrorsResult | null>(initialMeetingResult || null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [crisisMessage, setCrisisMessage] = useState('');
   const [isAlbertOpen, setIsAlbertOpen] = useState(false);
   const [albertTopic, setAlbertTopic] = useState('');
   const [userNote, setUserNote] = useState(initialUserNote || '');
@@ -172,6 +173,7 @@ export function MeetingOfMirrors({
     synthesisRequest.current = controller;
     setIsLoading(true);
     setErrorMessage('');
+    setCrisisMessage('');
 
     try {
       const response = await protectedFetch('/api/meeting-of-mirrors', {
@@ -197,7 +199,13 @@ export function MeetingOfMirrors({
       const data: MeetingApiResponse = await response.json();
       if (controller.signal.aborted) return;
 
-      if (data.status === 'ok' && data.result) {
+      if (data.status === 'crisis') {
+        setMeetingResult(null);
+        setCrisisMessage(
+          data.ui?.safe_message ||
+            'Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой.'
+        );
+      } else if (data.status === 'ok' && data.result) {
         setMeetingResult(data.result);
         if (onMeetingCompleted) {
           onMeetingCompleted(data.result);
@@ -374,6 +382,21 @@ export function MeetingOfMirrors({
                 <AlertCircle size={13} />
                 <span>{errorMessage}</span>
               </p>
+            )}
+
+            {crisisMessage && (
+              <div
+                data-testid="meeting-crisis-support"
+                role="status"
+                className="mt-6 w-full max-w-2xl bg-[#0D121D] border border-[var(--color-antique-gold)]/35 p-6 sm:p-8 rounded-xs text-left space-y-3"
+              >
+                <span className="text-[12px] uppercase font-mono tracking-[0.22em] text-[var(--color-antique-gold)] block">
+                  Важное сообщение поддержки
+                </span>
+                <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed">
+                  {crisisMessage}
+                </p>
+              </div>
             )}
           </div>
         )}

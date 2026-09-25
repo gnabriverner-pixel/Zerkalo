@@ -4,37 +4,108 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function normalizeDirectUserAddress(input: string): string {
-  return input
-    .replace(/(?<![а-яё])в\s+ответах\s+(?:человека|пользователя|читателя)(?![а-яё])/giu, "в вашем ответе")
-    .replace(/(?<![а-яё])в\s+запросе\s+(?:человека|пользователя|читателя)(?![а-яё])/giu, "в вашем запросе")
-    .replace(/(?<![а-яё])для\s+ситуации\s+(?:человека|пользователя|читателя)(?![а-яё])/giu, "для вашей ситуации")
-    .replace(/(?<![а-яё])в\s+ситуации\s+(?:человека|пользователя|читателя)(?![а-яё])/giu, "в вашей ситуации")
-    .replace(/(?<![а-яё])для\s+(?:самого\s+)?(?:человека|пользователя|читателя)(?![а-яё])/giu, "для вас")
-    .replace(/(?<![а-яё])у\s+(?:самого\s+)?(?:человека|пользователя|читателя)(?![а-яё])/giu, "у вас")
-    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+описывает(?![а-яё])/giu, "вы описываете")
-    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+рассказывает(?![а-яё])/giu, "вы рассказываете")
-    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+называет(?![а-яё])/giu, "вы называете")
-    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+ищет(?![а-яё])/giu, "вы ищете")
-    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+хочет(?![а-яё])/giu, "вы хотите")
-    .replace(/(?<![а-яё])(?:человек|пользователь|читатель)\s+сталкивается(?![а-яё])/giu, "вы сталкиваетесь")
-    .replace(/(?<![а-яё])(?:человеку|пользователю|читателю)(?![а-яё])/giu, "вам")
-    .replace(/(?<![а-яё])(?:пользователя|читателя)(?![а-яё])/giu, "вас")
-    .replace(/(?<![а-яё])(?:пользователь|читатель)(?![а-яё])/giu, "вы");
-}
-
 function text(value: unknown, field: string, max = 2400): string {
   if (typeof value !== "string") throw new Error(`meeting_invalid_${field}`);
-  const normalized = normalizeDirectUserAddress(value.replace(/\s+/gu, " ").trim());
+  const normalized = value.replace(/\s+/gu, " ").trim();
   if (!normalized || normalized.length > max) throw new Error(`meeting_invalid_${field}`);
   return normalized;
 }
 
+function stripQuotedText(input: string): string {
+  return input
+    .replace(/«[^»]*»/gu, " ")
+    .replace(/"[^"]*"/gu, " ")
+    .replace(/“[^”]*”/gu, " ");
+}
+
+const THIRD_PERSON_USER_DISCUSSION = /(?<![а-яё])(?:пользователь[а-яё]*|читатель[а-яё]*|автор[а-яё]*\s+(?:ответов|запроса|истории)|в\s+(?:ответах|запросе|ситуации|словах|выборе)\s+человека|для\s+(?:самого\s+)?человека|у\s+(?:самого\s+)?человека|самому\s+человеку|человек\s+(?:в\s+(?:своих\s+)?ответах|описывает|рассказывает|называет|пишет|ищет|хочет|сталкивается|выбирает|чувствует|говорит|ответил|спрашивает|отмечает|делится))(?![а-яё])/iu;
+
+const BROKEN_SINGLE_WORD_PRONOUN_SUBSTITUTION = /(?<![а-яё])(?:вы\s+(?:описывает|рассказывает|называет|пишет|ищет|хочет|сталкивается|выбирает|чувствует|говорит|ответил|ответила|сделал|сделала|может|принял|приняла)|в\s+(?:ответах|запросе|ситуации)\s+(?:вы|вас|вам)|(?:для|у)\s+самого\s+(?:вы|вас|вам))(?![а-яё])/iu;
+
+export function isThirdPersonUserDiscussionOrBrokenAgreement(value: string): boolean {
+  const unquoted = stripQuotedText(value);
+  return THIRD_PERSON_USER_DISCUSSION.test(unquoted) || BROKEN_SINGLE_WORD_PRONOUN_SUBSTITUTION.test(unquoted);
+}
+
 const PROVISIONAL_SUPPORT_LANGUAGE = /(?:может|мог(?:ла|ло|ли)?\s+бы|можно|возможно|похоже|если|стоит\s+проверить|пока\s+не\s+видно)/iu;
-const HIDDEN_SUPPORT_CLAIM = /(?:скрыт\w*\s+(?:сила|талант|потенциал|ресурс)|в\s+вас\s+(?:уже\s+)?есть|вы\s+(?:обладаете|способны|предназначены)|ваша\s+истинн\w*\s+(?:сила|сущност)|вам\s+(?:нужно|необходимо)|вы\s+должны)/iu;
+const HIDDEN_SUPPORT_CLAIM = /(?:скрыт[а-яё]*\s+(?:сила|талант|потенциал|ресурс)|в\s+вас\s+(?:уже\s+)?есть|вы\s+(?:обладаете|способны|предназначены)|ваша\s+истинн[а-яё]*\s+(?:сила|сущност)|вам\s+(?:нужно|необходимо)|вы\s+должны)/iu;
+const UNGROUNDED_OUTCOME_PROMISE = /(?:ночн[а-яё]*\s+переделк[а-яё]*\s+станов[а-яё]*\s+менее\s+неизбежн|уменьш[а-яё]*\s+(?:ночн[а-яё]*\s+)?переделк|сократ[а-яё]*\s+(?:ночн[а-яё]*\s+)?переделк|избав[а-яё]*\s+от\s+(?:срывов|переделок)|срывы\s+прекратятся|переделки\s+исчезнут|конфликты\s+исчезнут|гарантированн[а-яё]*\s+результат|неизбежно\s+привед[её]т)/iu;
+
+const IMAGE_AS_TESTED_REAL_BEHAVIOR = /(?:удерживать\s+паузу,\s+как\s+вы\s+это\s+делаете,\s+когда\s+молча\s+забираете\s+папку|как\s+вы\s+это\s+делаете,\s+когда\s+(?:молча\s+)?(?:забираете\s+папку|закрываете\s+дверь)|вы\s+забираете\s+папку\s+и\s+закрываете\s+дверь[^.]*это\s+уже\s+испытанн[а-яё]*\s+вами\s+способ|это\s+уже\s+испытанн[а-яё]*\s+вами\s+способ)/iu;
+
+const EXPLICIT_IMAGE_ORIGIN_MARKER = /(?:в\s+(?:выбранном\s+вами\s+)?образе|в\s+образной\s+сцене|в\s+вашей\s+метафоре|в\s+метафорической\s+сцене|в\s+сюжете\s+мифа|в\s+сцене\s+мифа|внутри\s+образа)/iu;
+
+export interface MeetingSourceContext {
+  userQuestion?: string;
+  storyInputs?: {
+    q1?: string;
+    q2?: string;
+    q3?: string;
+    q4?: string;
+  };
+  storyResult?: {
+    title?: string;
+    story?: string;
+    mirror?: Record<string, string>;
+  };
+}
+
+export function hasSourceOriginConflation(
+  value: string,
+  sourceContext?: MeetingSourceContext,
+): boolean {
+  if (UNGROUNDED_OUTCOME_PROMISE.test(value)) {
+    return true;
+  }
+  if (IMAGE_AS_TESTED_REAL_BEHAVIOR.test(value) && !EXPLICIT_IMAGE_ORIGIN_MARKER.test(value)) {
+    return true;
+  }
+  if (!sourceContext?.storyInputs) {
+    return false;
+  }
+
+  const realContextText = `${sourceContext.userQuestion || ""} ${sourceContext.storyInputs.q1 || ""}`.toLowerCase();
+  const imageContextText = `${sourceContext.storyInputs.q2 || ""} ${sourceContext.storyInputs.q3 || ""} ${sourceContext.storyInputs.q4 || ""}`.toLowerCase();
+  const mythFictionText = `${sourceContext.storyResult?.title || ""} ${sourceContext.storyResult?.story || ""}`.toLowerCase();
+
+  // Extract content tokens (>= 5 letters) that appear in image (q2-q4) or Myth fiction, but NOT in realContextText
+  const tokenize = (s: string) =>
+    (s.match(/[а-яё]{5,}/giu) || []).map((w) => w.toLowerCase().slice(0, 6));
+  const realStems = new Set(tokenize(realContextText));
+  const imageOnlyStems = new Set(tokenize(imageContextText).filter((stem) => !realStems.has(stem)));
+  const userAllStems = new Set([...realStems, ...imageOnlyStems]);
+  const mythOnlyStems = new Set(tokenize(mythFictionText).filter((stem) => !userAllStems.has(stem)));
+
+  const lowerVal = value.toLowerCase();
+  const valStems = tokenize(lowerVal);
+  const referencesImageOnly = valStems.some((stem) => imageOnlyStems.has(stem));
+  const referencesMythOnly = valStems.some((stem) => mythOnlyStems.has(stem));
+
+  // 1. If text references image-only stems and claims it is already practiced real-life behavior without image attribution
+  const claimsAlreadyPracticedInRealLife = /(?:как\s+вы\s+(?:это\s+)?делаете|уже\s+испытанн[а-яё]*\s+вами\s+способ|вы\s+уже\s+применяете\s+в\s+работе|ваша\s+привычк[а-яё]*\s+в\s+реальности)/iu.test(
+    value,
+  );
+  if (referencesImageOnly && claimsAlreadyPracticedInRealLife && !EXPLICIT_IMAGE_ORIGIN_MARKER.test(value)) {
+    return true;
+  }
+
+  // 2. If text claims the user themselves said/told a detail that exists ONLY in Myth fiction
+  const claimsUserToldMythFiction = /(?:вы\s+(?:сами\s+)?(?:рассказали|назвали|описали|упомянули)|в\s+вашем\s+ответе\s+вы\s+назвали)/iu.test(
+    value,
+  );
+  if (referencesMythOnly && !referencesImageOnly && claimsUserToldMythFiction && !/(?:в\s+мифе|в\s+истории|в\s+сказке)/iu.test(value)) {
+    return true;
+  }
+
+  return false;
+}
 
 export function isUnsupportedSupportClaim(value: string): boolean {
-  return !PROVISIONAL_SUPPORT_LANGUAGE.test(value) || HIDDEN_SUPPORT_CLAIM.test(value);
+  return (
+    !PROVISIONAL_SUPPORT_LANGUAGE.test(value) ||
+    HIDDEN_SUPPORT_CLAIM.test(value) ||
+    UNGROUNDED_OUTCOME_PROMISE.test(value)
+  );
 }
 
 function parallel(value: unknown, index: number): MeetingParallel {
@@ -119,7 +190,10 @@ export function isSpuriousDecorativeDivergence(d: {
   return hasScenicDecor && hasPsychologicalOverreach;
 }
 
-export function parseMeetingResponse(value: unknown): MeetingApiResponse {
+export function parseMeetingResponse(
+  value: unknown,
+  sourceContext?: MeetingSourceContext,
+): MeetingApiResponse {
   if (!isRecord(value) || value.status !== "ok" || !isRecord(value.result)) {
     throw new Error("meeting_not_ok");
   }
@@ -164,5 +238,23 @@ export function parseMeetingResponse(value: unknown): MeetingApiResponse {
     reflectiveQuestion: text(question, "reflective_question", 800),
     disclaimer: text(disclaimerText, "disclaimer", 1200),
   };
+
+  const personalTextFields = [
+    result.summary,
+    result.possibleSupport,
+    result.albertInsight,
+    result.reflectiveQuestion,
+    ...result.parallels.map((p) => p.synthesis),
+    ...result.divergences.map((d) => d.reflection),
+  ];
+
+  if (personalTextFields.some((field) => isThirdPersonUserDiscussionOrBrokenAgreement(field))) {
+    throw new Error("meeting_third_person_about_user");
+  }
+
+  if (personalTextFields.some((field) => hasSourceOriginConflation(field, sourceContext))) {
+    throw new Error("meeting_source_conflation");
+  }
+
   return { status: "ok", result };
 }

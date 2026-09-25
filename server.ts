@@ -12,11 +12,12 @@ import { RouterAIClient, PRIMARY_MODEL, MEETING_FALLBACK_MODEL } from "./server/
 import {
   createRouterAIMythProvider,
   PERSONAL_MYTH_WRITER_VERSION,
+  SAFE_CRISIS_MESSAGE,
   containsCrisisLanguage,
   generatePersonalMyth,
   parsePersonalMythRequest,
 } from "./server/myth";
-import { generateMeetingOfMirrors } from "./server/meeting";
+import { containsMeetingCrisisInput, generateMeetingOfMirrors } from "./server/meeting";
 import { AlbertCanonicalError, generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
 import crypto from "crypto";
 import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge, purgeCanonicalCaches, deriveCacheKey, bindCanonicalCacheOwner } from "./server/dcsBridge";
@@ -58,19 +59,7 @@ export function deriveMeetingCacheKey(codeData: any, storyData: any, userQuestio
 }
 
 function isCrisisInput(inputs: StoryInputs): boolean {
-  const combined = `${inputs.q1 || ''} ${inputs.q2 || ''} ${inputs.q3 || ''} ${inputs.q4 || ''}`.toLowerCase();
-  const crisisPatterns = [
-    /суицид/i,
-    /покончить с собой/i,
-    /убить себя/i,
-    /не хочу жить/i,
-    /причинить себе вред/i,
-    /вскрыть вены/i,
-    /спрыгнуть с/i,
-    /самоубийств/i,
-    /наложить на себя руки/i
-  ];
-  return crisisPatterns.some(p => p.test(combined));
+  return containsCrisisLanguage(inputs);
 }
 
 async function startServer() {
@@ -334,6 +323,16 @@ async function startServer() {
   // Dedicated Production Endpoint for Personal Myth
   app.post("/api/personal-myth", async (req, res) => {
     try {
+      if (req.body?.answers && typeof req.body.answers === "object" && containsCrisisLanguage(req.body.answers as any)) {
+        return res.status(200).json({
+          mode: "story",
+          status: "crisis",
+          ui: {
+            safe_message: SAFE_CRISIS_MESSAGE,
+          },
+        });
+      }
+
       const now = Date.now();
       const clientKey = req.ip || "unknown";
       const rate = checkAndIncrementRate(clientKey, personalMythRateMax, now, rateWindowMs, rateBuckets.myth);
@@ -353,8 +352,7 @@ async function startServer() {
           mode: "story",
           status: "crisis",
           ui: {
-            safe_message:
-              "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой.",
+            safe_message: SAFE_CRISIS_MESSAGE,
           },
         });
       }
@@ -430,11 +428,35 @@ async function startServer() {
     }
   });
 
+  // Crisis pre-guard for /api/meeting-of-mirrors: executes strictly BEFORE rate-limit, cache, budget, and LLM.
+  const meetingCrisisPreGuard: express.RequestHandler = (req, res, next) => {
+    const storyData = req.body?.storyData;
+    const explicitUserQuestion = String(storyData?.userQuestion ?? req.body?.userQuestion ?? "").trim();
+    if (containsMeetingCrisisInput(storyData, explicitUserQuestion)) {
+      return res.status(200).json({
+        status: "crisis",
+        ui: {
+          safe_message: SAFE_CRISIS_MESSAGE,
+        },
+      });
+    }
+    next();
+  };
+
   // Dedicated Meeting of Mirrors Endpoint (Independent synthesis via DeepSeek)
   const meetingHandler = async (req: express.Request, res: express.Response) => {
     try {
       const { codeData, storyData } = req.body;
       const explicitUserQuestion = String(storyData?.userQuestion ?? req.body?.userQuestion ?? "").trim();
+
+      if (containsMeetingCrisisInput(storyData, explicitUserQuestion)) {
+        return res.status(200).json({
+          status: "crisis",
+          ui: {
+            safe_message: SAFE_CRISIS_MESSAGE,
+          },
+        });
+      }
 
       if (!codeData || !codeData.calc || !storyData || !storyData.storyInputs || !storyData.storyResult) {
         return res.status(200).json({
@@ -505,7 +527,7 @@ async function startServer() {
     }
   };
 
-  app.post("/api/meeting-of-mirrors", meetingGuard, meetingHandler);
+  app.post("/api/meeting-of-mirrors", meetingCrisisPreGuard, meetingGuard, meetingHandler);
 
   // Canonical Calculation Endpoint (digital-code-system authority)
   app.post("/api/calculate", async (req, res) => {

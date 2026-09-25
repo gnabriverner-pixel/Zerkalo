@@ -115,7 +115,7 @@ export interface MeetingOfMirrorsResult {
 }
 
 export interface MeetingApiResponse {
-  status: "ok" | "error" | "no_match";
+  status: "ok" | "error" | "no_match" | "crisis";
   result?: MeetingOfMirrorsResult;
   ui?: {
     safe_message?: string;
