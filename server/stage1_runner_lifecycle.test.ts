@@ -62,7 +62,7 @@ function runNodeScript(
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [scriptPath, ...args], {
       cwd: webRoot,
-      env: { ...process.env, ...envOverrides },
+      env: { ...process.env, PYTHON_BIN: "", ...envOverrides },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";
@@ -339,4 +339,66 @@ describe("Stage 1 Runner Lifecycle, Key Source & Contract Regression Gate", () =
       pr115Env.evidence.some((e: any) => e.source === "code_interpretation" && e.source_ref === "code.central_motif")
     ).toBe(false);
   });
+
+  it("rejects external PYTHON_BIN and refuses missing or symlinked DCS .venv without fallback", async () => {
+    const dcsRoot = resolveDcsRoot();
+    expect(fs.existsSync(path.join(dcsRoot, "engine.py"))).toBe(true);
+    const realVenvPython = path.join(dcsRoot, ".venv", "bin", "python");
+    expect(fs.existsSync(realVenvPython)).toBe(true);
+
+    // 1. Even with a valid dcsRoot, passing an external PYTHON_BIN must fail closed
+    const extRes = await runNodeScript(
+      pairScript,
+      ["--dcs-root", dcsRoot, "--auto-ports", "--check-only", "--allow-dirty"],
+      { PYTHON_BIN: "/usr/bin/python3" },
+      10000
+    );
+    expect(extRes.code).toBe(1);
+    expect(extRes.stderr).toMatch(/External PYTHON_BIN .* is forbidden/);
+
+    // 2. If dcsRoot lacks its own real .venv (or has a symlinked .venv), run_stage1_pair.cjs must fail closed
+    //    and never fall back to PYTHON_BIN even when PYTHON_BIN points to a valid Python 3.12 binary
+    const fakeDcsRoot = fs.mkdtempSync(path.join(os.tmpdir(), "stage1-fake-dcs-"));
+    try {
+      fs.writeFileSync(path.join(fakeDcsRoot, "engine.py"), "# stub\n");
+      const { execFileSync } = await import("node:child_process");
+      execFileSync("git", ["init"], { cwd: fakeDcsRoot, stdio: "pipe" });
+      execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: fakeDcsRoot, stdio: "pipe" });
+      execFileSync("git", ["config", "user.name", "Test"], { cwd: fakeDcsRoot, stdio: "pipe" });
+      execFileSync("git", ["add", "engine.py"], { cwd: fakeDcsRoot, stdio: "pipe" });
+      execFileSync("git", ["commit", "-m", "stub"], { cwd: fakeDcsRoot, stdio: "pipe" });
+
+      const missingVenvRes = await runNodeScript(
+        pairScript,
+        ["--dcs-root", fakeDcsRoot, "--auto-ports", "--check-only", "--allow-dirty"],
+        { PYTHON_BIN: "" },
+        10000
+      );
+      expect(missingVenvRes.code).toBe(1);
+      expect(missingVenvRes.stderr).toMatch(/Release-local virtualenv missing or symlinked/);
+
+      const fallbackAttemptRes = await runNodeScript(
+        pairScript,
+        ["--dcs-root", fakeDcsRoot, "--auto-ports", "--check-only", "--allow-dirty"],
+        { PYTHON_BIN: realVenvPython },
+        10000
+      );
+      expect(fallbackAttemptRes.code).toBe(1);
+      expect(fallbackAttemptRes.stderr).toMatch(/External PYTHON_BIN .* is forbidden/);
+
+      // 3. Symlinked .venv must also be rejected (borrowing .venv is forbidden)
+      fs.symlinkSync(path.join(dcsRoot, ".venv"), path.join(fakeDcsRoot, ".venv"));
+      const symlinkVenvRes = await runNodeScript(
+        pairScript,
+        ["--dcs-root", fakeDcsRoot, "--auto-ports", "--check-only", "--allow-dirty"],
+        { PYTHON_BIN: "" },
+        10000
+      );
+      expect(symlinkVenvRes.code).toBe(1);
+      expect(symlinkVenvRes.stderr).toMatch(/Release-local virtualenv missing or symlinked/);
+    } finally {
+      fs.rmSync(fakeDcsRoot, { recursive: true, force: true });
+    }
+  });
 });
+

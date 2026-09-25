@@ -61,18 +61,21 @@ else
 fi
 
 # ---------------------------------------------------------------- exact python
-PYTHON_BIN="${PYTHON_BIN:-}"
-if [[ -z "$PYTHON_BIN" ]]; then
-  for candidate in "$DCS_ROOT/.venv/bin/python" "$(command -v python3.12 || true)" "$(command -v python3 || true)"; do
-    if [[ -n "$candidate" && -x "$candidate" ]]; then PYTHON_BIN="$candidate"; break; fi
-  done
+if [[ -n "${PYTHON_BIN:-}" && "${PYTHON_BIN}" != "$DCS_ROOT/.venv/bin/python" ]]; then
+  fail "External PYTHON_BIN ($PYTHON_BIN) is forbidden; must use release-local $DCS_ROOT/.venv/bin/python"
 fi
-[[ -n "$PYTHON_BIN" && -x "$PYTHON_BIN" ]] || fail "no usable Python found (need 3.12 with DCS deps)"
+if [[ ! -x "$DCS_ROOT/.venv/bin/python" && -x "$DCS_ROOT/scripts/prepare_release_env.sh" ]]; then
+  log "Preparing release-local DCS virtualenv at $DCS_ROOT/.venv"
+  bash "$DCS_ROOT/scripts/prepare_release_env.sh" "$DCS_ROOT"
+fi
+PYTHON_BIN="$DCS_ROOT/.venv/bin/python"
+[[ -x "$PYTHON_BIN" ]] || fail "release-local DCS virtualenv missing at $PYTHON_BIN"
 log "Python: $PYTHON_BIN ($("$PYTHON_BIN" -V 2>&1))"
 "$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info[:2]==(3,12) else 1)' || \
   fail "Python 3.12 required (found $("$PYTHON_BIN" -V 2>&1))"
-if ! "$PYTHON_BIN" -c 'import pytest' >/dev/null 2>&1; then
-  fail "DCS dependencies missing in $PYTHON_BIN (pytest not importable). Install: $PYTHON_BIN -m pip install -r $DCS_ROOT/requirements.txt"
+if [[ -x "$DCS_ROOT/scripts/verify_release_env.sh" ]]; then
+  bash "$DCS_ROOT/scripts/verify_release_env.sh" --verify-packages "$DCS_ROOT" || \
+    fail "DCS release environment contract verification failed for $DCS_ROOT"
 fi
 
 # Canonical verification runtime must match CI (Node major 24).

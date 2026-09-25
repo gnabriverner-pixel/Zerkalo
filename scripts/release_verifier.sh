@@ -208,10 +208,10 @@ say "Uncommitted-changes check at pinned SHAs: $([[ $DIRTY -eq 0 ]] && echo clea
 NODE_VERSION="$(node -v 2>/dev/null || echo missing)"
 PYTHON_BASE="$(command -v python3.12 || command -v python3 || true)"
 [[ -n "$PYTHON_BASE" ]] || { say "FATAL: python3.12 not found"; exit 1; }
-say "python -m venv"
-python3.12 -m venv "$WORK/venv" >>"$LOG" 2>&1 || "$PYTHON_BASE" -m venv "$WORK/venv" >>"$LOG" 2>&1 || { say "FATAL: venv creation failed"; exit 1; }
-VENV_PY="$WORK/venv/bin/python"
-run_check DCS pip_install "$WORK/dcs" "$VENV_PY" -m pip install --quiet -r requirements.txt
+say "prepare release-local DCS venv ($WORK/dcs/.venv)"
+run_check DCS pip_install "$WORK/dcs" env PYTHON_BIN="$PYTHON_BASE" bash scripts/prepare_release_env.sh "$WORK/dcs"
+VENV_PY="$WORK/dcs/.venv/bin/python"
+[[ -x "$VENV_PY" ]] || { say "FATAL: release-local venv creation failed ($VENV_PY)"; exit 1; }
 
 # ------------------------------------------------------- DCS checks
 run_check DCS pytest_full "$WORK/dcs" env PYTHONDONTWRITEBYTECODE=1 "$VENV_PY" -B -m pytest -q -p no:cacheprovider \
@@ -244,7 +244,7 @@ PYEOF
 fi
 
 if [[ -f "$WORK/dcs/requirements-lock.txt" && -f "$WORK/dcs/scripts/verify_release_env.sh" ]]; then
-  run_check DCS release_lock_check "$WORK/dcs" bash -c "grep -qE '^[A-Za-z0-9][A-Za-z0-9._-]*==' requirements-lock.txt && test -x scripts/verify_release_env.sh"
+  run_check DCS release_lock_check "$WORK/dcs" env PYTHON_BIN="$VENV_PY" bash scripts/verify_release_env.sh --verify-packages "$WORK/dcs"
 fi
 
 # ------------------------------------------------------- Web checks

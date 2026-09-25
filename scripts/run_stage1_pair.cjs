@@ -396,18 +396,24 @@ async function main() {
     return;
   }
 
-  // Prefer DCS's own release-local .venv; allow explicit PYTHON_BIN in clean-clone verifier environments
-  const localVenvPython = path.join(dcsRoot, ".venv", "bin", "python");
-  const pythonBin = fs.existsSync(localVenvPython)
-    ? localVenvPython
-    : process.env.PYTHON_BIN && fs.existsSync(process.env.PYTHON_BIN)
-      ? path.resolve(process.env.PYTHON_BIN)
-      : localVenvPython;
-  if (!fs.existsSync(pythonBin)) {
-    console.error(`[stage1-pair] Release-local virtualenv missing at ${pythonBin}. Borrowing .venv is forbidden.`);
+  // Strictly require DCS's own release-local .venv (never borrow or fall back to an external PYTHON_BIN)
+  const localVenvDir = path.join(dcsRoot, ".venv");
+  const localVenvPython = path.join(localVenvDir, "bin", "python");
+  if (process.env.PYTHON_BIN && path.resolve(process.env.PYTHON_BIN) !== path.resolve(localVenvPython)) {
+    console.error(
+      `[stage1-pair] External PYTHON_BIN ("${process.env.PYTHON_BIN}") is forbidden. Live launch requires DCS's own verified virtualenv at ${localVenvPython}.`
+    );
     await shutdown(1);
     return;
   }
+  if (!fs.existsSync(localVenvDir) || fs.lstatSync(localVenvDir).isSymbolicLink() || !fs.existsSync(localVenvPython)) {
+    console.error(
+      `[stage1-pair] Release-local virtualenv missing or symlinked at ${localVenvPython}. Borrowing .venv or falling back to external PYTHON_BIN is forbidden.`
+    );
+    await shutdown(1);
+    return;
+  }
+  const pythonBin = localVenvPython;
   const pyVersion = execFileSync(pythonBin, ["--version"], { encoding: "utf8" }).trim();
   if (!pyVersion.startsWith("Python 3.12.")) {
     console.error(`[stage1-pair] DCS Python must be 3.12.x (got "${pyVersion}").`);
@@ -415,8 +421,22 @@ async function main() {
     return;
   }
   const verifyEnvScript = path.join(dcsRoot, "scripts", "verify_release_env.sh");
-  if (fs.existsSync(localVenvPython) && fs.existsSync(verifyEnvScript)) {
-    execFileSync("bash", [verifyEnvScript, "--verify-packages", dcsRoot], { cwd: dcsRoot, stdio: "pipe" });
+  if (!fs.existsSync(verifyEnvScript)) {
+    console.error(`[stage1-pair] Required environment verification script missing at ${verifyEnvScript}.`);
+    await shutdown(1);
+    return;
+  }
+  try {
+    execFileSync("bash", [verifyEnvScript, "--verify-packages", dcsRoot], {
+      cwd: dcsRoot,
+      env: { ...process.env, PYTHON_BIN: pythonBin },
+      stdio: "pipe",
+    });
+  } catch (err) {
+    const details = err?.stderr ? String(err.stderr).trim() : err?.message || String(err);
+    console.error(`[stage1-pair] DCS release environment verification failed for ${dcsRoot}: ${details}`);
+    await shutdown(1);
+    return;
   }
 
   const bridgeUrl = `http://127.0.0.1:${dcsPort}`;
@@ -591,6 +611,8 @@ async function main() {
     dcs_dirty: dcsDirty,
     node_version: process.version,
     python_version: pyVersion,
+    dcs_venv_python: pythonBin,
+    dcs_venv_verified: true,
     web_url: webUrl,
     dcs_url: bridgeUrl,
     web_env_file_path: webEnvPath,
