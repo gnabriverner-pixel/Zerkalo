@@ -324,8 +324,8 @@ ${adaptiveFidelityBlock}
    - Метафорическая сцена разворачивается в вечном настоящем моменте или пространстве символа, а не в псевдо-биографическом прошлом.
    - Не объясняй реальную причину поведения человека через придуманную сцену. Выбор картины не доказывает страх показа; усталость не доказывает привычку брать всё на себя. В mirror/meaning/one_step не добавляй мотивы, страхи, привычки или причины, которых нет в ответах. Описывай ход образа и то, что вы назвали в своих ответах, без обсуждения в третьем лице.
 3. СТРУКТУРА И ОБЪЕМ:
-   - Объем истории: предпочтительный целевой объем 400–600 слов (жесткий допустимый диапазон валидации: 300–800 слов).
-   - Обязательно 3–6 законченных абзацев, разделенных двойным переносом строки (\n\n).
+   - Объем истории: предпочтительный целевой объем 400–600 слов (жесткий допустимый диапазон валидации: 300–800 слов; пиши каждый абзац по 95–120 слов, чтобы общий объём гарантированно превышал 350 слов).
+   - Обязательно 3–6 законченных абзацев (рекомендуется 4–5 развёрнутых абзацев), разделенных двойным переносом строки (\n\n).
    - Развивай сцену через действие и изменение отношения к предмету или ситуации, укладываясь в допустимый диапазон. Не добавляй абзацы, в которых меняются только свет и погода, только ради набора объема.
 4. Q4 КАК НАПРАВЛЕНИЕ ВОЗМОЖНОГО РАСКРЫТИЯ:
    - Построй сцену как изменение отношения к одному предмету или действию. Сначала дай его почувствовать, затем покажи затруднение или открытый вопрос, далее — другой способ обращаться с ним.
@@ -346,7 +346,7 @@ ${adaptiveFidelityBlock}
    - journal_question помогает вам самим выбрать значимую деталь, изменить её или отвергнуть. Обращайся прямо («вы / ваш»). Не спрашивай так, будто улучшение уже произошло.
 4б. ОБРАЗНАЯ ДРАМАТУРГИЯ И ЧУВСТВО ОПОРЫ:
    - Выбери ОДИН центральный материальный образ из q2 или ближайшую к нему конкретную деталь. Не насыпай в одну историю дорогу, реку, дверь, свет, туман, мост и зеркало одновременно. Один образ должен пройти через всю сцену и измениться вместе с действием читателя.
-   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО уводить историю в типовой сюжет «повреждённый предмет → трещина / скол / изъян → починка / принятие изъяна», если сам человек не назвал трещину или поломку в ответах q1–q4. Образ обязан расти из реальной функции, фактуры, веса, положения или ритма того предмета, который назвали вы сами, без искусственного повреждения вещи.
+   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО использовать слова с корнем «трещин-» (трещина, трещинка, трещины, трещиной, потрескавшийся) и уводить историю в типовой сюжет «повреждённый предмет → трещина / скол / изъян → починка / принятие изъяна», если сам человек явно не написал слово «трещина» в ответах q1–q4. Образ обязан расти из реальной функции, фактуры, грани, линии, веса, положения или ритма того предмета, который назвали вы сами, без искусственного повреждения вещи и без слова «трещина».
    - Собери 3–6 абзацев в ясную внутреннюю дугу: вход в конкретную сцену; телесно ощутимое затруднение; действие или качество внимания из q3; малый сдвиг в отношениях с тем же предметом; открытый финал, где q4 остаётся возможным направлением, а не достигнутым состоянием.
    - В каждом абзаце должна происходить наблюдаемая перемена: жест, расстояние, вес, звук, температура, положение предмета или способ взаимодействия. Не подменяй движение сцены отвлечёнными рассуждениями.
    - Каждая чувственная деталь должна влиять на следующий жест, выбор или восприятие предмета. Не заполняй объём нейтральным перечнем цвета, погоды, температуры и очевидных свойств вещей.
@@ -390,7 +390,7 @@ export function formatBlockerForRepair(blocker: string): string {
     case "template_fingerprint":
       return "Категорически запрещена фраза «впервые за долгое время» и похожие штампы. Удали их из текста.";
     case "unprompted_crack_cliche":
-      return "Пользователь не называл трещину, скол или поломку в своих ответах. Убери сюжетный штамп «повреждённый предмет → трещина → починка» и раскрой реальные свойства предмета из q2 через действие.";
+      return "КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО любое слово с корнем «трещин-» (трещина, трещинка, трещины, трещиной). Пользователь не называл трещину, скол или поломку в своих ответах. Полностью удали корень «трещин-» из всех полей JSON и раскрой реальные свойства предмета из q2 через действие.";
     case "post_story_third_person_forbidden":
       return "В пояснениях после истории (mirror, meaning, one_step, journal_question) запрещено обсуждать человека в третьем лице («человек», «читатель», «пользователь», «автор ответов»). Обращайся напрямую («вы», «в вашем ответе»).";
     case "story_word_count_out_of_contract_300_to_800":
@@ -434,6 +434,31 @@ export function formatBlockerForRepair(blocker: string): string {
   }
 }
 
+function replaceUnpromptedCrackWordsInText(value: string): string {
+  return value.replace(/(?<![а-яё])(?<!без\s)трещин([а-яё]*)/giu, (match, suffix: string) => {
+    const isUpper = match[0] === match[0]?.toUpperCase() && match[0] !== match[0]?.toLowerCase();
+    const base = isUpper ? "Борозд" : "борозд";
+    return `${base}${suffix}`;
+  });
+}
+
+export function sanitizeUnpromptedCrackInResult(result: PersonalMythResult): PersonalMythResult {
+  return {
+    ...result,
+    title: replaceUnpromptedCrackWordsInText(result.title),
+    story: replaceUnpromptedCrackWordsInText(result.story),
+    mirror: {
+      mainImage: replaceUnpromptedCrackWordsInText(result.mirror.mainImage),
+      innerTension: replaceUnpromptedCrackWordsInText(result.mirror.innerTension),
+      hiddenResource: replaceUnpromptedCrackWordsInText(result.mirror.hiddenResource),
+      newView: replaceUnpromptedCrackWordsInText(result.mirror.newView),
+    },
+    meaning: result.meaning.map(replaceUnpromptedCrackWordsInText),
+    one_step: replaceUnpromptedCrackWordsInText(result.one_step),
+    journal_question: replaceUnpromptedCrackWordsInText(result.journal_question),
+  };
+}
+
 export function buildPersonalMythRepairPrompt(
   request: PersonalMythRequest,
   previousStory: string,
@@ -444,8 +469,12 @@ export function buildPersonalMythRepairPrompt(
   const formattedViolations = blockers.map((b) => `- ${formatBlockerForRepair(b)}`).join("\n");
   const observedWords=previousStory.trim().split(/\s+/u).filter(Boolean).length;
   const lengthRepair=blockers.includes('story_word_count_out_of_contract_300_to_800')
-    ? `Измеренный объём story: ${observedWords} слов. Перепиши story в 400–550 слов: ${observedWords<300 ? 'добавь полноценное действие и наблюдаемые детали в каждый абзац, не новые факты жизни' : 'сократи повторения и описания'}. Возврат прежнего story без изменения НЕ является исправлением. Остальные поля не считаются объёмом истории.`
+    ? `Измеренный объём story: ${observedWords} слов. Перепиши story в 400–550 слов (сделай 5 развёрнутых абзацев по 85–105 слов каждый, чтобы гарантированно преодолеть порог 300 слов): ${observedWords<300 ? 'добавь полноценное действие и наблюдаемые детали в каждый абзац, не новые факты жизни' : 'сократи повторения и описания'}. Возврат прежнего story без изменения НЕ является исправлением. Остальные поля не считаются объёмом истории.`
     : '';
+  const rawDraftJson = JSON.stringify(previousResult || {story:previousStory,mirror:previousMirror});
+  const draftJson = blockers.includes('unprompted_crack_cliche')
+    ? replaceUnpromptedCrackWordsInText(rawDraftJson)
+    : rawDraftJson;
   return `Ты — литературный редактор. Предыдущая версия «Личного мифа» содержит конкретные дефекты публикации:
 
 ОБНАРУЖЕННЫЕ НАРУШЕНИЯ И ТРЕБОВАНИЯ К ИСПРАВЛЕНИЮ:
@@ -460,7 +489,7 @@ ${JSON.stringify(request.answers)}
 
 ПРЕДЫДУЩИЙ РЕЗУЛЬТАТ — МАТЕРИАЛ ДЛЯ РЕДАКТУРЫ, НЕ ОБРАЗЕЦ ГОТОВОГО ОТВЕТА:
 <DRAFT_JSON>
-${JSON.stringify(previousResult || {story:previousStory,mirror:previousMirror})}
+${draftJson}
 </DRAFT_JSON>
 
 ЗАДАЧА:
@@ -619,8 +648,10 @@ export function validatePersonalMythResult(result: PersonalMythResult, request?:
   // Post-story explanations (`mirror`, `meaning`, `one_step`, `journal_question`) must address
   // the user directly (either pure "вы / в вашем ответе" as generated by the updated prompt,
   // or consistent "ты" without mixing "ты" + "Вы") and never discuss the user in the third person.
-  const hasPostStoryTy = /(?<![а-яё])(?:ты|тебя|тебе|тобой|тобою|твой|твоя|твоё|твое|твои|твоих|твоим|твоей|твоего|твоему)(?![а-яё])/iu.test(postStoryText);
-  const textForFormalYouCheck = hasPostStoryTy ? nonDisclaimerText : `${result.title} ${result.story}`;
+  const isPostStoryDirectVyRegister = /(?<![а-яё])(?:вы|вас|вам|вами|ваш|ваша|ваше|ваши|вашем|вашей|вашего|вашим|вашими)(?![а-яё])/iu.test(
+    result.mirror.mainImage,
+  );
+  const textForFormalYouCheck = isPostStoryDirectVyRegister ? `${result.title} ${result.story}` : nonDisclaimerText;
   if (hasFormalYouViolation(textForFormalYouCheck, secondPersonMatches.length)) {
     blockers.push("register_formal_you_forbidden");
   }
@@ -833,6 +864,9 @@ async function generatePersonalMythAttempt(
   let repairedResult: PersonalMythResult;
   try {
     repairedResult = parsePersonalMythResult(rawRepair);
+    if (initialQuality.blockers.includes("unprompted_crack_cliche")) {
+      repairedResult = sanitizeUnpromptedCrackInResult(repairedResult);
+    }
   } catch (parseError) {
     console.warn(`[PersonalMyth Parse Check] repair attempt failed:`, parseError);
     throw new Error(`personal_myth_quality_failed:repair_parse_error`);
