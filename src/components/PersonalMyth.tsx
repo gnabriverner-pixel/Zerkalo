@@ -4,6 +4,7 @@ import { Loader2, ArrowRight, ChevronLeft, RotateCcw } from 'lucide-react';
 import { StoryInputs, ApiResponse } from '../types';
 import { EmblemPlate } from '../art/emblem';
 import { Orb } from './Orb';
+import { useProtectedFetch } from './ConsentBoundary';
 
 interface PersonalMythProps {
   initialInputs?: StoryInputs | null;
@@ -22,6 +23,7 @@ export default function PersonalMyth({
   onNavigateToMeeting,
   hasCodeResult 
 }: PersonalMythProps = {}) {
+  const protectedFetch = useProtectedFetch();
   const [step, setStep] = useState(initialResult ? 6 : 0);
   const [inputs, setInputs] = useState<StoryInputs>(initialInputs || { q1: '', q2: '', q3: '', q4: '' });
   const [result, setResult] = useState<ApiResponse['story_result'] | null>(initialResult || null);
@@ -29,6 +31,7 @@ export default function PersonalMyth({
   const [journalNote, setJournalNote] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
   const requestIdRef = useRef(`myth_${crypto.randomUUID().replace(/-/g, '')}`);
+  const generatingRef = useRef(false);
 
   useEffect(() => {
     if (initialResult) {
@@ -83,18 +86,20 @@ export default function PersonalMyth({
   };
 
   const handleGenerate = async () => {
+    if (generatingRef.current) return;
+    generatingRef.current = true;
     setStep(5);
     setErrorText('');
     try {
-      const res = await fetch('/api/personal-myth', {
+      const res = await protectedFetch('/api/personal-myth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           request_id: requestIdRef.current,
-          consent_version: 'personal-myth-v1.1-rc',
           answers: inputs,
         })
       });
+      if (!res) { setStep(4); return; }
       
       const data: ApiResponse = await res.json();
 
@@ -115,6 +120,8 @@ export default function PersonalMyth({
       console.error(err);
       setErrorText("Связь с зеркалом прервалась. Попробуйте обновить страницу или отправить запрос снова.");
       setStep(4);
+    } finally {
+      generatingRef.current = false;
     }
   };
 

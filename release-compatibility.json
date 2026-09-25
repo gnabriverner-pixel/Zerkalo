@@ -8,7 +8,7 @@
   },
   "dcs": {
     "repo": "gnabriverner-pixel/digital-code-system",
-    "pinned_sha": "de78eb346a32da5b9f2fe6b5d40e10c85309c93f",
+    "pinned_sha": "732c14852c96ccbdbeff3bea52647e4b40c759ff",
     "production_branch": "release/routerai-acceptance"
   },
   "runtime": {

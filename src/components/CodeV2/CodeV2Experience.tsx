@@ -5,6 +5,7 @@ import { EmblemPlate } from '../../art/emblem';
 import { hasCanonicalV2Result } from '../../services/codeV2Session';
 import { validateBirthDate } from '../../services/birthDate';
 import { loadQaPanel, type QaPanelModule } from './qaPanelLoader';
+import { useProtectedFetch } from '../ConsentBoundary';
 import {
   Calculator,
   ChevronDown,
@@ -86,6 +87,7 @@ export function CodeV2Experience({
       cancelled = true;
     };
   }, [isQaEffective]);
+  const protectedFetch = useProtectedFetch();
   const [day, setDay] = useState(() => (initialDate ? initialDate.split('.')[0] || '' : ''));
   const [month, setMonth] = useState(() => (initialDate ? initialDate.split('.')[1] || '' : ''));
   const [year, setYear] = useState(() => (initialDate ? initialDate.split('.')[2] || '' : ''));
@@ -122,12 +124,13 @@ export function CodeV2Experience({
     setDateError('');
 
     try {
-      const resp = await fetch('/api/code-v2', {
+      const resp = await protectedFetch('/api/code-v2', {
         signal: controller.signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dob: fullDob })
       });
+      if (!resp) return;
 
       if (!resp.ok) {
         const errJson = await resp.json().catch(() => ({}));
@@ -147,6 +150,7 @@ export function CodeV2Experience({
       }, 100);
     } catch (err: any) {
       if (controller.signal.aborted) return;
+      if (err?.message === 'consent_cancelled') return;
       console.error('Code calculation failed:', err);
       setApiError(err.message || 'Ошибка соединения с модулем расчёта');
     } finally {
@@ -154,7 +158,7 @@ export function CodeV2Experience({
     }
   };
 
-  // Auto-calculate on initial load only if date is explicitly provided
+  // A linked or restored date only fills the form. Sending it requires a click.
   useEffect(() => {
     if (!initialDate) return;
     if (initialPayload?.calculation.date === initialDate && hasCanonicalV2Result(initialPayload)) {
@@ -169,10 +173,6 @@ export function CodeV2Experience({
       setDay(d);
       setMonth(m);
       setYear(y);
-      const validation = validateBirthDate(d, m, y);
-      if (validation.valid) {
-        fetchV2Calculation(validation.formatted);
-      }
     }
   }, [initialDate]);
 
@@ -470,7 +470,7 @@ export function CodeV2Experience({
                     className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-[var(--color-antique-gold)]/15 border border-[var(--color-antique-gold)]/40 hover:bg-[var(--color-antique-gold)]/25 text-amber-200 text-xs font-mono transition-all flex items-center gap-2 cursor-pointer shadow-sm"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
-                    <span>Обсудить с Альбертом</span>
+                    <span>Уточнить или не согласиться</span>
                   </button>
                 </div>
               </div>
@@ -536,7 +536,7 @@ export function CodeV2Experience({
                 <span>Как это читать</span>
               </div>
               <p className="text-base text-stone-300 font-normal leading-relaxed max-w-2xl">
-                Цифровой Код объединяет математику пропорций и язык небесных архетипов. Это не фатальный диагноз, а инструмент честной саморефлексии — система выверенных гипотез. Исследуйте эту карту внимательно: отмечайте, где ваш опыт безошибочно узнаёт себя, а где возникает желание оспорить формулировку.
+                Пять чисел получены из даты рождения. У каждой позиции — своя роль и вопрос для проверки. Ход расчёта раскрывается выше. Описания — гипотезы: уточняйте и оспаривайте их по своему опыту.
               </p>
             </section>
 

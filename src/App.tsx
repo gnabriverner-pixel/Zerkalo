@@ -23,6 +23,7 @@ import { firstMirrorFromV2 } from './services/codeV2Session';
 import { truthJourneyKey } from './services/albertTruthState';
 import { loadQaPanel, type QaPanelModule } from './components/CodeV2/qaPanelLoader';
 import { EmblemDefs } from './art/emblem';
+import { ConsentBoundary } from './components/ConsentBoundary';
 
 function sanitizeUrlDob(): void {
   if (typeof window === 'undefined') return;
@@ -36,6 +37,10 @@ function sanitizeUrlDob(): void {
 }
 
 export default function App() {
+  return <ConsentBoundary><AppContent /></ConsentBoundary>;
+}
+
+function AppContent() {
   const [mode, setMode] = useState<'entry' | 'myth' | 'meeting' | 'alabaster'>(() => {
     if (typeof window === 'undefined') return 'entry';
     sanitizeUrlDob();

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  AlbertCanonicalError,
   generateAlbertDialogue,
   buildCanonicalEnvelopeFromWebContext,
   type AlbertDialogueRequest,
@@ -118,6 +119,35 @@ describe("Albert Web Dialogue Canonical DTO Adapter (digital-code-system/telegra
     await expect(generateAlbertDialogue({ message: "a".repeat(2001) })).rejects.toThrow(/invalid_message/);
   });
 
+  it("keeps only status, safe error code, and request ID from a failed DCS response", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      error: "provider_unavailable", message: "private downstream detail",
+    }), { status: 503 }));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      let caught: unknown;
+      try {
+        await generateAlbertDialogue(sampleRequest);
+      } catch (e) {
+        caught = e;
+      }
+      expect(caught).toBeInstanceOf(AlbertCanonicalError);
+      expect(caught).toMatchObject({
+        downstreamStatus: 503, downstreamCode: "provider_unavailable",
+      } satisfies Partial<AlbertCanonicalError>);
+      const serializedErr = JSON.stringify(caught);
+      expect(serializedErr).not.toContain("private downstream detail");
+      expect(serializedErr).not.toContain("127.0.0.1");
+      const emitted = JSON.stringify(log.mock.calls);
+      expect(emitted).toContain("provider_unavailable");
+      expect(emitted).not.toContain("private downstream detail");
+      expect(emitted).not.toContain("127.0.0.1");
+    } finally {
+      fetchMock.mockRestore();
+      log.mockRestore();
+    }
+  });
+
   it("fails closed when DCS bridge is down (never produces local independent prompt)", async () => {
     const originalUrl = process.env.DCS_BRIDGE_URL;
     try {
@@ -125,6 +155,29 @@ describe("Albert Web Dialogue Canonical DTO Adapter (digital-code-system/telegra
       await expect(generateAlbertDialogue(sampleRequest, undefined, "deepseek-v4-pro", 500)).rejects.toThrow();
     } finally {
       process.env.DCS_BRIDGE_URL = originalUrl;
+    }
+  });
+
+  it("rejects safety_state=deferred from DCS orchestrator as AlbertCanonicalError instead of a live reply", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      status: "ok",
+      safety_state: "deferred",
+      text: "Ответ отложен.",
+      model: null,
+      provider_events: [{ provider: "routerai", outcome: "error" }],
+    }), { status: 200 }));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      await expect(generateAlbertDialogue(sampleRequest)).rejects.toMatchObject({
+        downstreamStatus: 200,
+        downstreamCode: "safety_state_deferred",
+        canonical_status: 200,
+        canonical_error: "safety_state_deferred",
+        provider_outcome: "error",
+      } satisfies Partial<AlbertCanonicalError>);
+    } finally {
+      fetchMock.mockRestore();
+      log.mockRestore();
     }
   });
 });

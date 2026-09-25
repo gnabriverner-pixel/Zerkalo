@@ -44,9 +44,10 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 describe('actual V2 journey', () => {
   it('Code → Myth → Meeting keeps the accepted Code and restores it after a reload', async () => {
     const payload = await calculateCanonicalCodeV2('18.12.1989');
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({status:'ok', payload}), {status:200}));
+    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/consent' ? {accepted:true} : {status:'ok', payload}), {status:200}));
     vi.stubGlobal('fetch', fetchMock);
     await act(async () => { root.render(React.createElement(App)); });
+    expect(fetchMock).not.toHaveBeenCalled();
     await enterSyntheticDob();
     expect(container.textContent).toContain(payload.central_motif);
     expect(loadTransientDraft()?.codeResult).toEqual(payload.calculation.canonical_result);
@@ -64,12 +65,12 @@ describe('actual V2 journey', () => {
     await click('Продолжить');
     expect(container.textContent).not.toContain('Не рассчитано');
     expect(loadTransientDraft()?.journeyId).toBe(journey);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls.filter(call => call[0] === '/api/code-v2')).toHaveLength(1);
   });
   it('Myth first remains independent; calculating later joins the same experience', async () => {
     const payload = await calculateCanonicalCodeV2('18.12.1989');
     window.history.replaceState({}, '', '/');
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({status:'ok',payload})));
+    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/consent' ? {accepted:true} : {status:'ok',payload})));
     vi.stubGlobal('fetch', fetchMock);
     await act(async () => root.render(React.createElement(App)));
     await click('Миф');
@@ -87,7 +88,7 @@ describe('actual V2 journey', () => {
   });
   it('changing the date removes the old draft instead of resurrecting it on reload', async () => {
     const payload = await calculateCanonicalCodeV2('18.12.1989');
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({status:'ok',payload}))));
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/consent' ? {accepted:true} : {status:'ok',payload}))));
     await act(async () => root.render(React.createElement(App)));
     await enterSyntheticDob();
     expect(loadTransientDraft()?.codeV2Payload).toBeDefined();
@@ -101,6 +102,7 @@ describe('actual V2 journey', () => {
     const truth = {expiresAt:new Date(Date.now()+60000).toISOString(),evidence:[{source:'user_correction',receipt:'test-opaque-receipt',reaction_quote:'Это не про меня'}]};
     const requests: any[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url, init) => {
+      if (url === '/api/consent') return new Response(JSON.stringify({accepted:true}));
       if (url === '/api/code-v2') return new Response(JSON.stringify({status:'ok',payload}));
       requests.push(JSON.parse(init.body));
       return new Response(JSON.stringify({status:'ok',message:'Учитываю вашу поправку.',truthState:truth}));
@@ -117,7 +119,7 @@ describe('actual V2 journey', () => {
     const ariaClick = async (label: string) => { await act(async () => (container.querySelector(`[aria-label="${label}"]`) as HTMLButtonElement).click()); };
     await act(async () => root.render(React.createElement(App)));
     await enterSyntheticDob();
-    await click('Обсудить с Альбертом');
+    await click('Уточнить или не согласиться');
     await fill('input[placeholder^="Задайте"]', 'Это не про меня');
     await ariaClick('Отправить сообщение');
     await fill('textarea[aria-label="Моя мысль после разговора"]', 'Я выбираю равноправие.');
@@ -127,7 +129,7 @@ describe('actual V2 journey', () => {
     await click('Продолжить тестовую встречу');
     // Return to Code; the same global conversation must survive both transitions.
     await click('Код');
-    await click('Обсудить с Альбертом');
+    await click('Уточнить или не согласиться');
     expect(container.textContent).toContain('Учитываю вашу поправку.');
     await fill('input[placeholder^="Задайте"]', 'Что я уточнил?');
     await ariaClick('Отправить сообщение');

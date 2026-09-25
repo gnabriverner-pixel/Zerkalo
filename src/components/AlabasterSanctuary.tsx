@@ -16,6 +16,7 @@ import {methodReading} from '../services/interpretation';
 import { PASSPORT_PRACTICES } from '../data/passportPractices';
 import { ArchetypeBasRelief, ARCHETYPE_VISUALS } from './ArchetypeBasRelief';
 import { validateBirthDate } from '../services/birthDate';
+import { useProtectedFetch } from './ConsentBoundary';
 
 interface AlabasterSanctuaryProps {
   initialDate?: string;
@@ -38,6 +39,7 @@ export function AlabasterSanctuary({
   continueLabel = 'Перейти к Личному мифу',
   onOpenAbout
 }: AlabasterSanctuaryProps) {
+  const protectedFetch = useProtectedFetch();
   const [day, setDay] = useState(initialDate ? initialDate.split('.')[0] || '' : '');
   const [month, setMonth] = useState(initialDate ? initialDate.split('.')[1] || '' : '');
   const [year, setYear] = useState(initialDate ? initialDate.split('.')[2] || '' : '');
@@ -80,11 +82,12 @@ export function AlabasterSanctuary({
     setDateError('');
 
     try {
-      const resp = await fetch('/api/calculate', {
+      const resp = await protectedFetch('/api/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dob: fullDate }),
       });
+      if (!resp) return;
 
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({}));
@@ -121,9 +124,6 @@ export function AlabasterSanctuary({
         setDay(parts[0]);
         setMonth(parts[1]);
         setYear(parts[2]);
-        if (!initialResult) {
-          executeCalculation(initialDate);
-        }
       }
     }
   }, [initialDate, initialResult]);

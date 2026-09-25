@@ -24,7 +24,7 @@ describe('Story Module constraints', () => {
 
   it('PersonalMyth.tsx uses the real writer endpoint and has no fabricated story fallback', () => {
     const fileContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
-    expect(fileContent).toContain("fetch('/api/personal-myth'");
+    expect(fileContent).toContain("protectedFetch('/api/personal-myth'");
     expect(fileContent).not.toContain('applyFallback');
     expect(fileContent).not.toContain('status === \'demo\'');
   });

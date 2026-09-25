@@ -17,7 +17,7 @@ import {
   parsePersonalMythRequest,
 } from "./server/myth";
 import { generateMeetingOfMirrors } from "./server/meeting";
-import { generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
+import { AlbertCanonicalError, generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
 import crypto from "crypto";
 import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge, purgeCanonicalCaches, deriveCacheKey, bindCanonicalCacheOwner } from "./server/dcsBridge";
 import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
@@ -150,8 +150,43 @@ async function startServer() {
     });
   });
 
+  const liveGeneration = {
+    personal_myth: false,
+    meeting: false,
+    albert: false,
+  };
+
+  async function probeCanonicalBridgeHealth() {
+    const bridgeUrl = (process.env.DCS_BRIDGE_URL || "http://127.0.0.1:39500").replace(/\/+$/, "");
+    const expectedSha = (process.env.DCS_EXPECTED_SHA || "").trim();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    try {
+      const response = await fetch(`${bridgeUrl}/health`, { signal: controller.signal });
+      const data: any = await response.json().catch(() => ({}));
+      const actualSha = typeof data?.sha === "string" ? data.sha : null;
+      const shaMatches = !expectedSha || actualSha === expectedSha;
+      const ok = response.ok && data?.status === "ok" && Boolean(actualSha) && shaMatches;
+      return {
+        reachable: response.ok,
+        expected_sha: expectedSha || null,
+        actual_sha: actualSha,
+        verified: ok,
+      };
+    } catch {
+      return {
+        reachable: false,
+        expected_sha: expectedSha || null,
+        actual_sha: null,
+        verified: false,
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   app.get("/health/ready", async (_req, res) => {
-    const providerReady = deepseekClient.isReady();
+    const providerConfigured = deepseekClient.isReady();
     const releaseInfo = getPackageReleaseInfo();
     const releaseSha =
       process.env.RELEASE_SHA ||
@@ -160,34 +195,61 @@ async function startServer() {
       releaseInfo?.releaseSha ||
       "u1-candidate-dev";
     const dcs = await probeDcsBridge();
-    const dcsReady = dcs.state === "ready";
-    const ready = providerReady && dcsReady;
+    const bridge = await probeCanonicalBridgeHealth();
+    const expectedSha = (process.env.DCS_EXPECTED_SHA || "").trim();
+    const bridgeVerified = bridge.verified || (!expectedSha && dcs.state === "ready");
+    const canonicalBridge = {
+      reachable: bridge.reachable || dcs.state === "ready",
+      expected_sha: bridge.expected_sha,
+      actual_sha: bridge.actual_sha || (dcs.sha !== "unknown" ? dcs.sha : null),
+      verified: bridgeVerified,
+    };
+    const liveGenerationReady =
+      liveGeneration.personal_myth &&
+      liveGeneration.meeting &&
+      liveGeneration.albert;
+    const preflightReady = providerConfigured && canonicalBridge.verified;
+    const ready = preflightReady && liveGenerationReady;
     // Operational detail (models, fallback configuration) stays here; the
     // public /health response carries only availability and versions.
     res.status(ready ? 200 : 503).json({
       status: ready ? "ready" : "not_ready",
+      ready,
+      transport_ready: canonicalBridge.verified,
+      provider_configured: providerConfigured,
+      preflight_ready: preflightReady,
       service: "zerkalo",
       release_sha: releaseSha,
+      canonical_bridge: canonicalBridge,
+      live_generation_verified_since_start: liveGenerationReady,
+      live_generation: { ...liveGeneration },
       checks: {
-        llm_provider: { ready: providerReady, provider: "routerai" },
-        dcs_bridge: { ready: dcsReady, state: dcs.state, sha: dcs.sha },
+        llm_provider: { configured: providerConfigured, ready: providerConfigured && liveGenerationReady, provider: "routerai" },
+        dcs_bridge: { ready: canonicalBridge.verified, state: canonicalBridge.verified ? "ready" : "unavailable", sha: canonicalBridge.actual_sha || dcs.sha },
       },
       providers: {
         personal_myth: {
-          ready: providerReady,
+          configured: providerConfigured,
+          live_verified: liveGeneration.personal_myth,
+          ready: providerConfigured && liveGeneration.personal_myth,
           provider: "routerai",
           model: PERSONAL_MYTH_MODEL,
           writer: PERSONAL_MYTH_WRITER_VERSION,
           fallback_model: "anthropic/claude-sonnet-5",
         },
         meeting: {
-          ready: providerReady,
+          configured: providerConfigured,
+          live_verified: liveGeneration.meeting,
+          ready: providerConfigured && liveGeneration.meeting,
           provider: "routerai",
           model: MEETING_MODEL,
           fallback_model: "openai/gpt-5.4-mini",
         },
         albert: {
-          ready: providerReady,
+          configured: providerConfigured,
+          canonical_bridge_verified: canonicalBridge.verified,
+          live_verified: liveGeneration.albert,
+          ready: providerConfigured && canonicalBridge.verified && liveGeneration.albert,
           provider: "routerai",
           model: ALBERT_MODEL,
           fallback_model: "anthropic/claude-sonnet-5",
@@ -324,11 +386,15 @@ async function startServer() {
       };
 
       mythCache.set(cacheKey, { expiresAt: now + 5 * 60_000, payload });
+      liveGeneration.personal_myth = true;
       return res.status(200).json(payload);
     } catch (error) {
       const code = error instanceof Error ? error.message.split(":", 1)[0] : "personal_myth_failed";
       const inputError = code.startsWith("invalid_");
       const notReady = code === "personal_myth_provider_not_ready";
+      if (!inputError) {
+        liveGeneration.personal_myth = false;
+      }
       console.error("Personal Myth generation failed:", code);
       return res.status(inputError ? 400 : notReady ? 503 : 502).json({
         mode: "story",
@@ -358,6 +424,7 @@ async function startServer() {
       }
 
       if (!deepseekClient.isReady()) {
+        liveGeneration.meeting = false;
         return res.status(503).json({
           status: "error",
           code: "meeting_provider_not_ready",
@@ -383,8 +450,10 @@ async function startServer() {
         totalBudgetMs: 48_000,
       });
 
+      liveGeneration.meeting = result?.status === "ok";
       return res.status(200).json(result);
     } catch (error) {
+      liveGeneration.meeting = false;
       const code = error instanceof Error ? error.message.split(":", 1)[0] : "meeting_failed";
       const notReady = code === "meeting_provider_not_ready";
       console.error("Developer Log: Meeting of Mirrors error:", code, error);
@@ -539,6 +608,7 @@ async function startServer() {
       }
 
       if (!deepseekClient.isReady()) {
+        liveGeneration.albert = false;
         return res.status(503).json({
           status: "error",
           code: "albert_provider_not_ready",
@@ -564,15 +634,48 @@ async function startServer() {
         res.locals.consent
       );
 
+      liveGeneration.albert = dialogueRes.status === "ok";
       return res.status(200).json(dialogueRes);
     } catch (error) {
       const code = error instanceof Error ? error.message.split(":", 1)[0] : "albert_failed";
       const inputError = code === "invalid_message";
       const notReady = code === "albert_provider_not_ready";
+      if (!inputError) {
+        liveGeneration.albert = false;
+      }
+      if (error instanceof AlbertCanonicalError) {
+        console.error("Developer Log: Albert canonical error:", {
+          code: "albert_canonical_failed",
+          canonical_status: error.canonical_status,
+          canonical_error: error.canonical_error,
+          provider_outcome: error.provider_outcome,
+          request_id: error.requestId,
+        });
+        return res.status(502).json({
+          status: "error",
+          code: "albert_canonical_failed",
+          error_code: "albert_canonical_failed",
+          canonical_status: error.canonical_status,
+          canonical_error: error.canonical_error,
+          provider_outcome: error.provider_outcome,
+          downstream_status: error.downstreamStatus,
+          downstream_code: error.downstreamCode,
+          request_id: error.requestId,
+          diagnostic: {
+            downstream_status: error.downstreamStatus,
+            downstream_error: error.downstreamCode,
+            provider_outcome: error.provider_outcome,
+          },
+          ui: {
+            safe_message: "Не удалось получить ответ от собеседника. Ваши результаты сохранены — попробуйте повторить вопрос.",
+          },
+        });
+      }
       console.error("Developer Log: Albert dialogue error:", code, error);
       return res.status(inputError ? 400 : notReady ? 503 : 502).json({
         status: "error",
         code,
+        error_code: code,
         ui: {
           safe_message: inputError
             ? "Пожалуйста, сформулируйте вопрос для продолжения беседы."

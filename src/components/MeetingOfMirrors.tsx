@@ -5,7 +5,6 @@ import {
   AlertCircle, 
   Sparkles, 
   GitFork, 
-  Send,
   RefreshCw, 
   ChevronRight,
   MessageSquare,
@@ -16,9 +15,11 @@ import {
 import { CalculationResult, CodeV2Payload, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, MeetingApiResponse } from '../types';
 import { EmblemPlate } from '../art/emblem';
 import { AlbertDialogue } from './AlbertDialogue';
+import { TelegramContinuation } from './TelegramContinuation';
 import { TesterFeedbackWidget } from './TesterFeedbackWidget';
 import { generateFirstMirror } from '../services/interpretation';
 import { firstMirrorFromV2 } from '../services/codeV2Session';
+import { useProtectedFetch } from './ConsentBoundary';
 import { 
   saveMyMirrorSnapshot, 
   loadMyMirrorSnapshot, 
@@ -63,13 +64,13 @@ export function MeetingOfMirrors({
   onOpenCode,
   onOpenMyth
 }: MeetingOfMirrorsProps) {
+  const protectedFetch = useProtectedFetch();
   const [meetingResult, setMeetingResult] = useState<MeetingOfMirrorsResult | null>(initialMeetingResult || null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isAlbertOpen, setIsAlbertOpen] = useState(false);
   const [albertTopic, setAlbertTopic] = useState('');
   const [userNote, setUserNote] = useState(initialUserNote || '');
-  const telegramBotUrl = 'https://t.me/digitalcodesystem_bot';
 
   const effectiveFirstMirror = (): FirstMirror | null => {
     if (firstMirror) return firstMirror;
@@ -164,7 +165,7 @@ export function MeetingOfMirrors({
     setErrorMessage('');
 
     try {
-      const response = await fetch('/api/meeting-of-mirrors', {
+      const response = await protectedFetch('/api/meeting-of-mirrors', {
         signal: controller.signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -180,6 +181,7 @@ export function MeetingOfMirrors({
           }
         })
       });
+      if (!response) return;
 
       const data: MeetingApiResponse = await response.json();
       if (controller.signal.aborted) return;
@@ -577,18 +579,15 @@ export function MeetingOfMirrors({
                     <span>Диалог на сайте</span>
                   </button>
 
-                  <a
-                    href={telegramBotUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.18em] text-sm rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    <Send size={14} />
-                    <span>Открыть Telegram</span>
-                  </a>
+                  <TelegramContinuation
+                    codeResult={codeResult}
+                    storyResult={storyResult}
+                    meetingResult={meetingResult}
+                    journeyId={journeyId}
+                  />
                 </div>
                 <p className="text-sm leading-relaxed text-stone-400 max-w-lg mx-auto">
-                  Telegram откроется как отдельный диалог с @digitalcodesystem_bot. Текущие результаты останутся на этом устройстве; для разговора с их контекстом используйте «Диалог на сайте».
+                  Выберите: продолжить разговор здесь или перенести краткий контекст к Альберту в Telegram. Передача потребует отдельного согласия.
                 </p>
               </div>
 

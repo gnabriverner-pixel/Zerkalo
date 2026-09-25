@@ -6,7 +6,6 @@ import {
   Loader2, 
   RotateCcw, 
   GitFork,
-  Send,
   MessageSquare
 } from 'lucide-react';
 import { CalculationResult, FirstMirror, ApiResponse } from '../types';
@@ -16,6 +15,7 @@ import { numberKnowledge } from '../data/numberKnowledge';
 import { PASSPORT_PRACTICES } from '../data/passportPractices';
 import { Orb, PLANET_PALETTES } from './Orb';
 import { AlbertDialogue } from './AlbertDialogue';
+import { useProtectedFetch } from './ConsentBoundary';
 
 interface CodeArchitectureProps {
   initialDate?: string;
@@ -32,6 +32,7 @@ export default function CodeArchitecture({
   onNavigateToMeeting,
   hasMythResult
 }: CodeArchitectureProps = {}) {
+  const protectedFetch = useProtectedFetch();
   const [day, setDay] = useState(initialDate ? initialDate.split('.')[0] || '' : '');
   const [month, setMonth] = useState(initialDate ? initialDate.split('.')[1] || '' : '');
   const [year, setYear] = useState(initialDate ? initialDate.split('.')[2] || '' : '');
@@ -40,7 +41,6 @@ export default function CodeArchitecture({
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [reading, setReading] = useState<FirstMirror | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [consentChecked, setConsentChecked] = useState(true);
   const [isAlbertOpen, setIsAlbertOpen] = useState(false);
 
   // Section references for smooth editorial manuscript scrolling
@@ -65,15 +65,18 @@ export default function CodeArchitecture({
 
   const executeCalculation = async (fullDate: string) => {
     const calc = calculateDigitalCode(fullDate);
-    setResult(calc);
     setIsGenerating(true);
+    let submitted = false;
 
     try {
-      const res = await fetch('/api/generate', {
+      const res = await protectedFetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: 'code', date: fullDate, calc })
       });
+      if (!res) return;
+      submitted = true;
+      setResult(calc);
       const data: ApiResponse = await res.json();
       if (data.status === 'ok' && data.code_result?.first_mirror) {
         setReading(data.code_result.first_mirror);
@@ -85,7 +88,7 @@ export default function CodeArchitecture({
       setReading(generateFirstMirror(calc));
     } finally {
       setIsGenerating(false);
-      if (onCodeCalculated) {
+      if (submitted && onCodeCalculated) {
         onCodeCalculated(calc, reading || undefined);
       }
     }
@@ -98,7 +101,6 @@ export default function CodeArchitecture({
         setDay(parts[0]);
         setMonth(parts[1]);
         setYear(parts[2]);
-        executeCalculation(initialDate);
       }
     }
   }, [initialDate]);
@@ -144,7 +146,6 @@ export default function CodeArchitecture({
 
   const handleCalculate = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!consentChecked) return;
     setDateError('');
 
     const d = parseInt(day, 10);
@@ -284,17 +285,8 @@ export default function CodeArchitecture({
               )}
             </button>
 
-            {/* Consent & About */}
+            {/* About */}
             <div className="pt-2 flex items-center justify-center gap-4 text-xs text-[var(--color-text-muted)] font-light">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={consentChecked}
-                  onChange={(e) => setConsentChecked(e.target.checked)}
-                  className="accent-[var(--color-antique-gold)]"
-                />
-                <span>Согласен с обработкой</span>
-              </label>
               {onOpenAbout && (
                 <button
                   type="button"
@@ -807,27 +799,17 @@ export default function CodeArchitecture({
                 Диалог с Альбертом Вяземским
               </h3>
               <p className="text-[16px] text-[var(--color-text-secondary)] font-light leading-relaxed">
-                Вы можете сохранить контекст вашего разбора и продолжить глубокое обсуждение чисел в Telegram или прямо здесь.
+                Сейчас Альберт может продолжить разговор о вашем Коде прямо здесь. После Мифа и Встречи вы сможете при желании перенести краткий контекст в Telegram.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-              <a
-                href="https://t.me/digitalcodesystem_bot" 
-                target="_blank" 
-                rel="noreferrer"
-                className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 shadow-md cursor-pointer"
-              >
-                <Send size={14} />
-                <span>Открыть в Telegram</span>
-              </a>
-
               <button
                 onClick={() => setIsAlbertOpen(true)}
-                className="px-8 py-3.5 border border-white/15 text-[var(--color-text-primary)] hover:text-white uppercase tracking-[0.2em] text-xs rounded-xs transition-colors flex items-center gap-2 cursor-pointer"
+                className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 shadow-md cursor-pointer"
               >
                 <MessageSquare size={14} />
-                <span>Диалог на сайте</span>
+                <span>Продолжить здесь</span>
               </button>
             </div>
 

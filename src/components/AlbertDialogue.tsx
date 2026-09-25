@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CalculationResult, MeetingOfMirrorsResult, CodeV2Payload, CodeV2AlbertContext } from '../types';
 import { numberKnowledge } from '../data/numberKnowledge';
 import { loadTruthState, saveTruthState, truthJourneyKey, hasTruthCorrections, TRUTH_CLEARED_EVENT } from '../services/albertTruthState';
+import { useProtectedFetch } from './ConsentBoundary';
 import { 
   X, 
   Send, 
@@ -55,6 +56,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   codeV2Payload,
   codeV2Context
 }) => {
+  const protectedFetch = useProtectedFetch();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState(initialTopic);
   const [isLoading, setIsLoading] = useState(false);
@@ -205,7 +207,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         };
       }
 
-      const res = await fetch('/api/albert/dialogue', {
+      const res = await protectedFetch('/api/albert/dialogue', {
         signal: controller.signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -218,6 +220,12 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
       });
 
       if (controller.signal.aborted) return;
+      if (!res) {
+        if (!retry) setMessages(prev => prev.filter(message => message.id !== userMsg.id));
+        setInputValue(text);
+        setIsLoading(false);
+        return;
+      }
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         const safeMessage = errJson?.ui?.safe_message || 'Собеседник временно недоступен. Результаты остаются на странице — попробуйте повторить запрос.';

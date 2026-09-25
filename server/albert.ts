@@ -55,6 +55,31 @@ export interface AlbertDialogueResponse {
   truthState?: TruthState;
 }
 
+export class AlbertCanonicalError extends Error {
+  public readonly canonical_status: number | null;
+  public readonly canonical_error: string;
+  public readonly provider_outcome: string | null;
+
+  constructor(
+    public readonly downstreamStatus: number | null,
+    public readonly downstreamCode: string,
+    public readonly requestId: string,
+    options?: {
+      providerOutcome?: string | null;
+    },
+  ) {
+    super("albert_canonical_failed");
+    this.canonical_status = downstreamStatus;
+    this.canonical_error = downstreamCode;
+    this.provider_outcome = options?.providerOutcome ?? null;
+  }
+}
+
+function safeCode(value: unknown): string {
+  return typeof value === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(value)
+    ? value : "unclassified_error";
+}
+
 /**
  * Builds canonical SharedContextEnvelopeV1 from Web Albert context.
  * Strict adherence to DCS context schema.
@@ -144,15 +169,6 @@ export function buildCanonicalEnvelopeFromWebContext(
  */
 export const ALBERT_MESSAGE_MAX_LENGTH = 2000;
 
-/**
- * Single source of truth for the Albert message constraint.
- *
- * The HTTP handler runs this BEFORE booking any cost, so a rejected message can never
- * spend the daily budget; the generator below runs it again as a safety net. Keeping one
- * exported implementation is what prevents the two checks from drifting apart — the
- * earlier split (non-empty at the door, length 2000 only inside the generator) let an
- * oversized message consume the budget and then be rejected without any generation.
- */
 export function parseAlbertMessage(request: { message?: unknown }): string {
   const userText = String(request?.message || "").trim();
   if (!userText || userText.length > ALBERT_MESSAGE_MAX_LENGTH) {
@@ -202,14 +218,39 @@ export async function generateAlbertDialogue(
 
     if (!resp.ok) {
       const errBody = await resp.json().catch(() => ({}));
-      console.error(`[Albert Web Adapter] DCS Albert error:`, errBody);
-      throw new Error(`albert_canonical_failed:${errBody.error || resp.status}`);
+      const downstreamCode = safeCode(errBody?.error);
+      const lastErrEvent = Array.isArray(errBody?.provider_events) && errBody.provider_events.length > 0
+        ? errBody.provider_events[errBody.provider_events.length - 1]
+        : null;
+      const providerOutcome = typeof errBody?.provider_outcome === "string"
+        ? safeCode(errBody.provider_outcome)
+        : (typeof lastErrEvent?.outcome === "string" ? safeCode(lastErrEvent.outcome) : null);
+      console.error("[Albert Web Adapter] canonical_failure", {
+        status: resp.status, error: downstreamCode, provider_outcome: providerOutcome, request_id: requestId,
+      });
+      throw new AlbertCanonicalError(resp.status, downstreamCode, requestId, {
+        providerOutcome,
+      });
     }
 
     const data = (await resp.json()) as any;
+    if (data.safety_state === "deferred") {
+      const lastEvent = Array.isArray(data.provider_events) && data.provider_events.length > 0
+        ? data.provider_events[data.provider_events.length - 1]
+        : null;
+      const providerOutcome = typeof lastEvent?.outcome === "string" ? safeCode(lastEvent.outcome) : "deferred";
+      console.error("[Albert Web Adapter] canonical_deferred", {
+        status: resp.status, error: "safety_state_deferred", provider_outcome: providerOutcome, request_id: requestId,
+      });
+      throw new AlbertCanonicalError(resp.status, "safety_state_deferred", requestId, {
+        providerOutcome,
+      });
+    }
+
     const replyText = data.text || data.turn?.reply_text || data.reply_text;
     if (data.status !== "ok" || !replyText) {
-      throw new Error("albert_canonical_empty_reply");
+      console.error("[Albert Web Adapter] canonical_empty_reply", { request_id: requestId });
+      throw new AlbertCanonicalError(resp.status, "empty_reply", requestId);
     }
 
     return {
@@ -229,9 +270,16 @@ export async function generateAlbertDialogue(
     };
   } catch (err: any) {
     clearTimeout(timer);
-    if (err.name === "AbortError" || (err.message && err.message.includes("abort"))) {
-      throw new Error("albert_timeout:request_deadline_exhausted");
+    if (err.name === "AbortError") {
+      console.error("[Albert Web Adapter] canonical_timeout", { request_id: requestId });
+      throw new AlbertCanonicalError(null, "timeout", requestId, {
+        providerOutcome: "timeout",
+      });
     }
-    throw err;
+    if (err instanceof AlbertCanonicalError) throw err;
+    console.error("[Albert Web Adapter] canonical_transport_failure", { request_id: requestId });
+    throw new AlbertCanonicalError(null, "transport_failure", requestId, {
+      providerOutcome: "transport_failure",
+    });
   }
 }

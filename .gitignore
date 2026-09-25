@@ -19,3 +19,6 @@ release.json
 PUBLIC_RELEASE_EVIDENCE/
 generated/
 .release/
+output/
+playwright-report/
+evidence/

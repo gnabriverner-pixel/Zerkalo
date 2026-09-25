@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Star, Check, Send, Sparkles } from 'lucide-react';
 import { TesterFeedback } from '../types';
+import { useProtectedFetch } from './ConsentBoundary';
 
 interface TesterFeedbackWidgetProps {
   onFeedbackSubmitted?: (fb: TesterFeedback) => void;
 }
 
 export function TesterFeedbackWidget({ onFeedbackSubmitted }: TesterFeedbackWidgetProps) {
+  const protectedFetch = useProtectedFetch();
   const [score, setScore] = useState<number | null>(null);
   const [hoverScore, setHoverScore] = useState<number | null>(null);
   const [recognizeMotifs, setRecognizeMotifs] = useState('');
@@ -36,11 +38,12 @@ export function TesterFeedbackWidget({ onFeedbackSubmitted }: TesterFeedbackWidg
     };
 
     try {
-      const response = await fetch('/api/feedback', {
+      const response = await protectedFetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(feedbackPayload)
       });
+      if (!response) return;
       const data = await response.json();
       if (!response.ok || data.status !== 'ok') throw new Error('feedback_not_saved');
       setSubmitted(true);
