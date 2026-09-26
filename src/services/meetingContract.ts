@@ -34,7 +34,7 @@ const UNGROUNDED_OUTCOME_PROMISE = /(?:ночн[а-яё]*\s+переделк[а-
 const IMAGE_AS_TESTED_REAL_BEHAVIOR = /(?:удерживать\s+паузу,\s+как\s+вы\s+это\s+делаете,\s+когда\s+молча\s+забираете\s+папку|как\s+вы\s+это\s+делаете,\s+когда\s+(?:молча\s+)?(?:забираете\s+папку|закрываете\s+дверь)|вы\s+забираете\s+папку\s+и\s+закрываете\s+дверь[^.]*это\s+уже\s+испытанн[а-яё]*\s+вами\s+способ|это\s+уже\s+испытанн[а-яё]*\s+вами\s+способ)/iu;
 
 const EXPLICIT_IMAGE_ORIGIN_MARKER =
-  /(?:в\s+(?:выбранном\s+вами\s+)?образе|в\s+образной\s+сцене|в\s+вашей\s+метафоре|в\s+метафорической\s+сцене|в\s+сюжете\s+мифа|в\s+сцене\s+мифа|внутри\s+образа)/iu;
+  /(?:в\s+(?:выбранн[а-яё]*\s+вами\s+)?(?:воображаем[а-яё]*\s+сцене|образе|образн[а-яё]*\s+сцене)|в\s+вашей\s+метафоре|в\s+метафорической\s+сцене|в\s+сюжете\s+мифа|в\s+сцене\s+мифа|внутри\s+образа)/iu;
 
 const EXPLICIT_NEUTRAL_HYPOTHESIS_MARKER =
   /(?:в\s+вашем\s+ответе[^.!?]{0,120}(?:можно\s+проверить|как\s+гипотез|стоит\s+проверить)|можно\s+проверить,\s+пригодится\s+ли)/iu;
@@ -46,7 +46,7 @@ const EXPLICIT_REAL_EXPERIENCE_IN_Q3 =
   /(?<![а-яё])(?:на\s+работе|в\s+рабочей\s+практике|в\s+жизни|в\s+реальности|по\s+утрам|по\s+вечерам|дома|с\s+командой|с\s+инженер[а-яё]*|с\s+клиент[а-яё]*|с\s+коллег[а-яё]*|с\s+заказчик[а-яё]*|на\s+созвон[а-яё]*|на\s+встреч[а-яё]*|когда\s+(?:я\s+)?(?:разбираю\s+смет|пишу\s+код|веду\s+ревью|обсуждаю\s+задач|готовлю\s+ужин|чиню|тренируюсь|гуляю\s+в\s+парке|работаю\s+в\s+мастерской|провод[а-яё]*\s+разбор))(?![а-яё])/iu;
 
 const SCENIC_METAPHOR_CUE_IN_Q3 =
-  /(?<![а-яё])(?:курьер[а-яё]*|папк[а-яё]*|плотн[а-яё]*\s+штор[а-яё]*|маяк[а-яё]*|остров[а-яё]*|шторм[а-яё]*|башн[а-яё]*|зам[ока][а-яё]*|корабл[а-яё]*|парус[а-яё]*|пещер[а-яё]*|манти[а-яё]*|сундук[а-яё]*|факел[а-яё]*)(?![а-яё])/iu;
+  /(?<![а-яё])(?:курьер[а-яё]*|плотн[а-яё]*\s+штор[а-яё]*|маяк[а-яё]*|остров[а-яё]*|шторм[а-яё]*|башн[а-яё]*|зам[ока][а-яё]*|корабл[а-яё]*|парус[а-яё]*|пещер[а-яё]*|манти[а-яё]*|сундук[а-яё]*|факел[а-яё]*)(?![а-яё])/iu;
 
 export type Q3ContentClassification = "unknown_resource" | "real_experience" | "imaginative_scene" | "ambiguous";
 
@@ -61,11 +61,11 @@ export function classifyQ3Content(q3Raw?: string, q2Raw?: string): Q3ContentClas
   const q3Stems = tokenize(q3);
   const sharesQ2MetaphorStem = q3Stems.some((st) => q2Stems.has(st));
 
-  if (SCENIC_METAPHOR_CUE_IN_Q3.test(q3) || sharesQ2MetaphorStem) {
-    return "imaginative_scene";
-  }
   if (EXPLICIT_REAL_EXPERIENCE_IN_Q3.test(q3)) {
     return "real_experience";
+  }
+  if (SCENIC_METAPHOR_CUE_IN_Q3.test(q3) || sharesQ2MetaphorStem) {
+    return "imaginative_scene";
   }
   return "ambiguous";
 }
@@ -176,11 +176,21 @@ export function hasSourceOriginConflation(
   const referencesQ4WishOnly = valStems.some((stem) => q4WishOnlyStems.has(stem));
   const referencesColleagueOnly = valStems.some((stem) => colleagueOnlyStems.has(stem));
   const referencesMythOnly = valStems.some((stem) => mythOnlyStems.has(stem));
+  const referencesReal = valStems.some((stem) => realStems.has(stem));
 
   const claimsAlreadyPracticedInRealLife =
-    /(?:как\s+вы\s+(?:это\s+|уже\s+)?делаете|уже\s+испытанн[а-яё]*\s+вами\s+(?:способ|при[её]м|опыт|опор)|вы\s+уже\s+(?:умеете|применяете|делаете|освоили|владеете)|ваш[а-яё]*\s+(?:освоенн[а-яё]*\s+навык|привычк[а-яё]*\s+в\s+реальности)|в\s+вас\s+уже\s+есть\s+(?:способность|навык|опора))/iu.test(
+    /(?:как\s+вы\s+(?:это\s+|уже\s+)?делаете|уже\s+испытанн[а-яё]*\s+вами\s+(?:способ|при[её]м|опыт|опор)|вы\s+уже\s+(?:умеете|применяете|делаете|освоили|владеете)|ваш[а-яё]*\s+(?:освоенн[а-яё]*\s+навык|привычк[а-яё]*\s+в\s+реальности)|(?:в\s+вас|у\s+вас)\s+уже\s+есть\s+(?:проверенн[а-яё]*\s+|испытанн[а-яё]*\s+)?(?:способность|навык|опора))/iu.test(
       value,
     );
+
+  // 0. Real experience in q3: must not be claimed as an imaginative scene / image
+  if (
+    q3Kind === "real_experience" &&
+    EXPLICIT_IMAGE_ORIGIN_MARKER.test(value) &&
+    referencesReal
+  ) {
+    return true;
+  }
 
   // 1. Unknown resource in q3: must not claim the user already named a tested real-life support/skill
   if (q3Kind === "unknown_resource" && claimsAlreadyPracticedInRealLife) {
@@ -222,7 +232,7 @@ export function hasSourceOriginConflation(
 
   // 6. Myth-only detail: never attribute literary details from storyResult to the user's own answers
   const claimsUserToldMythFiction =
-    /(?:вы\s+(?:сами\s+)?(?:рассказали|назвали|описали|упомянули)|в\s+вашем\s+ответе\s+вы\s+(?:назвали|описали|упомянули))/iu.test(
+    /(?:вы\s+(?:сами\s+)?(?:рассказали|написали|назвали|описали|упомянули|указали|отметили)|в\s+(?:вашем\s+ответе|анкете)\s+(?:вы\s+)?(?:назвали|написали|описали|упомянули|указали|отметили))/iu.test(
       value,
     );
   if (

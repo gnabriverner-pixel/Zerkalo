@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSpuriousDecorativeGrounding, isUnsupportedSupportClaim, parseMeetingResponse } from "./meetingContract";
+import { classifyQ3Content, isSpuriousDecorativeGrounding, isUnsupportedSupportClaim, parseMeetingResponse } from "./meetingContract";
 
 function payload(parallelCount = 1, divergenceCount = 1) {
   return {
@@ -120,5 +120,13 @@ describe("Meeting of Mirrors contract", () => {
     const parsed = parseMeetingResponse(base);
     expect(parsed.result?.parallels).toHaveLength(0);
     expect(parsed.result?.hasStrongParallels).toBe(false);
+  });
+
+  it("correctly classifies Q3 content without turning real work actions with folders into imaginative scenes", () => {
+    expect(classifyQ3Content("На работе я раскладываю документы по папкам")).toBe("real_experience");
+    expect(classifyQ3Content("В рабочей практике сверяю сметы")).toBe("real_experience");
+    expect(classifyQ3Content("Как будто стою на маяке над ночным океаном")).toBe("imaginative_scene");
+    expect(classifyQ3Content("Не знаю, ничего конкретного не вспоминается")).toBe("unknown_resource");
+    expect(classifyQ3Content("Чашка горячего кофе на столе")).toBe("ambiguous");
   });
 });
