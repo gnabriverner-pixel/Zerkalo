@@ -1114,6 +1114,27 @@ describe('Owner Acceptance Iteration: Clear Path to Albert & Precise Content', (
     const matchNegotiation = selectRelevantSceneExample(scenes, 'Предстоят сложные переговоры с партнёрами');
     expect(matchNegotiation).toBe('Когда в сложных переговорах важно сохранить уважительный тон.');
 
+    // Preserves full sentence with em-dash without truncating to 2-word fragment
+    const dcsScenes = [
+      {
+        title: 'Иллюстрация выходного дня',
+        description: 'В свободное время — Иллюстрацией подвижности может служить ситуация, когда человеку трудно долго усидеть в четырех стенах: просыпается, берет рюкзак и едет исследовать новый район города.'
+      },
+      {
+        title: 'Иллюстрация делегирования',
+        description: 'В работе с командой — передает ключевые полномочия сотрудникам и контролирует только результат.'
+      }
+    ];
+    const matchFullSentence = selectRelevantSceneExample(dcsScenes, '');
+    expect(matchFullSentence).toBe(
+      'В свободное время — Иллюстрацией подвижности может служить ситуация, когда человеку трудно долго усидеть в четырех стенах: просыпается, берет рюкзак и едет исследовать новый район города.'
+    );
+    expect(matchFullSentence).not.toBe('В свободное время.');
+
+    // Russian inflected query matches stemmed keywords and ignores stop words
+    const matchInflected = selectRelevantSceneExample(dcsScenes, 'Как мне перестать разрываться между контролем и делегированием?');
+    expect(matchInflected).toBe('В работе с командой — передает ключевые полномочия сотрудникам и контролирует только результат.');
+
     // Fallback to first scene when no keywords match or empty
     const fallbackEmpty = selectRelevantSceneExample(scenes, '');
     expect(fallbackEmpty).toBe('Когда на командном релизе нужно быстро найти выход из сложной ситуации.');
@@ -1470,6 +1491,48 @@ describe('Owner Acceptance Iteration: Clear Path to Albert & Precise Content', (
 
     expect(container.textContent).not.toContain('t.me');
     expect(container.textContent).not.toContain('digitalcodesystem_bot');
+
+    // Verify retry without double-sending
+    let sentHistories: any[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes('/api/consent')) {
+          return new Response(JSON.stringify({ accepted: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (init?.body) {
+          const parsed = JSON.parse(String(init.body));
+          sentHistories.push(parsed.history || []);
+        }
+        return new Response(
+          JSON.stringify({
+            status: 'ok',
+            message: 'Число 5 связано со стихией воздуха и постоянным обновлением впечатлений.',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+
+    await act(async () => {
+      retryBtn!.click();
+    });
+
+    // Albert's reply appears
+    expect(container.textContent).toContain('Число 5 связано со стихией воздуха');
+
+    // Exactly ONE user message is present in the rendered chat (no double send)
+    const userMessageTexts = [...container.querySelectorAll('div')]
+      .filter(d => d.textContent === 'Почему число Души 5 стремится к изменениям?');
+    expect(userMessageTexts.length).toBe(1);
+
+    // The history sent to the server on retry did not include the failed message twice
+    const lastHistory = sentHistories[sentHistories.length - 1];
+    expect(lastHistory.every((m: any) => m.text !== 'Почему число Души 5 стремится к изменениям?')).toBe(true);
   });
 
   it('Scenario 7: Mobile responsiveness verifies min 44px tap targets and responsive wrapping layout', async () => {

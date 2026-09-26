@@ -122,37 +122,39 @@ export function TelegramContinuation({ codeResult, storyResult, meetingResult, j
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          if (isLocalCandidateHost) {
-            setStatus(LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE);
-            setError(LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE);
-          }
-          setDialogOpen(true);
-        }}
-        className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.18em] text-sm rounded-xs transition-colors inline-flex items-center justify-center gap-2 cursor-pointer"
-      >
-        <Send size={14} />
-        <span>Перенести разговор в Telegram</span>
-      </button>
+      <div className="flex flex-col items-center">
+        <button
+          type="button"
+          onClick={() => {
+            if (isLocalCandidateHost) {
+              setStatus(LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE);
+              setError(LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE);
+            }
+            setDialogOpen(true);
+          }}
+          className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.18em] text-sm rounded-xs transition-colors inline-flex items-center justify-center gap-2 cursor-pointer min-h-11"
+        >
+          <Send size={14} />
+          <span>Перенести разговор в Telegram</span>
+        </button>
 
-      {isLocalCandidateHost && (
-        <p className="w-full text-xs text-stone-400 mt-1" data-testid="telegram-local-candidate-notice">
-          {LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE}
-        </p>
-      )}
+        {isLocalCandidateHost && (
+          <p className="w-full text-xs text-stone-400 mt-1.5 text-center" data-testid="telegram-local-candidate-notice">
+            {LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE}
+          </p>
+        )}
 
-      {status && (
-        <div ref={statusRef} className="w-full" role="status" aria-live="polite">
-          <p className="text-sm text-emerald-300">{status}</p>
-          {telegramUrl && (
-            <a href={telegramUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 items-center text-[#C8A45D] underline underline-offset-4">
-              Открыть Telegram
-            </a>
-          )}
-        </div>
-      )}
+        {status && (
+          <div ref={statusRef} className="w-full text-center mt-2" role="status" aria-live="polite">
+            <p className="text-sm text-emerald-300">{status}</p>
+            {telegramUrl && (
+              <a href={telegramUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 items-center text-[#C8A45D] underline underline-offset-4">
+                Открыть Telegram
+              </a>
+            )}
+          </div>
+        )}
+      </div>
 
       {dialogOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 px-4 py-8" onMouseDown={event => {

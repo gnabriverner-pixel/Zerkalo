@@ -70,6 +70,25 @@ export function cleanPositionEssence(text: string): string {
     .trim();
 }
 
+const RUSSIAN_STOP_WORDS = new Set([
+  'как', 'мне', 'меня', 'мой', 'моя', 'мое', 'моё', 'мои', 'что', 'это',
+  'этот', 'эта', 'эти', 'для', 'или', 'при', 'без', 'над', 'под', 'про',
+  'вас', 'вам', 'вами', 'вот', 'где', 'кто', 'чем', 'так', 'уже', 'еще',
+  'ещё', 'все', 'всё', 'быть', 'есть', 'если', 'когда', 'между', 'через'
+]);
+
+export function formatSceneExample(raw: string): string {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+  // Match the first complete sentence ending in . ! or ?
+  // Do NOT split on em-dash (—) or semicolons within a sentence.
+  const sentenceMatch = trimmed.match(/^([^.!?]+[.!?])/);
+  if (sentenceMatch) {
+    return sentenceMatch[1].trim();
+  }
+  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`;
+}
+
 export function selectRelevantSceneExample(
   scenes: CodeV2PositionScene[] | undefined,
   userQuestion?: string
@@ -77,30 +96,39 @@ export function selectRelevantSceneExample(
   if (!scenes || scenes.length === 0) return '';
   const trimmedQ = (userQuestion || '').trim();
   if (!trimmedQ) {
-    const raw = scenes[0]?.description || '';
-    return raw ? `${raw.split(/[.;!—]/)[0].trim()}.` : '';
+    return formatSceneExample(scenes[0]?.description || '');
   }
 
-  const tokens = trimmedQ
+  const rawTokens = trimmedQ
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .split(/\s+/)
     .filter(t => t.length > 2);
 
-  if (tokens.length === 0) {
-    const raw = scenes[0]?.description || '';
-    return raw ? `${raw.split(/[.;!—]/)[0].trim()}.` : '';
+  // Filter stop words while retaining meaningful content keywords
+  const tokens = rawTokens.filter(t => !RUSSIAN_STOP_WORDS.has(t));
+  const activeTokens = tokens.length > 0 ? tokens : rawTokens;
+
+  if (activeTokens.length === 0) {
+    return formatSceneExample(scenes[0]?.description || '');
   }
 
+  // Pre-calculate stems (4-6 chars) for inflected Russian matching
+  const stems = activeTokens.map(t => (t.length > 5 ? t.slice(0, 5) : t));
+
   let bestScene = scenes[0];
-  let maxScore = -1;
+  let maxScore = 0;
 
   for (const scene of scenes) {
     const text = `${scene.title} ${scene.description}`.toLowerCase();
     let score = 0;
-    for (const token of tokens) {
+    for (let i = 0; i < activeTokens.length; i++) {
+      const token = activeTokens[i];
+      const stem = stems[i];
       if (text.includes(token)) {
-        score++;
+        score += 2;
+      } else if (stem && text.includes(stem)) {
+        score += 1;
       }
     }
     if (score > maxScore) {
@@ -110,7 +138,7 @@ export function selectRelevantSceneExample(
   }
 
   const raw = bestScene?.description || scenes[0]?.description || '';
-  return raw ? `${raw.split(/[.;!—]/)[0].trim()}.` : '';
+  return formatSceneExample(raw);
 }
 
 // DEV-ONLY QA surfaces (top bar + preset picker) live in ./qaPanel and are loaded
@@ -529,11 +557,8 @@ export function CodeV2Experience({
                       key={`hero-summary-${pos.position}`}
                       className="rounded-xl border border-white/10 bg-black/25 px-3.5 py-2.5 text-xs sm:text-sm text-stone-200 leading-relaxed"
                     >
-                      <div className="font-medium text-amber-100/95 mb-0.5">
+                      <div className="font-medium text-amber-100/95">
                         {pos.public_name} ({pos.energy}, {pos.energy_name}) — <span className="text-stone-300 font-normal">{pos.role}</span>
-                      </div>
-                      <div className="text-stone-300 text-xs sm:text-[13px]">
-                        {getFirstSentence(cleanPositionEssence(pos.essence))}
                       </div>
                     </div>
                   ))}

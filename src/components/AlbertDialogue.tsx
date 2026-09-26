@@ -165,6 +165,8 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
     const text = (questionText || inputValue).trim();
     if (!text || isLoading) return;
 
+    const isRetry = retry || Boolean(lastFailedMessage && messages.length > 0 && messages[messages.length - 1].sender === 'user');
+
     const userMsg: Message = {
       id: Date.now().toString(),
       sender: 'user',
@@ -172,7 +174,15 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
       timestamp: new Date()
     };
 
-    if (!retry) setMessages(prev => [...prev, userMsg]);
+    if (isRetry) {
+      setMessages(prev => {
+        const copy = [...prev];
+        copy[copy.length - 1] = userMsg;
+        return copy;
+      });
+    } else {
+      setMessages(prev => [...prev, userMsg]);
+    }
     setInputValue('');
     setIsLoading(true);
     setErrorText(null);
@@ -182,7 +192,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
     requestRef.current = controller;
     try {
       const truthEpoch = truthEpochRef.current;
-      const historyPayload = (retry ? messages.slice(0, -1) : messages).map(m => ({
+      const historyPayload = (isRetry ? messages.slice(0, -1) : messages).map(m => ({
         sender: m.sender,
         text: m.text
       }));
@@ -253,7 +263,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
 
       if (controller.signal.aborted) return;
       if (!res) {
-        if (!retry) setMessages(prev => prev.filter(message => message.id !== userMsg.id));
+        if (!isRetry) setMessages(prev => prev.filter(message => message.id !== userMsg.id));
         setInputValue(text);
         setIsLoading(false);
         return;
