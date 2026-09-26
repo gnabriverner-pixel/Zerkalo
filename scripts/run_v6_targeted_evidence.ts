@@ -10,7 +10,6 @@ import {
 import { buildMeetingOfMirrorsPrompt } from "../src/services/mythPrompts";
 import { containsCrisisLanguageText, SAFE_CRISIS_MESSAGE } from "../server/myth";
 import { CONSENT_VERSION } from "../src/services/consent";
-
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,6 +37,37 @@ try {
   console.warn("[v6] Could not read release-compatibility.json:", err);
 }
 
+async function verifyLiveServicesOrThrow(): Promise<void> {
+  console.log("[v6] Pre-flight: Verifying live Web and DCS services against candidate pins...");
+
+  const webRes = await fetch("http://127.0.0.1:3000/health").catch((e) => {
+    throw new Error(`Web server on port 3000 is unreachable: ${e.message}`);
+  });
+  if (!webRes.ok) throw new Error(`Web health returned HTTP ${webRes.status}`);
+  const webHealth: any = await webRes.json();
+
+  const dcsRes = await fetch("http://127.0.0.1:8090/health").catch((e) => {
+    throw new Error(`DCS server on port 8090 is unreachable: ${e.message}`);
+  });
+  if (!dcsRes.ok) throw new Error(`DCS health returned HTTP ${dcsRes.status}`);
+  const dcsHealth: any = await dcsRes.json();
+
+  console.log(`[v6] Live Web SHA: ${webHealth.releaseSha} (dirty: ${webHealth.dirty})`);
+  console.log(`[v6] Live DCS SHA: ${dcsHealth.sha}`);
+
+  if (webHealth.releaseSha !== WEB_SHA && webHealth.releaseSha !== WEB_PIN) {
+    throw new Error(
+      `Web SHA mismatch: running ${webHealth.releaseSha}, expected HEAD ${WEB_SHA} or PIN ${WEB_PIN}`
+    );
+  }
+  if (dcsHealth.sha !== DCS_SHA) {
+    throw new Error(
+      `DCS SHA mismatch: running ${dcsHealth.sha}, expected PIN ${DCS_SHA}`
+    );
+  }
+  console.log("[v6] Pre-flight verification passed: services are healthy and match candidate pins.");
+}
+
 function runDefect1Check(): boolean {
   console.log("[v6] Running Check 1: Defect 1 Matrix (Source Origin Separation)...");
 
@@ -45,7 +75,9 @@ function runDefect1Check(): boolean {
   const mundaneFolderClassification = classifyQ3Content("На работе я раскладываю документы по папкам");
   const mundaneFolderOk = mundaneFolderClassification === "real_experience";
   if (!mundaneFolderOk) {
-    console.error(`[v6] FAIL: classifyQ3Content('На работе я раскладываю документы по папкам') was '${mundaneFolderClassification}', expected 'real_experience'`);
+    console.error(
+      `[v6] FAIL: classifyQ3Content('На работе я раскладываю документы по папкам') was '${mundaneFolderClassification}', expected 'real_experience'`
+    );
   }
 
   const rawCases = [
@@ -216,7 +248,7 @@ function runDefect1Check(): boolean {
 }
 
 async function runDefect2Check(browser: Browser): Promise<boolean> {
-  console.log("[v6] Running Check 2: Defect 2 Matrix (Crisis Self-Quote Detection + HTTP Crisis Safe Handler)...");
+  console.log("[v6] Running Check 2: Defect 2 Matrix (Crisis Self-Quote Detection + HTTP Crisis Safe Handler + Native UI)...");
 
   const crisisCases = [
     {
@@ -261,32 +293,36 @@ async function runDefect2Check(browser: Browser): Promise<boolean> {
       const page = await browser.newPage();
       try {
         await page.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
-        const res = await page.evaluate(async ({ text, version }) => {
-          const consentRes = await fetch("/api/consent", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ accepted: true, adult: true, version, scope: "core" }),
-          });
-          if (!consentRes.ok) return { status: consentRes.status, body: await consentRes.json(), consentFailed: true };
+        const res = await page.evaluate(
+          async ({ text, version }) => {
+            const consentRes = await fetch("/api/consent", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ accepted: true, adult: true, version, scope: "core" }),
+            });
+            if (!consentRes.ok)
+              return { status: consentRes.status, body: await consentRes.json(), consentFailed: true };
 
-          const meetingRes = await fetch("/api/meeting-of-mirrors", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              codeText: "Сознание 1, Действие 4",
-              storyResult: "Путник стоял на мосту.",
-              archetype: "Искатель",
-              shadowArchetype: "Беглец",
-              userName: "Тест",
-              userQuestion: text,
-              q1: "Тяжёлый период",
-              q2: "Камень",
-              q3: "Не знаю",
-              q4: "Тишина",
-            }),
-          });
-          return { status: meetingRes.status, body: await meetingRes.json(), consentFailed: false };
-        }, { text: c.text, version: CONSENT_VERSION });
+            const meetingRes = await fetch("/api/meeting-of-mirrors", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                codeText: "Сознание 1, Действие 4",
+                storyResult: "Путник стоял на мосту.",
+                archetype: "Искатель",
+                shadowArchetype: "Беглец",
+                userName: "Тест",
+                userQuestion: text,
+                q1: "Тяжёлый период",
+                q2: "Камень",
+                q3: "Не знаю",
+                q4: "Тишина",
+              }),
+            });
+            return { status: meetingRes.status, body: await meetingRes.json(), consentFailed: false };
+          },
+          { text: c.text, version: CONSENT_VERSION }
+        );
 
         httpResult = res;
       } finally {
@@ -317,31 +353,60 @@ async function runDefect2Check(browser: Browser): Promise<boolean> {
     });
   }
 
-  // Render the crisis safe banner in browser UI and screenshot
+  // Native UI Walkthrough: Meeting of Mirrors Crisis Component (NO SYNTHETIC OVERLAYS!)
+  let nativeCrisisUiRendered = false;
+  let nativeCrisisMessageText = "";
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     try {
       await page.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
-      await page.evaluate((msg) => {
-        const banner = document.createElement("div");
-        banner.id = "v6-crisis-proof-overlay";
-        banner.style.cssText =
-          "position:fixed;inset:32px;z-index:99999;background:#11131a;color:#f5f5f7;border:2px solid #e0a96d;border-radius:16px;padding:32px;font-family:Inter,sans-serif;max-width:720px;margin:auto;height:fit-content;box-shadow:0 24px 60px rgba(0,0,0,0.85);";
-        banner.innerHTML = `
-          <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#e0a96d;margin-bottom:12px;font-weight:600;">Безопасный ответ /api/meeting-of-mirrors (до кеша и генерации)</div>
-          <h3 style="margin:0 0 16px;font-size:22px;color:#fff;">Мы рядом — сейчас важнее всего ваша безопасность</h3>
-          <p style="line-height:1.65;font-size:15px;color:#d1d5db;margin-bottom:16px;">${msg}</p>
-          <div style="font-size:13px;color:#9ca3af;border-top:1px solid #262a36;padding-top:12px;">Горячая линия психологической помощи: 8 (800) 200-01-22 · Единая служба спасения: 112</div>
-        `;
-        document.body.appendChild(banner);
-      }, SAFE_CRISIS_MESSAGE);
+      await page.evaluate(async (version) => {
+        await fetch("/api/consent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accepted: true, adult: true, version, scope: "core" }),
+        });
+        sessionStorage.setItem(
+          "zerkalo.transientDraft.v1",
+          JSON.stringify({
+            version: 1,
+            updatedAt: new Date().toISOString(),
+            mode: "meeting",
+            codeDate: "15.08.1988",
+            userQuestion:
+              "Друг написал мне в сообщении: «хочу умереть», не знаю как жить дальше. Как мне поддержать его и не сломаться?",
+            codeResult: { day: 15, month: 8, year: 1988, soul: 6, expression: 4, path: 4, direction: 1, result: 2 },
+            firstMirror: {
+              title: "Первое зеркало",
+              keyInsight: "Число Души 6: гармония и ответственность.",
+              practicalStep: "Определить главную задачу дня.",
+              interpretationVersion: "v2",
+            },
+            storyInputs: { q1: "Много задач", q2: "Камень", q3: "Утро", q4: "Ясность" },
+            storyResult: { title: "Тихий берег", story: "Путник на берегу озера нашел тишину." },
+          })
+        );
+      }, CONSENT_VERSION);
+
+      await page.reload({ waitUntil: "networkidle" });
+      const draftBtn = await page.waitForSelector('button:has-text("Продолжить")', { timeout: 10000 });
+      await draftBtn.click();
+
+      const synthBtn = await page.waitForSelector('button:has-text("Провести Встречу зеркал")', { timeout: 10000 });
+      await synthBtn.click();
+
+      const crisisEl = await page.waitForSelector('[data-testid="meeting-crisis-support"]', { timeout: 15000 });
+      nativeCrisisMessageText = await crisisEl.innerText();
+      nativeCrisisUiRendered = nativeCrisisMessageText.includes("ВАЖНОЕ СООБЩЕНИЕ ПОДДЕРЖКИ");
+
       await page.screenshot({ path: path.join(LIVE_RUNS_DIR, "defect2-crisis-self-quote-ui.png") });
+      console.log("[v6] Native crisis UI component rendered and screenshot saved.");
     } finally {
       await page.close();
     }
   }
 
-  const allPassed = evaluatedCrisis.every((c) => c.passed);
+  const allPassed = evaluatedCrisis.every((c) => c.passed) && nativeCrisisUiRendered;
 
   fs.writeFileSync(
     path.join(LIVE_RUNS_DIR, "defect2-crisis-self-quote-matrix.json"),
@@ -350,6 +415,8 @@ async function runDefect2Check(browser: Browser): Promise<boolean> {
         generated_at: new Date().toISOString(),
         pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
         all_passed: allPassed,
+        native_ui_rendered: nativeCrisisUiRendered,
+        native_crisis_text: nativeCrisisMessageText,
         screenshot: "live-runs/defect2-crisis-self-quote-ui.png",
         cases: evaluatedCrisis,
       },
@@ -358,42 +425,37 @@ async function runDefect2Check(browser: Browser): Promise<boolean> {
     ) + "\n"
   );
 
-  console.log(`[v6] Defect 2 Matrix: ${allPassed ? "PASSED (6/6)" : "FAILED"}`);
+  console.log(`[v6] Defect 2 Matrix: ${allPassed ? "PASSED (6/6 + native UI component)" : "FAILED"}`);
   return allPassed;
 }
 
 async function runRouteACheck(browser: Browser): Promise<boolean> {
-  console.log("[v6] Running Check 3: Route A (Code -> Albert BEFORE Myth)...");
+  console.log("[v6] Running Check 3: Route A (Code -> Albert BEFORE Myth via Native UI & API)...");
 
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
+  // 1. API Multi-Turn Dialogue Verification (4 turns with codeAnchors ONLY, NO mythAnchors)
+  const ownerPrompts = [
+    "Объясни проще: что эти числа говорят именно про мой вопрос?",
+    "Почему мне так трудно не включаться в чужие пожары?",
+    "Какой один шаг проверить на этой неделе без перегруза?",
+    "Как понять по ощущениям, что я снова ушёл в автоматический сценарий?",
+  ];
 
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => pageErrors.push(err.message));
+  const albertTurns: any[] = [];
+  const history: Array<{ sender: "user" | "albert"; text: string }> = [];
 
+  const apiPage = await browser.newPage();
+  let codeResp: any = null;
   try {
-    await page.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
-
-    // 1. Establish valid consent
-    const consentRes = await page.evaluate(async (version) => {
-      const res = await fetch("/api/consent", {
+    await apiPage.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
+    await apiPage.evaluate(async (version) => {
+      await fetch("/api/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accepted: true, adult: true, version, scope: "core" }),
       });
-      return { status: res.status, body: await res.json() };
     }, CONSENT_VERSION);
 
-    if (consentRes.status !== 200) {
-      console.error("[v6] Route A failed at consent initialization:", consentRes);
-      return false;
-    }
-
-    // 2. Perform digital code calculation
-    const codeResp = await page.evaluate(async () => {
+    codeResp = await apiPage.evaluate(async () => {
       const res = await fetch("/api/calculate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -405,30 +467,9 @@ async function runRouteACheck(browser: Browser): Promise<boolean> {
       return { status: res.status, body: await res.json() };
     });
 
-    if (codeResp.status !== 200) {
-      console.error("[v6] Route A failed at /api/calculate:", codeResp);
-      return false;
-    }
-
-    const authority = codeResp.body?.result?.canonicalAuthority;
-    console.log(`[v6] Digital code calculated: status=${codeResp.status}, authority=${authority}`);
-
-    // 3. Four dialogue turns with Albert with codeAnchors ONLY (NO mythAnchors, NO meetingSummary)
-    const ownerPrompts = [
-      "Объясни проще: что эти числа говорят именно про мой вопрос?",
-      "Почему мне так трудно не включаться в чужие пожары?",
-      "Какой один шаг проверить на этой неделе без перегруза?",
-      "Как понять по ощущениям, что я снова ушёл в автоматический сценарий?",
-    ];
-
-    const albertTurns: any[] = [];
-    const history: Array<{ sender: "user" | "albert"; text: string }> = [];
-
     for (let i = 0; i < ownerPrompts.length; i++) {
       const promptText = ownerPrompts[i];
-      console.log(`[v6] Albert turn ${i + 1}/4: sending user prompt...`);
-
-      const turnRes = await page.evaluate(
+      const turnRes = await apiPage.evaluate(
         async ({ promptText, historyPayload }) => {
           const res = await fetch("/api/albert/dialogue", {
             method: "POST",
@@ -459,8 +500,6 @@ async function runRouteACheck(browser: Browser): Promise<boolean> {
       history.push({ sender: "albert", text: replyText });
 
       const nonEmpty = turnRes.status === 200 && replyText.trim().length > 40;
-      console.log(`[v6] Turn ${i + 1} outcome: status=${turnRes.status}, replyLen=${replyText.length}, provider=${turnRes.body?.provider}`);
-
       albertTurns.push({
         turn: i + 1,
         user_prompt: promptText,
@@ -472,104 +511,129 @@ async function runRouteACheck(browser: Browser): Promise<boolean> {
         non_empty_live_reply: nonEmpty,
       });
     }
-
-    // Render dialogue in browser UI and screenshot
-    await page.evaluate((dialogueTurns) => {
-      const overlay = document.createElement("div");
-      overlay.id = "v6-albert-turns-overlay";
-      overlay.style.cssText =
-        "position:fixed;inset:20px;z-index:99999;background:#0d1117;color:#f0f6fc;border:1px solid #30363d;border-radius:16px;padding:24px;font-family:Inter,sans-serif;max-width:880px;margin:auto;max-height:92vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.9);";
-      
-      let html = `<div style="font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#e0a96d;margin-bottom:12px;font-weight:600;">Диалог с Альбертом сразу после Кода (до Мифа) · 4 живых ответа</div>`;
-      for (const t of dialogueTurns) {
-        html += `
-          <div style="margin-bottom:16px;background:#161b22;border:1px solid #21262d;border-radius:12px;padding:16px;">
-            <div style="font-weight:600;font-size:13px;color:#58a6ff;margin-bottom:6px;">Вы (Ход ${t.turn}):</div>
-            <div style="font-size:14px;color:#c9d1d9;margin-bottom:12px;line-height:1.5;">${t.user_prompt}</div>
-            <div style="font-weight:600;font-size:13px;color:#e0a96d;margin-bottom:6px;">Альберт (статус ${t.http_status}, провайдер: ${t.provider || "dcs"}):</div>
-            <div style="font-size:14px;color:#f0f6fc;line-height:1.6;white-space:pre-line;">${t.reply}</div>
-          </div>
-        `;
-      }
-      overlay.innerHTML = html;
-      document.body.appendChild(overlay);
-    }, albertTurns);
-
-    await page.screenshot({ path: path.join(LIVE_RUNS_DIR, "code-to-albert-before-myth.png") });
-
-    const allTurnsSucceeded =
-      codeResp.status === 200 &&
-      albertTurns.length === 4 &&
-      albertTurns.every((t) => t.non_empty_live_reply);
-
-    // Filter out expected dev WebSocket / HMR disconnect warnings if any
-    const criticalBrowserErrors = consoleErrors.filter(
-      (e) => !e.includes("WebSocket") && !e.includes("vite")
-    );
-
-    fs.writeFileSync(
-      path.join(LIVE_RUNS_DIR, "code-to-albert-before-myth.json"),
-      JSON.stringify(
-        {
-          generated_at: new Date().toISOString(),
-          pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
-          route: "Code -> Albert BEFORE Myth (/api/calculate + /api/albert/dialogue with codeAnchors only, no mythAnchors)",
-          digital_code_status: codeResp.status,
-          digital_code_canonical_authority: authority || null,
-          turns_count: albertTurns.length,
-          all_turns_succeeded: allTurnsSucceeded,
-          turns: albertTurns,
-          browser_errors: {
-            console_errors: criticalBrowserErrors,
-            page_errors: pageErrors,
-          },
-          screenshot: "live-runs/code-to-albert-before-myth.png",
-        },
-        null,
-        2
-      ) + "\n"
-    );
-
-    console.log(`[v6] Route A: ${allTurnsSucceeded ? "PASSED (4/4 live turns)" : "FAILED"}`);
-    return allTurnsSucceeded;
   } finally {
-    await page.close();
+    await apiPage.close();
   }
+
+  // 2. Native Playwright UI Walkthrough: Landing -> DOB -> Calculate -> Open Code -> Consent -> Modal <AlbertDialogue> -> Send question -> Live answer rendered
+  let nativeUiDialogueSuccess = false;
+  let nativeAlbertResponsePreview = "";
+  const uiPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  try {
+    await uiPage.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
+
+    // Fill DOB
+    const dayInput = await uiPage.waitForSelector('input[placeholder="ДД"]', { timeout: 10000 });
+    await dayInput.fill("15");
+    const monthInput = await uiPage.waitForSelector('input[placeholder="ММ"]', { timeout: 5000 });
+    await monthInput.fill("05");
+    const yearInput = await uiPage.waitForSelector('input[placeholder="ГГГГ"]', { timeout: 5000 });
+    await yearInput.fill("1990");
+
+    const calcBtn = await uiPage.waitForSelector('button:has-text("Рассчитать код")', { timeout: 5000 });
+    await calcBtn.click();
+
+    // Click "Открыть мой Код"
+    const openCodeBtn = await uiPage.waitForSelector('button:has-text("Открыть мой Код")', { timeout: 10000 });
+    await openCodeBtn.click();
+
+    // Consent modal
+    const consentHeading = await uiPage.waitForSelector("#consent-heading", { timeout: 8000 }).catch(() => null);
+    if (consentHeading) {
+      const checkbox = await uiPage.waitForSelector('input[type="checkbox"]', { timeout: 5000 });
+      await checkbox.click();
+      const acceptBtn = await uiPage.waitForSelector('button:has-text("Согласиться и продолжить")', { timeout: 5000 });
+      await acceptBtn.click();
+    }
+
+    // Wait for Albert button and click it
+    const albertBtn = await uiPage.waitForSelector(
+      'button:has-text("Обсудить с Альбертом"), button:has-text("Поговорить с Альбертом")',
+      { timeout: 25000 }
+    );
+    await albertBtn.click();
+
+    // Verify modal is open
+    await uiPage.waitForSelector('div[role="dialog"]', { timeout: 10000 });
+
+    // Type question and send
+    const input = await uiPage.waitForSelector('input[placeholder*="Задайте вопрос Альберту"]', { timeout: 5000 });
+    await input.fill("Объясни проще: что эти числа говорят именно про мой вопрос?");
+
+    const sendBtn = await uiPage.waitForSelector('button[type="submit"][aria-label="Отправить сообщение"]', { timeout: 5000 });
+    await sendBtn.click();
+
+    // Wait for live Albert response in native dialogue component (greeting is 1st, answer is 2nd)
+    await uiPage.waitForFunction(() => {
+      const msgs = document.querySelectorAll('div[role="dialog"] div.font-serif.text-\\[18px\\]');
+      return msgs.length >= 2;
+    }, { timeout: 35000 });
+
+    const replyElements = await uiPage.$$('div[role="dialog"] div.font-serif.text-\\[18px\\]');
+    nativeAlbertResponsePreview = await replyElements[replyElements.length - 1].innerText();
+    nativeUiDialogueSuccess = nativeAlbertResponsePreview.trim().length > 40;
+
+    await uiPage.screenshot({ path: path.join(LIVE_RUNS_DIR, "code-to-albert-before-myth.png") });
+    console.log("[v6] Native AlbertDialogue modal rendered with live reply and screenshot saved.");
+  } finally {
+    await uiPage.close();
+  }
+
+  const allTurnsSucceeded =
+    codeResp?.status === 200 &&
+    albertTurns.length === 4 &&
+    albertTurns.every((t) => t.non_empty_live_reply) &&
+    nativeUiDialogueSuccess;
+
+  fs.writeFileSync(
+    path.join(LIVE_RUNS_DIR, "code-to-albert-before-myth.json"),
+    JSON.stringify(
+      {
+        generated_at: new Date().toISOString(),
+        pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
+        route: "Code -> Albert BEFORE Myth (/api/calculate + /api/albert/dialogue with codeAnchors only, no mythAnchors)",
+        digital_code_status: codeResp?.status,
+        digital_code_canonical_authority: codeResp?.body?.result?.canonicalAuthority || null,
+        turns_count: albertTurns.length,
+        all_turns_succeeded: allTurnsSucceeded,
+        turns: albertTurns,
+        native_ui_walkthrough: {
+          success: nativeUiDialogueSuccess,
+          response_preview: nativeAlbertResponsePreview.slice(0, 200),
+        },
+        screenshot: "live-runs/code-to-albert-before-myth.png",
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  console.log(`[v6] Route A: ${allTurnsSucceeded ? "PASSED (4/4 live API turns + native UI dialogue)" : "FAILED"}`);
+  return allTurnsSucceeded;
 }
 
 async function runRouteBCheck(browser: Browser): Promise<boolean> {
-  console.log("[v6] Running Check 4: Route B (Telegram Local Gate)...");
+  console.log("[v6] Running Check 4: Route B (Telegram Local Gate via Native UI & API)...");
 
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  // 1. API Verification: POST /api/handoff/create-claim -> 503 telegram_destination_unavailable
+  const apiPage = await browser.newPage();
+  let claimResult: any = null;
   try {
-    await page.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
-
-    // Two-step consent: first core, then telegram_transfer
-    const consentRes = await page.evaluate(async (version) => {
-      const c1 = await fetch("/api/consent", {
+    await apiPage.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
+    await apiPage.evaluate(async (version) => {
+      await fetch("/api/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accepted: true, adult: true, version, scope: "core" }),
       });
-      if (!c1.ok) return { ok: false, step: "core", status: c1.status };
-
-      const c2 = await fetch("/api/consent", {
+      await fetch("/api/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accepted: true, adult: true, version, scope: "telegram_transfer" }),
       });
-      if (!c2.ok) return { ok: false, step: "telegram_transfer", status: c2.status };
-
-      return { ok: true };
     }, CONSENT_VERSION);
 
-    if (!consentRes.ok) {
-      console.error("[v6] Route B failed to establish telegram consent:", consentRes);
-      return false;
-    }
-
-    // Call create-claim under valid telegram_transfer consent
-    const claimResult = await page.evaluate(async () => {
+    claimResult = await apiPage.evaluate(async () => {
       const res = await fetch("/api/handoff/create-claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -584,56 +648,126 @@ async function runRouteBCheck(browser: Browser): Promise<boolean> {
         claim_body: await res.json(),
       };
     });
-
-    const passed =
-      claimResult.claim_status === 503 &&
-      claimResult.claim_body?.code === "telegram_destination_unavailable" &&
-      typeof claimResult.claim_body?.ui?.safe_message === "string" &&
-      claimResult.claim_body.ui.safe_message.includes("В этой тестовой версии продолжение в Telegram недоступно");
-
-    // Render local gate notification in UI and screenshot
-    await page.evaluate((body) => {
-      const overlay = document.createElement("div");
-      overlay.id = "v6-telegram-gate-overlay";
-      overlay.style.cssText =
-        "position:fixed;inset:32px;z-index:99999;background:#11131a;color:#f5f5f7;border:2px solid #58a6ff;border-radius:16px;padding:32px;font-family:Inter,sans-serif;max-width:680px;margin:auto;height:fit-content;box-shadow:0 24px 60px rgba(0,0,0,0.85);";
-      overlay.innerHTML = `
-        <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#58a6ff;margin-bottom:12px;font-weight:600;">Локальный шлюз Telegram (HTTP 503 telegram_destination_unavailable)</div>
-        <h3 style="margin:0 0 16px;font-size:20px;color:#fff;">Связь с Telegram в локальном режиме изолирована</h3>
-        <p style="line-height:1.6;font-size:15px;color:#d1d5db;margin-bottom:12px;">${body.ui?.safe_message || body.message}</p>
-        <div style="font-size:13px;color:#9ca3af;">Код ответа: <code>${body.code}</code> · Полноценная интеграция принимается отдельно</div>
-      `;
-      document.body.appendChild(overlay);
-    }, claimResult.claim_body);
-
-    await page.screenshot({ path: path.join(LIVE_RUNS_DIR, "telegram-local-gate.png") });
-
-    fs.writeFileSync(
-      path.join(LIVE_RUNS_DIR, "telegram-local-gate.json"),
-      JSON.stringify(
-        {
-          generated_at: new Date().toISOString(),
-          pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
-          route: "Telegram local gate (POST /api/handoff/create-claim)",
-          passed,
-          claim_status: claimResult.claim_status,
-          claim_body: claimResult.claim_body,
-          screenshot: "live-runs/telegram-local-gate.png",
-        },
-        null,
-        2
-      ) + "\n"
-    );
-
-    console.log(`[v6] Route B: ${passed ? "PASSED (503 telegram_destination_unavailable)" : "FAILED"}`);
-    return passed;
   } finally {
-    await page.close();
+    await apiPage.close();
   }
+
+  const apiPassed =
+    claimResult.claim_status === 503 &&
+    claimResult.claim_body?.code === "telegram_destination_unavailable" &&
+    typeof claimResult.claim_body?.ui?.safe_message === "string" &&
+    claimResult.claim_body.ui.safe_message.includes("В этой тестовой версии продолжение в Telegram недоступно");
+
+  // 2. Native Playwright UI Walkthrough: MeetingOfMirrors -> TelegramContinuation notice -> click "Продолжить в Telegram" -> native dialog modal
+  let nativeNoticeText = "";
+  let nativeModalRendered = false;
+  const uiPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  try {
+    await uiPage.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
+
+    // Set saved snapshot with meetingResult
+    await uiPage.evaluate(async ({ version }) => {
+      await fetch("/api/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accepted: true, adult: true, version, scope: "core" }),
+      });
+      localStorage.setItem(
+        "zerkalo.myMirror.v1",
+        JSON.stringify({
+          version: 1,
+          savedAt: new Date().toISOString(),
+          codeDate: "15.08.1988",
+          userQuestion: "Как найти баланс между срочностью и своим фокусом?",
+          codeResult: { day: 15, month: 8, year: 1988, soul: 6, expression: 4, path: 4, direction: 1, result: 2 },
+          firstMirror: {
+            title: "Первое зеркало",
+            keyInsight: "Число Души 6: гармония и ответственность.",
+            practicalStep: "Определить одну главную задачу дня.",
+            interpretationVersion: "v2",
+          },
+          storyInputs: { q1: "Много задач", q2: "Камень", q3: "Утро", q4: "Ясность" },
+          storyResult: { title: "Тихий берег", story: "Путник на берегу озера нашел тишину." },
+          meetingResult: {
+            summary: "Встреча подсвечивает важность ясных пауз и разделения ответственности.",
+            confidenceNote: "Ориентир для проверки в реальной ситуации.",
+            parallels: [
+              {
+                theme: "Фокус",
+                codeAnchor: "Число Души 6",
+                mythAnchor: "Тихий берег",
+                synthesis: "Естественный ритм вместо гонки за чужими ожиданиями.",
+              },
+            ],
+            divergences: [
+              {
+                theme: "Темп",
+                codeAspect: "Замедление",
+                mythAspect: "Движение вперёд",
+                reflection: "Баланс между действием и паузой.",
+              },
+            ],
+            reflectiveQuestion: "Где на этой неделе можно вернуть себе спокойный ритм?",
+            albertInsight: "Начните с одного конкретного разговора, не расширяя список обязательств.",
+          },
+          meetingUserNote: "",
+        })
+      );
+    }, { version: CONSENT_VERSION });
+
+    await uiPage.reload({ waitUntil: "networkidle" });
+    const restoreSavedBtn = await uiPage.waitForSelector('button:has-text("Продолжить с того места")', { timeout: 10000 });
+    await restoreSavedBtn.click();
+
+    // Verify native notice in MeetingOfMirrors
+    const tgNotice = await uiPage.waitForSelector('[data-testid="telegram-local-candidate-notice"]', { timeout: 10000 });
+    nativeNoticeText = await tgNotice.innerText();
+
+    // Click "Продолжить в Telegram" button in UI
+    const tgButton = await uiPage.waitForSelector('button:has-text("Продолжить в Telegram")', { timeout: 5000 });
+    await tgButton.click();
+
+    // Verify native Telegram modal
+    const tgModal = await uiPage.waitForSelector(
+      'section[role="dialog"][aria-labelledby="telegram-continuation-title"]',
+      { timeout: 5000 }
+    );
+    const modalText = await tgModal.innerText();
+    nativeModalRendered = modalText.includes("В этой тестовой версии продолжение в Telegram недоступно");
+
+    await uiPage.screenshot({ path: path.join(LIVE_RUNS_DIR, "telegram-local-gate.png") });
+    console.log("[v6] Native Telegram Continuation modal rendered and screenshot saved.");
+  } finally {
+    await uiPage.close();
+  }
+
+  const passed = apiPassed && nativeModalRendered;
+
+  fs.writeFileSync(
+    path.join(LIVE_RUNS_DIR, "telegram-local-gate.json"),
+    JSON.stringify(
+      {
+        generated_at: new Date().toISOString(),
+        pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
+        route: "Telegram local gate (POST /api/handoff/create-claim + native UI component)",
+        passed,
+        claim_status: claimResult.claim_status,
+        claim_body: claimResult.claim_body,
+        native_notice_text: nativeNoticeText,
+        native_modal_rendered: nativeModalRendered,
+        screenshot: "live-runs/telegram-local-gate.png",
+      },
+      null,
+      2
+    ) + "\n"
+  );
+
+  console.log(`[v6] Route B: ${passed ? "PASSED (503 telegram_destination_unavailable + native UI modal)" : "FAILED"}`);
+  return passed;
 }
 
 async function runRouteCCheck(browser: Browser): Promise<boolean> {
-  console.log("[v6] Running Check 5: Route C (Data Deletion via Real Application Action)...");
+  console.log("[v6] Running Check 5: Route C (Data Deletion via Native UI Button & Server API)...");
 
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   try {
@@ -648,7 +782,7 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
       });
     }, CONSENT_VERSION);
 
-    // 2. Register real session on server
+    // 2. Part 1: Server Deletion via POST /api/delete-data
     const sessionToken = "v6-session-del-token-" + Date.now();
     const regResult = await page.evaluate(async (token) => {
       const res = await fetch("/api/privacy/register-session", {
@@ -664,7 +798,19 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
       return false;
     }
 
-    // 3. Save a valid MyMirrorSnapshotV1 into localStorage via application contract
+    const serverDeleteResult = await page.evaluate(async (token) => {
+      const res = await fetch("/api/delete-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      return { status: res.status, body: await res.json() };
+    }, sessionToken);
+
+    const serverDeleteOk = serverDeleteResult.status === 200 && serverDeleteResult.body?.status === "ok";
+    console.log(`[v6] Server /api/delete-data: status=${serverDeleteResult.status}, body=${JSON.stringify(serverDeleteResult.body)}`);
+
+    // 3. Part 2: Client Local Deletion via Native UI Button
     const sampleSnapshot = {
       version: 1,
       savedAt: new Date().toISOString(),
@@ -673,9 +819,8 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
       codeResult: { soul: 6, path: 5, expression: 9, direction: 2, result: 3 },
       firstMirror: {
         interpretationVersion: "v2",
-        title: "Опора на структуру",
+        title: "Первое зеркало",
         keyInsight: "Опора на ясный шаг",
-        blocks: [],
         practicalStep: "Один шаг",
       },
       storyInputs: {
@@ -688,88 +833,54 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
       storyResult: {
         title: "Мост",
         story: "Ты стоишь на мосту над тихой рекой.",
-        mirror: { mainImage: "Мост", innerTension: "Течение", hiddenResource: "Опоры", newView: "Берег" },
-        meaning: "Держать темп",
-        one_step: "Сделать паузу",
-        journal_question: "Где берег?",
       },
       meetingResult: {
         summary: "В вашем ответе названа ситуация срочного проекта...",
         confidenceNote: "Частичный резонанс",
-        possibleSupport: "Вы рассказали, что на работе спокойно сверяете сметы...",
         parallels: [],
         divergences: [],
         albertInsight: "Различение двух способов действовать...",
         reflectiveQuestion: "Где сделать паузу?",
-        disclaimer: "Код и Миф — два независимых взгляда.",
       },
     };
 
     await page.evaluate((snap) => {
       localStorage.setItem("zerkalo.myMirror.v1", JSON.stringify(snap));
-      sessionStorage.setItem("zerkalo.transientDraft.v1", JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), codeDate: "15.05.1990" }));
     }, sampleSnapshot);
-
-    // Verify data exists before deletion
-    const dataExistsBefore = await page.evaluate(() => {
-      return localStorage.getItem("zerkalo.myMirror.v1") !== null && sessionStorage.getItem("zerkalo.transientDraft.v1") !== null;
-    });
-
-    if (!dataExistsBefore) {
-      console.error("[v6] Route C setup failed: data not present before deletion");
-      return false;
-    }
 
     // Reload page to display saved mirror card in UI
     await page.reload({ waitUntil: "networkidle" });
 
-    // 4. Server deletion call
-    const serverDeleteResult = await page.evaluate(async (token) => {
-      const res = await fetch("/api/delete-data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-      return { status: res.status, body: await res.json() };
-    }, sessionToken);
-
-    console.log("[v6] Server /api/delete-data response:", serverDeleteResult);
-
-    // 5. Trigger client deletion via real application UI button
-    const deleteBtn = page.locator("button[title=\"Удалить сохранённое зеркало из браузера\"]");
-    const deleteBtnVisible = await deleteBtn.isVisible();
-
-    if (deleteBtnVisible) {
-      await deleteBtn.click();
-      await page.waitForTimeout(400);
-    } else {
-      // Fallback to application's exact mirror cleanup function
-      await page.evaluate(() => {
-        localStorage.removeItem("zerkalo.myMirror.v1");
-        sessionStorage.removeItem("zerkalo.transientDraft.v1");
-      });
+    // Locate the delete button on the card. Fail closed if not present: NO synthetic fallbacks!
+    const deleteBtn = await page.waitForSelector('button[title="Удалить сохранённое зеркало из браузера"]', {
+      timeout: 10000,
+    });
+    if (!deleteBtn) {
+      throw new Error("[v6] FAIL-CLOSED: UI delete button 'Удалить сохранённое зеркало из браузера' not found!");
     }
 
-    // Verify data is deleted from client storage
-    const dataExistsImmediatelyAfter = await page.evaluate(() => {
-      return localStorage.getItem("zerkalo.myMirror.v1") !== null;
-    });
+    console.log("[v6] Clicking native UI delete button via Playwright...");
+    await deleteBtn.click();
+    await page.waitForTimeout(500);
 
-    // 6. Reload page to verify data does NOT restore
+    // Verify localStorage snapshot is null immediately after click
+    const snapshotImmediatelyAfter = await page.evaluate(() => localStorage.getItem("zerkalo.myMirror.v1"));
+    const cardInDomImmediatelyAfter = (await page.$('button:has-text("Продолжить с того места")')) !== null;
+
+    // Reload page to verify persistence of deletion
     await page.reload({ waitUntil: "networkidle" });
-
-    const dataRestoredAfterReload = await page.evaluate(() => {
-      return localStorage.getItem("zerkalo.myMirror.v1") !== null;
-    });
+    const snapshotAfterReload = await page.evaluate(() => localStorage.getItem("zerkalo.myMirror.v1"));
+    const cardInDomAfterReload = (await page.$('button:has-text("Продолжить с того места")')) !== null;
 
     await page.screenshot({ path: path.join(LIVE_RUNS_DIR, "user-data-delete.png") });
 
-    const passed =
-      dataExistsBefore === true &&
-      serverDeleteResult.status === 200 &&
-      serverDeleteResult.body?.status === "ok" &&
-      dataExistsImmediatelyAfter === false &&
-      dataRestoredAfterReload === false;
+    const uiDeleteOk =
+      snapshotImmediatelyAfter === null &&
+      cardInDomImmediatelyAfter === false &&
+      snapshotAfterReload === null &&
+      cardInDomAfterReload === false;
+
+    const passed = serverDeleteOk && uiDeleteOk;
 
     fs.writeFileSync(
       path.join(LIVE_RUNS_DIR, "user-data-delete.json"),
@@ -777,14 +888,23 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
         {
           generated_at: new Date().toISOString(),
           pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
-          route: "POST /api/delete-data + client application storage purge",
+          route: "Client UI button delete ('zerkalo.myMirror.v1') + Server API POST /api/delete-data",
           passed,
-          data_existed_before_delete: dataExistsBefore,
-          server_deletion_status: serverDeleteResult.status,
-          server_deletion_body: serverDeleteResult.body,
-          ui_button_clicked: deleteBtnVisible,
-          data_cleared_after_action: !dataExistsImmediatelyAfter,
-          not_restored_after_reload: !dataRestoredAfterReload,
+          server_deletion: {
+            endpoint: "POST /api/delete-data",
+            status: serverDeleteResult.status,
+            body: serverDeleteResult.body,
+            passed: serverDeleteOk,
+          },
+          ui_local_deletion: {
+            button_title: "Удалить сохранённое зеркало из браузера",
+            button_clicked_natively: true,
+            storage_null_after_click: snapshotImmediatelyAfter === null,
+            card_removed_from_dom_after_click: !cardInDomImmediatelyAfter,
+            storage_null_after_reload: snapshotAfterReload === null,
+            card_not_restored_after_reload: !cardInDomAfterReload,
+            passed: uiDeleteOk,
+          },
           screenshot: "live-runs/user-data-delete.png",
         },
         null,
@@ -792,7 +912,13 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
       ) + "\n"
     );
 
-    console.log(`[v6] Route C: ${passed ? "PASSED (200 ok, client cleared, not restored)" : "FAILED"}`);
+    console.log(
+      `[v6] Route C: ${
+        passed
+          ? "PASSED (Server 200 ok + Native UI button purged localStorage and DOM)"
+          : "FAILED"
+      }`
+    );
     return passed;
   } finally {
     await page.close();
@@ -802,9 +928,12 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
 async function main() {
   console.log("================================================================================");
   console.log("[v6] Target Evidence Suite — Fail-Closed Acceptance Runner");
-  console.log(`[v6] Web SHA: ${WEB_SHA.slice(0, 7)} (PIN: ${WEB_PIN.slice(0, 7)})`);
-  console.log(`[v6] DCS SHA: ${DCS_SHA.slice(0, 7)}`);
+  console.log(`[v6] Web HEAD: ${WEB_SHA.slice(0, 7)} (PIN: ${WEB_PIN.slice(0, 7)})`);
+  console.log(`[v6] DCS PIN:  ${DCS_SHA.slice(0, 7)}`);
   console.log("================================================================================");
+
+  // Pre-flight check live services
+  await verifyLiveServicesOrThrow();
 
   const results: Record<string, boolean> = {};
 
@@ -822,22 +951,7 @@ async function main() {
     await browser.close();
   }
 
-  // Update pair info in myth-6x2-identical-inputs.json without touching its 12 runs
-  const myth6x2Path = path.join(LIVE_RUNS_DIR, "myth-6x2-identical-inputs.json");
-  if (fs.existsSync(myth6x2Path)) {
-    try {
-      const mythData = JSON.parse(fs.readFileSync(myth6x2Path, "utf8"));
-      mythData.pair = { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA };
-      for (const s of mythData.sets || []) {
-        for (const r of s.runs || []) {
-          r.pair = { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA };
-        }
-      }
-      fs.writeFileSync(myth6x2Path, JSON.stringify(mythData, null, 2) + "\n");
-    } catch (e) {
-      console.warn("[v6] Could not update myth-6x2 pair metadata:", e);
-    }
-  }
+  // NOTE: myth-6x2-identical-inputs.json is deliberately untouched to preserve provenance!
 
   console.log("================================================================================");
   console.log("[v6] Summary of Targeted Evidence Checks:");
