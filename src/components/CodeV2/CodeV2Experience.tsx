@@ -707,10 +707,7 @@ export function CodeV2Experience({
                         type="button"
                         onClick={() =>
                           onOpenAlbert(payload, {
-                            userQuestion: localQuestion.trim() || undefined,
-                            initialPrompt: localQuestion.trim()
-                              ? localQuestion.trim()
-                              : undefined
+                            userQuestion: localQuestion.trim() || undefined
                           })
                         }
                         className="min-h-[46px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-medium text-sm hover:brightness-110 transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
