@@ -723,8 +723,8 @@ async function runRouteBCheck(browser: Browser): Promise<boolean> {
     const tgNotice = await uiPage.waitForSelector('[data-testid="telegram-local-candidate-notice"]', { timeout: 10000 });
     nativeNoticeText = await tgNotice.innerText();
 
-    // Click "Продолжить в Telegram" button in UI
-    const tgButton = await uiPage.waitForSelector('button:has-text("Продолжить в Telegram")', { timeout: 5000 });
+    // Click Telegram transfer button in UI
+    const tgButton = await uiPage.waitForSelector('button:has-text("Перенести разговор в Telegram"), button:has-text("Продолжить в Telegram")', { timeout: 5000 });
     await tgButton.click();
 
     // Verify native Telegram modal

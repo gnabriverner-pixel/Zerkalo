@@ -27,6 +27,8 @@ import { MeetingOfMirrors } from './components/MeetingOfMirrors';
 import { TelegramContinuation } from './components/TelegramContinuation';
 import { ConsentBoundary } from './components/ConsentBoundary';
 import PersonalMyth from './components/PersonalMyth';
+import { CodeV2Experience, selectRelevantSceneExample } from './components/CodeV2/CodeV2Experience';
+import { AlbertDialogue } from './components/AlbertDialogue';
 
 vi.mock('motion/react', () => ({
   AnimatePresence: ({ children }: any) => children,
@@ -990,5 +992,539 @@ describe('Owner acceptance iteration: personal question, direct address, and loc
         'Я сейчас думаю: «хочу умереть». Это про меня.',
       ),
     ).toBe(true);
+  });
+});
+
+describe('Owner Acceptance Iteration: Clear Path to Albert & Precise Content', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  const sampleCodeV2Payload: any = {
+    calculation: {
+      date: '14.08.1991',
+      canonical_result: calculateDigitalCode('14.08.1991'),
+      five_numbers: calculateDigitalCode('14.08.1991'),
+      calculation_steps: [],
+    },
+    central_motif: 'Контраст между гибкостью и структурой',
+    positions: [
+      {
+        position: 'soul',
+        public_name: 'Число Души',
+        role: 'Внутренний импульс',
+        energy: 5,
+        energy_name: 'Подвижность',
+        role_question: 'Что зажигает интерес?',
+        headline_mechanism: 'Быстрый отклик на новизну',
+        essence: 'Стремление исследовать новое и быстро связывать разнородные идеи.',
+        verification_question: 'Замечаете ли вы, что вам проще включиться в свежую задачу, чем доводить рутину?',
+        life_scenes: [
+          {
+            title: 'Командный релиз',
+            description: 'Когда на командном релизе нужно быстро найти выход из сложной ситуации.',
+          },
+          {
+            title: 'Личные планы',
+            description: 'Когда вечером появляется желание начать новый проект вместо отдыха.',
+          },
+        ],
+        strong_form: 'Быстрое понимание сути.',
+        shadow: 'Рассеивание внимания.',
+        tension: 'Спешка в решениях.',
+      },
+      {
+        position: 'path',
+        public_name: 'Число Пути',
+        role: 'Способ действия',
+        energy: 6,
+        energy_name: 'Гармония',
+        role_question: 'Как вы строите результат?',
+        headline_mechanism: 'Забота о целостности и людях',
+        essence: 'Внимание к атмосфере и качеству завершения задач.',
+        verification_question: 'Важно ли для вас, чтобы результат радовал не только пользой, но и красотой?',
+        life_scenes: [
+          {
+            title: 'Переговоры с заказчиком',
+            description: 'Когда в сложных переговорах важно сохранить уважительный тон и общую цель.',
+          },
+        ],
+        strong_form: 'Чуткость к контексту.',
+        shadow: 'Избыточная уступчивость.',
+        tension: 'Трудность в отказе.',
+      },
+    ],
+    interactions: [],
+    method_orientation: 'classic_vedic',
+    synthesis: {
+      strongest_motif: 'Контраст между гибкостью и структурой',
+      conflict_tension: 'Поиск баланса между новизной и качеством.',
+      dominant_planet: 'Меркурий',
+    },
+    albert_context: {
+      opening_statement: 'Ваша карта показывает сильный запрос на разнообразие при потребности в устойчивой форме.',
+      strongest_hypothesis: 'Поиск баланса между новизной и качеством.',
+      anchor_points: ['5 Душа', '6 Путь'],
+    },
+  };
+
+  beforeEach(() => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    localStorage.clear();
+    sessionStorage.clear();
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ status: 'ok', accepted: true }))));
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+    delete process.env.STAGE1_LOCAL_CANDIDATE_MODE;
+  });
+
+  it('Scenario 1: Code → Albert without Myth renders primary button «Обсудить с Альбертом здесь» with subtext and uses question to select relevant example without changing calculation', async () => {
+    // 1. Check selectRelevantSceneExample
+    const scenes = [
+      { title: 'Командный релиз', description: 'Когда на командном релизе нужно быстро найти выход из сложной ситуации.' },
+      { title: 'Личные планы', description: 'Когда вечером появляется желание начать новый проект вместо отдыха.' },
+      { title: 'Переговоры', description: 'Когда в сложных переговорах важно сохранить уважительный тон.' },
+    ];
+
+    // Keyword "команд" matches scene 0
+    const matchTeam = selectRelevantSceneExample(scenes, 'Как распределить задачи в команде?');
+    expect(matchTeam).toBe('Когда на командном релизе нужно быстро найти выход из сложной ситуации.');
+
+    // Keyword "переговор" matches scene 2
+    const matchNegotiation = selectRelevantSceneExample(scenes, 'Предстоят сложные переговоры с партнёрами');
+    expect(matchNegotiation).toBe('Когда в сложных переговорах важно сохранить уважительный тон.');
+
+    // Fallback to first scene when no keywords match or empty
+    const fallbackEmpty = selectRelevantSceneExample(scenes, '');
+    expect(fallbackEmpty).toBe('Когда на командном релизе нужно быстро найти выход из сложной ситуации.');
+
+    // Calculation result remains pure
+    const originalCalc = sampleCodeV2Payload.calculation.canonical_result;
+    expect(originalCalc.soul).toBe(5);
+    expect(originalCalc.path).toBe(6);
+
+    // 2. Render CodeV2Experience
+    let openedAlbertPayload: any = null;
+    let openedAlbertOptions: any = null;
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ConsentBoundary,
+          null,
+          React.createElement(CodeV2Experience, {
+            initialDate: '14.08.1991',
+            initialPayload: sampleCodeV2Payload,
+            userQuestion: 'Как распределить задачи в команде?',
+            onUserQuestionChange: () => {},
+            initialReactions: {},
+            onReactionChange: () => {},
+            onCalculated: () => {},
+            onChangeDate: () => {},
+            onContinue: () => {},
+            onOpenAlbert: (payload, options) => {
+              openedAlbertPayload = payload;
+              openedAlbertOptions = options;
+            },
+          })
+        )
+      );
+    });
+
+    // Primary button has text «Обсудить с Альбертом здесь» and subtext «Разговор откроется на сайте»
+    const primaryBtn = [...container.querySelectorAll('button')].find(b =>
+      b.textContent?.includes('Обсудить с Альбертом здесь')
+    );
+    expect(primaryBtn).toBeTruthy();
+    expect(container.textContent).toContain('Разговор откроется на сайте');
+
+    // Concrete example is labeled as "Пример"
+    expect(container.textContent).toContain('Пример');
+    expect(container.textContent).toContain('Когда на командном релизе нужно быстро найти выход из сложной ситуации.');
+
+    // Self-verification question is rendered
+    expect(container.textContent).toContain('Проверьте на себе:');
+    expect(container.textContent).toContain('Замечаете ли вы, что вам проще включиться в свежую задачу, чем доводить рутину?');
+
+    // Click primary button opens Albert directly
+    await act(async () => {
+      primaryBtn!.click();
+    });
+    expect(openedAlbertPayload).toBeTruthy();
+    expect(openedAlbertOptions?.userQuestion).toBe('Как распределить задачи в команде?');
+  });
+
+  it('Scenario 2: Meeting → Albert renders primary button «Обсудить с Альбертом здесь» with subtext and triggers callback', async () => {
+    const calc = calculateDigitalCode('14.08.1991');
+    const firstMirror = generateFirstMirror(calc);
+    const meetingResult: any = {
+      summary: 'Что вы рассказали.',
+      hasStrongParallels: true,
+      confidenceNote: 'Связь',
+      possibleSupport: 'Опора в вашем ответе.',
+      parallels: [],
+      divergences: [],
+      albertInsight: 'Новый ракурс на ситуацию.',
+      reflectiveQuestion: 'Какой один признак вы заметите?',
+      disclaimer: 'Дисклеймер',
+    };
+
+    let openedAlbertCalled = false;
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ConsentBoundary,
+          null,
+          React.createElement(MeetingOfMirrors, {
+            codeDate: '14.08.1991',
+            userQuestion: 'Мой вопрос о работе',
+            codeResult: calc,
+            firstMirror,
+            storyInputs: { q1: 'Вопрос', q2: 'Мост', q3: 'Шаг', q4: 'Покой' },
+            storyResult: {
+              title: 'Мост',
+              story: 'Ты стоишь у моста.',
+              mirror: { mainImage: 'Мост', innerTension: 'Пауза', hiddenResource: 'Шаг', newView: 'Ракурс' },
+              meaning: ['Смысл'],
+              one_step: 'Шаг',
+              journal_question: 'Вопрос?',
+              disclaimer: 'Дисклеймер',
+            },
+            initialMeetingResult: meetingResult,
+            onOpenCode: () => {},
+            onOpenMyth: () => {},
+            onOpenAlbert: () => {
+              openedAlbertCalled = true;
+            },
+          })
+        )
+      );
+    });
+
+    const albertBtn = [...container.querySelectorAll('button')].find(b =>
+      b.textContent?.includes('Обсудить с Альбертом здесь')
+    );
+    expect(albertBtn).toBeTruthy();
+    expect(container.textContent).toContain('Разговор откроется на сайте');
+
+    await act(async () => {
+      albertBtn!.click();
+    });
+    expect(openedAlbertCalled).toBe(true);
+  });
+
+  it('Scenario 3: Unavailable Telegram → Albert on site allows continuing conversation on site without dead end', async () => {
+    process.env.STAGE1_LOCAL_CANDIDATE_MODE = 'true';
+    const calc = calculateDigitalCode('14.08.1991');
+
+    let openedAlbertCalled = false;
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ConsentBoundary,
+          null,
+          React.createElement(TelegramContinuation, {
+            codeResult: calc,
+            storyResult: { title: 'Мост', story: 'Ты стоишь у моста.', mirror: {} } as any,
+            meetingResult: { summary: 'Итог', possibleSupport: 'Опора' } as any,
+            journeyId: 'journey-local-test',
+            onOpenAlbert: () => {
+              openedAlbertCalled = true;
+            },
+          })
+        )
+      );
+    });
+
+    // Secondary action button is «Перенести разговор в Telegram»
+    const telegramBtn = [...container.querySelectorAll('button')].find(b =>
+      b.textContent?.includes('Перенести разговор в Telegram')
+    );
+    expect(telegramBtn).toBeTruthy();
+
+    await act(async () => {
+      telegramBtn!.click();
+    });
+
+    // Explanatory message is rendered
+    expect(container.textContent).toContain(
+      'В этой тестовой версии продолжение в Telegram недоступно. Можно продолжить разговор здесь'
+    );
+
+    // Primary action «Продолжить с Альбертом здесь» is present with required data-testid
+    const continueHereBtn = container.querySelector('[data-testid="continue-albert-from-telegram"]') as HTMLButtonElement;
+    expect(continueHereBtn).toBeTruthy();
+    expect(continueHereBtn.textContent).toContain('Продолжить с Альбертом здесь');
+
+    await act(async () => {
+      continueHereBtn.click();
+    });
+    expect(openedAlbertCalled).toBe(true);
+  });
+
+  it('Scenario 4: Restored session persists and reloads full context to continue conversation', () => {
+    const calc = calculateDigitalCode('14.08.1991');
+    const firstMirror = generateFirstMirror(calc);
+    const storyInputs = { q1: 'Ситуация', q2: 'Камень', q3: 'Пауза', q4: 'Ясность' };
+    const storyResult: any = {
+      title: 'Камень',
+      story: 'История о камне.',
+      mirror: { mainImage: 'Камень', innerTension: 'Пауза', hiddenResource: 'Шаг', newView: 'Ракурс' },
+      meaning: ['Смысл'],
+      one_step: 'Шаг',
+      journal_question: 'Вопрос?',
+      disclaimer: 'Дисклеймер',
+    };
+    const meetingResult: any = {
+      summary: 'Что вы рассказали.',
+      hasStrongParallels: true,
+      confidenceNote: 'Связь',
+      possibleSupport: 'Опора в вашем ответе.',
+      parallels: [],
+      divergences: [],
+      albertInsight: 'Новый ракурс.',
+      reflectiveQuestion: 'Вопрос?',
+      disclaimer: 'Дисклеймер',
+    };
+
+    saveMyMirrorSnapshot({
+      codeDate: '14.08.1991',
+      userQuestion: 'Как выстроить границы в проекте?',
+      codeResult: calc,
+      firstMirror,
+      storyInputs,
+      storyResult,
+      meetingResult,
+    });
+
+    const snapshot = loadMyMirrorSnapshot();
+    expect(snapshot).not.toBeNull();
+    expect(snapshot?.codeDate).toBe('14.08.1991');
+    expect(snapshot?.userQuestion).toBe('Как выстроить границы в проекте?');
+    expect(snapshot?.codeResult?.soul).toBe(calc.soul);
+    expect(snapshot?.storyResult?.title).toBe('Камень');
+    expect(snapshot?.meetingResult?.summary).toBe('Что вы рассказали.');
+
+    expect(
+      isSnapshotMatchingCurrentSession(snapshot, {
+        codeDate: '14.08.1991',
+        userQuestion: 'Как выстроить границы в проекте?',
+        codeResult: calc,
+        firstMirror,
+        storyInputs,
+        storyResult,
+        meetingResult,
+      })
+    ).toBe(true);
+  });
+
+  it('Scenario 5: Consent refusal / expiry enforces active consent requirement before Telegram continuation transfer', async () => {
+    const calc = calculateDigitalCode('14.08.1991');
+    delete process.env.STAGE1_LOCAL_CANDIDATE_MODE;
+
+    const origLocation = window.location;
+    delete (window as any).location;
+    window.location = {
+      ...origLocation,
+      hostname: 'production.zerkalo.me',
+    } as any;
+
+    try {
+      await act(async () => {
+        root.render(
+          React.createElement(
+            ConsentBoundary,
+            null,
+            React.createElement(TelegramContinuation, {
+              codeResult: calc,
+              storyResult: {
+                title: 'Мост',
+                story: 'Текст',
+                mirror: { mainImage: 'Мост', innerTension: 'Пауза', hiddenResource: 'Шаг', newView: 'Ракурс' },
+                meaning: ['Смысл'],
+                one_step: 'Шаг',
+                journal_question: 'Вопрос?',
+                disclaimer: 'Дисклеймер',
+              } as any,
+              meetingResult: {
+                summary: 'Итог',
+                hasStrongParallels: true,
+                confidenceNote: 'Связь',
+                possibleSupport: 'Опора',
+                parallels: [],
+                divergences: [],
+                albertInsight: 'Ракурс',
+                reflectiveQuestion: 'Вопрос?',
+                disclaimer: 'Дисклеймер',
+              } as any,
+              journeyId: 'journey-consent-test',
+            })
+          )
+        );
+      });
+
+      const telegramBtn = [...container.querySelectorAll('button')].find(b =>
+        b.textContent?.includes('Перенести разговор в Telegram')
+      );
+      expect(telegramBtn).toBeTruthy();
+      await act(async () => {
+        telegramBtn!.click();
+      });
+
+      const transferBtn = [...container.querySelectorAll('button')].find(b =>
+        b.textContent?.includes('Согласиться и открыть Telegram')
+      ) as HTMLButtonElement;
+      expect(transferBtn).toBeTruthy();
+      expect(transferBtn.disabled).toBe(true);
+
+      const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+      expect(checkbox).toBeTruthy();
+      await act(async () => {
+        checkbox.click();
+      });
+
+      expect(transferBtn.disabled).toBe(false);
+    } finally {
+      window.location = origLocation as any;
+    }
+  });
+
+  it('Scenario 6: Response error preserves user question in input, provides retry, and does not redirect to Telegram', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/consent')) {
+          return new Response(JSON.stringify({ accepted: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(
+          JSON.stringify({
+            status: 'error',
+            ui: { safe_message: 'Собеседник временно недоступен. Результаты остаются на странице — попробуйте повторить запрос.' },
+          }),
+          { status: 500, headers: { 'Content-Type': 'application/json' } }
+        );
+      })
+    );
+
+    const calc = calculateDigitalCode('14.08.1991');
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ConsentBoundary,
+          null,
+          React.createElement(AlbertDialogue, {
+            isOpen: true,
+            onClose: () => {},
+            calc,
+            initialTopic: 'Почему число Души 5 стремится к изменениям?',
+            journeyId: 'journey-error-test',
+          })
+        )
+      );
+    });
+
+    const input = container.querySelector('form input') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    expect(input.value).toBe('Почему число Души 5 стремится к изменениям?');
+
+    const sendBtn = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(sendBtn).toBeTruthy();
+    await act(async () => {
+      sendBtn.click();
+    });
+
+    expect(container.textContent).toContain('Собеседник временно недоступен');
+    expect(input.value).toBe('Почему число Души 5 стремится к изменениям?');
+
+    const retryBtn = [...container.querySelectorAll('button')].find(b =>
+      b.textContent?.includes('Повторить')
+    );
+    expect(retryBtn).toBeTruthy();
+
+    expect(container.textContent).not.toContain('t.me');
+    expect(container.textContent).not.toContain('digitalcodesystem_bot');
+  });
+
+  it('Scenario 7: Mobile responsiveness verifies min 44px tap targets and responsive wrapping layout', async () => {
+    const calc = calculateDigitalCode('14.08.1991');
+    const firstMirror = generateFirstMirror(calc);
+    const meetingResult: any = {
+      summary: 'Что вы рассказали.',
+      hasStrongParallels: true,
+      confidenceNote: 'Связь',
+      possibleSupport: 'Опора в вашем ответе.',
+      parallels: [],
+      divergences: [],
+      albertInsight: 'Новый ракурс.',
+      reflectiveQuestion: 'Вопрос?',
+      disclaimer: 'Дисклеймер',
+    };
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          ConsentBoundary,
+          null,
+          React.createElement(MeetingOfMirrors, {
+            codeDate: '14.08.1991',
+            codeResult: calc,
+            firstMirror,
+            storyInputs: { q1: 'В', q2: 'М', q3: 'Ш', q4: 'П' },
+            storyResult: {
+              title: 'Мост',
+              story: 'Ты стоишь у моста.',
+              mirror: { mainImage: 'Мост', innerTension: 'Пауза', hiddenResource: 'Шаг', newView: 'Ракурс' },
+              meaning: ['Смысл'],
+              one_step: 'Шаг',
+              journal_question: 'Вопрос?',
+              disclaimer: 'Дисклеймер',
+            },
+            initialMeetingResult: meetingResult,
+            onOpenCode: () => {},
+            onOpenMyth: () => {},
+          })
+        )
+      );
+    });
+
+    const buttons = [...container.querySelectorAll('button')];
+    const primaryAlbertBtn = buttons.find(b => b.textContent?.includes('Обсудить с Альбертом здесь'));
+    expect(primaryAlbertBtn).toBeTruthy();
+    expect(primaryAlbertBtn?.className).toMatch(/py-3\.5|min-h-11/);
+
+    const telegramBtn = buttons.find(b => b.textContent?.includes('Перенести разговор в Telegram'));
+    expect(telegramBtn).toBeTruthy();
+    expect(telegramBtn?.className).toMatch(/py-3\.5|min-h-11/);
+
+    const flexContainer = primaryAlbertBtn?.parentElement?.parentElement;
+    expect(flexContainer?.className).toMatch(/flex-col/);
+    expect(flexContainer?.className).toMatch(/sm:flex-row/);
   });
 });

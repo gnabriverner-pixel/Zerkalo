@@ -91,11 +91,11 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   expect(await page.locator('article p').first().evaluate(el=>Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(18);
   await page.getByRole('button',{name:'Открыть Встречу зеркал',exact:true}).click();
   await page.getByRole('button',{name:'Провести Встречу зеркал',exact:true}).click();
-  await page.getByRole('button',{name:'Диалог на сайте',exact:true}).waitFor();
+  await page.getByRole('button',{name:/Обсудить с Альбертом здесь|Диалог на сайте/}).waitFor();
   await expect(page.getByText('Возможная опора',{exact:true})).toBeVisible();
   expect(await page.getByText(meetingFixture.result.possibleSupport,{exact:true}).evaluate(el=>Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(18);
   await shot('meeting');
-  await page.getByRole('button',{name:'Продолжить в Telegram',exact:true}).click();
+  await page.getByRole('button',{name:/Перенести разговор в Telegram|Продолжить в Telegram/}).click();
   await expect(page.getByRole('dialog',{name:'Продолжить исследование в Telegram?'})).toBeVisible();
   await expect(page.getByText(/Дата рождения и исходные ответы Мифа в эту передачу не входят/)).toBeVisible();
   await shot('handoff-consent');
@@ -116,7 +116,7 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   expect(transfer).not.toHaveProperty('q1');
   expect(handoffPayloads).toHaveLength(1);
   expect(await page.evaluate(()=> (window as any).__telegramOpenedUrl)).toMatch(/^https:\/\/t\.me\/digitalcodesystem_bot\?start=h_[A-Za-z0-9_-]{43}$/);
-  await page.getByRole('button',{name:'Диалог на сайте',exact:true}).click();
+  await page.getByRole('button',{name:/Обсудить с Альбертом здесь|Диалог на сайте/}).click();
   await page.getByPlaceholder('Задайте вопрос Альберту о вашей карте и встрече зеркал...').fill(persona.request);
   await page.getByPlaceholder('Задайте вопрос Альберту о вашей карте и встрече зеркал...').press('Enter');
   await expect(page.getByText(fixture.albert.turns[2].reply,{exact:true})).toBeVisible();
@@ -127,8 +127,8 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   await expect(page.getByText('Сохранено в этом браузере',{exact:true})).toBeVisible();
   await page.reload();
   await page.getByRole('button',{name:'Продолжить с того места',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Диалог на сайте',exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Продолжить в Telegram',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:/Обсудить с Альбертом здесь|Диалог на сайте/})).toBeVisible();
+  await expect(page.getByRole('button',{name:/Перенести разговор в Telegram|Продолжить в Telegram/})).toBeVisible();
   expect(errors).toEqual([]);
 });
 

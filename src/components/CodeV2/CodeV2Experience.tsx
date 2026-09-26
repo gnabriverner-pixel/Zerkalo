@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CodeV2Payload, CodeV2Position, CodeV2Interaction } from '../../types';
+import { CodeV2Payload, CodeV2Position, CodeV2Interaction, CodeV2PositionScene } from '../../types';
+import { TelegramContinuation } from '../TelegramContinuation';
 import { EmblemPlate } from '../../art/emblem';
 import { hasCanonicalV2Result } from '../../services/codeV2Session';
 import { validateBirthDate } from '../../services/birthDate';
@@ -67,6 +68,49 @@ export function cleanPositionEssence(text: string): string {
     .replace(/\*\*([^*]+)\*\*/gu, '$1')
     .replace(/^\s*[*-]\s+/gmu, '')
     .trim();
+}
+
+export function selectRelevantSceneExample(
+  scenes: CodeV2PositionScene[] | undefined,
+  userQuestion?: string
+): string {
+  if (!scenes || scenes.length === 0) return '';
+  const trimmedQ = (userQuestion || '').trim();
+  if (!trimmedQ) {
+    const raw = scenes[0]?.description || '';
+    return raw ? `${raw.split(/[.;!—]/)[0].trim()}.` : '';
+  }
+
+  const tokens = trimmedQ
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 2);
+
+  if (tokens.length === 0) {
+    const raw = scenes[0]?.description || '';
+    return raw ? `${raw.split(/[.;!—]/)[0].trim()}.` : '';
+  }
+
+  let bestScene = scenes[0];
+  let maxScore = -1;
+
+  for (const scene of scenes) {
+    const text = `${scene.title} ${scene.description}`.toLowerCase();
+    let score = 0;
+    for (const token of tokens) {
+      if (text.includes(token)) {
+        score++;
+      }
+    }
+    if (score > maxScore) {
+      maxScore = score;
+      bestScene = scene;
+    }
+  }
+
+  const raw = bestScene?.description || scenes[0]?.description || '';
+  return raw ? `${raw.split(/[.;!—]/)[0].trim()}.` : '';
 }
 
 // DEV-ONLY QA surfaces (top bar + preset picker) live in ./qaPanel and are loaded
@@ -647,7 +691,7 @@ export function CodeV2Experience({
                         className="min-h-[46px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-medium text-sm hover:brightness-110 transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
                       >
                         <MessageSquare className="w-4 h-4" />
-                        <span>Обсудить с Альбертом</span>
+                        <span>Обсудить с Альбертом здесь</span>
                       </button>
                     </div>
                   </div>
@@ -731,10 +775,10 @@ export function CodeV2Experience({
                 {payload.positions.map((pos) => {
                   const isExpanded = !!expandedDetails[pos.position];
                   const publicEssence = cleanPositionEssence(pos.essence);
-                  const rawScene = pos.life_scenes?.[0]?.description || '';
-                  const firstSceneExample = rawScene
-                    ? `${rawScene.split(/[.;!—]/)[0].trim()}.`
-                    : '';
+                  const firstSceneExample = selectRelevantSceneExample(
+                    pos.life_scenes,
+                    localQuestion.trim() || userQuestion?.trim()
+                  );
                   const posReaction = reactions[pos.position];
                   return (
                     <div
@@ -1076,7 +1120,34 @@ export function CodeV2Experience({
                   )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
+                  <div className="flex flex-col items-center">
+                    <button
+                      type="button"
+                      aria-label="Поговорить с Альбертом"
+                      onClick={() =>
+                        onOpenAlbert(payload, {
+                          userQuestion: localQuestion.trim() || undefined
+                        })
+                      }
+                      className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-medium text-sm hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2.5 shadow-xl shadow-amber-950/30 whitespace-nowrap min-h-11"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Обсудить с Альбертом здесь</span>
+                    </button>
+                    <span className="text-xs text-stone-400 mt-1.5">Разговор откроется на сайте</span>
+                  </div>
+
+                  <TelegramContinuation
+                    codeResult={payload.calculation.canonical_result}
+                    journeyId={payload.calculation.date}
+                    onOpenAlbert={() =>
+                      onOpenAlbert(payload, {
+                        userQuestion: localQuestion.trim() || undefined
+                      })
+                    }
+                  />
+
                   <button
                     type="button"
                     onClick={() =>
@@ -1084,19 +1155,7 @@ export function CodeV2Experience({
                         userQuestion: localQuestion.trim() || undefined
                       })
                     }
-                    className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-medium text-sm hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2.5 shadow-xl shadow-amber-950/30 whitespace-nowrap"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>Поговорить с Альбертом</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onOpenAlbert(payload, {
-                        userQuestion: localQuestion.trim() || undefined
-                      })
-                    }
-                    className="w-full sm:w-auto px-4 py-3.5 rounded-xl border border-white/15 bg-white/[0.03] hover:bg-white/[0.08] text-stone-200 font-normal text-xs sm:text-sm transition-all duration-200 cursor-pointer whitespace-nowrap"
+                    className="w-full sm:w-auto px-4 py-3.5 rounded-xl border border-white/15 bg-white/[0.03] hover:bg-white/[0.08] text-stone-200 font-normal text-xs sm:text-sm transition-all duration-200 cursor-pointer whitespace-nowrap min-h-11"
                   >
                     Уточнить или не согласиться
                   </button>

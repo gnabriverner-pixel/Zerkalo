@@ -7,9 +7,10 @@ import { loadTruthState, truthJourneyKey } from '../services/albertTruthState';
 
 interface TelegramContinuationProps {
   codeResult: CalculationResult | null;
-  storyResult: ApiResponse['story_result'] | null;
-  meetingResult: MeetingOfMirrorsResult | null;
+  storyResult?: ApiResponse['story_result'] | null;
+  meetingResult?: MeetingOfMirrorsResult | null;
   journeyId?: string;
+  onOpenAlbert?: () => void;
 }
 
 function safeTelegramUrl(value: unknown): string | null {
@@ -37,7 +38,7 @@ function safeTelegramUrl(value: unknown): string | null {
 const LOCAL_CANDIDATE_UNAVAILABLE_MESSAGE =
   'В этой тестовой версии продолжение в Telegram недоступно. Можно продолжить разговор здесь';
 
-export function TelegramContinuation({ codeResult, storyResult, meetingResult, journeyId }: TelegramContinuationProps) {
+export function TelegramContinuation({ codeResult, storyResult, meetingResult, journeyId, onOpenAlbert }: TelegramContinuationProps) {
   const ensureCoreConsent = useCoreConsent();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [accepted, setAccepted] = useState(false);
@@ -117,7 +118,7 @@ export function TelegramContinuation({ codeResult, storyResult, meetingResult, j
     }
   };
 
-  if (!codeResult || !storyResult || !meetingResult) return null;
+  if (!codeResult) return null;
 
   return (
     <>
@@ -130,10 +131,10 @@ export function TelegramContinuation({ codeResult, storyResult, meetingResult, j
           }
           setDialogOpen(true);
         }}
-        className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.18em] text-sm rounded-xs transition-colors inline-flex items-center justify-center gap-2"
+        className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.18em] text-sm rounded-xs transition-colors inline-flex items-center justify-center gap-2 cursor-pointer"
       >
         <Send size={14} />
-        <span>Продолжить в Telegram</span>
+        <span>Перенести разговор в Telegram</span>
       </button>
 
       {isLocalCandidateHost && (
@@ -187,11 +188,25 @@ export function TelegramContinuation({ codeResult, storyResult, meetingResult, j
             )}
             {error && !isLocalCandidateHost && <p role="alert" className="text-sm leading-relaxed text-amber-300">{error}</p>}
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button type="button" onClick={() => setDialogOpen(false)} disabled={busy} className="min-h-11 px-5 text-sm text-stone-300 underline underline-offset-4 disabled:opacity-50">
+              <button type="button" onClick={() => setDialogOpen(false)} disabled={busy} className="min-h-11 px-5 text-sm text-stone-300 underline underline-offset-4 disabled:opacity-50 cursor-pointer">
                 Остаться на сайте
               </button>
+              {onOpenAlbert && (
+                <button
+                  type="button"
+                  data-testid="continue-albert-from-telegram"
+                  onClick={() => {
+                    setDialogOpen(false);
+                    onOpenAlbert();
+                  }}
+                  disabled={busy}
+                  className="min-h-11 rounded-xs bg-[var(--color-antique-gold)] px-5 text-sm font-semibold text-gray-950 hover:bg-[#D9B770] transition-colors cursor-pointer"
+                >
+                  Продолжить с Альбертом здесь
+                </button>
+              )}
               {!isLocalCandidateHost && (
-                <button type="button" onClick={createTransfer} disabled={!accepted || busy} className="min-h-11 rounded-xs bg-[var(--color-antique-gold)] px-5 text-sm font-semibold text-gray-950 disabled:opacity-40">
+                <button type="button" onClick={createTransfer} disabled={!accepted || busy || !storyResult || !meetingResult} className="min-h-11 rounded-xs bg-[var(--color-antique-gold)] px-5 text-sm font-semibold text-gray-950 disabled:opacity-40 cursor-pointer">
                   {busy ? 'Готовим перенос…' : 'Согласиться и открыть Telegram'}
                 </button>
               )}

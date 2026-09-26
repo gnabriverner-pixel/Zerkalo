@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   PERSONAL_MYTH_WRITER_VERSION,
   buildPersonalMythPromptV11,
+  buildPersonalMythPromptV12,
   buildPersonalMythRepairPrompt,
   containsCrisisLanguage,
   generatePersonalMyth,
@@ -525,6 +526,26 @@ describe("Personal Myth v1.1 release contract", () => {
         },
       });
       expect(validatePersonalMythResult(unpromptedCrackResult, userCrackRequest).blockers).not.toContain("unprompted_crack_cliche");
+    });
+
+    it("builds valid V12 prompt with strict second-person register and crack policy enforcement", () => {
+      const promptWithoutCrack = buildPersonalMythPromptV12(request());
+      expect(promptWithoutCrack).toContain("Строгий художественный и этический контракт (альтернативный вариант V12");
+      expect(promptWithoutCrack).toContain("КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО использовать слова с корнем «трещин-»");
+      expect(promptWithoutCrack).toContain("writer_version");
+
+      const userCrackRequest = parsePersonalMythRequest({
+        request_id: "req_user_crack_v12",
+        consent_version: PERSONAL_MYTH_WRITER_VERSION,
+        answers: {
+          q1: "Сложный переход",
+          q2: "Старая чашка с тонкой трещиной",
+          q3: "Пауза в тишине",
+          q4: "Спокойствия",
+        },
+      });
+      const promptWithCrack = buildPersonalMythPromptV12(userCrackRequest);
+      expect(promptWithCrack).toContain("Человек сам явно ввёл образ трещины");
     });
   });
 });

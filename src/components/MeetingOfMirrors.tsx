@@ -614,23 +614,31 @@ export function MeetingOfMirrors({
                 </p>
 
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-2">
-                  <button
-                    onClick={() => {
-                      if (onOpenAlbert) { onOpenAlbert(); return; }
-                      setAlbertTopic(userQuestion?.trim() || meetingResult?.reflectiveQuestion || meetingResult?.albertInsight || 'Продолжение исследования');
-                      setIsAlbertOpen(true);
-                    }}
-                    className="w-full sm:w-auto px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.18em] text-sm font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
-                  >
-                    <MessageSquare size={14} />
-                    <span>Диалог на сайте</span>
-                  </button>
+                  <div className="flex flex-col items-center">
+                    <button
+                      onClick={() => {
+                        if (onOpenAlbert) { onOpenAlbert(); return; }
+                        setAlbertTopic(userQuestion?.trim() || meetingResult?.reflectiveQuestion || meetingResult?.albertInsight || 'Продолжение исследования');
+                        setIsAlbertOpen(true);
+                      }}
+                      className="w-full sm:w-auto px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.18em] text-sm font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                    >
+                      <MessageSquare size={14} />
+                      <span>Обсудить с Альбертом здесь</span>
+                    </button>
+                    <span className="text-xs text-stone-400 mt-1.5">Разговор откроется на сайте</span>
+                  </div>
 
                   <TelegramContinuation
                     codeResult={codeResult}
                     storyResult={storyResult}
                     meetingResult={meetingResult}
                     journeyId={journeyId}
+                    onOpenAlbert={() => {
+                      if (onOpenAlbert) { onOpenAlbert(); return; }
+                      setAlbertTopic(userQuestion?.trim() || meetingResult?.reflectiveQuestion || meetingResult?.albertInsight || 'Продолжение исследования');
+                      setIsAlbertOpen(true);
+                    }}
                   />
                 </div>
                 <p className="text-sm leading-relaxed text-stone-400 max-w-lg mx-auto">

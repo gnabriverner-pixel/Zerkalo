@@ -804,13 +804,16 @@ export default function CodeArchitecture({
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-              <button
-                onClick={() => setIsAlbertOpen(true)}
-                className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 shadow-md cursor-pointer"
-              >
-                <MessageSquare size={14} />
-                <span>Продолжить здесь</span>
-              </button>
+              <div className="flex flex-col items-center">
+                <button
+                  onClick={() => setIsAlbertOpen(true)}
+                  className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 shadow-md cursor-pointer"
+                >
+                  <MessageSquare size={14} />
+                  <span>Обсудить с Альбертом здесь</span>
+                </button>
+                <span className="text-xs text-stone-400 mt-1.5">Разговор откроется на сайте</span>
+              </div>
             </div>
 
             {/* Synthesis / Meeting CTA */}

@@ -263,6 +263,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         const safeMessage = errJson?.ui?.safe_message || 'Собеседник временно недоступен. Результаты остаются на странице — попробуйте повторить запрос.';
         setErrorText(safeMessage);
         setLastFailedMessage(text);
+        setInputValue(prev => prev || text);
         setIsLoading(false);
         return;
       }
@@ -277,6 +278,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         const safeMessage = data?.ui?.safe_message || 'Не удалось получить ответ. Попробуйте повторить запрос.';
         setErrorText(safeMessage);
         setLastFailedMessage(text);
+        setInputValue(prev => prev || text);
         setIsLoading(false);
         return;
       }
@@ -295,6 +297,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
       console.error("Albert dialogue request failed:", err);
       setErrorText("Собеседник временно недоступен. Результаты остаются на странице — попробуйте повторить запрос.");
       setLastFailedMessage(text);
+      setInputValue(prev => prev || text);
       setIsLoading(false);
     }
   };
