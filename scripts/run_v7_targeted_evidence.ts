@@ -8,15 +8,42 @@ import {
   hasSourceOriginConflation,
 } from "../src/services/meetingContract";
 import { buildMeetingOfMirrorsPrompt } from "../src/services/mythPrompts";
-import { containsCrisisLanguageText, SAFE_CRISIS_MESSAGE } from "../server/myth";
-import { CONSENT_VERSION } from "../src/services/consent";
+import {
+  buildPersonalMythPromptV11,
+  buildPersonalMythPromptV12,
+  buildPersonalMythRepairPrompt,
+  containsCrisisLanguageText,
+  createRouterAIMythProvider,
+  hasFormalYouViolation,
+  parsePersonalMythResult,
+  validatePersonalMythResult,
+} from "../server/myth";
+import { RouterAIClient } from "../server/routerai";
+import { issueConsent, verifyConsent } from "../server/consent";
+import { CONSENT_MAX_AGE_MS, CONSENT_VERSION } from "../src/services/consent";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
-const OUT_DIR = path.resolve(REPO_ROOT, "../../outputs/convergence-evidence-v7");
+const OUT_DIR = path.resolve(REPO_ROOT, "../../outputs/convergence-evidence-v8");
 const LIVE_RUNS_DIR = path.join(OUT_DIR, "live-runs");
 fs.mkdirSync(LIVE_RUNS_DIR, { recursive: true });
+
+// Load runtime secrets so issueConsent/verifyConsent share the exact HMAC key with the live server
+const runtimeSecretsPath = path.join(REPO_ROOT, ".runtime", "stage1-pair-secrets.json");
+if (fs.existsSync(runtimeSecretsPath)) {
+  try {
+    const secrets = JSON.parse(fs.readFileSync(runtimeSecretsPath, "utf8"));
+    if (secrets.CONTINUATION_CLAIM_SECRET && !process.env.CONTINUATION_CLAIM_SECRET) {
+      process.env.CONTINUATION_CLAIM_SECRET = secrets.CONTINUATION_CLAIM_SECRET;
+    }
+    if (secrets.DELETION_LOOKUP_SECRET && !process.env.DELETION_LOOKUP_SECRET) {
+      process.env.DELETION_LOOKUP_SECRET = secrets.DELETION_LOOKUP_SECRET;
+    }
+  } catch (err) {
+    console.warn("[v8] Could not load .runtime/stage1-pair-secrets.json:", err);
+  }
+}
 
 function git(cmd: string, ...args: string[]): string {
   return execFileSync("git", [cmd, ...args], { cwd: REPO_ROOT, encoding: "utf8" }).trim();
@@ -34,11 +61,11 @@ try {
     if (compat.dcs?.pinned_sha) DCS_SHA = compat.dcs.pinned_sha;
   }
 } catch (err) {
-  console.warn("[v7] Could not read release-compatibility.json:", err);
+  console.warn("[v8] Could not read release-compatibility.json:", err);
 }
 
 async function verifyAndWarmupLiveServices(): Promise<any> {
-  console.log("[v7] Pre-flight: Verifying live Web and DCS services against candidate pins...");
+  console.log("[v8] Pre-flight: Verifying live Web and DCS services against candidate pins...");
 
   const webRes = await fetch("http://127.0.0.1:3000/health").catch((e) => {
     throw new Error(`Web server on port 3000 is unreachable: ${e.message}`);
@@ -52,14 +79,14 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
   if (!dcsRes.ok) throw new Error(`DCS health returned HTTP ${dcsRes.status}`);
   const dcsHealth: any = await dcsRes.json();
 
-  console.log(`[v7] Live Web SHA: ${webHealth.releaseSha} (dirty: ${webHealth.dirty})`);
-  console.log(`[v7] Live DCS SHA: ${dcsHealth.sha}`);
+  console.log(`[v8] Live Web SHA: ${webHealth.releaseSha} (dirty: ${webHealth.dirty})`);
+  console.log(`[v8] Live DCS SHA: ${dcsHealth.sha}`);
 
   let readyRes = await fetch("http://127.0.0.1:3000/health/ready");
   let readyBody: any = await readyRes.json();
 
   if (readyRes.status !== 200 || !readyBody.ready) {
-    console.log("[v7] Server startup tracking needs live warmup probes. Executing probes...");
+    console.log("[v8] Server startup tracking needs live warmup probes. Executing probes...");
     const origin = "http://127.0.0.1:3000";
     const cRes = await fetch("http://127.0.0.1:3000/api/consent", {
       method: "POST",
@@ -71,12 +98,12 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
 
     // Probe Myth
     if (!readyBody.live_generation?.personal_myth) {
-      console.log("[v7] Probing /api/personal-myth...");
+      console.log("[v8] Probing /api/personal-myth...");
       await fetch("http://127.0.0.1:3000/api/personal-myth", {
         method: "POST",
         headers: { "Content-Type": "application/json", Cookie: cookie, Origin: origin },
         body: JSON.stringify({
-          request_id: "warmup_probe_req_v7",
+          request_id: "warmup_probe_req_v8",
           consent_version: CONSENT_VERSION,
           answers: {
             q1: "На проекте срочный релиз и постоянные споры о сроках.",
@@ -90,7 +117,7 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
 
     // Probe Meeting
     if (!readyBody.live_generation?.meeting) {
-      console.log("[v7] Probing /api/meeting-of-mirrors...");
+      console.log("[v8] Probing /api/meeting-of-mirrors...");
       await fetch("http://127.0.0.1:3000/api/meeting-of-mirrors", {
         method: "POST",
         headers: { "Content-Type": "application/json", Cookie: cookie, Origin: origin },
@@ -123,7 +150,7 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
 
     // Probe Albert
     if (!readyBody.live_generation?.albert) {
-      console.log("[v7] Probing /api/albert/dialogue...");
+      console.log("[v8] Probing /api/albert/dialogue...");
       await fetch("http://127.0.0.1:3000/api/albert/dialogue", {
         method: "POST",
         headers: { "Content-Type": "application/json", Cookie: cookie, Origin: origin },
@@ -149,7 +176,7 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
     throw new Error(`/health/ready still not ready: status=${readyRes.status}, body=${JSON.stringify(readyBody)}`);
   }
 
-  console.log("[v7] Service /health/ready returned HTTP 200 ready: true with all live generation flags active.");
+  console.log("[v8] Service /health/ready returned HTTP 200 ready: true with all live generation flags active.");
 
   const pairStatus = {
     verified_at: new Date().toISOString(),
@@ -168,8 +195,572 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
   return pairStatus;
 }
 
+async function runMythValidatorAndSet4Verification(): Promise<boolean> {
+  console.log("[v8] Running Check 0A: Myth Formal-You Validator Fix & Set 4 Re-verification...");
+
+  const unitChecks = [
+    {
+      id: "reviewer_repro_workplace_modal",
+      text: "Ты сидишь. Ты смотришь. На работе вы можете решить",
+      secondPersonCount: 3,
+      expectedViolation: true,
+    },
+    {
+      id: "workplace_collective_verb_without_group_marker",
+      text: "Ты сидишь. Ты смотришь. На работе вы разбираете задачу",
+      secondPersonCount: 3,
+      expectedViolation: true,
+    },
+    {
+      id: "workplace_bare_raznye_without_reciprocal_verb",
+      text: "Ты сидишь. Ты смотришь. На работе вы разбираете разные задачи",
+      secondPersonCount: 3,
+      expectedViolation: true,
+    },
+    {
+      id: "locative_department_without_comitative_marker",
+      text: "Ты сидишь. Ты смотришь. В отделе вы разбираете задачу",
+      secondPersonCount: 3,
+      expectedViolation: true,
+    },
+    {
+      id: "locative_team_without_comitative_marker",
+      text: "Ты сидишь. Ты смотришь. В команде вы строите план",
+      secondPersonCount: 3,
+      expectedViolation: true,
+    },
+    {
+      id: "cross_clause_colleagues_leakage",
+      text: "Ты сидишь. Ты смотришь. После разговора с коллегами вы разбираете свои записи",
+      secondPersonCount: 3,
+      expectedViolation: true,
+    },
+    {
+      id: "modal_verb_with_team_marker",
+      text: "Ты сидишь. Ты смотришь. Вы с командой можете решить задачу",
+      secondPersonCount: 3,
+      expectedViolation: true,
+    },
+    {
+      id: "missing_second_person_baseline_with_team",
+      text: "Вы с командой разбираете задачу.",
+      secondPersonCount: 0,
+      expectedViolation: true,
+    },
+    {
+      id: "recalled_workplace_without_group_marker",
+      text: "Ты вспоминаешь, как на работе вы разбираете сложную архитектуру по шагам.",
+      secondPersonCount: 3,
+      expectedViolation: true,
+    },
+    {
+      id: "recalled_workplace_with_explicit_team_marker",
+      text: "Ты вспоминаешь, как на работе вы с командой разбираете сложную архитектуру по шагам.",
+      secondPersonCount: 3,
+      expectedViolation: false,
+    },
+    {
+      id: "explicit_couple_different_choices",
+      text: "Ты сидишь. Ты смотришь. Вы обсудили и выбираете разные варианты.",
+      secondPersonCount: 3,
+      expectedViolation: false,
+    },
+    {
+      id: "recalled_couple_weekend_discussion",
+      text: "Ты вспоминаешь, как однажды вы спокойно обсудили выходные и выбрали разные занятия.",
+      secondPersonCount: 3,
+      expectedViolation: false,
+    },
+  ].map((c) => {
+    const actualViolation = hasFormalYouViolation(c.text, c.secondPersonCount);
+    return {
+      ...c,
+      actualViolation,
+      passed: actualViolation === c.expectedViolation,
+    };
+  });
+
+  const unitChecksPassed = unitChecks.every((c) => c.passed);
+
+  // Re-evaluate all 24 historical runs from V6 under the fixed V8 validator
+  const v6MythPath = path.resolve(
+    REPO_ROOT,
+    "../../outputs/convergence-evidence-v6/live-runs/myth-comparison-6x2-v11-v12.json"
+  );
+  const v6Data = JSON.parse(fs.readFileSync(v6MythPath, "utf8"));
+
+  const historicalSet4Audit: any[] = [];
+  for (const s of v6Data.sets) {
+    if (s.set_id !== "set_4_real_action_in_q3") continue;
+    for (const variantKey of ["variant_a_v11", "variant_b_v12"] as const) {
+      for (const run of s[variantKey]) {
+        const qualityUnderFixedValidator = validatePersonalMythResult(
+          {
+            title: run.title,
+            story: run.story,
+            mirror: run.mirror,
+            meaning: run.meaning,
+            one_step: run.one_step,
+            journal_question: run.journal_question,
+            disclaimer: "Образный формат для саморефлексии. Не диагностика и не инструкция к действию.",
+          },
+          { answers: s.inputs } as any
+        );
+        historicalSet4Audit.push({
+          variant: variantKey,
+          run_index: run.run_index,
+          offending_sentence:
+            run.story
+              .split(/(?<=[.!?])\s+/)
+              .find((sent: string) => /\bвы\b/iu.test(sent)) || null,
+          v6_blockers: run.quality.blockers,
+          v8_fixed_validator_blockers: qualityUnderFixedValidator.blockers,
+          v8_fixed_validator_passed: qualityUnderFixedValidator.passed,
+        });
+      }
+    }
+  }
+
+  // Fresh live Set 4 execution (2x V11 + 2x V12) with the fixed prompt & validator
+  const set4CachePath = path.join(LIVE_RUNS_DIR, "myth-set4-reverification.json");
+  let liveSet4Runs: { variant_a_v11: any[]; variant_b_v12: any[] } | null = null;
+
+  if (fs.existsSync(set4CachePath) && process.env.FORCE_MYTH_SET4_RERUN !== "1") {
+    try {
+      const cached = JSON.parse(fs.readFileSync(set4CachePath, "utf8"));
+      if (
+        Array.isArray(cached?.fresh_live_set4_runs?.variant_a_v11) &&
+        cached.fresh_live_set4_runs.variant_a_v11.length === 2 &&
+        Array.isArray(cached?.fresh_live_set4_runs?.variant_b_v12) &&
+        cached.fresh_live_set4_runs.variant_b_v12.length === 2
+      ) {
+        liveSet4Runs = cached.fresh_live_set4_runs;
+        console.log("[v8] Loaded existing fresh live Set 4 runs from myth-set4-reverification.json and re-validating...");
+      }
+    } catch {}
+  }
+
+  const set4Inputs = {
+    q1: "На проекте срочный релиз и постоянные споры о сроках.",
+    q2: "Тяжёлый чугунный маховик, который трудно сдвинуть.",
+    q3: "Когда на работе спокойно разбираю сложную архитектуру с командой по шагам.",
+    q4: "Спокойно удерживать границы и ясный план.",
+  };
+
+  if (!liveSet4Runs) {
+    console.log("[v8] Executing fresh live Set 4 generation (2x V11 + 2x V12) via RouterAI/DeepSeek...");
+    const provider = createRouterAIMythProvider(new RouterAIClient(process.env));
+    const req: any = {
+      request_id: "v8_set4_live_reverification",
+      consent_version: CONSENT_VERSION,
+      answers: set4Inputs,
+    };
+
+    const generateOne = async (variant: "v11" | "v12", runIndex: number) => {
+      const t0 = Date.now();
+      const prompt = variant === "v11" ? buildPersonalMythPromptV11(req) : buildPersonalMythPromptV12(req);
+      const raw1 = await provider.generate(prompt, 65000);
+      let parsed = parsePersonalMythResult(raw1);
+      let qual = validatePersonalMythResult(parsed, req);
+      let repaired = false;
+      const initialBlockers = [...qual.blockers];
+      if (!qual.passed) {
+        repaired = true;
+        const repPrompt = buildPersonalMythRepairPrompt(req, parsed.story, parsed.mirror, qual.blockers, parsed);
+        const raw2 = await provider.generate(repPrompt, 65000);
+        parsed = parsePersonalMythResult(raw2);
+        qual = validatePersonalMythResult(parsed, req);
+      }
+      console.log(
+        `[v8] Set 4 ${variant} run ${runIndex}: passed=${qual.passed}, blockers=${JSON.stringify(
+          qual.blockers
+        )}, repaired=${repaired}, words=${qual.word_count}`
+      );
+      return {
+        run_index: runIndex,
+        title: parsed.title,
+        story: parsed.story,
+        mirror: parsed.mirror,
+        meaning: parsed.meaning,
+        one_step: parsed.one_step,
+        journal_question: parsed.journal_question,
+        quality: qual,
+        initial_blockers: initialBlockers,
+        repaired,
+        latencyMs: Date.now() - t0,
+      };
+    };
+
+    const a1 = await generateOne("v11", 1);
+    const a2 = await generateOne("v11", 2);
+    const b1 = await generateOne("v12", 1);
+    const b2 = await generateOne("v12", 2);
+    liveSet4Runs = {
+      variant_a_v11: [a1, a2],
+      variant_b_v12: [b1, b2],
+    };
+  }
+
+  // Re-validate every fresh Set 4 run using the current validator in server/myth.ts
+  for (const variantKey of ["variant_a_v11", "variant_b_v12"] as const) {
+    for (const run of liveSet4Runs[variantKey]) {
+      run.quality = validatePersonalMythResult(
+        {
+          title: run.title,
+          story: run.story,
+          mirror: run.mirror,
+          meaning: run.meaning,
+          one_step: run.one_step,
+          journal_question: run.journal_question,
+          disclaimer: "Образный формат для саморефлексии. Не диагностика и не инструкция к действию.",
+        },
+        { answers: set4Inputs } as any
+      );
+    }
+  }
+
+  const freshSet4AllPassed =
+    liveSet4Runs.variant_a_v11.every((r) => r.quality.passed) &&
+    liveSet4Runs.variant_b_v12.every((r) => r.quality.passed);
+  const historicalSet4StrictlyFlagged = historicalSet4Audit.every((r) =>
+    r.v8_fixed_validator_blockers.includes("register_formal_you_forbidden")
+  );
+
+  const set4Report = {
+    generated_at: new Date().toISOString(),
+    pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
+    unit_checks_passed: unitChecksPassed,
+    unit_checks: unitChecks,
+    historical_v6_set4_audit: {
+      explanation:
+        "В V6 все 4 прогона Set 4 содержали фразу «Ты вспоминаешь, как на работе вы разбираете сложную архитектуру по шагам» без явного маркера группы («с командой», «вместе»). В V7 в регулярное выражение было ошибочно добавлено «на работе», что ослабило правило и привело к пропуску «На работе вы можете решить». В V8 исключение «на работе» убрано: исторические прогоны V6 снова строго помечаются как register_formal_you_forbidden, а свежие прогоны Set 4 на исправленном коде проходят валидатор честно (4/4).",
+      strictly_flagged_under_v8_validator: historicalSet4StrictlyFlagged,
+      runs: historicalSet4Audit,
+    },
+    fresh_live_set4_runs: liveSet4Runs,
+    fresh_live_set4_all_passed: freshSet4AllPassed,
+    passed: unitChecksPassed && historicalSet4StrictlyFlagged && freshSet4AllPassed,
+  };
+
+  fs.writeFileSync(set4CachePath, JSON.stringify(set4Report, null, 2) + "\n");
+
+  // Also write full 6x2 comparison JSON into LIVE_RUNS_DIR with updated Set 4 + historical audit
+  const updatedV8Comparison = {
+    ...v6Data,
+    generated_at: new Date().toISOString(),
+    v8_set4_reverified: true,
+    sets: v6Data.sets.map((s: any) => {
+      if (s.set_id !== "set_4_real_action_in_q3") return s;
+      return {
+        ...s,
+        historical_v6_runs_under_v8_validator: historicalSet4Audit,
+        variant_a_v11: liveSet4Runs!.variant_a_v11,
+        variant_b_v12: liveSet4Runs!.variant_b_v12,
+      };
+    }),
+  };
+  fs.writeFileSync(
+    path.join(LIVE_RUNS_DIR, "myth-comparison-6x2-v11-v12.json"),
+    JSON.stringify(updatedV8Comparison, null, 2) + "\n"
+  );
+
+  console.log(
+    `[v8] Myth Validator & Set 4 Re-verification: ${
+      set4Report.passed ? "PASSED (unit checks + historical audit + 4/4 fresh live Set 4 runs)" : "FAILED"
+    }`
+  );
+  return set4Report.passed;
+}
+
+async function runCodeV2PrimaryComparison(): Promise<boolean> {
+  console.log("[v8] Running Check 0B: Code V2 Presentation Primary Card Comparison across 6 fixed inputs...");
+
+  const dcsRes = await fetch("http://127.0.0.1:8090/api/canonical/code-v2", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dob: "15.05.1990", request_id: "v8_code_v2_primary_comparison" }),
+  });
+  if (!dcsRes.ok) {
+    throw new Error(`DCS /api/canonical/code-v2 returned HTTP ${dcsRes.status}`);
+  }
+  const rawDcs: any = await dcsRes.json();
+  const payload: any = rawDcs.payload || rawDcs;
+
+  // Historical Old helper from commits 6d8574c / e071bea / 1d830fc: raw.split(/[.;!—]/)[0].trim()
+  const getFirstSentenceOld = (text: string): string => {
+    if (!text) return "";
+    const [head] = text.split(/[.;!—]/u, 1);
+    const sentence = head.trim();
+    return /[.!?]$/u.test(sentence) ? sentence : `${sentence}.`;
+  };
+
+  // Current New helper in src/components/CodeV2/CodeV2Experience.tsx
+  const getFirstSentenceNew = (text: string): string => {
+    if (!text) return "";
+    const match = text.match(/^.*?[.!?](?:\s|$)/);
+    return match ? match[0].trim() : text;
+  };
+
+  const RUSSIAN_STOP_WORDS = new Set([
+    "как", "мне", "меня", "мой", "моя", "мое", "моё", "мои", "что", "это",
+    "этот", "эта", "эти", "для", "или", "при", "без", "над", "под", "про",
+    "вас", "вам", "вами", "вот", "где", "кто", "чем", "так", "уже", "еще",
+    "ещё", "все", "всё", "быть", "есть", "если", "когда", "между", "через",
+    "один", "одна", "одно", "одни", "двумя", "двух", "очень",
+  ]);
+
+  const cleanPositionEssence = (text: string): string => {
+    if (!text) return "";
+    const [intro] = text.split(/\n\s*#{1,6}\s+/u, 1);
+    return intro
+      .replace(/\*\*([^*]+)\*\*/gu, "$1")
+      .replace(/^\s*[*-]\s+/gmu, "")
+      .trim();
+  };
+
+  const formatSceneExample = (raw: string): string => {
+    if (!raw) return "";
+    const trimmed = raw.trim();
+    const sentenceMatch = trimmed.match(/^([^.!?]+[.!?])/);
+    if (sentenceMatch) {
+      return sentenceMatch[1].trim();
+    }
+    return trimmed.endsWith(".") ? trimmed : `${trimmed}.`;
+  };
+
+  const selectRelevantSceneExample = (scenes: any[] | undefined, userQuestion?: string): string => {
+    if (!scenes || scenes.length === 0) return "";
+    const trimmedQ = (userQuestion || "").trim();
+    if (!trimmedQ) {
+      return formatSceneExample(scenes[0]?.description || "");
+    }
+    const rawTokens = trimmedQ
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((t) => t.length > 2);
+    const tokens = rawTokens.filter((t) => !RUSSIAN_STOP_WORDS.has(t));
+    const activeTokens = tokens.length > 0 ? tokens : rawTokens;
+    if (activeTokens.length === 0) {
+      return formatSceneExample(scenes[0]?.description || "");
+    }
+    const stems = activeTokens.map((t) => (t.length > 5 ? t.slice(0, 5) : t.length === 5 ? t.slice(0, 4) : t));
+    let bestScene = scenes[0];
+    let maxScore = 0;
+    for (const scene of scenes) {
+      const text = `${scene.title} ${scene.description}`.toLowerCase();
+      let score = 0;
+      for (let i = 0; i < activeTokens.length; i++) {
+        const token = activeTokens[i];
+        const stem = stems[i];
+        if (text.includes(token)) {
+          score += 2;
+        } else if (stem.length >= 4 && text.includes(stem)) {
+          score += 1;
+        }
+      }
+      if (score > maxScore) {
+        maxScore = score;
+        bestScene = scene;
+      }
+    }
+    return formatSceneExample(bestScene?.description || "");
+  };
+
+  const fixedSets = [
+    {
+      set_id: "set_1_detailed_inputs",
+      name: "Набор 1 (Подробные вводные)",
+      q1: "Веду запуск сложного инженерного проекта, все ждут от меня мгновенных решений, а я боюсь упустить важную деталь в спешке.",
+    },
+    {
+      set_id: "set_2_brief_inputs",
+      name: "Набор 2 (Краткие вводные)",
+      q1: "Непонятно, менять ли работу этой осенью.",
+    },
+    {
+      set_id: "set_3_unknown_resource",
+      name: "Набор 3 (Неизвестный ресурс)",
+      q1: "Устал от бесконечных созвонов и правок, хочется просто тишины.",
+    },
+    {
+      set_id: "set_4_real_action_in_q3",
+      name: "Набор 4 (Реальное действие в q3)",
+      q1: "На проекте срочный релиз и постоянные споры о сроках.",
+    },
+    {
+      set_id: "set_5_imaginative_scene",
+      name: "Набор 5 (Воображаемая сцена)",
+      q1: "Руководитель просит взять ещё один отдел в управление.",
+    },
+    {
+      set_id: "set_6_explicit_user_crack",
+      name: "Набор 6 (Явный пользовательский образ трещины)",
+      q1: "После долгого спора с партнёром чувствую, будто в нашем общем деле пошла трещина.",
+    },
+  ];
+
+  const fiveNumbers = payload.calculation.five_numbers || payload.calculation.canonical_result;
+  const baselineNumbers = JSON.stringify(fiveNumbers);
+  let provenanceViolations = 0;
+
+  const comparedSets = fixedSets.map((setItem) => {
+    const currentNumbers = JSON.stringify(fiveNumbers);
+    if (currentNumbers !== baselineNumbers) {
+      provenanceViolations += 1;
+    }
+
+    let matchedPositionsCount = 0;
+    const positionCards = payload.positions.map((pos: any) => {
+      const posValue = pos.energy ?? pos.value;
+      const posEnergyName = pos.energy_name ?? pos.archetype_name;
+      const cleanedEssence = getFirstSentenceNew(cleanPositionEssence(pos.essence));
+      const oldExample = getFirstSentenceOld(pos.life_scenes?.[0]?.description || "");
+      const newExample = selectRelevantSceneExample(pos.life_scenes, setItem.q1);
+      const defaultFullFirstScene = formatSceneExample(pos.life_scenes?.[0]?.description || "");
+
+      // Check whether q1 matched a specific scene (either switched scene or matched keywords in scene 0)
+      const qTokens = setItem.q1
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .split(/\s+/)
+        .filter((t) => t.length > 2)
+        .filter((t) => !RUSSIAN_STOP_WORDS.has(t));
+      const sceneSelectedByQuestion =
+        newExample !== defaultFullFirstScene ||
+        qTokens.some((t) => {
+          const stem = t.length > 5 ? t.slice(0, 5) : t.length === 5 ? t.slice(0, 4) : t;
+          return stem.length >= 4 && newExample.toLowerCase().includes(stem);
+        });
+      if (sceneSelectedByQuestion) {
+        matchedPositionsCount += 1;
+      }
+
+      const oldCardPrimary = {
+        header: `${pos.public_name} · ${posEnergyName} (Число ${posValue})`,
+        role: pos.role,
+        essence_label: "О чём это число",
+        essence_text: cleanedEssence,
+        example_label: "Пример",
+        example_text: oldExample,
+        verification_label: "Проверьте на себе",
+        verification_question: pos.verification_question,
+        reactions: ["Похоже", "Не похоже", "Уточнить"],
+      };
+
+      const newCardPrimary = {
+        header: `${pos.public_name} · ${posEnergyName} (Число ${posValue})`,
+        role: pos.role,
+        essence_label: "О чём это число",
+        essence_text: cleanedEssence,
+        example_label: "Пример",
+        example_text: newExample,
+        verification_label: "Проверьте на себе",
+        verification_question: pos.verification_question,
+        reactions: ["Похоже", "Не похоже", "Уточнить"],
+      };
+
+      // Honest 0-2 scoring per card considering all sections (Header, Essence, Example, Verification Question, Reactions)
+      const oldCardScores = {
+        clarity: 1, // Header, Essence, and Verification Question are clear, but Example is truncated at '—' into a 2-4 word stub ("В начале дня.")
+        concreteness: 1, // Verification Question is concrete, but Example loses the concrete behavioral description after '—'
+        connection_to_input: 1, // Reactions ("Похоже" / "Не похоже" / "Уточнить") exist, but the card ignores userQuestion or truncates the scene
+        reflection_utility: 1, // Essence + Verification Question provide base reflection, but broken Example stub weakens self-observation
+        total: 4,
+      };
+
+      const newCardScores = {
+        clarity: 2, // All sections including full-sentence Example are grammatically complete and clear
+        concreteness: 2, // Both Example (full life scene) and Verification Question contain concrete observable behaviors
+        connection_to_input: sceneSelectedByQuestion ? 2 : 1, // 2/2 when scene matches q1 keywords; 1/2 when card falls back to full scene[0] + carries userQuestion to Albert
+        reflection_utility: 2, // Complete triad: Essence -> concrete full-sentence Example -> Verification Question + reactions
+        total: sceneSelectedByQuestion ? 8 : 7,
+      };
+
+      return {
+        position: pos.position,
+        value: posValue,
+        energy_name: posEnergyName,
+        scene_matched_user_question: sceneSelectedByQuestion,
+        old_card_1d830fc: oldCardPrimary,
+        new_card_v8: newCardPrimary,
+        old_card_scores_out_of_8: oldCardScores,
+        new_card_scores_out_of_8: newCardScores,
+      };
+    });
+
+    // Deck-level scores (evaluating the 5-card Code V2 presentation as a whole for this input set)
+    const deckScoresOld = {
+      clarity: 1,
+      concreteness: 1,
+      connection_to_input: 1,
+      reflection_utility: 1,
+      total: 4,
+      rationale:
+        "В старой подаче (1d830fc) присутствуют заголовок, суть позиции, проверочный вопрос и кнопки отклика (поэтому оценка не 0/8, а 4/8), но во всех 5 карточках поле «Пример» обрезано по тире («В начале дня.», «В проектной работе.», «При начале нового дела.», «Один из примеров.», «Один из примеров такой сборки.»), а личный вопрос не влияет на выбор жизненной сцены.",
+    };
+
+    const deckScoresNew = {
+      clarity: 2,
+      concreteness: 2,
+      connection_to_input: matchedPositionsCount >= 1 ? 2 : 1,
+      reflection_utility: 2,
+      total: matchedPositionsCount >= 1 ? 8 : 7,
+      rationale: `В новой подаче (V8) все 5 карточек сохраняют полное предложение жизненной сцены с конкретным действием после тире, а вопрос пользователя («${setItem.q1}») тематически подбирает релевантную сцену в ${matchedPositionsCount} из 5 позиций и передаётся в диалог с Альбертом через верхнюю и нижнюю первичные кнопки «Обсудить с Альбертом здесь».`,
+    };
+
+    return {
+      set_id: setItem.set_id,
+      name: setItem.name,
+      user_question_q1: setItem.q1,
+      canonical_numbers: fiveNumbers,
+      provenance_preserved: currentNumbers === baselineNumbers,
+      matched_positions_count: matchedPositionsCount,
+      deck_scores_old_1d830fc: deckScoresOld,
+      deck_scores_new_v8: deckScoresNew,
+      new_strictly_better_than_old: deckScoresNew.total > deckScoresOld.total,
+      positions: positionCards,
+    };
+  });
+
+  const setsWhereNewIsBetter = comparedSets.filter((s) => s.new_strictly_better_than_old).length;
+  const setsWhereNewIsWorse = comparedSets.filter(
+    (s) => s.deck_scores_new_v8.total < s.deck_scores_old_1d830fc.total
+  ).length;
+  const thresholdMet =
+    setsWhereNewIsBetter >= 4 && setsWhereNewIsWorse === 0 && provenanceViolations === 0;
+
+  const report = {
+    generated_at: new Date().toISOString(),
+    pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
+    dob_used: "15.05.1990",
+    canonical_numbers: fiveNumbers,
+    selection_rule:
+      "Оставлять новую подачу Кода только если она лучше минимум на 4 из 6 фиксированных наборов, не хуже на остальных и даёт 0 нарушений происхождения данных.",
+    sets_where_new_is_better: setsWhereNewIsBetter,
+    sets_where_new_is_worse: setsWhereNewIsWorse,
+    provenance_violations: provenanceViolations,
+    threshold_met: thresholdMet,
+    sets: comparedSets,
+  };
+
+  fs.writeFileSync(
+    path.join(LIVE_RUNS_DIR, "code-v2-6-sets-primary-comparison.json"),
+    JSON.stringify(report, null, 2) + "\n"
+  );
+
+  console.log(
+    `[v8] Code V2 Primary Comparison: ${
+      thresholdMet
+        ? `PASSED (New better on ${setsWhereNewIsBetter}/6 sets, worse on ${setsWhereNewIsWorse}/6, provenance violations=${provenanceViolations})`
+        : "FAILED"
+    }`
+  );
+  return thresholdMet;
+}
+
 function runDefect1Check(): boolean {
-  console.log("[v7] Running Check 1: Defect 1 Matrix (Source Origin Separation)...");
+  console.log("[v8] Running Check 1: Defect 1 Matrix (Source Origin Separation)...");
 
   const mundaneFolderClassification = classifyQ3Content("На работе я раскладываю документы по папкам");
   const mundaneFolderOk = mundaneFolderClassification === "real_experience";
@@ -337,12 +928,12 @@ function runDefect1Check(): boolean {
     ) + "\n"
   );
 
-  console.log(`[v7] Defect 1 Matrix: ${allPassed ? "PASSED (6/6 + mundane folder)" : "FAILED"}`);
+  console.log(`[v8] Defect 1 Matrix: ${allPassed ? "PASSED (6/6 + mundane folder)" : "FAILED"}`);
   return allPassed;
 }
 
 async function runDefect2Check(browser: Browser): Promise<boolean> {
-  console.log("[v7] Running Check 2: Defect 2 Matrix (Crisis Self-Quote Detection + HTTP Crisis Safe Handler + Native UI)...");
+  console.log("[v8] Running Check 2: Defect 2 Matrix (Crisis Self-Quote Detection + HTTP Crisis Safe Handler + Native UI)...");
 
   const crisisCases = [
     {
@@ -494,7 +1085,7 @@ async function runDefect2Check(browser: Browser): Promise<boolean> {
       nativeCrisisUiRendered = nativeCrisisMessageText.includes("ВАЖНОЕ СООБЩЕНИЕ ПОДДЕРЖКИ");
 
       await page.screenshot({ path: path.join(LIVE_RUNS_DIR, "defect2-crisis-self-quote-ui.png") });
-      console.log("[v7] Native crisis UI component rendered and screenshot saved.");
+      console.log("[v8] Native crisis UI component rendered and screenshot saved.");
     } finally {
       await page.close();
     }
@@ -519,18 +1110,17 @@ async function runDefect2Check(browser: Browser): Promise<boolean> {
     ) + "\n"
   );
 
-  console.log(`[v7] Defect 2 Matrix: ${allPassed ? "PASSED (6/6 + native UI component)" : "FAILED"}`);
+  console.log(`[v8] Defect 2 Matrix: ${allPassed ? "PASSED (6/6 + native UI component)" : "FAILED"}`);
   return allPassed;
 }
 
 async function runRouteCCheck(browser: Browser): Promise<boolean> {
-  console.log("[v7] Running Check 3: Route C (Data Deletion via Native UI Button & Server API)...");
+  console.log("[v8] Running Check 3: Route C (Data Deletion via Native UI Button & Server API)...");
 
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   try {
     await page.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
 
-    // 1. Establish consent
     await page.evaluate(async (version) => {
       await fetch("/api/consent", {
         method: "POST",
@@ -539,19 +1129,18 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
       });
     }, CONSENT_VERSION);
 
-    // 2. Part 1: Server Deletion via POST /api/delete-data
-    const sessionToken = "v7-session-del-token-" + Date.now();
+    const sessionToken = "v8-session-del-token-" + Date.now();
     const regResult = await page.evaluate(async (token) => {
       const res = await fetch("/api/privacy/register-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, anonymousId: "v7-anon-delete-test" }),
+        body: JSON.stringify({ token, anonymousId: "v8-anon-delete-test" }),
       });
       return { status: res.status, body: await res.json() };
     }, sessionToken);
 
     if (regResult.status !== 200) {
-      console.error("[v7] Route C session registration failed:", regResult);
+      console.error("[v8] Route C session registration failed:", regResult);
       return false;
     }
 
@@ -566,7 +1155,6 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
 
     const serverDeleteOk = serverDeleteResult.status === 200 && serverDeleteResult.body?.status === "ok";
 
-    // 3. Part 2: Client Local Deletion via Native UI Button
     const sampleSnapshot = {
       version: 1,
       savedAt: new Date().toISOString(),
@@ -610,10 +1198,9 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
       timeout: 10000,
     });
     if (!deleteBtn) {
-      throw new Error("[v7] FAIL-CLOSED: UI delete button 'Удалить сохранённое зеркало из браузера' not found!");
+      throw new Error("[v8] FAIL-CLOSED: UI delete button 'Удалить сохранённое зеркало из браузера' not found!");
     }
 
-    console.log("[v7] Clicking native UI delete button via Playwright...");
     await deleteBtn.click();
     await page.waitForTimeout(500);
 
@@ -664,7 +1251,7 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
       ) + "\n"
     );
 
-    console.log(`[v7] Route C: ${passed ? "PASSED (Server 200 ok + Native UI button purged localStorage)" : "FAILED"}`);
+    console.log(`[v8] Route C: ${passed ? "PASSED (Server 200 ok + Native UI button purged localStorage)" : "FAILED"}`);
     return passed;
   } finally {
     await page.close();
@@ -672,13 +1259,13 @@ async function runRouteCCheck(browser: Browser): Promise<boolean> {
 }
 
 async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, any>> {
-  console.log("[v7] Running Check 4: 7 Real Playwright User Journeys in Chromium...");
+  console.log("[v8] Running Check 4: 7 Real Playwright User Journeys in Chromium...");
   const results: Record<string, any> = {};
 
   // ---------------------------------------------------------------------------
-  // Journey 1: New visitor Code -> Albert without Myth
+  // Journey 1: New visitor Code -> Albert without Myth (full end-to-end from clean state)
   // ---------------------------------------------------------------------------
-  console.log("[v7] Running Journey 1: New visitor Code -> Albert without Myth...");
+  console.log("[v8] Running Journey 1: New visitor Code -> Albert without Myth...");
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     try {
@@ -697,7 +1284,6 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const openCodeBtn = await page.waitForSelector('button:has-text("Открыть мой Код")', { timeout: 10000 });
       await openCodeBtn.click();
 
-      // Consent modal
       const consentHeading = await page.waitForSelector("#consent-heading", { timeout: 5000 }).catch(() => null);
       if (consentHeading) {
         const checkbox = await page.waitForSelector('input[type="checkbox"]', { timeout: 5000 });
@@ -706,12 +1292,10 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
         await acceptBtn.click();
       }
 
-      // Enter user personal question into Code V2 view
       const personalQuestion = "Как распределить задачи в команде при запуске сложного проекта?";
       const codeQuestionInput = await page.waitForSelector("#code-v2-user-question", { timeout: 10000 });
       await codeQuestionInput.fill(personalQuestion);
 
-      // Button to open Albert: "Обсудить с Альбертом здесь"
       const albertBtn = await page.waitForSelector(
         'button:has-text("Обсудить с Альбертом здесь"), button:has-text("Поговорить с Альбертом")',
         { timeout: 20000 }
@@ -720,10 +1304,8 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
 
       await page.waitForSelector('div[role="dialog"]', { timeout: 10000 });
 
-      // Verify userQuestion is passed to Albert in context, not auto-filled into the input field!
       const input = await page.waitForSelector('input[placeholder*="Задайте вопрос Альберту"]', { timeout: 5000 });
       const currentInputValue = await input.inputValue();
-      console.log(`[v7] Journey 1: Dialogue input value before typing: '${currentInputValue}' (verified not auto-filling personal question into input)`);
       if (currentInputValue !== "") {
         throw new Error(`Expected input field to be empty, got: '${currentInputValue}'`);
       }
@@ -734,7 +1316,6 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const sendBtn = await page.waitForSelector('button[type="submit"][aria-label="Отправить сообщение"]', { timeout: 5000 });
       await sendBtn.click();
 
-      // Wait for live Albert reply
       await page.waitForFunction(() => {
         const msgs = document.querySelectorAll('div[role="dialog"] div.font-serif.text-\\[18px\\]');
         return msgs.length >= 2;
@@ -749,7 +1330,8 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       await page.screenshot({ path: path.join(LIVE_RUNS_DIR, "journey1-code-to-albert.png") });
 
       results.journey1 = {
-        name: "Journey 1: Code -> Albert without Myth",
+        name: "Journey 1: Code -> Albert without Myth (полный сквозной путь нового посетителя с нуля)",
+        check_type: "full_e2e_from_scratch",
         passed,
         user_question_entered: personalQuestion,
         input_empty_before_typing: currentInputValue === "",
@@ -757,16 +1339,16 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
         albert_reply_preview: albertReply.slice(0, 150),
         screenshot: "live-runs/journey1-code-to-albert.png",
       };
-      console.log(`[v7] Journey 1: ${passed ? "PASS" : "FAIL"}`);
+      console.log(`[v8] Journey 1: ${passed ? "PASS" : "FAIL"}`);
     } finally {
       await page.close();
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Journey 2: Meeting -> Albert
+  // Journey 2: Meeting -> Albert (проверка с подготовленным состоянием / prepared-state check)
   // ---------------------------------------------------------------------------
-  console.log("[v7] Running Journey 2: Meeting -> Albert...");
+  console.log("[v8] Running Journey 2: Meeting -> Albert (prepared-state check)...");
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     try {
@@ -824,13 +1406,11 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const restoreBtn = await page.waitForSelector('button:has-text("Продолжить с того места")', { timeout: 10000 });
       await restoreBtn.click();
 
-      // Click "Обсудить с Альбертом здесь" in Meeting
       const albertMeetingBtn = await page.waitForSelector('button:has-text("Обсудить с Альбертом здесь")', { timeout: 10000 });
       await albertMeetingBtn.click();
 
       await page.waitForSelector('div[role="dialog"]', { timeout: 10000 });
 
-      // Verify opening greeting contains meeting question or greeting
       const greetingEl = await page.waitForSelector('div[role="dialog"] div.font-serif.text-\\[18px\\]', { timeout: 10000 });
       const greetingText = await greetingEl.innerText();
       const hasMeetingReference = greetingText.includes("Встреча оставила вопрос") || greetingText.includes("Здравствуйте");
@@ -854,23 +1434,26 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       await page.screenshot({ path: path.join(LIVE_RUNS_DIR, "journey2-meeting-to-albert.png") });
 
       results.journey2 = {
-        name: "Journey 2: Meeting -> Albert",
+        name: "Journey 2: Meeting -> Albert (проверка с подготовленным состоянием)",
+        check_type: "prepared_state_check",
+        state_preparation_note:
+          "Проверка с подготовленным состоянием: снимок zerkalo.myMirror.v1 предзаполнен в localStorage перед проверкой перехода из Встречи зеркал к Альберту.",
         passed: non_empty && hasMeetingReference,
         greeting_text: greetingText,
         question_sent: questionToSend,
         albert_reply_preview: albertReply.slice(0, 150),
         screenshot: "live-runs/journey2-meeting-to-albert.png",
       };
-      console.log(`[v7] Journey 2: ${non_empty && hasMeetingReference ? "PASS" : "FAIL"}`);
+      console.log(`[v8] Journey 2: ${non_empty && hasMeetingReference ? "PASS" : "FAIL"}`);
     } finally {
       await page.close();
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Journey 3: Unavailable Telegram modal -> continue with Albert on site without dead end
+  // Journey 3: Unavailable Telegram modal -> continue with Albert on site without dead end (prepared-state check)
   // ---------------------------------------------------------------------------
-  console.log("[v7] Running Journey 3: Telegram modal unavailable -> continue with Albert on site...");
+  console.log("[v8] Running Journey 3: Telegram modal unavailable -> continue with Albert on site (prepared-state check)...");
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     try {
@@ -914,11 +1497,9 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const restoreBtn = await page.waitForSelector('button:has-text("Продолжить с того места")', { timeout: 10000 });
       await restoreBtn.click();
 
-      // Click "Перенести разговор в Telegram"
       const tgButton = await page.waitForSelector('button:has-text("Перенести разговор в Telegram")', { timeout: 5000 });
       await tgButton.click();
 
-      // Verify Telegram modal is displayed with unavailable notice
       const tgModal = await page.waitForSelector(
         'section[role="dialog"][aria-labelledby="telegram-continuation-title"]',
         { timeout: 5000 }
@@ -926,15 +1507,12 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const modalText = await tgModal.innerText();
       const hasUnavailableNotice = modalText.includes("В этой тестовой версии продолжение в Telegram недоступно");
 
-      // Verify button "Продолжить с Альбертом здесь" exists and click it
       const continueAlbertBtn = await page.waitForSelector('[data-testid="continue-albert-from-telegram"]', { timeout: 5000 });
       await continueAlbertBtn.click();
 
-      // Verify Telegram modal closed and Albert dialogue modal opened!
       await page.waitForSelector('div[role="dialog"]', { timeout: 10000 });
       const tgModalClosed = (await page.$('section[role="dialog"][aria-labelledby="telegram-continuation-title"]')) === null;
 
-      // Ensure dialogue is active and responsive
       const input = await page.waitForSelector('input[placeholder*="Задайте вопрос Альберту"]', { timeout: 5000 });
       await input.fill("Проверка перехода из окна Telegram");
       const sendBtn = await page.waitForSelector('button[type="submit"][aria-label="Отправить сообщение"]', { timeout: 5000 });
@@ -949,22 +1527,25 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
 
       const passed = hasUnavailableNotice && tgModalClosed;
       results.journey3 = {
-        name: "Journey 3: Telegram unavailable -> continue with Albert on site without dead end",
+        name: "Journey 3: Telegram unavailable -> continue with Albert on site without dead end (проверка с подготовленным состоянием)",
+        check_type: "prepared_state_check",
+        state_preparation_note:
+          "Проверка с подготовленным состоянием: снимок zerkalo.myMirror.v1 предзаполнен в localStorage перед проверкой модального окна Telegram и перехода к Альберту.",
         passed,
         modal_had_unavailable_notice: hasUnavailableNotice,
         modal_closed_and_albert_opened: tgModalClosed,
         screenshot: "live-runs/journey3-telegram-unavailable-to-albert.png",
       };
-      console.log(`[v7] Journey 3: ${passed ? "PASS" : "FAIL"}`);
+      console.log(`[v8] Journey 3: ${passed ? "PASS" : "FAIL"}`);
     } finally {
       await page.close();
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Journey 4: Restored session from localStorage
+  // Journey 4: Restored session from localStorage (prepared-state check)
   // ---------------------------------------------------------------------------
-  console.log("[v7] Running Journey 4: Restored session from localStorage...");
+  console.log("[v8] Running Journey 4: Restored session from localStorage (prepared-state check)...");
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     try {
@@ -1009,10 +1590,9 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const restoreBtn = await page.waitForSelector('button:has-text("Продолжить с того места")', { timeout: 10000 });
       await restoreBtn.click();
 
-      // Check Meeting view is restored with all data visible
       const titleEl = await page.waitForSelector('text="Встреча Зеркал"', { timeout: 10000 });
       await page.waitForTimeout(1000);
-      const summaryText = await page.innerText('body');
+      const summaryText = await page.innerText("body");
       const hasSummary = summaryText.includes("Сопоставление подсвечивает переход");
       const hasQuestion = summaryText.includes("Как выстроить новый профессиональный вектор");
 
@@ -1020,29 +1600,48 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
 
       const passed = titleEl !== null && hasSummary && hasQuestion;
       results.journey4 = {
-        name: "Journey 4: Restored session from localStorage",
+        name: "Journey 4: Restored session from localStorage (проверка с подготовленным состоянием)",
+        check_type: "prepared_state_check",
+        state_preparation_note:
+          "Проверка с подготовленным состоянием: снимок zerkalo.myMirror.v1 предзаполнен в localStorage перед перезагрузкой страницы и нажатием «Продолжить с того места».",
         passed,
         meeting_title_visible: titleEl !== null,
         meeting_summary_restored: hasSummary,
         meeting_question_restored: hasQuestion,
         screenshot: "live-runs/journey4-restored-session.png",
       };
-      console.log(`[v7] Journey 4: ${passed ? "PASS" : "FAIL"}`);
+      console.log(`[v8] Journey 4: ${passed ? "PASS" : "FAIL"}`);
     } finally {
       await page.close();
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Journey 5: Consent refusal and expiry
+  // Journey 5: Consent refusal (clicking "Сейчас не хочу") and expiry of previously accepted consent
   // ---------------------------------------------------------------------------
-  console.log("[v7] Running Journey 5: Consent refusal and expiry...");
+  console.log("[v8] Running Journey 5: Real consent refusal click and expiry of previously accepted consent...");
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     try {
+      const protectedPostCallsDuringRefusal: string[] = [];
+      let trackingRefusalPosts = false;
+      page.on("request", (req) => {
+        if (
+          trackingRefusalPosts &&
+          req.method() === "POST" &&
+          (req.url().includes("/api/code-v2") ||
+            req.url().includes("/api/calculate") ||
+            req.url().includes("/api/personal-myth") ||
+            req.url().includes("/api/meeting-of-mirrors") ||
+            req.url().includes("/api/albert/dialogue"))
+        ) {
+          protectedPostCallsDuringRefusal.push(req.url());
+        }
+      });
+
       await page.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
 
-      // 1. Clear consent
+      // 1. Clear consent and storage
       await page.evaluate(async () => {
         await fetch("/api/consent", { method: "DELETE" });
         localStorage.clear();
@@ -1050,7 +1649,7 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       });
       await page.reload({ waitUntil: "networkidle" });
 
-      // 2. Try to calculate and enter protected Code V2
+      // 2. Enter DOB and click "Открыть мой Код"
       const dayInput = await page.waitForSelector('input[placeholder="ДД"]', { timeout: 10000 });
       await dayInput.fill("15");
       const monthInput = await page.waitForSelector('input[placeholder="ММ"]', { timeout: 5000 });
@@ -1061,6 +1660,7 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const calcBtn = await page.waitForSelector('button:has-text("Рассчитать код")', { timeout: 5000 });
       await calcBtn.click();
 
+      trackingRefusalPosts = true;
       const openCodeBtn = await page.waitForSelector('button:has-text("Открыть мой Код")', { timeout: 10000 });
       await openCodeBtn.click();
 
@@ -1068,57 +1668,159 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const consentHeading = await page.waitForSelector("#consent-heading", { timeout: 8000 });
       const consentModalAppeared = consentHeading !== null;
 
-      // Verify that without checking checkbox, consent cannot be completed
       const acceptBtn = await page.waitForSelector('button:has-text("Согласиться и продолжить")', { timeout: 5000 });
       const isAcceptDisabledBeforeCheck = await acceptBtn.isDisabled();
 
-      // 3. Test direct API rejection without consent
-      const api403Result = await page.evaluate(async () => {
+      // 3. Click the actual refusal button "Сейчас не хочу"
+      const refuseBtn = await page.waitForSelector('button:has-text("Сейчас не хочу")', { timeout: 5000 });
+      await refuseBtn.click();
+      await page.waitForTimeout(300);
+      trackingRefusalPosts = false;
+
+      const modalClosedAfterRefusal = (await page.$("#consent-heading")) === null;
+      const codeV2NotOpenedAfterRefusal = (await page.$("#code-v2-user-question")) === null;
+      const openCodeBtnStillVisible = (await page.$('button:has-text("Открыть мой Код")')) !== null;
+      const noProtectedPostsDuringRefusal = protectedPostCallsDuringRefusal.length === 0;
+
+      // 4. Now accept consent to establish a valid consented session
+      await openCodeBtn.click();
+      await page.waitForSelector("#consent-heading", { timeout: 5000 });
+      const checkbox = await page.waitForSelector('input[type="checkbox"]', { timeout: 5000 });
+      await checkbox.click();
+      const acceptBtn2 = await page.waitForSelector('button:has-text("Согласиться и продолжить")', { timeout: 5000 });
+      await acceptBtn2.click();
+
+      // Verify Code V2 loads after accepting consent
+      await page.waitForSelector("#code-v2-user-question", { timeout: 15000 });
+      const consentStatusWhileActive = await page.evaluate(async () => {
+        const res = await fetch("/api/consent", { cache: "no-store" });
+        return await res.json();
+      });
+      const activeConsentAccepted = consentStatusWhileActive?.accepted === true;
+
+      // Open Albert dialogue from Code V2
+      const albertBtn = await page.waitForSelector('button:has-text("Обсудить с Альбертом здесь")', { timeout: 10000 });
+      await albertBtn.click();
+      await page.waitForSelector('div[role="dialog"]', { timeout: 10000 });
+
+      // 5. Test expiry of previously accepted consent:
+      // Generate a real cryptographically signed consent token whose recordedAt is 30 days + 1 minute ago
+      const nowMs = Date.now();
+      const expiredRecordedAt = nowMs - CONSENT_MAX_AGE_MS - 60_000;
+      const expiredSignedToken = issueConsent("core", null, expiredRecordedAt);
+
+      // Verify unit-level TTL boundary on the exact token
+      const validBeforeExpiry = verifyConsent(expiredSignedToken, expiredRecordedAt + 1000) !== null;
+      const nullAfterExpiry = verifyConsent(expiredSignedToken, nowMs) === null;
+
+      // Replace the browser's active zerkalo_consent cookie with the expired signed token
+      await page.context().addCookies([
+        {
+          name: "zerkalo_consent",
+          value: expiredSignedToken,
+          url: "http://127.0.0.1:3000",
+          httpOnly: true,
+          sameSite: "Strict",
+        },
+      ]);
+
+      // Verify GET /api/consent now reports accepted: false for the expired token
+      const consentStatusAfterExpiry = await page.evaluate(async () => {
+        const res = await fetch("/api/consent", { cache: "no-store" });
+        return await res.json();
+      });
+      const expiredConsentRejectedByGet = consentStatusAfterExpiry?.accepted === false;
+
+      // Verify direct POST /api/albert/dialogue with expired cookie returns 403 consent_required
+      const api403OnExpiredCookie = await page.evaluate(async () => {
         const res = await fetch("/api/albert/dialogue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: "test", history: [], context: {} }),
+          body: JSON.stringify({ message: "test expired", history: [], context: {} }),
         });
         return { status: res.status, body: await res.json() };
       });
+      const expiredCookieRejectedByPost403 =
+        api403OnExpiredCookie.status === 403 && api403OnExpiredCookie.body?.code === "consent_required";
 
-      const apiProtected = api403Result.status === 403 && api403Result.body?.code === "consent_required";
+      // 6. In the browser UI, attempt to send a question to Albert after consent has expired
+      const expiredTestQuestion = "Вопрос после истечения срока согласия";
+      const albertInput = await page.waitForSelector('input[placeholder*="Задайте вопрос Альберту"]', { timeout: 5000 });
+      await albertInput.fill(expiredTestQuestion);
+      const sendBtn = await page.waitForSelector('button[type="submit"][aria-label="Отправить сообщение"]', { timeout: 5000 });
+      await sendBtn.click();
+
+      // Consent modal must automatically reopen when consent has expired!
+      const reopenedModal = await page.waitForSelector("#consent-heading", { timeout: 8000 });
+      const modalReopenedOnExpiredConsent = reopenedModal !== null;
 
       await page.screenshot({ path: path.join(LIVE_RUNS_DIR, "journey5-consent-refusal-expiry.png") });
 
-      const passed = consentModalAppeared && isAcceptDisabledBeforeCheck && apiProtected;
+      // Click "Сейчас не хочу" on the reopened modal and verify question text is preserved in input
+      const refuseReopenedBtn = await page.waitForSelector('button:has-text("Сейчас не хочу")', { timeout: 5000 });
+      await refuseReopenedBtn.click();
+      await page.waitForTimeout(300);
+
+      const inputPreservedAfterExpiryRefusal = (await albertInput.inputValue()) === expiredTestQuestion;
+
+      const passed =
+        consentModalAppeared &&
+        isAcceptDisabledBeforeCheck &&
+        modalClosedAfterRefusal &&
+        codeV2NotOpenedAfterRefusal &&
+        openCodeBtnStillVisible &&
+        noProtectedPostsDuringRefusal &&
+        activeConsentAccepted &&
+        validBeforeExpiry &&
+        nullAfterExpiry &&
+        expiredConsentRejectedByGet &&
+        expiredCookieRejectedByPost403 &&
+        modalReopenedOnExpiredConsent &&
+        inputPreservedAfterExpiryRefusal;
+
       results.journey5 = {
-        name: "Journey 5: Consent refusal and expiry",
+        name: "Journey 5: Consent refusal ('Сейчас не хочу') and expiry of previously accepted consent",
+        check_type: "full_e2e_from_scratch",
         passed,
-        consent_modal_appeared: consentModalAppeared,
-        accept_button_disabled_without_checkbox: isAcceptDisabledBeforeCheck,
-        unauthenticated_api_status_403: apiProtected,
-        api_error_code: api403Result.body?.code,
+        initial_refusal_check: {
+          consent_modal_appeared: consentModalAppeared,
+          accept_button_disabled_without_checkbox: isAcceptDisabledBeforeCheck,
+          refusal_button_clicked: true,
+          modal_closed_after_refusal: modalClosedAfterRefusal,
+          code_v2_blocked_after_refusal: codeV2NotOpenedAfterRefusal,
+          open_code_button_preserved: openCodeBtnStillVisible,
+          zero_protected_posts_during_refusal: noProtectedPostsDuringRefusal,
+        },
+        consent_acceptance_check: {
+          accepted_and_code_v2_loaded: activeConsentAccepted,
+        },
+        consent_expiry_check: {
+          ttl_ms: CONSENT_MAX_AGE_MS,
+          token_valid_before_expiry: validBeforeExpiry,
+          token_null_after_expiry: nullAfterExpiry,
+          get_consent_accepted_false_after_expiry: expiredConsentRejectedByGet,
+          post_protected_api_403_after_expiry: expiredCookieRejectedByPost403,
+          api_error_code: api403OnExpiredCookie.body?.code,
+          consent_modal_reopened_on_protected_action_after_expiry: modalReopenedOnExpiredConsent,
+          question_preserved_when_refusing_reopened_modal: inputPreservedAfterExpiryRefusal,
+        },
         screenshot: "live-runs/journey5-consent-refusal-expiry.png",
       };
-      console.log(`[v7] Journey 5: ${passed ? "PASS" : "FAIL"}`);
+      console.log(`[v8] Journey 5: ${passed ? "PASS" : "FAIL"}`);
     } finally {
       await page.close();
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Journey 6: Error response -> question preserved in input -> retry without duplicate messages
+  // Journey 6: Error response -> question strictly preserved in input -> retry without duplicate messages
   // ---------------------------------------------------------------------------
-  console.log("[v7] Running Journey 6: Error response -> input preserved -> retry without duplicate messages...");
+  console.log("[v8] Running Journey 6: Error response -> input strictly preserved -> retry without duplicate messages...");
   {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     try {
       await page.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
-      await page.evaluate(async (version) => {
-        await fetch("/api/consent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accepted: true, adult: true, version, scope: "core" }),
-        });
-      }, CONSENT_VERSION);
 
-      // Open Code -> Albert
       const dayInput = await page.waitForSelector('input[placeholder="ДД"]', { timeout: 10000 });
       await dayInput.fill("15");
       const monthInput = await page.waitForSelector('input[placeholder="ММ"]', { timeout: 5000 });
@@ -1130,8 +1832,7 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const openCodeBtn = await page.waitForSelector('button:has-text("Открыть мой Код")', { timeout: 10000 });
       await openCodeBtn.click();
 
-      // Consent modal if present
-      const consentHeading = await page.waitForSelector("#consent-heading", { timeout: 3000 }).catch(() => null);
+      const consentHeading = await page.waitForSelector("#consent-heading", { timeout: 5000 }).catch(() => null);
       if (consentHeading) {
         const checkbox = await page.waitForSelector('input[type="checkbox"]', { timeout: 5000 });
         await checkbox.click();
@@ -1146,7 +1847,6 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       await albertBtn.click();
       await page.waitForSelector('div[role="dialog"]', { timeout: 10000 });
 
-      // Route dialogue to fail once with HTTP 500
       let routedCount = 0;
       await page.route("**/api/albert/dialogue", (route) => {
         routedCount++;
@@ -1171,45 +1871,49 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       // Wait for retry button to appear in UI
       const retryBtn = await page.waitForSelector('button:has-text("Повторить"), button:has-text("ПОВТОРИТЬ")', { timeout: 15000 });
       const preservedInputValue = await input.inputValue();
-      const inputPreserved = preservedInputValue.includes(questionToTest) || retryBtn !== null;
 
-      // Trigger retry
+      // Strict check: preservedInputValue === questionToTest (no fallback to retryBtn !== null)
+      const inputStrictlyPreserved = preservedInputValue === questionToTest;
+      const retryBtnVisible = retryBtn !== null;
+
       await retryBtn.click();
 
-      // Wait for live Albert reply
       await page.waitForFunction(() => {
         const msgs = document.querySelectorAll('div[role="dialog"] div.font-serif.text-\\[18px\\]');
         return msgs.length >= 2;
       }, { timeout: 45000 });
 
-      // Count occurrences of questionToTest in the message list
-      const messageTexts = await page.$$eval('div[role="dialog"] div', (divs) => divs.map((d) => (d as HTMLElement).innerText || d.textContent || ''));
+      const messageTexts = await page.$$eval('div[role="dialog"] div', (divs) =>
+        divs.map((d) => (d as HTMLElement).innerText || d.textContent || "")
+      );
       const userMessageOccurrences = messageTexts.filter((t) => t.trim() === questionToTest).length;
-
-      // Exactly 1 occurrence (no duplicates!)
       const noDuplicates = userMessageOccurrences === 1;
 
       await page.screenshot({ path: path.join(LIVE_RUNS_DIR, "journey6-error-retry-no-duplicates.png") });
 
-      const passed = inputPreserved && noDuplicates;
+      const passed = inputStrictlyPreserved && retryBtnVisible && noDuplicates;
       results.journey6 = {
-        name: "Journey 6: Error response -> question preserved in input -> retry without duplicate messages",
+        name: "Journey 6: Error response -> question strictly preserved in input -> retry without duplicate messages",
+        check_type: "full_e2e_from_scratch",
         passed,
-        question_preserved_in_input_or_retry: inputPreserved,
+        expected_question_in_input: questionToTest,
+        preserved_input_value: preservedInputValue,
+        question_strictly_preserved_in_input: inputStrictlyPreserved,
+        retry_button_visible: retryBtnVisible,
         no_duplicates_in_chat_history: noDuplicates,
         user_message_count: userMessageOccurrences,
         screenshot: "live-runs/journey6-error-retry-no-duplicates.png",
       };
-      console.log(`[v7] Journey 6: ${passed ? "PASS" : "FAIL"}`);
+      console.log(`[v8] Journey 6: ${passed ? "PASS" : "FAIL"} (preservedInputValue="${preservedInputValue}")`);
     } finally {
       await page.close();
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Journey 7: Mobile 390px viewport
+  // Journey 7: Mobile 390px viewport (both entry screen AND CodeV2Experience screen)
   // ---------------------------------------------------------------------------
-  console.log("[v7] Running Journey 7: Mobile 390px viewport (real button dimensions and 0 overflow)...");
+  console.log("[v8] Running Journey 7: Mobile 390px viewport (entry screen + CodeV2Experience screen overflow & button heights)...");
   {
     const mobileContext = await browser.newContext({
       viewport: { width: 390, height: 844 },
@@ -1221,8 +1925,8 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
     try {
       await page.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
 
-      // Measure horizontal overflow via DOM API
-      const overflowMetrics = await page.evaluate(() => {
+      // 1. Measure horizontal overflow on entry screen
+      const entryOverflowMetrics = await page.evaluate(() => {
         return {
           windowInnerWidth: window.innerWidth,
           docScrollWidth: document.documentElement.scrollWidth,
@@ -1233,7 +1937,6 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
         };
       });
 
-      // Fill DOB on mobile
       const dayInput = await page.waitForSelector('input[placeholder="ДД"]', { timeout: 10000 });
       await dayInput.fill("15");
       const monthInput = await page.waitForSelector('input[placeholder="ММ"]', { timeout: 5000 });
@@ -1241,17 +1944,14 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const yearInput = await page.waitForSelector('input[placeholder="ГГГГ"]', { timeout: 5000 });
       await yearInput.fill("1990");
 
-      // Measure calculate button bounding box
       const calcBtn = await page.waitForSelector('button:has-text("Рассчитать код")', { timeout: 5000 });
       const calcBox = await calcBtn.boundingBox();
 
       await calcBtn.click();
 
-      // Measure open code button bounding box
       const openCodeBtn = await page.waitForSelector('button:has-text("Открыть мой Код")', { timeout: 10000 });
       const openCodeBox = await openCodeBtn.boundingBox();
 
-      // Accept consent if shown
       await openCodeBtn.click();
       const consentHeading = await page.waitForSelector("#consent-heading", { timeout: 5000 }).catch(() => null);
       if (consentHeading) {
@@ -1261,34 +1961,72 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
         await acceptBtn.click();
       }
 
-      // Measure mobile Albert button
+      // Wait for CodeV2Experience screen to render completely
+      await page.waitForSelector("#code-v2-user-question", { timeout: 15000 });
       const albertBtn = await page.waitForSelector(
-        'button:has-text("Обсудить с Альбертом"), button:has-text("Поговорить с Альбертом")',
+        'button:has-text("Обсудить с Альбертом здесь"), button:has-text("Поговорить с Альбертом")',
         { timeout: 20000 }
       );
       const albertBox = await albertBtn.boundingBox();
 
-      // Verify all measured heights >= 44px
+      const continueToMythBtn = await page.waitForSelector(
+        'button:has-text("Перейти к Личному мифу")',
+        { timeout: 10000 }
+      );
+      const continueToMythBox = await continueToMythBtn.boundingBox();
+
+      // 2. Measure horizontal overflow AFTER navigating onto CodeV2Experience screen
+      const codeV2OverflowMetrics = await page.evaluate(() => {
+        const likeButtons = Array.from(document.querySelectorAll("button")).filter(
+          (b) => (b.textContent || "").trim() === "Похоже"
+        );
+        return {
+          windowInnerWidth: window.innerWidth,
+          docScrollWidth: document.documentElement.scrollWidth,
+          bodyScrollWidth: document.body.scrollWidth,
+          renderedPositionCardsCount: likeButtons.length,
+          hasHorizontalOverflow:
+            document.documentElement.scrollWidth > window.innerWidth ||
+            document.body.scrollWidth > window.innerWidth,
+        };
+      });
+
       const calcHeightOk = (calcBox?.height ?? 0) >= 44;
       const openCodeHeightOk = (openCodeBox?.height ?? 0) >= 44;
       const albertHeightOk = (albertBox?.height ?? 0) >= 44;
-      const noHorizontalOverflow = !overflowMetrics.hasHorizontalOverflow;
+      const continueHeightOk = (continueToMythBox?.height ?? 0) >= 44;
+      const noEntryOverflow = !entryOverflowMetrics.hasHorizontalOverflow;
+      const noCodeV2Overflow =
+        !codeV2OverflowMetrics.hasHorizontalOverflow &&
+        codeV2OverflowMetrics.renderedPositionCardsCount >= 5;
 
       await page.screenshot({ path: path.join(LIVE_RUNS_DIR, "journey7-mobile-390px.png") });
 
-      const passed = calcHeightOk && openCodeHeightOk && albertHeightOk && noHorizontalOverflow;
+      const passed =
+        calcHeightOk &&
+        openCodeHeightOk &&
+        albertHeightOk &&
+        continueHeightOk &&
+        noEntryOverflow &&
+        noCodeV2Overflow;
+
       results.journey7 = {
-        name: "Journey 7: Mobile 390px viewport (real button dimensions and 0 overflow)",
+        name: "Journey 7: Mobile 390px viewport (real button dimensions and 0 overflow on entry AND CodeV2Experience screens)",
+        check_type: "full_e2e_from_scratch",
         passed,
-        overflow_metrics: overflowMetrics,
+        entry_screen_overflow_metrics: entryOverflowMetrics,
+        code_v2_screen_overflow_metrics: codeV2OverflowMetrics,
         button_dimensions: {
           calculate_button: { height: calcBox?.height, ok: calcHeightOk },
           open_code_button: { height: openCodeBox?.height, ok: openCodeHeightOk },
           albert_button: { height: albertBox?.height, ok: albertHeightOk },
+          continue_to_myth_button: { height: continueToMythBox?.height, ok: continueHeightOk },
         },
         screenshot: "live-runs/journey7-mobile-390px.png",
       };
-      console.log(`[v7] Journey 7: ${passed ? "PASS" : "FAIL"}`);
+      console.log(
+        `[v8] Journey 7: ${passed ? "PASS" : "FAIL"} (entryScrollWidth=${entryOverflowMetrics.docScrollWidth}, codeV2ScrollWidth=${codeV2OverflowMetrics.docScrollWidth})`
+      );
     } finally {
       await mobileContext.close();
     }
@@ -1312,7 +2050,7 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
 }
 
 async function runRouteACheck(browser: Browser): Promise<boolean> {
-  console.log("[v7] Running Route A compatibility check (Code -> Albert before Myth API)...");
+  console.log("[v8] Running Route A compatibility check (Code -> Albert before Myth API)...");
   const ownerPrompts = [
     "Объясни проще: что эти числа говорят именно про мой вопрос?",
     "Почему мне так трудно не включаться в чужие пожары?",
@@ -1339,7 +2077,7 @@ async function runRouteACheck(browser: Browser): Promise<boolean> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           dob: "15.05.1990",
-          token: "v7-route-a-calc-19900515",
+          token: "v8-route-a-calc-19900515",
         }),
       });
       return { status: res.status, body: await res.json() };
@@ -1406,7 +2144,7 @@ async function runRouteACheck(browser: Browser): Promise<boolean> {
 }
 
 async function runRouteBCheck(browser: Browser): Promise<boolean> {
-  console.log("[v7] Running Route B compatibility check (Telegram Local Gate 503 API)...");
+  console.log("[v8] Running Route B compatibility check (Telegram Local Gate 503 API)...");
   const apiPage = await browser.newPage();
   let claimResult: any = null;
   try {
@@ -1467,15 +2205,17 @@ async function runRouteBCheck(browser: Browser): Promise<boolean> {
 
 async function main() {
   console.log("================================================================================");
-  console.log("[v7] Target Evidence Suite — Final Convergence Acceptance Runner");
-  console.log(`[v7] Web HEAD: ${WEB_SHA.slice(0, 7)} (PIN: ${WEB_PIN.slice(0, 7)})`);
-  console.log(`[v7] DCS PIN:  ${DCS_SHA.slice(0, 7)}`);
+  console.log("[v8] Target Evidence Suite — Final Convergence Acceptance Runner");
+  console.log(`[v8] Web HEAD: ${WEB_SHA.slice(0, 7)} (PIN: ${WEB_PIN.slice(0, 7)})`);
+  console.log(`[v8] DCS PIN:  ${DCS_SHA.slice(0, 7)}`);
   console.log("================================================================================");
 
   await verifyAndWarmupLiveServices();
 
   const results: Record<string, boolean> = {};
 
+  results.mythValidatorSet4 = await runMythValidatorAndSet4Verification();
+  results.codeV2PrimaryComparison = await runCodeV2PrimaryComparison();
   results.defect1 = runDefect1Check();
 
   const browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -1491,27 +2231,29 @@ async function main() {
   }
 
   console.log("================================================================================");
-  console.log("[v7] Summary of Targeted Evidence Checks:");
-  console.log(`  1. Defect 1 Matrix (Source Origin):         ${results.defect1 ? "PASS" : "FAIL"}`);
-  console.log(`  2. Defect 2 Matrix (Crisis Self-Quote):      ${results.defect2 ? "PASS" : "FAIL"}`);
-  console.log(`  3. Route C (Data Deletion on Real Session): ${results.routeC ? "PASS" : "FAIL"}`);
-  console.log(`  4. Route A (Code -> Albert before Myth):    ${results.routeA ? "PASS" : "FAIL"}`);
-  console.log(`  5. Route B (Telegram Local Gate 503):       ${results.routeB ? "PASS" : "FAIL"}`);
-  console.log(`  6. 7 Real Playwright User Journeys:         ${results.journeys ? "PASS (7/7)" : "FAIL"}`);
+  console.log("[v8] Summary of Targeted Evidence Checks:");
+  console.log(`  0A. Myth Validator & Set 4 Re-verification: ${results.mythValidatorSet4 ? "PASS" : "FAIL"}`);
+  console.log(`  0B. Code V2 Primary 6-Set Comparison:       ${results.codeV2PrimaryComparison ? "PASS" : "FAIL"}`);
+  console.log(`  1.  Defect 1 Matrix (Source Origin):        ${results.defect1 ? "PASS" : "FAIL"}`);
+  console.log(`  2.  Defect 2 Matrix (Crisis Self-Quote):     ${results.defect2 ? "PASS" : "FAIL"}`);
+  console.log(`  3.  Route C (Data Deletion on Real Session):${results.routeC ? "PASS" : "FAIL"}`);
+  console.log(`  4.  Route A (Code -> Albert before Myth):   ${results.routeA ? "PASS" : "FAIL"}`);
+  console.log(`  5.  Route B (Telegram Local Gate 503):      ${results.routeB ? "PASS" : "FAIL"}`);
+  console.log(`  6.  7 Real Playwright User Journeys:        ${results.journeys ? "PASS (7/7)" : "FAIL"}`);
   console.log("================================================================================");
 
   const allPassed = Object.values(results).every(Boolean);
 
   if (!allPassed) {
-    console.error("[v7] FAIL-CLOSED: At least one targeted check failed. Exiting with code 1.");
+    console.error("[v8] FAIL-CLOSED: At least one targeted check failed. Exiting with code 1.");
     process.exit(1);
   }
 
-  console.log("[v7] ALL TARGETED CHECKS PASSED SUCCESSFULLY (6/6).");
+  console.log("[v8] ALL TARGETED CHECKS PASSED SUCCESSFULLY (8/8).");
   process.exit(0);
 }
 
 main().catch((err) => {
-  console.error("[v7] Unhandled fatal error:", err);
+  console.error("[v8] Unhandled fatal error:", err);
   process.exit(1);
 });

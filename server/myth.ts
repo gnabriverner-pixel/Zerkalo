@@ -186,6 +186,18 @@ const FORMAL_YOU_PATTERNS = [
  * - Systematic drift to "вы" (> 2 occurrences across the text).
  */
 export function hasFormalYouViolation(nonDisclaimerText: string, secondPersonCount: number): boolean {
+  const rawMatches = Array.from(
+    nonDisclaimerText.matchAll(/(?<![а-яё])(вы|вас|вам|вами|ваш|ваша|ваше|ваши|вашего|вашей|вашему|вашим|ваших)(?![а-яё])/giu)
+  );
+  if (rawMatches.length === 0) {
+    return false;
+  }
+
+  // Isolated plural is only valid within a stable "ты" baseline narrative
+  if (secondPersonCount < 2) {
+    return true;
+  }
+
   const addressText = nonDisclaimerText.replace(
     /(?<![а-яё])(?:между\s+вами|вы\s+вдво[её]м|вы\s+об[ае]|вы\s+вместе|вы\s+(?:садитесь|сидите)\s+рядом|вы\s+оказываетесь\s+(?:вдво[её]м|вместе)|вы\s+делите\s+[^.!?\n]{1,80}\s+(?:на\s+двоих|между\s+собой)|од(?:и|н)[а-яё]*\s+из\s+вас|об[ае]\s+ваш[а-яё]*)(?![а-яё])/giu,
     ' '
@@ -199,22 +211,17 @@ export function hasFormalYouViolation(nonDisclaimerText: string, secondPersonCou
     return false;
   }
 
-  // Any possessive "ваш..." addressed to protagonist is strictly forbidden
-  if (matches.some((m) => /^ваш/iu.test(m[0]))) {
+  // Any possessive "ваш..." or unstripped oblique "вас/вам/вами" addressed to protagonist is strictly forbidden
+  if (matches.some((m) => /^(?:ваш|вас|вам|вами)/iu.test(m[0]))) {
     return true;
   }
 
-  // Systematic shift to plural/formal (> 5 occurrences across text)
-  if (matches.length > 5) {
+  // Systematic shift to plural/formal (> 2 unstripped occurrences across text)
+  if (matches.length > 2) {
     return true;
   }
 
-  // Isolated plural is only valid within a stable "ты" baseline narrative
-  if (secondPersonCount < 2) {
-    return true;
-  }
-
-  // For each isolated occurrence, check if it refers to a couple in its sentence context
+  // For each isolated occurrence, check if it refers to a genuine collective/couple action
   for (const match of matches) {
     const matchIndex = match.index ?? 0;
     const textBefore = addressText.slice(0, matchIndex);
@@ -230,22 +237,47 @@ export function hasFormalYouViolation(nonDisclaimerText: string, secondPersonCou
 
     const sentenceStart = prevBoundary >= 0 ? prevBoundary + 1 : 0;
     const sentenceEnd = nextBoundary >= 0 ? matchIndex + match[0].length + nextBoundary : addressText.length;
-    const sentence = addressText.slice(sentenceStart, sentenceEnd).trim();
+    const beforeInSentenceRaw = addressText.slice(sentenceStart, matchIndex);
+    const textFromVy = addressText.slice(matchIndex, sentenceEnd).trim();
 
-    // Capitalized "Вы / Вам / Вас / Вами" inside a sentence (not at sentence start) is polite singular address
+    // Capitalized "Вы" inside a sentence (not at sentence start) is polite singular address
     if (/^[В]/.test(match[0])) {
-      const beforeInSentence = addressText.slice(sentenceStart, matchIndex).replace(/[\s«»"—()\[\]]/gu, '');
+      const beforeInSentence = beforeInSentenceRaw.replace(/[\s«»"—()\[\]]/gu, '');
       if (beforeInSentence.length > 0) {
         return true;
       }
     }
 
-    const hasSecondPersonSingular = /(?<![а-яё])(?:ты|тебя|тебе|тобой|тобою|твой|твоя|твоё|твое|твои|твоих|твоим|твоей|твоего|твоему)(?![а-яё])/iu.test(sentence);
-    const hasPluralVerb = /(?<![а-яё])[а-яё]{3,}(?:ли|ете|ёте|ите|ем|им)(?![а-яё])/iu.test(sentence);
-    const hasPluralVocabulary = /(?<![а-яё])(?:разные|вместе|друг\s+(?:друга|другу|с\s+другом|к\s+другу|от\s+друга)|вдво[её]м|обоих|обоюдн\w*|партн[её]р\w*|собеседник\w*|спутник\w*|разговор\w*|встреч\w*|отношени\w*|пар[аеыу]|команд\w*|коллег\w*|отдел\w*|на\s+работе|в\s+цеху|в\s+мастерской)(?![а-яё])/iu.test(sentence);
+    // Formal singular modal, state, or perception verbs paired with "вы" are always forbidden
+    const hasFormalSingularModalOrState =
+      /(?<![а-яё])вы\s+(?:[а-яё]+\s+){0,2}(?:можете|сможете|хотите|должны|обязаны|способны|готовы|вправе|будете|станете|начнёте|попробуете|пытаетесь|решите|решаете(?!\s+вместе)|сделаете|делаете(?!\s+вместе)|оказываетесь|окажетесь|видите|увидите|замечаете|заметите|чувствуете|почувствуете|ощущаете|слышите|знаете|понимаете|помните|думаете|считаете|боитесь|стоите|сидите|идёте|входите|выходите|подходите|отходите|берёте|кладёте|держите|смотрите|слушаете|выберете|выбираете(?!\s+разные))(?![а-яё])/iu.test(
+        textFromVy
+      );
+    if (hasFormalSingularModalOrState) {
+      return true;
+    }
 
-    const isPluralContext = (hasPluralVerb && hasPluralVocabulary) || (hasSecondPersonSingular && (hasPluralVerb || hasPluralVocabulary));
-    if (!isPluralContext) {
+    // Must have a genuine joint/collective action verb
+    const hasCollectiveActionVerb =
+      /(?<![а-яё])(?:обсудили|обсуждаете|обсуждали|разбираете|разбирали|согласовали|согласуете|делите|делили|собираете|собирали|строите|строили|сверяете|сверяли|планируете|планировали|договорились|договариваетесь|спорите|спорили|работаете\s+вместе|делаете\s+вместе|решаете\s+вместе)(?![а-яё])/iu.test(
+        textFromVy
+      );
+    if (!hasCollectiveActionVerb) {
+      return true;
+    }
+
+    const hasPrecedingTogetherWithGroup =
+      /(?<![а-яё])(?:вместе\s+с\s+(?:команд[а-яё]*|коллег[а-яё]*|партн[её]р[а-яё]*|собеседник[а-яё]*|спутник[а-яё]*|другом|друзьями)|вместе|вдво[её]м)\s*$/iu.test(
+        beforeInSentenceRaw
+      );
+
+    // Must be anchored by an explicit comitative/reciprocal group/couple marker in the "вы" clause
+    const hasPostVyGroupMarker =
+      /(?<![а-яё])(?:вместе|друг\s+(?:друга|другу|с\s+другом|к\s+другу|от\s+друга)|вдво[её]м|обоих|обеих|обоюдн[а-яё]*|(?:с|вместе\s+с|между)\s+(?:команд[а-яё]*|коллег[а-яё]*|партн[её]р[а-яё]*|собеседник[а-яё]*|спутник[а-яё]*|другом|друзьями)|всей\s+команд[а-яё]*|всем\s+отделом|(?:обсудили|обсуждали|обсуждаете|договорились|договариваетесь|спорили|спорите)(?:[^.!?\n]*?)(?<![а-яё])(?:выбрали|выбираете)\s+разные\s+[а-яё]+)(?![а-яё])/iu.test(
+        textFromVy
+      );
+
+    if (!hasPrecedingTogetherWithGroup && !hasPostVyGroupMarker) {
       return true;
     }
   }
@@ -379,7 +411,7 @@ ${adaptiveFidelityBlock}
    - Главный герой всей истории (story) — читатель («ты»).
    - В художественной истории (story) обращайся к герою на «ты / твой / тебя».
    - В пояснениях после истории (mirror, meaning, one_step, journal_question) обращайся к человеку напрямую («вы», «ваш», «в вашем ответе», «для вас»), а НЕ обсуждай его в третьем лице («человек», «читатель», «пользователь», «автор ответов»). Внутри всех полей после истории придерживайся единого прямого обращения на «вы / ваш» (без смешения «ты» и «вы» в одном блоке mirror).
-   - Грамматическое множественное число о паре («вы вдвоём», «между вами») не является вежливым обращением к одному человеку. Используй его только при действительном участии двоих в сцене.
+   - Грамматическое множественное число о паре или группе («вы вдвоём», «между вами», «вы с командой», «вы вместе») не является вежливым обращением к одному человеку, но в story ВСЕГДА предпочтительно вести действие в единственном числе («ты разбираешь по шагам», «ты раскладываешь на доске»). Никогда не пиши в story одиночное местоимение «вы» без явного маркера группы (запрещено: «как на работе вы разбираете...», «вы решаете...»; правильно: «как ты шаг за шагом разбираешь...» или «как вы с командой разбираете...»).
    - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО смещать фокус в повествование от первого лица («я / мы») или делать главным героем третье лицо («он / она / человек / путник / герой»).
    - Не вводи в сцену других людей, рассказчиков, проводников или антропоморфных персонажей. В story действует только читатель («ты») и неодушевлённые предметы или пространство. В каждом абзаце должно быть прямое обращение «ты / твой / тебя».
 2. БЕЗ ПРИДУМАННОЙ БИОГРАФИИ:
@@ -482,7 +514,7 @@ ${adaptiveFidelityBlock}
    - Главный герой всей истории (story) — читатель («ты»).
    - В художественной истории (story) обращайся к герою на «ты / твой / тебя».
    - В пояснениях после истории (mirror, meaning, one_step, journal_question) обращайся к человеку напрямую («вы», «ваш», «в вашем ответе», «для вас»), а НЕ обсуждай его в третьем лице («человек», «читатель», «пользователь», «автор ответов»). Внутри всех полей после истории придерживайся единого прямого обращения на «вы / ваш» (без смешения «ты» и «вы» в одном блоке mirror).
-   - Грамматическое множественное число о паре («вы вдвоём», «между вами») не является вежливым обращением к одному человеку. Используй его только при действительном участии двоих в сцене.
+   - Грамматическое множественное число о паре или группе («вы вдвоём», «между вами», «вы с командой», «вы вместе») не является вежливым обращением к одному человеку, но в story ВСЕГДА предпочтительно вести действие в единственном числе («ты разбираешь по шагам», «ты раскладываешь на доске»). Никогда не пиши в story одиночное местоимение «вы» без явного маркера группы (запрещено: «как на работе вы разбираете...», «вы решаете...»; правильно: «как ты шаг за шагом разбираешь...» или «как вы с командой разбираете...»).
    - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО смещать фокус в повествование от первого лица («я / мы») или делать главным героем третье лицо («он / она / человек / путник / герой»).
    - Не вводи в сцену других людей, рассказчиков, проводников или антропоморфных персонажей. В story действует только читатель («ты») и неодушевлённые предметы или пространство. В каждом абзаце должно быть прямое обращение «ты / твой / тебя».
 2. РАЗЛИЧЕНИЕ ОПЫТА, ВЫБРАННОГО ОБРАЗА И ВЫМЫСЛА (БЕЗ ПРИДУМАННОЙ БИОГРАФИИ):
@@ -554,7 +586,7 @@ export function formatBlockerForRepair(blocker: string): string {
     case "narrative_first_person_drift":
       return "Убери повествование от первого лица («я / мы / мой»). Рассказывай историю читателю («ты»).";
     case "register_formal_you_forbidden":
-      return "Убери вежливое обращение на «вы / вас / вам / ваш» к одному читателю во всех полях, включая journal_question, если они смешаны с регистром «ты», и никогда не используй «вы / ваш» к одиночному герою внутри story. Внутри story читатель — только «ты / твой», а в пояснениях после истории держи единый регистр без смешения «ты» и «вы». Грамматические конструкции о двух участниках («вы вдвоём», «между вами») не являются этим нарушением.";
+      return "Убери вежливое обращение на «вы / вас / вам / ваш» к одному читателю во всех полях, включая journal_question, если они смешаны с регистром «ты», и никогда не используй «вы / ваш» к одиночному герою внутри story (даже в конструкциях вроде «на работе вы разбираете...» — пиши в единственном числе «ты разбираешь...» или явно указывай группу «вы с командой разбираете...»). Внутри story читатель — только «ты / твой», а в пояснениях после истории держи единый регистр без смешения «ты» и «вы». Грамматические конструкции о двух участниках («вы вдвоём», «между вами») не являются этим нарушением.";
     case "forbidden_public_language":
       return "Удали запрещенные термины: терапия, лечение, лечить, карма, магия, магический, гипноз, нлп, исцеление, фразы «всё будет хорошо», «вы точно должны».";
     case "affirmative_prediction_forbidden":

@@ -1131,9 +1131,23 @@ describe('Owner Acceptance Iteration: Clear Path to Albert & Precise Content', (
     );
     expect(matchFullSentence).not.toBe('В свободное время.');
 
-    // Russian inflected query matches stemmed keywords and ignores stop words
+    // Russian inflected query matches stemmed keywords and ignores stop words (including 'один')
     const matchInflected = selectRelevantSceneExample(dcsScenes, 'Как мне перестать разрываться между контролем и делегированием?');
     expect(matchInflected).toBe('В работе с командой — передает ключевые полномочия сотрудникам и контролирует только результат.');
+
+    const directionScenes = [
+      {
+        title: 'Иллюстрация вложения в знания',
+        description: 'Один из примеров — вместо покупки статусной вещи выбирает курс сложной квалификации.'
+      },
+      {
+        title: 'Иллюстрация антикризисного руководства',
+        description: 'В трудной фазе — берет на себя неразбериху, спокойно отделяет главное от второстепенного.'
+      }
+    ];
+    expect(selectRelevantSceneExample(directionScenes, 'Руководитель просит взять ещё один отдел в управление.')).toBe(
+      'В трудной фазе — берет на себя неразбериху, спокойно отделяет главное от второстепенного.'
+    );
 
     // Fallback to first scene when no keywords match or empty
     const fallbackEmpty = selectRelevantSceneExample(scenes, '');

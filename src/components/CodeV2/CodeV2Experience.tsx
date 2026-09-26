@@ -74,7 +74,8 @@ const RUSSIAN_STOP_WORDS = new Set([
   'как', 'мне', 'меня', 'мой', 'моя', 'мое', 'моё', 'мои', 'что', 'это',
   'этот', 'эта', 'эти', 'для', 'или', 'при', 'без', 'над', 'под', 'про',
   'вас', 'вам', 'вами', 'вот', 'где', 'кто', 'чем', 'так', 'уже', 'еще',
-  'ещё', 'все', 'всё', 'быть', 'есть', 'если', 'когда', 'между', 'через'
+  'ещё', 'все', 'всё', 'быть', 'есть', 'если', 'когда', 'между', 'через',
+  'один', 'одна', 'одно', 'одни', 'двумя', 'двух', 'очень'
 ]);
 
 export function formatSceneExample(raw: string): string {
@@ -113,8 +114,8 @@ export function selectRelevantSceneExample(
     return formatSceneExample(scenes[0]?.description || '');
   }
 
-  // Pre-calculate stems (4-6 chars) for inflected Russian matching
-  const stems = activeTokens.map(t => (t.length > 5 ? t.slice(0, 5) : t));
+  // Pre-calculate stems (4-5 chars) for inflected Russian matching
+  const stems = activeTokens.map(t => (t.length > 5 ? t.slice(0, 5) : t.length === 5 ? t.slice(0, 4) : t));
 
   let bestScene = scenes[0];
   let maxScore = 0;
@@ -334,7 +335,7 @@ export function CodeV2Experience({
   return (
     <div className="w-full min-h-screen bg-[#090D15] text-[#EAEAEA] font-sans pb-32 selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
       {/* Background ambient glow */}
-      <div className="fixed inset-0 pointer-events-none opacity-40">
+      <div className="fixed inset-0 pointer-events-none opacity-40 overflow-hidden">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-[radial-gradient(ellipse_at_center,rgba(200,164,93,0.12)_0%,transparent_70%)]" />
         <div className="absolute bottom-1/3 left-1/3 w-[500px] h-[400px] bg-[radial-gradient(ellipse_at_center,rgba(60,80,120,0.1)_0%,transparent_70%)]" />
       </div>

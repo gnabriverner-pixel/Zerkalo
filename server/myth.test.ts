@@ -6,6 +6,7 @@ import {
   buildPersonalMythRepairPrompt,
   containsCrisisLanguage,
   generatePersonalMyth,
+  hasFormalYouViolation,
   parsePersonalMythRequest,
   parsePersonalMythResult,
   validatePersonalMythResult,
@@ -77,6 +78,22 @@ describe("Personal Myth v1.1 release contract", () => {
     expect(validatePersonalMythResult(result).blockers).toContain('register_formal_you_forbidden');
   });
   it('treats plural/couple вы as grammatical plural, keeps singular formal blocked',()=>{
+    expect(hasFormalYouViolation("Ты сидишь. Ты смотришь. На работе вы можете решить", 3)).toBe(true);
+    expect(hasFormalYouViolation("Ты сидишь. Ты смотришь. На работе вы разбираете задачу", 3)).toBe(true);
+    expect(hasFormalYouViolation("Ты сидишь. Ты смотришь. На работе вы разбираете разные задачи", 3)).toBe(true);
+    expect(hasFormalYouViolation("Ты сидишь. Ты смотришь. На работе вы планируете разные шаги", 3)).toBe(true);
+    expect(hasFormalYouViolation("Ты сидишь. Ты смотришь. В отделе вы разбираете задачу", 3)).toBe(true);
+    expect(hasFormalYouViolation("Ты сидишь. Ты смотришь. В команде вы строите план", 3)).toBe(true);
+    expect(hasFormalYouViolation("Ты сидишь. Ты смотришь. После разговора с коллегами вы разбираете свои записи", 3)).toBe(true);
+    expect(hasFormalYouViolation("Ты сидишь. Ты смотришь. Вы с командой можете решить задачу", 3)).toBe(true);
+    expect(hasFormalYouViolation("Вы с командой разбираете задачу.", 0)).toBe(true);
+    expect(hasFormalYouViolation("Ты сидишь. Ты смотришь. В мастерской вы можете остановиться", 3)).toBe(true);
+    expect(hasFormalYouViolation("Ты вспоминаешь, как на работе вы можете решить эту задачу.", 3)).toBe(true);
+    expect(hasFormalYouViolation("Ты вспоминаешь, как на работе вы разбираете сложную архитектуру по шагам.", 3)).toBe(true);
+    expect(hasFormalYouViolation("Ты вспоминаешь, как на работе вы с командой разбираете сложную архитектуру по шагам.", 3)).toBe(false);
+    expect(hasFormalYouViolation("Ты сидишь. Ты смотришь. Вместе с коллегами вы разбираете сложную схему.", 3)).toBe(false);
+    expect(hasFormalYouViolation("Ты сидишь. Ты смотришь. Вы обсудили и выбираете разные варианты.", 3)).toBe(false);
+
     for(const couple of [
       'Вы оба замечаете свет.',
       'Когда вы садитесь рядом, разговор становится тише.',
@@ -88,7 +105,9 @@ describe("Personal Myth v1.1 release contract", () => {
       'Один из вас смотрит в окно, другой молчит.',
       'Вы вместе держите оба ваших отражения в этом окне.',
       'Ты вспоминаешь, как однажды вы спокойно обсудили выходные и выбрали разные занятия.',
-      'Ты вспоминаешь, как на работе вы разбираете сложную архитектуру по шагам.',
+      'Ты вспоминаешь, как на работе вы с командой разбираете сложную архитектуру по шагам.',
+      'Ты вспоминаешь, как вы с командой обсуждали сложную схему.',
+      'Вместе с коллегами вы разбираете сложную схему.',
     ]){
       const ok=parsePersonalMythResult(JSON.stringify(validPayload()));
       ok.story+=`\n\n${couple}`;
@@ -99,6 +118,15 @@ describe("Personal Myth v1.1 release contract", () => {
       'Вам следует прислушаться к себе.',
       'Вы оказываетесь перед выбором.',
       'Вы делите задачу на части.',
+      'На работе вы можете решить, куда двигаться дальше.',
+      'Ты вспоминаешь, как на работе вы разбираете сложную архитектуру по шагам.',
+      'На работе вы разбираете разные задачи.',
+      'В отделе вы разбираете задачу.',
+      'В команде вы строите план.',
+      'После разговора с коллегами вы разбираете свои записи.',
+      'Вы с командой можете решить эту задачу.',
+      'В мастерской вы видите тяжёлый маховик.',
+      'На встрече вы чувствуете усталость.',
     ]){
       const bad=parsePersonalMythResult(JSON.stringify(validPayload()));
       bad.story+=`\n\n${formal}`;
