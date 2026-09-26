@@ -4,7 +4,7 @@
   "web": {
     "repo": "gnabriverner-pixel/Zerkalo",
     "branch": "codex/stage1-convergence-candidate",
-    "pinned_sha": "13b314d2b8b0ed9c44854f78385ef8d0e944abc2"
+    "pinned_sha": "beca5d51406509b11e9166c283160cc643ddaf69"
   },
   "dcs": {
     "repo": "gnabriverner-pixel/digital-code-system",
@@ -16,7 +16,7 @@
     "production_node": "v22.23.2 (observed on the production host 2026-09-18)",
     "note": "Node 24 = canonical verification/CI runtime (verifier and verify_release_local refuse other majors). Node v22.23.2 = observed production runtime. Production runtime is NOT changed by this manifest; it is recorded from server inspection only."
   },
-  "updated_at": "2026-09-25",
-  "verified_at": "2026-09-25T21:20:59.322Z",
-  "note": "Owner acceptance iteration v6 candidate pair: Web application commit 13b314d2b8b0ed9c44854f78385ef8d0e944abc2 + canonical DCS 14fecae953fda67b9bea50af239412714f5a7b3a."
+  "updated_at": "2026-09-26",
+  "verified_at": "2026-09-26T08:32:00.000Z",
+  "note": "Owner acceptance iteration v6 candidate pair: Web application commit beca5d51406509b11e9166c283160cc643ddaf69 + canonical DCS 14fecae953fda67b9bea50af239412714f5a7b3a."
 }
