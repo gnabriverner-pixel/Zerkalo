@@ -288,4 +288,118 @@ describe("T4.3 Release Verifier Contract: Metadata Release Child vs Application 
       fallback_forbidden_in_production: true,
     });
   });
+
+  it("CASE H — 24-run Personal Myth audit catches invented memories/habits, Set 5 'как будто' modality loss, and assigns differentiated manual scores", async () => {
+    const {
+      evaluateMythRunProvenanceAndScores,
+      MANUAL_24_RUN_AUDIT,
+      MYTH_FIXED_6_SETS,
+    } = await import("../scripts/run_v7_targeted_evidence");
+
+    expect(Object.keys(MANUAL_24_RUN_AUDIT)).toHaveLength(24);
+
+    // 1. Set 2, V11, Run 1: invented second park walk memory
+    const set2V11Run1 = evaluateMythRunProvenanceAndScores(
+      {
+        run_index: 1,
+        title: "Калитка и шаг",
+        story:
+          "Ты стоишь перед калиткой. Ты вспоминаешь утреннюю прогулку по парку — не эту, а другую, когда ты шёл без цели и просто считал шаги. Тогда ты заметил, что если идти медленно, дорожка сама выводит тебя к пруду.",
+        mirror: {
+          mainImage: "В вашем ответе есть закрытая деревянная калитка.",
+          innerTension: "В этой сцене есть выбор.",
+          hiddenResource: "В этой сцене стало возможно заметить ручку.",
+          newView: "Если в вашем ответе утренняя прогулка по парку даёт живость, что изменится?",
+        },
+        meaning: ["А", "Б", "В?"],
+        one_step: "Положите ладонь на ручку и проверьте ход.",
+        journal_question: "Что вы заметите?",
+        quality: { passed: true, blockers: [], word_count: 350, paragraph_count: 4 },
+      },
+      MYTH_FIXED_6_SETS[1],
+      "v11"
+    );
+    expect(set2V11Run1.provenance_clean).toBe(false);
+    expect(set2V11Run1.attribution_violations[0]).toContain("invented_past_memory_in_story");
+    expect(set2V11Run1.scores_out_of_8.total).toBe(6);
+    expect(set2V11Run1.manual_review?.total).toBe(6);
+    expect(set2V11Run1.manual_review?.provenance_findings).toEqual(set2V11Run1.attribution_violations);
+
+    // 2. Set 3, V12, Run 2: invented habit ("та, которой ты обычно стираешь со стола") when q3 is unknown
+    const set3V12Run2 = evaluateMythRunProvenanceAndScores(
+      {
+        run_index: 2,
+        title: "Мокрая губка",
+        story:
+          "Рядом с тобой лежит тяжёлая мокрая губка — та, которой ты обычно стираешь со стола, — но сейчас она просто лежит, разбухшая, тёмная, вобравшая в себя столько, что её края расплылись и потеряли форму.",
+        mirror: {
+          mainImage: "В вашем ответе звучит усталость.",
+          innerTension: "В этой сцене губка лежит рядом.",
+          hiddenResource: "В этой сцене стало возможно не сжимать её.",
+          newView: "Что изменится, если позволить тишине просто стоять рядом?",
+        },
+        meaning: ["А", "Б", "В?"],
+        one_step: "Оставьте телефон на пятнадцать минут.",
+        journal_question: "Где в теле станет тише?",
+        quality: { passed: true, blockers: [], word_count: 350, paragraph_count: 4 },
+      },
+      MYTH_FIXED_6_SETS[2],
+      "v12"
+    );
+    expect(set3V12Run2.provenance_clean).toBe(false);
+    expect(set3V12Run2.attribution_violations[0]).toContain("invented_habit_in_story");
+    expect(set3V12Run2.scores_out_of_8.total).toBe(6);
+
+    // 3. Set 5: loss of "как будто" modality in mirror (without falsely matching "дальний берег" in mainImage)
+    const set5LostModality = evaluateMythRunProvenanceAndScores(
+      {
+        run_index: 1,
+        title: "Натяжение над водой",
+        story: "Ты стоишь на краю берега перед туго натянутой переправой.",
+        mirror: {
+          mainImage:
+            "В вашем ответе канатная переправа натянута над быстрой рекой. В этой сцене вы стоите на краю настила, чувствуете холод металла и гул тросов, а затем переносите взгляд вдоль каната на дальний берег.",
+          innerTension:
+            "Вы замечаете, что провисание троса — это запас, а не слабость. В вашем ответе есть и просьба взять ещё один отдел, и ощущение рассвета у моря. Как эти две вещи могут встретиться в одном шаге?",
+          hiddenResource: "В этой сцене стало возможно почувствовать ветер.",
+          newView:
+            "Если в вашем ответе переправа натянута туго, а живым вы называете ветер на рассвете у моря, то, может быть, устойчивость приходит не от того, что вы крепче держитесь, а от того, что вы позволяете себе провисать в середине? Что для вас значит этот запас?",
+        },
+        meaning: ["А", "Б", "В?"],
+        one_step: "Сделайте глубокий вдох у окна.",
+        journal_question: "Что даёт простор?",
+        quality: { passed: true, blockers: [], word_count: 350, paragraph_count: 4 },
+      },
+      MYTH_FIXED_6_SETS[4],
+      "v11"
+    );
+    expect(set5LostModality.as_if_modality_preserved).toBe(false);
+    expect(set5LostModality.imagined_scene_as_if_preserved).toBe(false);
+    expect(set5LostModality.provenance_clean).toBe(false);
+    expect(set5LostModality.attribution_violations[0]).toContain("imagined_scene_modality_lost_in_mirror");
+    expect(set5LostModality.attribution_violations[0]).toContain("ощущение рассвета у моря");
+    expect(set5LostModality.attribution_violations[0]).not.toContain("на дальний берег");
+    expect(set5LostModality.scores_out_of_8.total).toBe(7);
+
+    // 4. Verify manual corpus summary totals across all 24 entries
+    const entries = Object.entries(MANUAL_24_RUN_AUDIT);
+    for (const [, entry] of entries) {
+      expect(typeof entry.clarity).toBe("number");
+      expect(typeof entry.concreteness).toBe("number");
+      expect(typeof entry.connection_to_input).toBe("number");
+      expect(typeof entry.reflection_utility).toBe("number");
+      expect(entry.total).toBe(
+        entry.clarity + entry.concreteness + entry.connection_to_input + entry.reflection_utility
+      );
+      expect(Array.isArray(entry.provenance_findings)).toBe(true);
+      expect(typeof entry.rationale).toBe("string");
+      expect(entry.rationale.length).toBeGreaterThan(20);
+    }
+    const v11Entries = entries.filter(([k]) => k.includes("__v11__")).map(([, v]) => v);
+    const v12Entries = entries.filter(([k]) => k.includes("__v12__")).map(([, v]) => v);
+    expect(v11Entries.filter((e) => e.provenance_clean)).toHaveLength(7);
+    expect(v12Entries.filter((e) => e.provenance_clean)).toHaveLength(6);
+    expect(v11Entries.reduce((s, e) => s + e.scores_out_of_8.total, 0)).toBe(89);
+    expect(v12Entries.reduce((s, e) => s + e.scores_out_of_8.total, 0)).toBe(86);
+  });
 });

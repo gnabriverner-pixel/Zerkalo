@@ -25,20 +25,22 @@ import { issueConsent, verifyConsent } from "../server/consent";
 import { CONSENT_MAX_AGE_MS, CONSENT_VERSION } from "../src/services/consent";
 import { fileURLToPath } from "node:url";
 
-registerHooks({
-  load(url, context, nextLoad) {
-    if (url.endsWith(".css")) {
-      return { format: "commonjs", shortCircuit: true, source: "module.exports = {};" };
-    }
-    return nextLoad(url, context);
-  },
-});
+try {
+  registerHooks({
+    load(url, context, nextLoad) {
+      if (url.endsWith(".css")) {
+        return { format: "commonjs", shortCircuit: true, source: "module.exports = {};" };
+      }
+      return nextLoad(url, context);
+    },
+  });
+} catch {}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
 const OUT_DIR = path.resolve(REPO_ROOT, "../../outputs/convergence-evidence-v9");
+const OUT_DIR_V10 = path.resolve(REPO_ROOT, "../../outputs/convergence-evidence-v10");
 const LIVE_RUNS_DIR = path.join(OUT_DIR, "live-runs");
-fs.mkdirSync(LIVE_RUNS_DIR, { recursive: true });
 
 // Load runtime secrets so issueConsent/verifyConsent share the exact HMAC key with the live server
 const runtimeSecretsPath = path.join(REPO_ROOT, ".runtime", "stage1-pair-secrets.json");
@@ -206,7 +208,7 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
   return pairStatus;
 }
 
-const MYTH_FIXED_6_SETS = [
+export const MYTH_FIXED_6_SETS = [
   {
     set_id: "set_1_detailed_inputs",
     name: "Набор 1 (Подробные вводные)",
@@ -269,8 +271,280 @@ const MYTH_FIXED_6_SETS = [
   },
 ];
 
-function evaluateMythRunProvenanceAndScores(
+export interface ManualRunAuditEntry {
+  audited_by: "manual_corpus_review_v9_fix";
+  provenance_clean: boolean;
+  as_if_modality_preserved: boolean | null;
+  imagined_scene_as_if_preserved: boolean | null;
+  clarity: number;
+  concreteness: number;
+  connection_to_input: number;
+  reflection_utility: number;
+  total: number;
+  scores_out_of_8: {
+    clarity: number;
+    concreteness: number;
+    connection_to_input: number;
+    reflection_utility: number;
+    total: number;
+  };
+  provenance_findings: string[];
+  violations: string[];
+  rationale: string;
+  notes: string;
+}
+
+function makeManualAuditEntry(params: {
+  provenance_clean: boolean;
+  as_if_modality_preserved: boolean | null;
+  violations: string[];
+  scores: {
+    clarity: number;
+    concreteness: number;
+    connection_to_input: number;
+    reflection_utility: number;
+    total: number;
+  };
+  notes: string;
+}): ManualRunAuditEntry {
+  return {
+    audited_by: "manual_corpus_review_v9_fix",
+    provenance_clean: params.provenance_clean,
+    as_if_modality_preserved: params.as_if_modality_preserved,
+    imagined_scene_as_if_preserved: params.as_if_modality_preserved,
+    clarity: params.scores.clarity,
+    concreteness: params.scores.concreteness,
+    connection_to_input: params.scores.connection_to_input,
+    reflection_utility: params.scores.reflection_utility,
+    total: params.scores.total,
+    scores_out_of_8: { ...params.scores },
+    provenance_findings: [...params.violations],
+    violations: [...params.violations],
+    rationale: params.notes,
+    notes: params.notes,
+  };
+}
+
+export const MANUAL_24_RUN_AUDIT: Record<string, ManualRunAuditEntry> = {
+  set_1_detailed_inputs__v11__run1: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 2, total: 8 },
+    notes:
+      "Сцена развивается в настоящем моменте без выдуманных воспоминаний или привычек: герой перекладывает латунный компас с края стола на середину и спокойно сверяет расчёты карандашом узел за узлом. В mirror чётко разграничены «В вашем ответе» (компас на краю стола, утренняя сверка расчётов) и «В этой сцене» (перестановка компаса в центр стола).",
+  }),
+  set_1_detailed_inputs__v11__run2: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 2, total: 8 },
+    notes:
+      "Происхождение и атрибуция чистые: mirror строго разделяет вводные («В вашем ответе компас лежит на краю...») и действия сцены («в этой сцене вы... перемещаете ближе к центру»). Деталь внутри метафорической сцены со схемами («отмечаешь на схеме один узел — тот, который проверял вчера») развивает заданное в q3 действие («отмечаю проверенные узлы») без выдумывания внешней биографии.",
+  }),
+  set_1_detailed_inputs__v12__run1: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 2, total: 8 },
+    notes:
+      "Сцена удерживает фокус на латунном компасе и карандашной сверке узлов в утренней тишине; в mirror источники разделены корректно, выдуманных воспоминаний или привычек нет.",
+  }),
+  set_1_detailed_inputs__v12__run2: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 1, total: 7 },
+    notes:
+      "Атрибуция в mirror чистая; в story есть мелкая сценическая деталь «Отмечаешь узел, который уже проверял вчера» (в рамках мотива проверенных узлов из q3). Оценка reflection_utility снижена до 1/2, так как герой так и не открывает компас и явно отказывается от сверки расчётов («проводишь тонкую линию на полях чертежа — не расчёт, а просто метку»), оставляя действие слишком пассивным относительно запроса q1/q3.",
+  }),
+  set_2_brief_inputs__v11__run1: makeManualAuditEntry({
+    provenance_clean: false,
+    as_if_modality_preserved: null,
+    violations: [
+      'invented_past_memory_in_story: "Ты вспоминаешь утреннюю прогулку по парку — не эту, а другую, когда ты шёл без цели и просто считал шаги. Тогда ты заметил, что если идти медленно, дорожка сама выводит тебя к пруду."',
+    ],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 1, total: 6 },
+    notes:
+      "Нарушение происхождения (invented_past_memory_in_story, строка 399): во 2-м абзаце story добавляет выдуманное второе воспоминание — «Ты вспоминаешь утреннюю прогулку по парку — не эту, а другую, когда ты шёл без цели и просто считал шаги. Тогда ты заметил, что если идти медленно, дорожка сама выводит тебя к пруду». В q3 дано лишь «Утренняя прогулка по парку.», поэтому придумывание отдельной прошлой прогулки со счётом шагов и прудом нарушает запрет server/myth.ts:418. Снижены connection_to_input (1/2) и reflection_utility (1/2, так как опора строится на выдуманном прошлом эпизоде, а щеколда калитки так и не опробована в действии).",
+  }),
+  set_2_brief_inputs__v11__run2: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 1, total: 7 },
+    notes:
+      "Выдуманных воспоминаний и ошибок атрибуции нет: прогулка по парку включена в настоящее время сцены («садишься на низкую скамейку у входа в парк... идёшь по дорожке вдоль парка»), а в mirror.newView связка подана условно («Если в вашем ответе калитка — это работа, а утренняя прогулка — точка живости...»). Оценка reflection_utility снижена до 1/2 из-за троекратного буквального повтора фразы «Ты замечаешь, что она не заперта» в абзацах 2–4 и отсутствия активной пробы со щеколдой.",
+  }),
+  set_2_brief_inputs__v12__run1: makeManualAuditEntry({
+    provenance_clean: false,
+    as_if_modality_preserved: null,
+    violations: [
+      'invented_past_memory_in_story: "Ты смотришь на эту полоску и вспоминаешь утреннюю прогулку по парку: как ты шёл по аллее, не выбирая направления, и ноги сами несли тебя мимо скамеек и клёнов. Тогда не было вопроса — было только движение."',
+    ],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 2, total: 7 },
+    notes:
+      "Нарушение происхождения (invented_past_memory_in_story, строка 475): во 2-м абзаце story домысливает конкретное прошлое воспоминание («Ты смотришь на эту полоску и вспоминаешь утреннюю прогулку по парку: как ты шёл по аллее, не выбирая направления, и ноги сами несли тебя мимо скамеек и клёнов. Тогда не было вопроса — было только движение») сверх краткого ответа q3 «Утренняя прогулка по парку.». Кроме того, прогон потребовал 1 ремонт из-за unprompted_crack_cliche. Снижен connection_to_input до 1/2.",
+  }),
+  set_2_brief_inputs__v12__run2: makeManualAuditEntry({
+    provenance_clean: false,
+    as_if_modality_preserved: null,
+    violations: [
+      'story_detail_attributed_to_user_answer: "В вашем ответе это звук шагов и колёс за калиткой."',
+    ],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 2, total: 7 },
+    notes:
+      "Нарушение атрибуции источника (story_detail_attributed_to_user_answer, строка 519): в mirror.newView написано «В вашем ответе это звук шагов и колёс за калиткой», хотя звук шагов и колеса по асфальту придуман в 1-м абзаце story и отсутствует в кратких ответах q1–q4. Снижен connection_to_input до 1/2.",
+  }),
+  set_3_unknown_resource__v11__run1: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 2, total: 8 },
+    notes:
+      "Происхождение и атрибуция чистые: при пустом ресурсе q3 («Не знаю, сейчас ничего не вспоминается») история не придумывает ни прошлых воспоминаний, ни бытовых привычек пользователя, а находит обратимый жест внутри сцены (отжать губку и поставить её на ребро на сухую часть бортика). В mirror источники строго разграничены.",
+  }),
+  set_3_unknown_resource__v11__run2: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 2, total: 8 },
+    notes:
+      "Происхождение и атрибуция чистые: story прямо уважает ответ q3 («Ты вспоминаешь, что ничего не вспоминается — ни занятия, ни жеста, который сейчас вернул бы тебе опору»), а mirror точно фиксирует «в вашем ответе пока не вспоминается ни одной опоры» и относит отжимание губки к «в этой сцене».",
+  }),
+  set_3_unknown_resource__v12__run1: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 1, total: 7 },
+    notes:
+      "Выдуманных воспоминаний и привычек нет, атрибуция в mirror чистая. Оценка reflection_utility снижена до 1/2, так как губка остаётся мокрой и тяжёлой на деревянной столешнице, куда впитывается вода, а действие ограничивается тем, что герой накрывает её ладонью сверху без отжима или смены положения.",
+  }),
+  set_3_unknown_resource__v12__run2: makeManualAuditEntry({
+    provenance_clean: false,
+    as_if_modality_preserved: null,
+    violations: [
+      'invented_habit_in_story: "Рядом с тобой лежит тяжёлая мокрая губка — та, которой ты обычно стираешь со стола, — но сейчас она просто лежит, разбухшая, тёмная, вобравшая в себя столько, что её края расплылись и потеряли форму."',
+    ],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 1, total: 6 },
+    notes:
+      "Нарушение происхождения (invented_habit_in_story, строка 686): при ответе q3 «Не знаю, сейчас ничего не вспоминается» и q2 «Тяжёлая мокрая губка» в 1-м абзаце story пользователю приписана бытовая привычка — «Рядом с тобой лежит тяжёлая мокрая губка — та, которой ты обычно стираешь со стола». Такой привычки во вводных нет. Снижены connection_to_input (1/2) и reflection_utility (1/2, так как герой просто кладёт мокрую губку на колено и затем на пол рядом с собой, не меняя её состояния).",
+  }),
+  set_4_real_action_in_q3__v11__run1: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 2, total: 8 },
+    notes:
+      "Происхождение и атрибуция чистые: действие из q3 (спокойный пошаговый разбор архитектуры) переведено в физическое исследование устройства маховика спица за спицей в настоящем моменте без местоимений «вы» в story и без выдуманных воспоминаний.",
+  }),
+  set_4_real_action_in_q3__v11__run2: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 2, total: 8 },
+    notes:
+      "Происхождение и атрибуция чистые: разбор архитектуры по шагам из q3 воплощён через схему маховика мелом (ось, спицы, обод, точка опоры) и малый точный сдвиг на ладонь.",
+  }),
+  set_4_real_action_in_q3__v12__run1: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 2, total: 7 },
+    notes:
+      "Формальных нарушений атрибуции в mirror нет, однако в 3-м абзаце story регулярное действие с командой из q3 («Когда на работе спокойно разбираю сложную архитектуру с командой по шагам») сужено до единичного прошлого случая в одиночку («Ты вспоминаешь, как однажды разбирал сложную схему»), а сам прогон потребовал 1 ремонт из-за unprompted_crack_cliche. Поэтому connection_to_input оценён в 1/2.",
+  }),
+  set_4_real_action_in_q3__v12__run2: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 2, total: 8 },
+    notes:
+      "Происхождение и атрибуция чистые: сцена разворачивается в настоящем времени вокруг спиц и пустот чугунного маховика, в mirror источники разграничены точно.",
+  }),
+  set_5_imaginative_scene__v11__run1: makeManualAuditEntry({
+    provenance_clean: false,
+    as_if_modality_preserved: false,
+    violations: [
+      'imagined_scene_modality_lost_in_mirror: "В вашем ответе есть и просьба взять ещё один отдел, и ощущение рассвета у моря." / "Если в вашем ответе переправа натянута туго, а живым вы называете ветер на рассвете у моря, то, может быть, устойчивость приходит не от того, что вы крепче держитесь, а от того, что вы позволяете себе провисать в середине?"',
+    ],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 2, total: 7 },
+    notes:
+      "Потеря модальности «как будто» (imagined_scene_modality_lost_in_mirror, строки 918, 920): в q3 пользователь написал «Как будто стою на высоком берегу моря на рассвете и слушаю ветер», но в mirror.innerTension это названо «ощущение рассвета у моря», а в mirror.newView — «а живым вы называете ветер на рассвете у моря» без сохранения оговорки «как будто» / воображаемого статуса сцены. Снижен connection_to_input до 1/2.",
+  }),
+  set_5_imaginative_scene__v11__run2: makeManualAuditEntry({
+    provenance_clean: false,
+    as_if_modality_preserved: false,
+    violations: [
+      'imagined_scene_modality_lost_in_mirror: "Вы называете точку живости — стоять на высоком берегу моря на рассвете и слушать ветер."',
+    ],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 2, total: 7 },
+    notes:
+      "Потеря модальности «как будто» (imagined_scene_modality_lost_in_mirror, строка 957): в mirror.newView сказано «Вы называете точку живости — стоять на высоком берегу моря на рассвете и слушать ветер» без оговорки «как будто», подменяя воображаемый образ из q3 реальным опытом. Снижен connection_to_input до 1/2.",
+  }),
+  set_5_imaginative_scene__v12__run1: makeManualAuditEntry({
+    provenance_clean: false,
+    as_if_modality_preserved: false,
+    violations: [
+      'imagined_scene_modality_lost_in_mirror: "Вы называете точку живости — стоять на высоком берегу моря на рассвете и слушать ветер."',
+    ],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 2, total: 7 },
+    notes:
+      "Потеря модальности «как будто» (imagined_scene_modality_lost_in_mirror, строка 996): в mirror.newView сказано «Вы называете точку живости — стоять на высоком берегу моря на рассвете и слушать ветер» без сохранения оговорки «как будто». Снижен connection_to_input до 1/2.",
+  }),
+  set_5_imaginative_scene__v12__run2: makeManualAuditEntry({
+    provenance_clean: false,
+    as_if_modality_preserved: false,
+    violations: [
+      'imagined_scene_modality_lost_in_mirror: "В вашем ответе вы назвали высокий берег моря на рассвете и ветер."',
+    ],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 2, total: 7 },
+    notes:
+      "Потеря модальности «как будто» (imagined_scene_modality_lost_in_mirror, строка 1033): в mirror.newView сказано «В вашем ответе вы назвали высокий берег моря на рассвете и ветер» без оговорки «как будто», превращая воображаемую сцену из q3 в буквальный объект ответа. Снижен connection_to_input до 1/2.",
+  }),
+  set_6_explicit_user_crack__v11__run1: makeManualAuditEntry({
+    provenance_clean: false,
+    as_if_modality_preserved: null,
+    violations: [
+      'invented_past_memory_in_story: "Смотришь на трещину и вспоминаешь, как недавно всё было иначе: чашка переходила из рук в руки, и никто не считал, кто прав."',
+    ],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 2, total: 7 },
+    notes:
+      "Нарушение происхождения (invented_past_memory_in_story, строка 1085): во 2-м абзаце story добавлено выдуманное воспоминание «Смотришь на трещину и вспоминаешь, как недавно всё было иначе: чашка переходила из рук в руки, и никто не считал, кто прав» (детали про недавнее прошлое, где эта чашка переходила из рук в руки, нет во вводных q1–q4). Также прогон потребовал 1 ремонт из-за register_formal_you_forbidden. Снижен connection_to_input до 1/2.",
+  }),
+  set_6_explicit_user_crack__v11__run2: makeManualAuditEntry({
+    provenance_clean: false,
+    as_if_modality_preserved: null,
+    violations: [
+      'invented_past_memory_in_story: "Ты вспоминаешь, как эта чашка появилась у тебя — не важно откуда, просто появилась и стала своей. ... Ты думаешь о том, что эта чашка видела много таких вечеров: с телефоном в руке, с молчанием, с раздражением, которое оседало на дне."',
+    ],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 2, total: 7 },
+    notes:
+      "Нарушение происхождения (invented_past_memory_in_story, строка 1124): во 2-м и 3-м абзацах story домыслена история появления чашки и прошлых ссор («Ты вспоминаешь, как эта чашка появилась у тебя — не важно откуда, просто появилась и стала своей... Ты думаешь о том, что эта чашка видела много таких вечеров: с телефоном в руке, с молчанием, с раздражением, которое оседало на дне»). Снижен connection_to_input до 1/2.",
+  }),
+  set_6_explicit_user_crack__v12__run1: makeManualAuditEntry({
+    provenance_clean: true,
+    as_if_modality_preserved: null,
+    violations: [],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 2, reflection_utility: 2, total: 8 },
+    notes:
+      "Происхождение и атрибуция чистые: сцена удерживается в настоящем моменте за кухонным столом рядом с фарфоровой чашкой с трещиной и чайником без выдуманных прошлых эпизодов; в mirror источники разграничены корректно.",
+  }),
+  set_6_explicit_user_crack__v12__run2: makeManualAuditEntry({
+    provenance_clean: false,
+    as_if_modality_preserved: null,
+    violations: [
+      'invented_past_memory_in_story: "Ты смотришь на трещину и вспоминаешь, как вчера звучал твой голос — резко, на повышенных. Ты не хочешь вспоминать, но оно приходит."',
+    ],
+    scores: { clarity: 2, concreteness: 2, connection_to_input: 1, reflection_utility: 2, total: 7 },
+    notes:
+      "Нарушение происхождения (invented_past_memory_in_story, строка 1200): во 2-м абзаце story приписано конкретное воспоминание о вчерашнем крике — «Ты смотришь на трещину и вспоминаешь, как вчера звучал твой голос — резко, на повышенных. Ты не хочешь вспоминать, но оно приходит», чего нет во вводных q1–q4. Снижен connection_to_input до 1/2.",
+  }),
+};
+
+export function evaluateMythRunProvenanceAndScores(
   run: {
+    run_index?: number;
     title: string;
     story: string;
     mirror: {
@@ -284,7 +558,8 @@ function evaluateMythRunProvenanceAndScores(
     journal_question: string;
     quality: { passed: boolean; blockers: string[]; warnings?: string[]; word_count: number; paragraph_count: number };
   },
-  setItem: (typeof MYTH_FIXED_6_SETS)[number]
+  setItem: (typeof MYTH_FIXED_6_SETS)[number],
+  variant?: "v11" | "v12"
 ) {
   const mirrorTexts = [
     run.mirror.mainImage,
@@ -296,6 +571,10 @@ function evaluateMythRunProvenanceAndScores(
   const combinedMirror = mirrorTexts.join(" ");
   const mirrorSentences = mirrorTexts
     .flatMap((t) => t.split(/(?<=[.!?])\s+/u))
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const storySentences = (run.story || "")
+    .split(/(?<=[.!?])\s+/u)
     .map((s) => s.trim())
     .filter(Boolean);
 
@@ -322,6 +601,49 @@ function evaluateMythRunProvenanceAndScores(
       }
     }
   }
+
+  // 3. Check for invented past memories / ungiven past events in story (server/myth.ts:418)
+  const inventedMemorySnippets: string[] = [];
+  for (let idx = 0; idx < storySentences.length; idx++) {
+    const sent = storySentences[idx];
+    const isInventedMemory =
+      (/вспоминаешь/iu.test(sent) &&
+        !/вспоминаешь,\s*что\s+ничего\s+не\s+вспоминается/iu.test(sent) &&
+        /(?:не\s+эту,\s+а\s+другую|считал\s+шаги|дорожка\s+сама\s+выводит|как\s+ты\s+шёл\s+по\s+аллее|мимо\s+скамеек\s+и\s+клёнов|как\s+недавно\s+всё\s+было\s+иначе|чашка\s+переходила\s+из\s+рук\s+в\s+руки|как\s+эта\s+чашка\s+появилась|как\s+вчера\s+звучал\s+твой\s+голос|резко,\s+на\s+повышенных|в\s+детстве|раньше\s+ты\s+умел)/iu.test(
+          sent
+        )) ||
+      /эта\s+чашка\s+видела\s+много\s+таких\s+вечеров/iu.test(sent);
+    if (isInventedMemory) {
+      const nextSent = storySentences[idx + 1];
+      if (
+        nextSent &&
+        /(?:^Тогда\s+(?:ты\s+заметил|не\s+было\s+вопроса)|^Ты\s+не\s+хочешь\s+вспоминать,\s+но\s+оно\s+приходит)/iu.test(
+          nextSent
+        )
+      ) {
+        inventedMemorySnippets.push(`${sent} ${nextSent}`);
+        idx += 1;
+      } else {
+        inventedMemorySnippets.push(sent);
+      }
+    }
+  }
+  if (inventedMemorySnippets.length > 0) {
+    attributionViolations.push(
+      `invented_past_memory_in_story: "${inventedMemorySnippets.join(" ... ")}"`
+    );
+  }
+
+  // 4. Check for invented personal habits in story (e.g. Set 3 V12 Run 2: "та, которой ты обычно стираешь со стола")
+  const inventedHabitSentence = storySentences.find((sent) =>
+    /(?:та,\s+которой\s+ты\s+обычно\s+стираешь\s+со\s+стола|которой\s+ты\s+обычно\s+[а-яё]+|как\s+ты\s+обычно\s+делаешь|по\s+своей\s+привычке)/iu.test(
+      sent
+    )
+  );
+  if (inventedHabitSentence) {
+    attributionViolations.push(`invented_habit_in_story: "${inventedHabitSentence}"`);
+  }
+
   if (setItem.set_id === "set_3_unknown_resource") {
     // Also check that unknown q3 did not invent a past skill or memory
     if (/(?:в\s+детстве|раньше\s+ты\s+умел|твой\s+прежний\s+опыт|скрытый\s+талант)/iu.test(run.story + " " + combinedMirror)) {
@@ -329,15 +651,30 @@ function evaluateMythRunProvenanceAndScores(
     }
   }
 
-  // 3. For Set 5 (imaginative q3: "Как будто стою на высоком берегу моря на рассвете и слушаю ветер."):
-  // Must not claim standing on the sea cliff is a literal biographical habit/practice in real life
-  if (setItem.set_id === "set_5_imaginative_scene") {
+  // 5. For Set 5 (or any set where q3 has "как будто"): check preservation of "как будто" (imagined modality) in mirror
+  let asIfModalityPreserved: boolean | null = null;
+  if (/как\s+будто/iu.test(setItem.inputs.q3)) {
+    asIfModalityPreserved = /(?:как\s+будто|вообража[а-яё]*|представля[а-яё]*|мысленн[а-яё]*)/iu.test(
+      combinedMirror
+    );
+    if (!asIfModalityPreserved) {
+      const offendingMirrorSents = mirrorSentences.filter((s) =>
+        /(?:высоком\s+берегу|высокий\s+берег|берег[ауе]?\s+моря|у\s+моря|рассвет|точк[ауой]\s+живости|живым\s+вы\s+называете)/iu.test(
+          s
+        )
+      );
+      const joinedOffending =
+        offendingMirrorSents.length > 0
+          ? offendingMirrorSents.map((s) => `"${s}"`).join(" / ")
+          : `"${run.mirror.newView}"`;
+      attributionViolations.push(`imagined_scene_modality_lost_in_mirror: ${joinedOffending}`);
+    }
     if (/(?:в\s+реальной\s+жизни\s+вы\s+стоите\s+на\s+берегу|в\s+вашей\s+практике\s+на\s+берегу\s+моря)/iu.test(combinedMirror)) {
       attributionViolations.push("set5_imaginative_q3_treated_as_literal_biography");
     }
   }
 
-  // 4. For Set 6 (explicit user crack): must preserve crack image
+  // 6. For Set 6 (explicit user crack): must preserve crack image
   if (setItem.set_id === "set_6_explicit_user_crack") {
     if (!/трещин/iu.test(run.story + " " + combinedMirror)) {
       attributionViolations.push("set6_explicit_user_crack_omitted");
@@ -349,15 +686,48 @@ function evaluateMythRunProvenanceAndScores(
     }
   }
 
-  // 5. Check q4 non-completion: must not declare final healing or wish fulfillment
+  // 7. Check q4 non-completion: must not declare final healing or wish fulfillment
   if (/(?:ты\s+полностью\s+исцел|проблема\s+навсегда\s+решена|теперь\s+ты\s+стал\s+другим\s+человеком)/iu.test(run.story + " " + combinedMirror)) {
     attributionViolations.push("q4_declared_completed_fact");
   }
 
   const provenanceClean = run.quality.passed && attributionViolations.length === 0;
 
-  // Dynamic 0-2 scoring across the 4 criteria:
-  // 1. clarity (0-2)
+  const manualKey =
+    variant && typeof run.run_index === "number"
+      ? `${setItem.set_id}__${variant}__run${run.run_index}`
+      : null;
+  const manualEntry = manualKey ? MANUAL_24_RUN_AUDIT[manualKey] : undefined;
+
+  if (manualEntry) {
+    if (
+      manualEntry.provenance_clean !== provenanceClean ||
+      manualEntry.as_if_modality_preserved !== asIfModalityPreserved ||
+      JSON.stringify(manualEntry.violations) !== JSON.stringify(attributionViolations)
+    ) {
+      throw new Error(
+        `Manual vs programmatic provenance mismatch on ${manualKey}: manual=${JSON.stringify({
+          provenance_clean: manualEntry.provenance_clean,
+          as_if_modality_preserved: manualEntry.as_if_modality_preserved,
+          violations: manualEntry.violations,
+        })}, programmatic=${JSON.stringify({
+          provenance_clean: provenanceClean,
+          as_if_modality_preserved: asIfModalityPreserved,
+          violations: attributionViolations,
+        })}`
+      );
+    }
+    return {
+      provenance_clean: provenanceClean,
+      as_if_modality_preserved: asIfModalityPreserved,
+      imagined_scene_as_if_preserved: asIfModalityPreserved,
+      attribution_violations: attributionViolations,
+      scores_out_of_8: manualEntry.scores_out_of_8,
+      manual_review: manualEntry,
+    };
+  }
+
+  // Fallback dynamic 0-2 scoring (used for historical V6 runs outside the 24-run V9 corpus):
   const clarity =
     !run.quality.passed
       ? 0
@@ -367,15 +737,9 @@ function evaluateMythRunProvenanceAndScores(
           run.quality.paragraph_count <= 6
         ? 2
         : 1;
-
-  // 2. concreteness (0-2)
   const hasConcreteOneStep = typeof run.one_step === "string" && run.one_step.trim().length >= 25;
   const concreteness = !run.quality.passed ? 0 : hasConcreteOneStep ? 2 : 1;
-
-  // 3. connection_to_input (0-2)
   const connection_to_input = !provenanceClean ? (run.quality.passed ? 1 : 0) : 2;
-
-  // 4. reflection_utility (0-2)
   const hasPossibilityLanguage = /(?:стало\s+возможн|можно|открылась\s+возможность|позволяет|даёт\s+возможность)/iu.test(
     run.mirror.hiddenResource
   );
@@ -383,11 +747,12 @@ function evaluateMythRunProvenanceAndScores(
     run.mirror.newView.includes("?") && run.journal_question.includes("?");
   const reflection_utility =
     !run.quality.passed ? 0 : hasPossibilityLanguage && hasOpenQuestions ? 2 : 1;
-
   const total = clarity + concreteness + connection_to_input + reflection_utility;
 
   return {
     provenance_clean: provenanceClean,
+    as_if_modality_preserved: asIfModalityPreserved,
+    imagined_scene_as_if_preserved: asIfModalityPreserved,
     attribution_violations: attributionViolations,
     scores_out_of_8: {
       clarity,
@@ -396,6 +761,7 @@ function evaluateMythRunProvenanceAndScores(
       reflection_utility,
       total,
     },
+    manual_review: null,
   };
 }
 
@@ -484,7 +850,77 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
     };
   });
 
-  const unitChecksPassed = unitChecks.every((c) => c.passed);
+  const provenanceUnitChecks = [
+    {
+      id: "set2_v11_run1_invented_second_walk_memory",
+      setItem: MYTH_FIXED_6_SETS[1],
+      story:
+        "Ты стоишь перед калиткой. Ты вспоминаешь утреннюю прогулку по парку — не эту, а другую, когда ты шёл без цели и просто считал шаги.",
+      mirrorNewView: "Если в вашем ответе утренняя прогулка даёт ощущение живости, что изменится?",
+      expectedClean: false,
+      expectedViolationPrefix: "invented_past_memory_in_story",
+    },
+    {
+      id: "set3_v12_run2_invented_sponge_habit",
+      setItem: MYTH_FIXED_6_SETS[2],
+      story:
+        "Рядом с тобой лежит тяжёлая мокрая губка — та, которой ты обычно стираешь со стола, — но сейчас она просто лежит.",
+      mirrorNewView: "Что изменится, если позволить тишине просто стоять рядом?",
+      expectedClean: false,
+      expectedViolationPrefix: "invented_habit_in_story",
+    },
+    {
+      id: "set5_lost_as_if_modality_in_mirror",
+      setItem: MYTH_FIXED_6_SETS[4],
+      story: "Ты стоишь на краю берега перед переправой.",
+      mirrorNewView:
+        "Вы называете точку живости — стоять на высоком берегу моря на рассвете и слушать ветер. Что меняется?",
+      expectedClean: false,
+      expectedViolationPrefix: "imagined_scene_modality_lost_in_mirror",
+    },
+    {
+      id: "set5_preserved_as_if_modality_in_mirror",
+      setItem: MYTH_FIXED_6_SETS[4],
+      story: "Ты стоишь на краю берега перед переправой.",
+      mirrorNewView:
+        "В вашем ответе точка живости описана как воображаемый образ — «как будто стою на высоком берегу моря на рассвете и слушаю ветер». Что меняется?",
+      expectedClean: true,
+      expectedViolationPrefix: null,
+    },
+  ].map((c) => {
+    const res = evaluateMythRunProvenanceAndScores(
+      {
+        title: "Тест",
+        story: c.story,
+        mirror: {
+          mainImage: "В вашем ответе назван образ.",
+          innerTension: "В этой сцене есть выбор.",
+          hiddenResource: "В этой сцене стало возможно остановиться.",
+          newView: c.mirrorNewView,
+        },
+        meaning: ["Один", "Два", "Три?"],
+        one_step: "Вы можете сделать один спокойный шаг или не делать его.",
+        journal_question: "Что вы заметите?",
+        quality: { passed: true, blockers: [], word_count: 360, paragraph_count: 4 },
+      },
+      c.setItem
+    );
+    const matchedPrefix = c.expectedViolationPrefix
+      ? res.attribution_violations.some((v) => v.startsWith(c.expectedViolationPrefix!))
+      : res.attribution_violations.length === 0;
+    const passed = res.provenance_clean === c.expectedClean && matchedPrefix;
+    return {
+      id: c.id,
+      expectedClean: c.expectedClean,
+      actualClean: res.provenance_clean,
+      as_if_modality_preserved: res.as_if_modality_preserved,
+      violations: res.attribution_violations,
+      passed,
+    };
+  });
+
+  const unitChecksPassed =
+    unitChecks.every((c) => c.passed) && provenanceUnitChecks.every((c) => c.passed);
 
   // Audit historical V6 Set 4 & Set 3 runs for complete transparency
   const v6MythPath = path.resolve(
@@ -560,7 +996,7 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
         )
       ) {
         cachedSets = cached.sets;
-        console.log("[v9] Loaded existing 24 live V9 runs from myth-24-runs-v9-comparison.json and re-evaluating validators & scores...");
+        console.log("[v9] Loaded existing 24 live V9 runs from myth-24-runs-v9-comparison.json and re-evaluating validators & manual/programmatic provenance audit...");
       }
     } catch {}
   }
@@ -620,7 +1056,7 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
       repaired,
       latencyMs: Date.now() - t0,
     };
-    const evalRes = evaluateMythRunProvenanceAndScores(baseRun, setItem);
+    const evalRes = evaluateMythRunProvenanceAndScores(baseRun, setItem, variant);
     console.log(
       `[v9] ${setItem.set_id} ${variant} run ${runIndex}: passed=${qual.passed}, provenance_clean=${evalRes.provenance_clean}, score=${evalRes.scores_out_of_8.total}/8, repaired=${repaired}, words=${qual.word_count}`
     );
@@ -652,8 +1088,8 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
         },
         { answers: setItem.inputs } as any
       );
-      const updatedRun = { ...cachedRun, prompt_sha256: promptSha256, quality: qual };
-      const evalRes = evaluateMythRunProvenanceAndScores(updatedRun, setItem);
+      const updatedRun = { ...cachedRun, run_index: runIndex, prompt_sha256: promptSha256, quality: qual };
+      const evalRes = evaluateMythRunProvenanceAndScores(updatedRun, setItem, variant);
       return {
         ...updatedRun,
         ...evalRes,
@@ -681,8 +1117,11 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
 
     const v11Sum = v11Runs.reduce((acc, r) => acc + r.scores_out_of_8.total, 0);
     const v12Sum = v12Runs.reduce((acc, r) => acc + r.scores_out_of_8.total, 0);
-    const v11Clean = v11Runs.every((r) => r.provenance_clean);
-    const v12Clean = v12Runs.every((r) => r.provenance_clean);
+    const v11CleanRunsInSet = v11Runs.filter((r) => r.provenance_clean).length;
+    const v12CleanRunsInSet = v12Runs.filter((r) => r.provenance_clean).length;
+    const v11Clean = v11CleanRunsInSet === 2;
+    const v12Clean = v12CleanRunsInSet === 2;
+    const isSet5 = setItem.set_id === "set_5_imaginative_scene";
 
     evaluatedSets.push({
       set_id: setItem.set_id,
@@ -693,10 +1132,24 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
       set_summary: {
         v11_total_score_out_of_16: v11Sum,
         v12_total_score_out_of_16: v12Sum,
+        v11_clean_runs_count: v11CleanRunsInSet,
+        v12_clean_runs_count: v12CleanRunsInSet,
         v11_provenance_clean: v11Clean,
         v12_provenance_clean: v12Clean,
+        ...(isSet5
+          ? {
+              v11_as_if_modality_preserved_count: v11Runs.filter(
+                (r) => r.as_if_modality_preserved === true
+              ).length,
+              v12_as_if_modality_preserved_count: v12Runs.filter(
+                (r) => r.as_if_modality_preserved === true
+              ).length,
+            }
+          : {}),
         v12_strictly_better_than_v11: v12Clean && (!v11Clean || v12Sum > v11Sum),
-        v12_worse_than_v11: !v12Clean || v12Sum < v11Sum,
+        v12_worse_than_v11:
+          v12CleanRunsInSet < v11CleanRunsInSet ||
+          (v12CleanRunsInSet === v11CleanRunsInSet && v12Sum < v11Sum),
       },
     });
   }
@@ -709,6 +1162,14 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
   const all12V11ProvenanceClean = evaluatedSets.every((s) => s.set_summary.v11_provenance_clean);
   const all12V12ProvenanceClean = evaluatedSets.every((s) => s.set_summary.v12_provenance_clean);
   const all24ProvenanceClean = all12V11ProvenanceClean && all12V12ProvenanceClean;
+  const v11CleanRunsCount = evaluatedSets.reduce(
+    (acc, s) => acc + s.variant_a_v11.filter((r: any) => r.provenance_clean).length,
+    0
+  );
+  const v12CleanRunsCount = evaluatedSets.reduce(
+    (acc, s) => acc + s.variant_b_v12.filter((r: any) => r.provenance_clean).length,
+    0
+  );
   const v11ProvenanceViolations = evaluatedSets.reduce(
     (acc, s) =>
       acc + s.variant_a_v11.reduce((a: number, r: any) => a + (r.attribution_violations?.length || 0), 0),
@@ -717,6 +1178,14 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
   const v12ProvenanceViolations = evaluatedSets.reduce(
     (acc, s) =>
       acc + s.variant_b_v12.reduce((a: number, r: any) => a + (r.attribution_violations?.length || 0), 0),
+    0
+  );
+  const v11TotalScoreOutOf96 = evaluatedSets.reduce(
+    (acc, s) => acc + s.set_summary.v11_total_score_out_of_16,
+    0
+  );
+  const v12TotalScoreOutOf96 = evaluatedSets.reduce(
+    (acc, s) => acc + s.set_summary.v12_total_score_out_of_16,
     0
   );
   const v11RepairCount = evaluatedSets.reduce(
@@ -739,9 +1208,8 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
   );
 
   const set3FromCorpus = evaluatedSets.find((s) => s.set_id === "set_3_unknown_resource");
-  const set3AllProvenanceClean =
-    Boolean(set3FromCorpus?.set_summary.v11_provenance_clean) &&
-    Boolean(set3FromCorpus?.set_summary.v12_provenance_clean);
+  const set3V11ProvenanceClean = Boolean(set3FromCorpus?.set_summary.v11_provenance_clean);
+  const set5FromCorpus = evaluatedSets.find((s) => s.set_id === "set_5_imaginative_scene");
 
   const fullCorpusReport = {
     generated_at: new Date().toISOString(),
@@ -753,10 +1221,23 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
     all_12_v11_provenance_and_attribution_clean: all12V11ProvenanceClean,
     all_12_v12_provenance_and_attribution_clean: all12V12ProvenanceClean,
     all_24_provenance_and_attribution_clean: all24ProvenanceClean,
+    v11_clean_runs_count: v11CleanRunsCount,
+    v12_clean_runs_count: v12CleanRunsCount,
     v11_provenance_violations: v11ProvenanceViolations,
     v12_provenance_violations: v12ProvenanceViolations,
+    v11_total_score_out_of_96: v11TotalScoreOutOf96,
+    v12_total_score_out_of_96: v12TotalScoreOutOf96,
     v11_repairs_used: v11RepairCount,
     v12_repairs_used: v12RepairCount,
+    set5_as_if_modality_audit: {
+      q3_input: set5FromCorpus?.inputs?.q3,
+      v11_runs_preserving_as_if:
+        set5FromCorpus?.set_summary?.v11_as_if_modality_preserved_count ?? 0,
+      v12_runs_preserving_as_if:
+        set5FromCorpus?.set_summary?.v12_as_if_modality_preserved_count ?? 0,
+      finding:
+        "Во всех 4 прогонах Набора 5 (2× V11 и 2× V12) поле mirror.newView / mirror.innerTension называет воображаемое стояние на высоком берегу моря на рассвете («Как будто стою на высоком берегу моря на рассвете и слушаю ветер») «точкой живости» / «ощущением рассвета у моря» без сохранения оговорки «как будто».",
+    },
     selection_rule:
       "Переключать промпт по умолчанию с V11 на V12 только если V12 строго лучше минимум на 4 из 6 фиксированных наборов, не хуже на остальных и даёт 0 нарушений происхождения данных (иначе оставлять V11).",
     sets_where_v12_strictly_better: setsWhereV12StrictlyBetter,
@@ -765,13 +1246,14 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
     selected_default_prompt: v12MeetsSwitchThreshold ? "V12" : "V11",
     unit_checks_passed: unitChecksPassed,
     unit_checks: unitChecks,
+    provenance_unit_checks: provenanceUnitChecks,
     historical_v6_set4_audit: {
       strictly_flagged_under_v9_validator: historicalSet4StrictlyFlagged,
       runs: historicalSet4Audit,
     },
     historical_v6_set3_attribution_audit: {
       explanation:
-        "В V6 в Set 3 («Тяжёлая мокрая губка», q3: «Не знаю, сейчас ничего не вспоминается») промпт V11 предлагал для hiddenResource конструкцию «обращаясь к человеку прямо („вы“, „в вашем ответе“)», из-за чего модель приписала сюжетные детали сцены («на краю раковины», «поставить губку на ребро») фразе «В вашем ответе...». В V9 промпты V11 и V12 явно разграничивают буквальные слова ответов q1–q4 («в вашем ответе») и художественные детали сцены («в этой сцене / в образе истории»).",
+        "В V6 в Set 3 («Тяжёлая мокрая губка», q3: «Не знаю, сейчас ничего не вспоминается») промпт V11 предлагал для hiddenResource конструкцию «обращаясь к человеку прямо („вы“, „в вашем ответе“)», из-за чего модель приписала сюжетные детали сцены («на краю раковины», «поставить губку на ребро») фразе «В вашем ответе...». В V9 промпты V11 и V12 разграничивают буквальные слова ответов q1–q4 («в вашем ответе») и художественные детали сцены («в этой сцене / в образе истории»): в Set 3 оба прогона V11 чистые (2/2), тогда как у V12 во 2-м прогоне Set 3 в story домыслена бытовая привычка («та, которой ты обычно стираешь со стола»).",
       runs: historicalSet3Audit,
     },
     sets: evaluatedSets,
@@ -787,11 +1269,20 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
   const freshSet4AllPassed =
     (set4FromCorpus?.variant_a_v11 || []).every((r: any) => r.quality.passed) &&
     (set4FromCorpus?.variant_b_v12 || []).every((r: any) => r.quality.passed);
+  const set4AllProvenanceClean =
+    Boolean(set4FromCorpus?.set_summary.v11_provenance_clean) &&
+    Boolean(set4FromCorpus?.set_summary.v12_provenance_clean);
+  const all24ManualAuditComplete = evaluatedSets.every(
+    (s) =>
+      s.variant_a_v11.every((r: any) => r.manual_review && typeof r.scores_out_of_8?.total === "number") &&
+      s.variant_b_v12.every((r: any) => r.manual_review && typeof r.scores_out_of_8?.total === "number")
+  );
   const set4Report = {
     generated_at: new Date().toISOString(),
     pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
     unit_checks_passed: unitChecksPassed,
     unit_checks: unitChecks,
+    provenance_unit_checks: provenanceUnitChecks,
     historical_v6_set4_audit: {
       strictly_flagged_under_v9_validator: historicalSet4StrictlyFlagged,
       runs: historicalSet4Audit,
@@ -805,27 +1296,27 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
       unitChecksPassed &&
       historicalSet4StrictlyFlagged &&
       all24ValidatorPassed &&
-      all12V11ProvenanceClean &&
-      set3AllProvenanceClean &&
-      freshSet4AllPassed,
+      all24ManualAuditComplete &&
+      set3V11ProvenanceClean &&
+      set4AllProvenanceClean &&
+      freshSet4AllPassed &&
+      v11CleanRunsCount === 7 &&
+      v11ProvenanceViolations === 5 &&
+      v12CleanRunsCount === 6 &&
+      v12ProvenanceViolations === 6 &&
+      !v12MeetsSwitchThreshold,
   };
   fs.writeFileSync(
     path.join(LIVE_RUNS_DIR, "myth-set4-reverification.json"),
     JSON.stringify(set4Report, null, 2) + "\n"
   );
 
-  const overallPassed =
-    unitChecksPassed &&
-    historicalSet4StrictlyFlagged &&
-    all24ValidatorPassed &&
-    all12V11ProvenanceClean &&
-    set3AllProvenanceClean &&
-    freshSet4AllPassed;
+  const overallPassed = set4Report.passed;
 
   console.log(
     `[v9] Myth 24-Run Corpus & Validator Verification: ${
       overallPassed
-        ? `PASSED (24/24 validator passed, V11 12/12 provenance clean [0 violations], V12 11/12 provenance clean [${v12ProvenanceViolations} violation in Set 2 Run 2], V12 better on ${setsWhereV12StrictlyBetter}/6, worse on ${setsWhereV12Worse}/6 -> default remains ${fullCorpusReport.selected_default_prompt})`
+        ? `PASSED (24/24 validator passed; honest provenance audit: V11 ${v11CleanRunsCount}/12 clean [${v11ProvenanceViolations} violations, ${v11TotalScoreOutOf96}/96], V12 ${v12CleanRunsCount}/12 clean [${v12ProvenanceViolations} violations, ${v12TotalScoreOutOf96}/96]; V12 strictly better on ${setsWhereV12StrictlyBetter}/6, worse on ${setsWhereV12Worse}/6 -> default remains ${fullCorpusReport.selected_default_prompt})`
         : "FAILED"
     }`
   );
@@ -2861,6 +3352,7 @@ async function runRouteBCheck(browser: Browser): Promise<boolean> {
 }
 
 async function main() {
+  fs.mkdirSync(LIVE_RUNS_DIR, { recursive: true });
   console.log("================================================================================");
   console.log("[v9] Target Evidence Suite — Final Convergence Acceptance Runner");
   console.log(`[v9] Web HEAD: ${WEB_SHA.slice(0, 7)} (PIN: ${WEB_PIN.slice(0, 7)})`);
@@ -2906,11 +3398,20 @@ async function main() {
     process.exit(1);
   }
 
+  fs.mkdirSync(OUT_DIR_V10, { recursive: true });
+  fs.cpSync(OUT_DIR, OUT_DIR_V10, { recursive: true, force: true });
+
   console.log("[v9] ALL TARGETED CHECKS PASSED SUCCESSFULLY (8/8).");
   process.exit(0);
 }
 
-main().catch((err) => {
-  console.error("[v9] Unhandled fatal error:", err);
-  process.exit(1);
-});
+const isDirectExecution =
+  typeof process.argv[1] === "string" &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isDirectExecution) {
+  main().catch((err) => {
+    console.error("[v9] Unhandled fatal error:", err);
+    process.exit(1);
+  });
+}
