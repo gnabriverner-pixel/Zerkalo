@@ -264,4 +264,28 @@ describe("T4.3 Release Verifier Contract: Metadata Release Child vs Application 
     expect(res.exitCode).not.toBe(0);
     expect(res.output).toContain("FAIL_CLOSED: tree application pin mismatch");
   });
+
+  it("CASE G — repository release-compatibility.json matches exact remotes, branches, CONSENT_VERSION, PERSONAL_MYTH_WRITER_VERSION, DCS endpoints, and runtime contract", () => {
+    const repoRoot = path.resolve(__dirname, "..");
+    const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, "release-compatibility.json"), "utf-8"));
+    expect(manifest.web.repository).toBe("gnabriverner-pixel/Zerkalo");
+    expect(manifest.web.branch).toBe("codex/stage1-convergence-candidate");
+    expect(manifest.dcs.repository).toBe("gnabriverner-pixel/digital-code-system");
+    expect(manifest.dcs.branch).toBe("codex/stage1-owner-iteration");
+    expect(manifest.contracts.consent_version).toBe("zerkalo-2026-09-v1");
+    expect(manifest.contracts.personal_myth_writer_version).toBe("personal-myth-v1.5-emergent-possibility");
+    expect(manifest.contracts.personal_myth_default_prompt_variant).toBe("v11");
+    expect(manifest.contracts.dcs_service_http.endpoints).toEqual([
+      "/api/canonical/calculate",
+      "/api/canonical/code-v2",
+      "/api/canonical/albert/turn",
+      "/health",
+    ]);
+    expect(manifest.runtime).toEqual({
+      node_major: 24,
+      python: "3.11+",
+      live_provider_required: true,
+      fallback_forbidden_in_production: true,
+    });
+  });
 });

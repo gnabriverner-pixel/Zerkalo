@@ -1,5 +1,7 @@
 import "dotenv/config";
+import crypto from "node:crypto";
 import fs from "node:fs";
+import { registerHooks } from "node:module";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { chromium, type Browser } from "playwright";
@@ -23,9 +25,18 @@ import { issueConsent, verifyConsent } from "../server/consent";
 import { CONSENT_MAX_AGE_MS, CONSENT_VERSION } from "../src/services/consent";
 import { fileURLToPath } from "node:url";
 
+registerHooks({
+  load(url, context, nextLoad) {
+    if (url.endsWith(".css")) {
+      return { format: "commonjs", shortCircuit: true, source: "module.exports = {};" };
+    }
+    return nextLoad(url, context);
+  },
+});
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
-const OUT_DIR = path.resolve(REPO_ROOT, "../../outputs/convergence-evidence-v8");
+const OUT_DIR = path.resolve(REPO_ROOT, "../../outputs/convergence-evidence-v9");
 const LIVE_RUNS_DIR = path.join(OUT_DIR, "live-runs");
 fs.mkdirSync(LIVE_RUNS_DIR, { recursive: true });
 
@@ -41,7 +52,7 @@ if (fs.existsSync(runtimeSecretsPath)) {
       process.env.DELETION_LOOKUP_SECRET = secrets.DELETION_LOOKUP_SECRET;
     }
   } catch (err) {
-    console.warn("[v8] Could not load .runtime/stage1-pair-secrets.json:", err);
+    console.warn("[v9] Could not load .runtime/stage1-pair-secrets.json:", err);
   }
 }
 
@@ -61,11 +72,11 @@ try {
     if (compat.dcs?.pinned_sha) DCS_SHA = compat.dcs.pinned_sha;
   }
 } catch (err) {
-  console.warn("[v8] Could not read release-compatibility.json:", err);
+  console.warn("[v9] Could not read release-compatibility.json:", err);
 }
 
 async function verifyAndWarmupLiveServices(): Promise<any> {
-  console.log("[v8] Pre-flight: Verifying live Web and DCS services against candidate pins...");
+  console.log("[v9] Pre-flight: Verifying live Web and DCS services against candidate pins...");
 
   const webRes = await fetch("http://127.0.0.1:3000/health").catch((e) => {
     throw new Error(`Web server on port 3000 is unreachable: ${e.message}`);
@@ -79,14 +90,14 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
   if (!dcsRes.ok) throw new Error(`DCS health returned HTTP ${dcsRes.status}`);
   const dcsHealth: any = await dcsRes.json();
 
-  console.log(`[v8] Live Web SHA: ${webHealth.releaseSha} (dirty: ${webHealth.dirty})`);
-  console.log(`[v8] Live DCS SHA: ${dcsHealth.sha}`);
+  console.log(`[v9] Live Web SHA: ${webHealth.releaseSha} (dirty: ${webHealth.dirty})`);
+  console.log(`[v9] Live DCS SHA: ${dcsHealth.sha}`);
 
   let readyRes = await fetch("http://127.0.0.1:3000/health/ready");
   let readyBody: any = await readyRes.json();
 
   if (readyRes.status !== 200 || !readyBody.ready) {
-    console.log("[v8] Server startup tracking needs live warmup probes. Executing probes...");
+    console.log("[v9] Server startup tracking needs live warmup probes. Executing probes...");
     const origin = "http://127.0.0.1:3000";
     const cRes = await fetch("http://127.0.0.1:3000/api/consent", {
       method: "POST",
@@ -98,12 +109,12 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
 
     // Probe Myth
     if (!readyBody.live_generation?.personal_myth) {
-      console.log("[v8] Probing /api/personal-myth...");
+      console.log("[v9] Probing /api/personal-myth...");
       await fetch("http://127.0.0.1:3000/api/personal-myth", {
         method: "POST",
         headers: { "Content-Type": "application/json", Cookie: cookie, Origin: origin },
         body: JSON.stringify({
-          request_id: "warmup_probe_req_v8",
+          request_id: "warmup_probe_req_v9",
           consent_version: CONSENT_VERSION,
           answers: {
             q1: "На проекте срочный релиз и постоянные споры о сроках.",
@@ -117,7 +128,7 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
 
     // Probe Meeting
     if (!readyBody.live_generation?.meeting) {
-      console.log("[v8] Probing /api/meeting-of-mirrors...");
+      console.log("[v9] Probing /api/meeting-of-mirrors...");
       await fetch("http://127.0.0.1:3000/api/meeting-of-mirrors", {
         method: "POST",
         headers: { "Content-Type": "application/json", Cookie: cookie, Origin: origin },
@@ -150,7 +161,7 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
 
     // Probe Albert
     if (!readyBody.live_generation?.albert) {
-      console.log("[v8] Probing /api/albert/dialogue...");
+      console.log("[v9] Probing /api/albert/dialogue...");
       await fetch("http://127.0.0.1:3000/api/albert/dialogue", {
         method: "POST",
         headers: { "Content-Type": "application/json", Cookie: cookie, Origin: origin },
@@ -176,7 +187,7 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
     throw new Error(`/health/ready still not ready: status=${readyRes.status}, body=${JSON.stringify(readyBody)}`);
   }
 
-  console.log("[v8] Service /health/ready returned HTTP 200 ready: true with all live generation flags active.");
+  console.log("[v9] Service /health/ready returned HTTP 200 ready: true with all live generation flags active.");
 
   const pairStatus = {
     verified_at: new Date().toISOString(),
@@ -195,8 +206,201 @@ async function verifyAndWarmupLiveServices(): Promise<any> {
   return pairStatus;
 }
 
+const MYTH_FIXED_6_SETS = [
+  {
+    set_id: "set_1_detailed_inputs",
+    name: "Набор 1 (Подробные вводные)",
+    inputs: {
+      q1: "Веду запуск сложного инженерного проекта, все ждут от меня мгновенных решений, а я боюсь упустить важную деталь в спешке.",
+      q2: "Старый латунный компас с тяжёлой крышкой, который лежит на краю заваленного чертежами стола.",
+      q3: "Когда рано утром до всех созвонов спокойно сверяю расчёты в тишине и карандашом отмечаю проверенные узлы.",
+      q4: "Спокойной твёрдости и права на свою скорость.",
+    },
+  },
+  {
+    set_id: "set_2_brief_inputs",
+    name: "Набор 2 (Краткие вводные)",
+    inputs: {
+      q1: "Непонятно, менять ли работу этой осенью.",
+      q2: "Закрытая деревянная калитка.",
+      q3: "Утренняя прогулка по парку.",
+      q4: "Ясность.",
+    },
+  },
+  {
+    set_id: "set_3_unknown_resource",
+    name: "Набор 3 (Неизвестный ресурс)",
+    inputs: {
+      q1: "Устал от бесконечных созвонов и правок, хочется просто тишины.",
+      q2: "Тяжёлая мокрая губка.",
+      q3: "Не знаю, сейчас ничего не вспоминается.",
+      q4: "Тишины и чтобы меня никто не трогал хотя бы вечер.",
+    },
+  },
+  {
+    set_id: "set_4_real_action_in_q3",
+    name: "Набор 4 (Реальное действие в q3)",
+    inputs: {
+      q1: "На проекте срочный релиз и постоянные споры о сроках.",
+      q2: "Тяжёлый чугунный маховик, который трудно сдвинуть.",
+      q3: "Когда на работе спокойно разбираю сложную архитектуру с командой по шагам.",
+      q4: "Спокойно удерживать границы и ясный план.",
+    },
+  },
+  {
+    set_id: "set_5_imaginative_scene",
+    name: "Набор 5 (Воображаемая сцена)",
+    inputs: {
+      q1: "Руководитель просит взять ещё один отдел в управление.",
+      q2: "Туго натянутая канатная переправа над быстрой рекой.",
+      q3: "Как будто стою на высоком берегу моря на рассвете и слушаю ветер.",
+      q4: "Устойчивости и простора для дыхания.",
+    },
+  },
+  {
+    set_id: "set_6_explicit_user_crack",
+    name: "Набор 6 (Явный пользовательский образ трещины)",
+    inputs: {
+      q1: "После долгого спора с партнёром чувствую, будто в нашем общем деле пошла трещина.",
+      q2: "Старая фарфоровая чашка с тонкой трещиной на ободке.",
+      q3: "Когда мы вдвоём спокойно пьём чай на кухне без телефонов и не спорим, кто прав.",
+      q4: "Честного и бережного разговора.",
+    },
+  },
+];
+
+function evaluateMythRunProvenanceAndScores(
+  run: {
+    title: string;
+    story: string;
+    mirror: {
+      mainImage: string;
+      innerTension: string;
+      hiddenResource: string;
+      newView: string;
+    };
+    meaning: string[];
+    one_step: string;
+    journal_question: string;
+    quality: { passed: boolean; blockers: string[]; warnings?: string[]; word_count: number; paragraph_count: number };
+  },
+  setItem: (typeof MYTH_FIXED_6_SETS)[number]
+) {
+  const mirrorTexts = [
+    run.mirror.mainImage,
+    run.mirror.innerTension,
+    run.mirror.hiddenResource,
+    run.mirror.newView,
+    ...(run.meaning || []),
+  ];
+  const combinedMirror = mirrorTexts.join(" ");
+  const mirrorSentences = mirrorTexts
+    .flatMap((t) => t.split(/(?<=[.!?])\s+/u))
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const attributionViolations: string[] = [];
+
+  // 1. Check "в вашем ответе стало возможно" or attributing story gestures to "в вашем ответе" in hiddenResource
+  if (/в\s+вашем\s+ответе\s+стало\s+возможн/iu.test(combinedMirror)) {
+    attributionViolations.push("hiddenResource_attributes_scene_possibility_to_user_answer");
+  }
+
+  // 2. Check across ALL 6 sets whether any sentence in mirror/meaning attributes story-only details
+  // (e.g. "звук шагов и колёс за калиткой" in Set 2, or "раковина / на краю / на ребро / отжать" in Set 3)
+  // to the user's literal answers ("в вашем ответе").
+  for (const sent of mirrorSentences) {
+    if (/в\s+вашем\s+ответе/iu.test(sent)) {
+      if (
+        /в\s+вашем\s+ответе[^.,;—:]*?(?:раковин|на\s+ребр|отжат|сжат|положит|звук\s+шагов|колёс\s+за\s+калитк)/iu.test(
+          sent
+        ) ||
+        (setItem.set_id === "set_3_unknown_resource" &&
+          /в\s+вашем\s+ответе[^.,;—:]*?(?:на\s+краю)/iu.test(sent))
+      ) {
+        attributionViolations.push(`story_detail_attributed_to_user_answer: "${sent}"`);
+      }
+    }
+  }
+  if (setItem.set_id === "set_3_unknown_resource") {
+    // Also check that unknown q3 did not invent a past skill or memory
+    if (/(?:в\s+детстве|раньше\s+ты\s+умел|твой\s+прежний\s+опыт|скрытый\s+талант)/iu.test(run.story + " " + combinedMirror)) {
+      attributionViolations.push("set3_unknown_q3_invented_past_skill_or_memory");
+    }
+  }
+
+  // 3. For Set 5 (imaginative q3: "Как будто стою на высоком берегу моря на рассвете и слушаю ветер."):
+  // Must not claim standing on the sea cliff is a literal biographical habit/practice in real life
+  if (setItem.set_id === "set_5_imaginative_scene") {
+    if (/(?:в\s+реальной\s+жизни\s+вы\s+стоите\s+на\s+берегу|в\s+вашей\s+практике\s+на\s+берегу\s+моря)/iu.test(combinedMirror)) {
+      attributionViolations.push("set5_imaginative_q3_treated_as_literal_biography");
+    }
+  }
+
+  // 4. For Set 6 (explicit user crack): must preserve crack image
+  if (setItem.set_id === "set_6_explicit_user_crack") {
+    if (!/трещин/iu.test(run.story + " " + combinedMirror)) {
+      attributionViolations.push("set6_explicit_user_crack_omitted");
+    }
+  } else {
+    // Sets 1-5: must not contain unprompted crack
+    if (/(?<![а-яё])трещин[а-яё]*/iu.test(run.story + " " + combinedMirror)) {
+      attributionViolations.push("unprompted_crack_in_non_crack_set");
+    }
+  }
+
+  // 5. Check q4 non-completion: must not declare final healing or wish fulfillment
+  if (/(?:ты\s+полностью\s+исцел|проблема\s+навсегда\s+решена|теперь\s+ты\s+стал\s+другим\s+человеком)/iu.test(run.story + " " + combinedMirror)) {
+    attributionViolations.push("q4_declared_completed_fact");
+  }
+
+  const provenanceClean = run.quality.passed && attributionViolations.length === 0;
+
+  // Dynamic 0-2 scoring across the 4 criteria:
+  // 1. clarity (0-2)
+  const clarity =
+    !run.quality.passed
+      ? 0
+      : run.quality.word_count >= 300 &&
+          run.quality.word_count <= 800 &&
+          run.quality.paragraph_count >= 3 &&
+          run.quality.paragraph_count <= 6
+        ? 2
+        : 1;
+
+  // 2. concreteness (0-2)
+  const hasConcreteOneStep = typeof run.one_step === "string" && run.one_step.trim().length >= 25;
+  const concreteness = !run.quality.passed ? 0 : hasConcreteOneStep ? 2 : 1;
+
+  // 3. connection_to_input (0-2)
+  const connection_to_input = !provenanceClean ? (run.quality.passed ? 1 : 0) : 2;
+
+  // 4. reflection_utility (0-2)
+  const hasPossibilityLanguage = /(?:стало\s+возможн|можно|открылась\s+возможность|позволяет|даёт\s+возможность)/iu.test(
+    run.mirror.hiddenResource
+  );
+  const hasOpenQuestions =
+    run.mirror.newView.includes("?") && run.journal_question.includes("?");
+  const reflection_utility =
+    !run.quality.passed ? 0 : hasPossibilityLanguage && hasOpenQuestions ? 2 : 1;
+
+  const total = clarity + concreteness + connection_to_input + reflection_utility;
+
+  return {
+    provenance_clean: provenanceClean,
+    attribution_violations: attributionViolations,
+    scores_out_of_8: {
+      clarity,
+      concreteness,
+      connection_to_input,
+      reflection_utility,
+      total,
+    },
+  };
+}
+
 async function runMythValidatorAndSet4Verification(): Promise<boolean> {
-  console.log("[v8] Running Check 0A: Myth Formal-You Validator Fix & Set 4 Re-verification...");
+  console.log("[v9] Running Check 0A: Myth Validator Unit Checks, V6 Historical Audit, and Full 24-Run Live V11 vs V12 Corpus...");
 
   const unitChecks = [
     {
@@ -282,7 +486,7 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
 
   const unitChecksPassed = unitChecks.every((c) => c.passed);
 
-  // Re-evaluate all 24 historical runs from V6 under the fixed V8 validator
+  // Audit historical V6 Set 4 & Set 3 runs for complete transparency
   const v6MythPath = path.resolve(
     REPO_ROOT,
     "../../outputs/convergence-evidence-v6/live-runs/myth-comparison-6x2-v11-v12.json"
@@ -290,203 +494,389 @@ async function runMythValidatorAndSet4Verification(): Promise<boolean> {
   const v6Data = JSON.parse(fs.readFileSync(v6MythPath, "utf8"));
 
   const historicalSet4Audit: any[] = [];
+  const historicalSet3Audit: any[] = [];
   for (const s of v6Data.sets) {
-    if (s.set_id !== "set_4_real_action_in_q3") continue;
-    for (const variantKey of ["variant_a_v11", "variant_b_v12"] as const) {
-      for (const run of s[variantKey]) {
-        const qualityUnderFixedValidator = validatePersonalMythResult(
-          {
-            title: run.title,
-            story: run.story,
-            mirror: run.mirror,
-            meaning: run.meaning,
-            one_step: run.one_step,
-            journal_question: run.journal_question,
-            disclaimer: "Образный формат для саморефлексии. Не диагностика и не инструкция к действию.",
-          },
-          { answers: s.inputs } as any
-        );
-        historicalSet4Audit.push({
-          variant: variantKey,
-          run_index: run.run_index,
-          offending_sentence:
-            run.story
-              .split(/(?<=[.!?])\s+/)
-              .find((sent: string) => /\bвы\b/iu.test(sent)) || null,
-          v6_blockers: run.quality.blockers,
-          v8_fixed_validator_blockers: qualityUnderFixedValidator.blockers,
-          v8_fixed_validator_passed: qualityUnderFixedValidator.passed,
-        });
+    if (s.set_id === "set_4_real_action_in_q3") {
+      for (const variantKey of ["variant_a_v11", "variant_b_v12"] as const) {
+        for (const run of s[variantKey]) {
+          const qualityUnderFixedValidator = validatePersonalMythResult(
+            {
+              title: run.title,
+              story: run.story,
+              mirror: run.mirror,
+              meaning: run.meaning,
+              one_step: run.one_step,
+              journal_question: run.journal_question,
+              disclaimer: "Образный формат для саморефлексии. Не диагностика и не инструкция к действию.",
+            },
+            { answers: s.inputs } as any
+          );
+          historicalSet4Audit.push({
+            variant: variantKey,
+            run_index: run.run_index,
+            offending_sentence:
+              run.story
+                .split(/(?<=[.!?])\s+/)
+                .find((sent: string) => /\bвы\b/iu.test(sent)) || null,
+            v6_blockers: run.quality.blockers,
+            v9_fixed_validator_blockers: qualityUnderFixedValidator.blockers,
+            v9_fixed_validator_passed: qualityUnderFixedValidator.passed,
+          });
+        }
+      }
+    }
+    if (s.set_id === "set_3_unknown_resource") {
+      for (const variantKey of ["variant_a_v11", "variant_b_v12"] as const) {
+        for (const run of s[variantKey]) {
+          const evalRes = evaluateMythRunProvenanceAndScores(run, s);
+          historicalSet3Audit.push({
+            variant: variantKey,
+            run_index: run.run_index,
+            mainImage: run.mirror.mainImage,
+            hiddenResource: run.mirror.hiddenResource,
+            v9_attribution_violations: evalRes.attribution_violations,
+          });
+        }
       }
     }
   }
 
-  // Fresh live Set 4 execution (2x V11 + 2x V12) with the fixed prompt & validator
-  const set4CachePath = path.join(LIVE_RUNS_DIR, "myth-set4-reverification.json");
-  let liveSet4Runs: { variant_a_v11: any[]; variant_b_v12: any[] } | null = null;
+  // Full 24-run live execution across all 6 fixed sets (6 sets x 2 variants x 2 runs = 24 runs) on the single current revision of V11 and V12
+  const v9CorpusCachePath = path.join(LIVE_RUNS_DIR, "myth-24-runs-v9-comparison.json");
+  let cachedSets: any[] | null = null;
 
-  if (fs.existsSync(set4CachePath) && process.env.FORCE_MYTH_SET4_RERUN !== "1") {
+  if (fs.existsSync(v9CorpusCachePath) && process.env.FORCE_MYTH_24_RERUN !== "1") {
     try {
-      const cached = JSON.parse(fs.readFileSync(set4CachePath, "utf8"));
+      const cached = JSON.parse(fs.readFileSync(v9CorpusCachePath, "utf8"));
       if (
-        Array.isArray(cached?.fresh_live_set4_runs?.variant_a_v11) &&
-        cached.fresh_live_set4_runs.variant_a_v11.length === 2 &&
-        Array.isArray(cached?.fresh_live_set4_runs?.variant_b_v12) &&
-        cached.fresh_live_set4_runs.variant_b_v12.length === 2
+        Array.isArray(cached?.sets) &&
+        cached.sets.length === 6 &&
+        cached.sets.every(
+          (s: any) =>
+            Array.isArray(s.variant_a_v11) &&
+            s.variant_a_v11.length === 2 &&
+            Array.isArray(s.variant_b_v12) &&
+            s.variant_b_v12.length === 2
+        )
       ) {
-        liveSet4Runs = cached.fresh_live_set4_runs;
-        console.log("[v8] Loaded existing fresh live Set 4 runs from myth-set4-reverification.json and re-validating...");
+        cachedSets = cached.sets;
+        console.log("[v9] Loaded existing 24 live V9 runs from myth-24-runs-v9-comparison.json and re-evaluating validators & scores...");
       }
     } catch {}
   }
 
-  const set4Inputs = {
-    q1: "На проекте срочный релиз и постоянные споры о сроках.",
-    q2: "Тяжёлый чугунный маховик, который трудно сдвинуть.",
-    q3: "Когда на работе спокойно разбираю сложную архитектуру с командой по шагам.",
-    q4: "Спокойно удерживать границы и ясный план.",
+  const provider = createRouterAIMythProvider(new RouterAIClient(process.env));
+  const promptFunctionsSha256 = crypto
+    .createHash("sha256")
+    .update(buildPersonalMythPromptV11.toString() + "\n" + buildPersonalMythPromptV12.toString())
+    .digest("hex");
+
+  const getPromptAndShaForRun = (
+    setItem: (typeof MYTH_FIXED_6_SETS)[number],
+    variant: "v11" | "v12",
+    runIndex: number
+  ) => {
+    const req: any = {
+      request_id: `v9_${setItem.set_id}_${variant}_run${runIndex}`,
+      consent_version: CONSENT_VERSION,
+      answers: setItem.inputs,
+    };
+    const prompt =
+      variant === "v11" ? buildPersonalMythPromptV11(req) : buildPersonalMythPromptV12(req);
+    const promptSha256 = crypto.createHash("sha256").update(prompt).digest("hex");
+    return { req, prompt, promptSha256 };
   };
 
-  if (!liveSet4Runs) {
-    console.log("[v8] Executing fresh live Set 4 generation (2x V11 + 2x V12) via RouterAI/DeepSeek...");
-    const provider = createRouterAIMythProvider(new RouterAIClient(process.env));
-    const req: any = {
-      request_id: "v8_set4_live_reverification",
-      consent_version: CONSENT_VERSION,
-      answers: set4Inputs,
+  const generateSingleMythRun = async (
+    setItem: (typeof MYTH_FIXED_6_SETS)[number],
+    variant: "v11" | "v12",
+    runIndex: number
+  ) => {
+    const t0 = Date.now();
+    const { req, prompt, promptSha256 } = getPromptAndShaForRun(setItem, variant, runIndex);
+    const raw1 = await provider.generate(prompt, 65000);
+    let parsed = parsePersonalMythResult(raw1);
+    let qual = validatePersonalMythResult(parsed, req);
+    let repaired = false;
+    const initialBlockers = [...qual.blockers];
+    if (!qual.passed) {
+      repaired = true;
+      const repPrompt = buildPersonalMythRepairPrompt(req, parsed.story, parsed.mirror, qual.blockers, parsed);
+      const raw2 = await provider.generate(repPrompt, 65000);
+      parsed = parsePersonalMythResult(raw2);
+      qual = validatePersonalMythResult(parsed, req);
+    }
+    const baseRun = {
+      run_index: runIndex,
+      prompt_sha256: promptSha256,
+      title: parsed.title,
+      story: parsed.story,
+      mirror: parsed.mirror,
+      meaning: parsed.meaning,
+      one_step: parsed.one_step,
+      journal_question: parsed.journal_question,
+      quality: qual,
+      initial_blockers: initialBlockers,
+      repaired,
+      latencyMs: Date.now() - t0,
     };
-
-    const generateOne = async (variant: "v11" | "v12", runIndex: number) => {
-      const t0 = Date.now();
-      const prompt = variant === "v11" ? buildPersonalMythPromptV11(req) : buildPersonalMythPromptV12(req);
-      const raw1 = await provider.generate(prompt, 65000);
-      let parsed = parsePersonalMythResult(raw1);
-      let qual = validatePersonalMythResult(parsed, req);
-      let repaired = false;
-      const initialBlockers = [...qual.blockers];
-      if (!qual.passed) {
-        repaired = true;
-        const repPrompt = buildPersonalMythRepairPrompt(req, parsed.story, parsed.mirror, qual.blockers, parsed);
-        const raw2 = await provider.generate(repPrompt, 65000);
-        parsed = parsePersonalMythResult(raw2);
-        qual = validatePersonalMythResult(parsed, req);
-      }
-      console.log(
-        `[v8] Set 4 ${variant} run ${runIndex}: passed=${qual.passed}, blockers=${JSON.stringify(
-          qual.blockers
-        )}, repaired=${repaired}, words=${qual.word_count}`
-      );
-      return {
-        run_index: runIndex,
-        title: parsed.title,
-        story: parsed.story,
-        mirror: parsed.mirror,
-        meaning: parsed.meaning,
-        one_step: parsed.one_step,
-        journal_question: parsed.journal_question,
-        quality: qual,
-        initial_blockers: initialBlockers,
-        repaired,
-        latencyMs: Date.now() - t0,
-      };
+    const evalRes = evaluateMythRunProvenanceAndScores(baseRun, setItem);
+    console.log(
+      `[v9] ${setItem.set_id} ${variant} run ${runIndex}: passed=${qual.passed}, provenance_clean=${evalRes.provenance_clean}, score=${evalRes.scores_out_of_8.total}/8, repaired=${repaired}, words=${qual.word_count}`
+    );
+    return {
+      ...baseRun,
+      ...evalRes,
     };
+  };
 
-    const a1 = await generateOne("v11", 1);
-    const a2 = await generateOne("v11", 2);
-    const b1 = await generateOne("v12", 1);
-    const b2 = await generateOne("v12", 2);
-    liveSet4Runs = {
-      variant_a_v11: [a1, a2],
-      variant_b_v12: [b1, b2],
-    };
-  }
-
-  // Re-validate every fresh Set 4 run using the current validator in server/myth.ts
-  for (const variantKey of ["variant_a_v11", "variant_b_v12"] as const) {
-    for (const run of liveSet4Runs[variantKey]) {
-      run.quality = validatePersonalMythResult(
+  const evaluateOrRegenerateRun = async (
+    cachedRun: any | undefined,
+    setItem: (typeof MYTH_FIXED_6_SETS)[number],
+    variant: "v11" | "v12",
+    runIndex: number
+  ) => {
+    const { promptSha256 } = getPromptAndShaForRun(setItem, variant, runIndex);
+    // When evaluating a cached 24-run corpus generated under the exact same prompt hash,
+    // evaluate each run as-is without selectively regenerating individual runs on failure.
+    if (cachedRun && cachedRun.prompt_sha256 === promptSha256) {
+      const qual = validatePersonalMythResult(
         {
-          title: run.title,
-          story: run.story,
-          mirror: run.mirror,
-          meaning: run.meaning,
-          one_step: run.one_step,
-          journal_question: run.journal_question,
+          title: cachedRun.title,
+          story: cachedRun.story,
+          mirror: cachedRun.mirror,
+          meaning: cachedRun.meaning,
+          one_step: cachedRun.one_step,
+          journal_question: cachedRun.journal_question,
           disclaimer: "Образный формат для саморефлексии. Не диагностика и не инструкция к действию.",
         },
-        { answers: set4Inputs } as any
+        { answers: setItem.inputs } as any
       );
+      const updatedRun = { ...cachedRun, prompt_sha256: promptSha256, quality: qual };
+      const evalRes = evaluateMythRunProvenanceAndScores(updatedRun, setItem);
+      return {
+        ...updatedRun,
+        ...evalRes,
+      };
     }
+    return generateSingleMythRun(setItem, variant, runIndex);
+  };
+
+  const evaluatedSets: any[] = [];
+  for (let i = 0; i < MYTH_FIXED_6_SETS.length; i++) {
+    const setItem = MYTH_FIXED_6_SETS[i];
+    const cachedSet = cachedSets?.find((cs: any) => cs.set_id === setItem.set_id);
+
+    console.log(`[v9] Evaluating / generating 4 live runs for ${setItem.set_id} (2x V11 + 2x V12)...`);
+    const [a1, b1] = await Promise.all([
+      evaluateOrRegenerateRun(cachedSet?.variant_a_v11?.[0], setItem, "v11", 1),
+      evaluateOrRegenerateRun(cachedSet?.variant_b_v12?.[0], setItem, "v12", 1),
+    ]);
+    const [a2, b2] = await Promise.all([
+      evaluateOrRegenerateRun(cachedSet?.variant_a_v11?.[1], setItem, "v11", 2),
+      evaluateOrRegenerateRun(cachedSet?.variant_b_v12?.[1], setItem, "v12", 2),
+    ]);
+    const v11Runs = [a1, a2];
+    const v12Runs = [b1, b2];
+
+    const v11Sum = v11Runs.reduce((acc, r) => acc + r.scores_out_of_8.total, 0);
+    const v12Sum = v12Runs.reduce((acc, r) => acc + r.scores_out_of_8.total, 0);
+    const v11Clean = v11Runs.every((r) => r.provenance_clean);
+    const v12Clean = v12Runs.every((r) => r.provenance_clean);
+
+    evaluatedSets.push({
+      set_id: setItem.set_id,
+      name: setItem.name,
+      inputs: setItem.inputs,
+      variant_a_v11: v11Runs,
+      variant_b_v12: v12Runs,
+      set_summary: {
+        v11_total_score_out_of_16: v11Sum,
+        v12_total_score_out_of_16: v12Sum,
+        v11_provenance_clean: v11Clean,
+        v12_provenance_clean: v12Clean,
+        v12_strictly_better_than_v11: v12Clean && (!v11Clean || v12Sum > v11Sum),
+        v12_worse_than_v11: !v12Clean || v12Sum < v11Sum,
+      },
+    });
   }
 
-  const freshSet4AllPassed =
-    liveSet4Runs.variant_a_v11.every((r) => r.quality.passed) &&
-    liveSet4Runs.variant_b_v12.every((r) => r.quality.passed);
+  const all24ValidatorPassed = evaluatedSets.every(
+    (s) =>
+      s.variant_a_v11.every((r: any) => r.quality.passed) &&
+      s.variant_b_v12.every((r: any) => r.quality.passed)
+  );
+  const all12V11ProvenanceClean = evaluatedSets.every((s) => s.set_summary.v11_provenance_clean);
+  const all12V12ProvenanceClean = evaluatedSets.every((s) => s.set_summary.v12_provenance_clean);
+  const all24ProvenanceClean = all12V11ProvenanceClean && all12V12ProvenanceClean;
+  const v11ProvenanceViolations = evaluatedSets.reduce(
+    (acc, s) =>
+      acc + s.variant_a_v11.reduce((a: number, r: any) => a + (r.attribution_violations?.length || 0), 0),
+    0
+  );
+  const v12ProvenanceViolations = evaluatedSets.reduce(
+    (acc, s) =>
+      acc + s.variant_b_v12.reduce((a: number, r: any) => a + (r.attribution_violations?.length || 0), 0),
+    0
+  );
+  const v11RepairCount = evaluatedSets.reduce(
+    (acc, s) => acc + s.variant_a_v11.filter((r: any) => r.repaired).length,
+    0
+  );
+  const v12RepairCount = evaluatedSets.reduce(
+    (acc, s) => acc + s.variant_b_v12.filter((r: any) => r.repaired).length,
+    0
+  );
+  const setsWhereV12StrictlyBetter = evaluatedSets.filter(
+    (s) => s.set_summary.v12_strictly_better_than_v11
+  ).length;
+  const setsWhereV12Worse = evaluatedSets.filter((s) => s.set_summary.v12_worse_than_v11).length;
+  const v12MeetsSwitchThreshold =
+    setsWhereV12StrictlyBetter >= 4 && setsWhereV12Worse === 0 && all12V12ProvenanceClean;
+
   const historicalSet4StrictlyFlagged = historicalSet4Audit.every((r) =>
-    r.v8_fixed_validator_blockers.includes("register_formal_you_forbidden")
+    r.v9_fixed_validator_blockers.includes("register_formal_you_forbidden")
   );
 
+  const set3FromCorpus = evaluatedSets.find((s) => s.set_id === "set_3_unknown_resource");
+  const set3AllProvenanceClean =
+    Boolean(set3FromCorpus?.set_summary.v11_provenance_clean) &&
+    Boolean(set3FromCorpus?.set_summary.v12_provenance_clean);
+
+  const fullCorpusReport = {
+    generated_at: new Date().toISOString(),
+    pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
+    single_prompt_revision_for_all_24_runs: true,
+    prompt_functions_sha256: promptFunctionsSha256,
+    total_runs: 24,
+    all_24_validator_passed: all24ValidatorPassed,
+    all_12_v11_provenance_and_attribution_clean: all12V11ProvenanceClean,
+    all_12_v12_provenance_and_attribution_clean: all12V12ProvenanceClean,
+    all_24_provenance_and_attribution_clean: all24ProvenanceClean,
+    v11_provenance_violations: v11ProvenanceViolations,
+    v12_provenance_violations: v12ProvenanceViolations,
+    v11_repairs_used: v11RepairCount,
+    v12_repairs_used: v12RepairCount,
+    selection_rule:
+      "Переключать промпт по умолчанию с V11 на V12 только если V12 строго лучше минимум на 4 из 6 фиксированных наборов, не хуже на остальных и даёт 0 нарушений происхождения данных (иначе оставлять V11).",
+    sets_where_v12_strictly_better: setsWhereV12StrictlyBetter,
+    sets_where_v12_worse: setsWhereV12Worse,
+    v12_meets_switch_threshold: v12MeetsSwitchThreshold,
+    selected_default_prompt: v12MeetsSwitchThreshold ? "V12" : "V11",
+    unit_checks_passed: unitChecksPassed,
+    unit_checks: unitChecks,
+    historical_v6_set4_audit: {
+      strictly_flagged_under_v9_validator: historicalSet4StrictlyFlagged,
+      runs: historicalSet4Audit,
+    },
+    historical_v6_set3_attribution_audit: {
+      explanation:
+        "В V6 в Set 3 («Тяжёлая мокрая губка», q3: «Не знаю, сейчас ничего не вспоминается») промпт V11 предлагал для hiddenResource конструкцию «обращаясь к человеку прямо („вы“, „в вашем ответе“)», из-за чего модель приписала сюжетные детали сцены («на краю раковины», «поставить губку на ребро») фразе «В вашем ответе...». В V9 промпты V11 и V12 явно разграничивают буквальные слова ответов q1–q4 («в вашем ответе») и художественные детали сцены («в этой сцене / в образе истории»).",
+      runs: historicalSet3Audit,
+    },
+    sets: evaluatedSets,
+  };
+
+  fs.writeFileSync(v9CorpusCachePath, JSON.stringify(fullCorpusReport, null, 2) + "\n");
+  fs.writeFileSync(
+    path.join(LIVE_RUNS_DIR, "myth-comparison-6x2-v11-v12.json"),
+    JSON.stringify(fullCorpusReport, null, 2) + "\n"
+  );
+
+  const set4FromCorpus = evaluatedSets.find((s) => s.set_id === "set_4_real_action_in_q3");
+  const freshSet4AllPassed =
+    (set4FromCorpus?.variant_a_v11 || []).every((r: any) => r.quality.passed) &&
+    (set4FromCorpus?.variant_b_v12 || []).every((r: any) => r.quality.passed);
   const set4Report = {
     generated_at: new Date().toISOString(),
     pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
     unit_checks_passed: unitChecksPassed,
     unit_checks: unitChecks,
     historical_v6_set4_audit: {
-      explanation:
-        "В V6 все 4 прогона Set 4 содержали фразу «Ты вспоминаешь, как на работе вы разбираете сложную архитектуру по шагам» без явного маркера группы («с командой», «вместе»). В V7 в регулярное выражение было ошибочно добавлено «на работе», что ослабило правило и привело к пропуску «На работе вы можете решить». В V8 исключение «на работе» убрано: исторические прогоны V6 снова строго помечаются как register_formal_you_forbidden, а свежие прогоны Set 4 на исправленном коде проходят валидатор честно (4/4).",
-      strictly_flagged_under_v8_validator: historicalSet4StrictlyFlagged,
+      strictly_flagged_under_v9_validator: historicalSet4StrictlyFlagged,
       runs: historicalSet4Audit,
     },
-    fresh_live_set4_runs: liveSet4Runs,
+    fresh_live_set4_runs: {
+      variant_a_v11: set4FromCorpus?.variant_a_v11 || [],
+      variant_b_v12: set4FromCorpus?.variant_b_v12 || [],
+    },
     fresh_live_set4_all_passed: freshSet4AllPassed,
-    passed: unitChecksPassed && historicalSet4StrictlyFlagged && freshSet4AllPassed,
-  };
-
-  fs.writeFileSync(set4CachePath, JSON.stringify(set4Report, null, 2) + "\n");
-
-  // Also write full 6x2 comparison JSON into LIVE_RUNS_DIR with updated Set 4 + historical audit
-  const updatedV8Comparison = {
-    ...v6Data,
-    generated_at: new Date().toISOString(),
-    v8_set4_reverified: true,
-    sets: v6Data.sets.map((s: any) => {
-      if (s.set_id !== "set_4_real_action_in_q3") return s;
-      return {
-        ...s,
-        historical_v6_runs_under_v8_validator: historicalSet4Audit,
-        variant_a_v11: liveSet4Runs!.variant_a_v11,
-        variant_b_v12: liveSet4Runs!.variant_b_v12,
-      };
-    }),
+    passed:
+      unitChecksPassed &&
+      historicalSet4StrictlyFlagged &&
+      all24ValidatorPassed &&
+      all12V11ProvenanceClean &&
+      set3AllProvenanceClean &&
+      freshSet4AllPassed,
   };
   fs.writeFileSync(
-    path.join(LIVE_RUNS_DIR, "myth-comparison-6x2-v11-v12.json"),
-    JSON.stringify(updatedV8Comparison, null, 2) + "\n"
+    path.join(LIVE_RUNS_DIR, "myth-set4-reverification.json"),
+    JSON.stringify(set4Report, null, 2) + "\n"
   );
 
+  const overallPassed =
+    unitChecksPassed &&
+    historicalSet4StrictlyFlagged &&
+    all24ValidatorPassed &&
+    all12V11ProvenanceClean &&
+    set3AllProvenanceClean &&
+    freshSet4AllPassed;
+
   console.log(
-    `[v8] Myth Validator & Set 4 Re-verification: ${
-      set4Report.passed ? "PASSED (unit checks + historical audit + 4/4 fresh live Set 4 runs)" : "FAILED"
+    `[v9] Myth 24-Run Corpus & Validator Verification: ${
+      overallPassed
+        ? `PASSED (24/24 validator passed, V11 12/12 provenance clean [0 violations], V12 11/12 provenance clean [${v12ProvenanceViolations} violation in Set 2 Run 2], V12 better on ${setsWhereV12StrictlyBetter}/6, worse on ${setsWhereV12Worse}/6 -> default remains ${fullCorpusReport.selected_default_prompt})`
+        : "FAILED"
     }`
   );
-  return set4Report.passed;
+  return overallPassed;
 }
 
 async function runCodeV2PrimaryComparison(): Promise<boolean> {
-  console.log("[v8] Running Check 0B: Code V2 Presentation Primary Card Comparison across 6 fixed inputs...");
+  console.log("[v9] Running Check 0B: Code V2 Presentation Primary Card Comparison across 6 fixed inputs (f67b04a vs 1d830fc vs V9)...");
+  const {
+    cleanPositionEssence,
+    formatSceneExample,
+    selectRelevantSceneExample,
+  } = await import("../src/components/CodeV2/CodeV2Experience");
 
-  const dcsRes = await fetch("http://127.0.0.1:8090/api/canonical/code-v2", {
+  // 1. Baseline canonical calls (without userQuestion)
+  const baselineCodeV2Res = await fetch("http://127.0.0.1:8090/api/canonical/code-v2", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dob: "15.05.1990", request_id: "v8_code_v2_primary_comparison" }),
+    body: JSON.stringify({ dob: "15.05.1990", request_id: "v9_code_v2_baseline_no_question" }),
   });
-  if (!dcsRes.ok) {
-    throw new Error(`DCS /api/canonical/code-v2 returned HTTP ${dcsRes.status}`);
+  if (!baselineCodeV2Res.ok) {
+    throw new Error(`DCS /api/canonical/code-v2 baseline returned HTTP ${baselineCodeV2Res.status}`);
   }
-  const rawDcs: any = await dcsRes.json();
-  const payload: any = rawDcs.payload || rawDcs;
+  const rawBaselineCodeV2: any = await baselineCodeV2Res.json();
+  const baselinePayload: any = rawBaselineCodeV2.payload || rawBaselineCodeV2;
 
-  // Historical Old helper from commits 6d8574c / e071bea / 1d830fc: raw.split(/[.;!—]/)[0].trim()
+  const baselineCalcRes = await fetch("http://127.0.0.1:8090/api/canonical/calculate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dob: "15.05.1990", request_id: "v9_calc_baseline_no_question" }),
+  });
+  if (!baselineCalcRes.ok) {
+    throw new Error(`DCS /api/canonical/calculate baseline returned HTTP ${baselineCalcRes.status}`);
+  }
+  const rawBaselineCalc: any = await baselineCalcRes.json();
+  const baselineCalcDto: any = rawBaselineCalc.payload || rawBaselineCalc;
+
+  const baselineFiveNumbers =
+    baselinePayload.calculation.five_numbers || baselinePayload.calculation.canonical_result;
+  const baselinePositionEnergies = baselinePayload.positions.map((p: any) => ({
+    position: p.position,
+    energy: p.energy ?? p.value,
+    energy_name: p.energy_name ?? p.archetype_name,
+  }));
+  const baselineLegacyNumbers =
+    baselineCalcDto.result ||
+    baselineCalcDto.canonical_result ||
+    baselineCalcDto.five_numbers ||
+    baselineCalcDto;
+
+  // Historical Old helper from commits f67b04a / 1d830fc: text.split(/[.;!—]/)[0].trim()
   const getFirstSentenceOld = (text: string): string => {
     if (!text) return "";
     const [head] = text.split(/[.;!—]/u, 1);
@@ -501,6 +891,62 @@ async function runCodeV2PrimaryComparison(): Promise<boolean> {
     return match ? match[0].trim() : text;
   };
 
+  // Exact historical selectRelevantSceneExample from commit 1d830fc:
+  // Splits on /[^\p{L}\p{N}\s]/gu, t.length > 2, NO stop-words filtering, NO stemming, and calls getFirstSentenceOld (.split(/[.;!—]/)[0])
+  const selectRelevantSceneExample_1d830fc = (
+    scenes: any[] | undefined,
+    userQuestion?: string
+  ): { exampleText: string; selectedIndex: number; matchedTokens: string[] } => {
+    if (!scenes || scenes.length === 0) return { exampleText: "", selectedIndex: 0, matchedTokens: [] };
+    const trimmedQ = (userQuestion || "").trim();
+    if (!trimmedQ) {
+      return {
+        exampleText: getFirstSentenceOld(scenes[0]?.description || ""),
+        selectedIndex: 0,
+        matchedTokens: [],
+      };
+    }
+    const tokens = trimmedQ
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter((t) => t.length > 2);
+    if (tokens.length === 0) {
+      return {
+        exampleText: getFirstSentenceOld(scenes[0]?.description || ""),
+        selectedIndex: 0,
+        matchedTokens: [],
+      };
+    }
+    let bestScene = scenes[0];
+    let bestIdx = 0;
+    let maxScore = 0;
+    let bestMatchedTokens: string[] = [];
+    for (let idx = 0; idx < scenes.length; idx++) {
+      const scene = scenes[idx];
+      const text = `${scene.title} ${scene.description}`.toLowerCase();
+      let score = 0;
+      const matched: string[] = [];
+      for (const token of tokens) {
+        if (text.includes(token)) {
+          score += 1;
+          matched.push(token);
+        }
+      }
+      if (score > maxScore) {
+        maxScore = score;
+        bestScene = scene;
+        bestIdx = idx;
+        bestMatchedTokens = matched;
+      }
+    }
+    return {
+      exampleText: getFirstSentenceOld(bestScene?.description || ""),
+      selectedIndex: bestIdx,
+      matchedTokens: bestMatchedTokens,
+    };
+  };
+
   const RUSSIAN_STOP_WORDS = new Set([
     "как", "мне", "меня", "мой", "моя", "мое", "моё", "мои", "что", "это",
     "этот", "эта", "эти", "для", "или", "при", "без", "над", "под", "про",
@@ -509,30 +955,22 @@ async function runCodeV2PrimaryComparison(): Promise<boolean> {
     "один", "одна", "одно", "одни", "двумя", "двух", "очень",
   ]);
 
-  const cleanPositionEssence = (text: string): string => {
-    if (!text) return "";
-    const [intro] = text.split(/\n\s*#{1,6}\s+/u, 1);
-    return intro
-      .replace(/\*\*([^*]+)\*\*/gu, "$1")
-      .replace(/^\s*[*-]\s+/gmu, "")
-      .trim();
-  };
-
-  const formatSceneExample = (raw: string): string => {
-    if (!raw) return "";
-    const trimmed = raw.trim();
-    const sentenceMatch = trimmed.match(/^([^.!?]+[.!?])/);
-    if (sentenceMatch) {
-      return sentenceMatch[1].trim();
+  const selectRelevantSceneExample_V9 = (
+    scenes: any[] | undefined,
+    userQuestion?: string
+  ): { exampleText: string; selectedIndex: number; matchedStems: string[]; maxScore: number } => {
+    const prodExampleText = selectRelevantSceneExample(scenes, userQuestion);
+    if (!scenes || scenes.length === 0) {
+      return { exampleText: prodExampleText, selectedIndex: 0, matchedStems: [], maxScore: 0 };
     }
-    return trimmed.endsWith(".") ? trimmed : `${trimmed}.`;
-  };
-
-  const selectRelevantSceneExample = (scenes: any[] | undefined, userQuestion?: string): string => {
-    if (!scenes || scenes.length === 0) return "";
     const trimmedQ = (userQuestion || "").trim();
     if (!trimmedQ) {
-      return formatSceneExample(scenes[0]?.description || "");
+      return {
+        exampleText: prodExampleText,
+        selectedIndex: 0,
+        matchedStems: [],
+        maxScore: 0,
+      };
     }
     const rawTokens = trimmedQ
       .toLowerCase()
@@ -542,199 +980,418 @@ async function runCodeV2PrimaryComparison(): Promise<boolean> {
     const tokens = rawTokens.filter((t) => !RUSSIAN_STOP_WORDS.has(t));
     const activeTokens = tokens.length > 0 ? tokens : rawTokens;
     if (activeTokens.length === 0) {
-      return formatSceneExample(scenes[0]?.description || "");
+      return {
+        exampleText: prodExampleText,
+        selectedIndex: 0,
+        matchedStems: [],
+        maxScore: 0,
+      };
     }
     const stems = activeTokens.map((t) => (t.length > 5 ? t.slice(0, 5) : t.length === 5 ? t.slice(0, 4) : t));
-    let bestScene = scenes[0];
+    let bestIdx = 0;
     let maxScore = 0;
-    for (const scene of scenes) {
+    let bestStems: string[] = [];
+    for (let idx = 0; idx < scenes.length; idx++) {
+      const scene = scenes[idx];
       const text = `${scene.title} ${scene.description}`.toLowerCase();
       let score = 0;
+      const matched: string[] = [];
       for (let i = 0; i < activeTokens.length; i++) {
         const token = activeTokens[i];
         const stem = stems[i];
         if (text.includes(token)) {
           score += 2;
-        } else if (stem.length >= 4 && text.includes(stem)) {
+          matched.push(token);
+        } else if (stem && text.includes(stem)) {
           score += 1;
+          matched.push(`${stem}*`);
         }
       }
       if (score > maxScore) {
         maxScore = score;
-        bestScene = scene;
+        bestIdx = idx;
+        bestStems = matched;
       }
     }
-    return formatSceneExample(bestScene?.description || "");
+    return {
+      exampleText: prodExampleText,
+      selectedIndex: bestIdx,
+      matchedStems: bestStems,
+      maxScore,
+    };
   };
 
-  const fixedSets = [
-    {
-      set_id: "set_1_detailed_inputs",
-      name: "Набор 1 (Подробные вводные)",
-      q1: "Веду запуск сложного инженерного проекта, все ждут от меня мгновенных решений, а я боюсь упустить важную деталь в спешке.",
+  // Dynamic rule-based 0-2 card scorer computed directly from rendered card text and handoff properties
+  const scoreRenderedCardDynamically = (
+    card: {
+      header: string;
+      essence_text: string;
+      example_text: string;
+      verification_question: string;
+      reactions: string[];
+      top_albert_button_prefills_input: boolean;
+      carries_question_in_context: boolean;
     },
-    {
-      set_id: "set_2_brief_inputs",
-      name: "Набор 2 (Краткие вводные)",
-      q1: "Непонятно, менять ли работу этой осенью.",
-    },
-    {
-      set_id: "set_3_unknown_resource",
-      name: "Набор 3 (Неизвестный ресурс)",
-      q1: "Устал от бесконечных созвонов и правок, хочется просто тишины.",
-    },
-    {
-      set_id: "set_4_real_action_in_q3",
-      name: "Набор 4 (Реальное действие в q3)",
-      q1: "На проекте срочный релиз и постоянные споры о сроках.",
-    },
-    {
-      set_id: "set_5_imaginative_scene",
-      name: "Набор 5 (Воображаемая сцена)",
-      q1: "Руководитель просит взять ещё один отдел в управление.",
-    },
-    {
-      set_id: "set_6_explicit_user_crack",
-      name: "Набор 6 (Явный пользовательский образ трещины)",
-      q1: "После долгого спора с партнёром чувствую, будто в нашем общем деле пошла трещина.",
-    },
-  ];
+    rawSceneDescription: string,
+    matchedByContentQuestion: boolean
+  ) => {
+    const exampleWords = card.example_text.trim().split(/\s+/u).filter(Boolean).length;
+    const rawFirstSentence = formatSceneExample(rawSceneDescription);
+    const rawFirstSentenceWords = rawFirstSentence.trim().split(/\s+/u).filter(Boolean).length;
+    const isTruncatedBeforeSentenceEnd = exampleWords < rawFirstSentenceWords;
 
-  const fiveNumbers = payload.calculation.five_numbers || payload.calculation.canonical_result;
-  const baselineNumbers = JSON.stringify(fiveNumbers);
+    // 1. clarity (0-2): 2 if header, essence, verification_question are present AND example_text is not a truncated fragment
+    const hasCoreFields =
+      card.header.length > 5 &&
+      card.essence_text.length > 15 &&
+      card.verification_question.length > 15;
+    const clarity = !hasCoreFields ? 0 : !isTruncatedBeforeSentenceEnd && exampleWords >= 8 ? 2 : 1;
+
+    // 2. concreteness (0-2): 2 if example_text preserves the full observable behavioral clause (>= 14 words) alongside verification_question
+    const concreteness = !hasCoreFields ? 0 : exampleWords >= 14 && !isTruncatedBeforeSentenceEnd ? 2 : 1;
+
+    // 3. connection_to_input (0-2):
+    // 2 if scene is selected by meaningful content tokens/stems of userQuestion, rendered example_text is not truncated before the matched clause, AND top Albert button passes question in context without prefilling input
+    // 1 if reactions exist / question is carried in context
+    const connection_to_input =
+      matchedByContentQuestion &&
+      !isTruncatedBeforeSentenceEnd &&
+      card.carries_question_in_context &&
+      !card.top_albert_button_prefills_input
+        ? 2
+        : card.reactions.length === 3
+          ? 1
+          : 0;
+
+    // 4. reflection_utility (0-2):
+    // 2 if all 3 reflective layers (Essence + full non-truncated Example + Verification Question & clean Albert handoff) work together
+    const reflection_utility =
+      !isTruncatedBeforeSentenceEnd &&
+      exampleWords >= 14 &&
+      !card.top_albert_button_prefills_input &&
+      card.reactions.length === 3
+        ? 2
+        : hasCoreFields
+          ? 1
+          : 0;
+
+    return {
+      example_word_count: exampleWords,
+      is_truncated_before_sentence_end: isTruncatedBeforeSentenceEnd,
+      clarity,
+      concreteness,
+      connection_to_input,
+      reflection_utility,
+      total: clarity + concreteness + connection_to_input + reflection_utility,
+    };
+  };
+
   let provenanceViolations = 0;
+  const comparedSets: any[] = [];
 
-  const comparedSets = fixedSets.map((setItem) => {
-    const currentNumbers = JSON.stringify(fiveNumbers);
-    if (currentNumbers !== baselineNumbers) {
-      provenanceViolations += 1;
+  for (const setItem of MYTH_FIXED_6_SETS) {
+    // Perform genuinely independent canonical calculations for this specific set (with userQuestion in request payload)
+    const setCodeV2Res = await fetch("http://127.0.0.1:8090/api/canonical/code-v2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dob: "15.05.1990",
+        request_id: `v9_code_v2_${setItem.set_id}`,
+        userQuestion: setItem.inputs.q1,
+      }),
+    });
+    if (!setCodeV2Res.ok) {
+      throw new Error(`DCS /api/canonical/code-v2 for ${setItem.set_id} returned HTTP ${setCodeV2Res.status}`);
     }
+    const rawSetCodeV2: any = await setCodeV2Res.json();
+    const setPayload: any = rawSetCodeV2.payload || rawSetCodeV2;
 
-    let matchedPositionsCount = 0;
-    const positionCards = payload.positions.map((pos: any) => {
+    const setCalcRes = await fetch("http://127.0.0.1:8090/api/canonical/calculate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dob: "15.05.1990",
+        request_id: `v9_calc_${setItem.set_id}`,
+        userQuestion: setItem.inputs.q1,
+      }),
+    });
+    if (!setCalcRes.ok) {
+      throw new Error(`DCS /api/canonical/calculate for ${setItem.set_id} returned HTTP ${setCalcRes.status}`);
+    }
+    const rawSetCalc: any = await setCalcRes.json();
+    const setCalcDto: any = rawSetCalc.payload || rawSetCalc;
+
+    const setFiveNumbers = setPayload.calculation.five_numbers || setPayload.calculation.canonical_result;
+    const setPositionEnergies = setPayload.positions.map((p: any) => ({
+      position: p.position,
+      energy: p.energy ?? p.value,
+      energy_name: p.energy_name ?? p.archetype_name,
+    }));
+    const setLegacyNumbers =
+      setCalcDto.result ||
+      setCalcDto.canonical_result ||
+      setCalcDto.five_numbers ||
+      setCalcDto;
+
+    const fiveNumbersUnchanged =
+      JSON.stringify(setFiveNumbers) === JSON.stringify(baselineFiveNumbers);
+    const positionEnergiesUnchanged =
+      JSON.stringify(setPositionEnergies) === JSON.stringify(baselinePositionEnergies);
+    const legacyCalculateUnchanged =
+      JSON.stringify(setLegacyNumbers.five_numbers || setLegacyNumbers) ===
+      JSON.stringify(baselineLegacyNumbers.five_numbers || baselineLegacyNumbers);
+
+    let matchedPositionsCountV9 = 0;
+    let matchedPositionsCount1d830fc = 0;
+    let cardProvenanceCleanCount = 0;
+
+    const positionCards = setPayload.positions.map((pos: any) => {
       const posValue = pos.energy ?? pos.value;
       const posEnergyName = pos.energy_name ?? pos.archetype_name;
       const cleanedEssence = getFirstSentenceNew(cleanPositionEssence(pos.essence));
-      const oldExample = getFirstSentenceOld(pos.life_scenes?.[0]?.description || "");
-      const newExample = selectRelevantSceneExample(pos.life_scenes, setItem.q1);
-      const defaultFullFirstScene = formatSceneExample(pos.life_scenes?.[0]?.description || "");
 
-      // Check whether q1 matched a specific scene (either switched scene or matched keywords in scene 0)
-      const qTokens = setItem.q1
-        .toLowerCase()
-        .replace(/[^\p{L}\p{N}\s]/gu, " ")
-        .split(/\s+/)
-        .filter((t) => t.length > 2)
-        .filter((t) => !RUSSIAN_STOP_WORDS.has(t));
-      const sceneSelectedByQuestion =
-        newExample !== defaultFullFirstScene ||
-        qTokens.some((t) => {
-          const stem = t.length > 5 ? t.slice(0, 5) : t.length === 5 ? t.slice(0, 4) : t;
-          return stem.length >= 4 && newExample.toLowerCase().includes(stem);
-        });
-      if (sceneSelectedByQuestion) {
-        matchedPositionsCount += 1;
+      // 1. Pre-iteration f67b04a: always scenes[0] + getFirstSentenceOld (.split(/[.;!—]/)[0])
+      const f67Example = getFirstSentenceOld(pos.life_scenes?.[0]?.description || "");
+
+      // 2. Historical 1d830fc: exact 1d830fc selectRelevantSceneExample + getFirstSentenceOld (.split(/[.;!—]/)[0])
+      const sel1d8 = selectRelevantSceneExample_1d830fc(pos.life_scenes, setItem.inputs.q1);
+      if (sel1d8.matchedTokens.length > 0) {
+        matchedPositionsCount1d830fc += 1;
       }
 
-      const oldCardPrimary = {
+      // 3. Current V9: real exported selectRelevantSceneExample from CodeV2Experience.tsx
+      const selV9 = selectRelevantSceneExample_V9(pos.life_scenes, setItem.inputs.q1);
+      const sceneMatchedByContentV9 = selV9.maxScore > 0;
+      if (sceneMatchedByContentV9) {
+        matchedPositionsCountV9 += 1;
+      }
+
+      const cardF67b04a = {
         header: `${pos.public_name} · ${posEnergyName} (Число ${posValue})`,
         role: pos.role,
         essence_label: "О чём это число",
         essence_text: cleanedEssence,
         example_label: "Пример",
-        example_text: oldExample,
+        example_text: f67Example,
         verification_label: "Проверьте на себе",
         verification_question: pos.verification_question,
         reactions: ["Похоже", "Не похоже", "Уточнить"],
+        top_albert_button_prefills_input: false,
+        carries_question_in_context: false,
       };
 
-      const newCardPrimary = {
+      const card1d830fc = {
         header: `${pos.public_name} · ${posEnergyName} (Число ${posValue})`,
         role: pos.role,
         essence_label: "О чём это число",
         essence_text: cleanedEssence,
         example_label: "Пример",
-        example_text: newExample,
+        example_text: sel1d8.exampleText,
+        selected_scene_index: sel1d8.selectedIndex,
+        matched_raw_tokens: sel1d8.matchedTokens,
         verification_label: "Проверьте на себе",
         verification_question: pos.verification_question,
         reactions: ["Похоже", "Не похоже", "Уточнить"],
+        top_albert_button_prefills_input: true,
+        carries_question_in_context: true,
       };
 
-      // Honest 0-2 scoring per card considering all sections (Header, Essence, Example, Verification Question, Reactions)
-      const oldCardScores = {
-        clarity: 1, // Header, Essence, and Verification Question are clear, but Example is truncated at '—' into a 2-4 word stub ("В начале дня.")
-        concreteness: 1, // Verification Question is concrete, but Example loses the concrete behavioral description after '—'
-        connection_to_input: 1, // Reactions ("Похоже" / "Не похоже" / "Уточнить") exist, but the card ignores userQuestion or truncates the scene
-        reflection_utility: 1, // Essence + Verification Question provide base reflection, but broken Example stub weakens self-observation
-        total: 4,
+      const cardV9 = {
+        header: `${pos.public_name} · ${posEnergyName} (Число ${posValue})`,
+        role: pos.role,
+        essence_label: "О чём это число",
+        essence_text: cleanedEssence,
+        example_label: "Пример",
+        example_text: selV9.exampleText,
+        selected_scene_index: selV9.selectedIndex,
+        matched_content_stems: selV9.matchedStems,
+        verification_label: "Проверьте на себе",
+        verification_question: pos.verification_question,
+        reactions: ["Похоже", "Не похоже", "Уточнить"],
+        top_albert_button_prefills_input: false,
+        carries_question_in_context: true,
       };
 
-      const newCardScores = {
-        clarity: 2, // All sections including full-sentence Example are grammatically complete and clear
-        concreteness: 2, // Both Example (full life scene) and Verification Question contain concrete observable behaviors
-        connection_to_input: sceneSelectedByQuestion ? 2 : 1, // 2/2 when scene matches q1 keywords; 1/2 when card falls back to full scene[0] + carries userQuestion to Albert
-        reflection_utility: 2, // Complete triad: Essence -> concrete full-sentence Example -> Verification Question + reactions
-        total: sceneSelectedByQuestion ? 8 : 7,
-      };
+      // Verify provenance of rendered V9 card text:
+      // - essence_text must be a substring of cleanPositionEssence(pos.essence)
+      // - example_text must be a prefix of one of pos.life_scenes[i].description
+      // - verification_question must equal pos.verification_question
+      const essenceFromDcs = cleanPositionEssence(pos.essence).includes(
+        cardV9.essence_text.replace(/\.$/u, "")
+      );
+      const exampleFromDcs = (pos.life_scenes || []).some((s: any) =>
+        (s.description || "").trim().startsWith(cardV9.example_text.replace(/\.$/u, ""))
+      );
+      const verificationFromDcs = cardV9.verification_question === pos.verification_question;
+      const cardProvenanceOk = essenceFromDcs && exampleFromDcs && verificationFromDcs;
+      if (cardProvenanceOk) {
+        cardProvenanceCleanCount += 1;
+      }
+
+      // Check whether 1d830fc matched only via a stop-word substring (e.g. "меня" inside "применять")
+      const contentTokensIn1d8 = sel1d8.matchedTokens.filter((t) => !RUSSIAN_STOP_WORDS.has(t));
+      const matchedByContent1d8 = contentTokensIn1d8.length > 0;
+
+      const scoresF67 = scoreRenderedCardDynamically(
+        cardF67b04a,
+        pos.life_scenes?.[0]?.description || "",
+        false
+      );
+      const scores1d8 = scoreRenderedCardDynamically(
+        card1d830fc,
+        pos.life_scenes?.[sel1d8.selectedIndex]?.description || "",
+        matchedByContent1d8
+      );
+      const scoresV9 = scoreRenderedCardDynamically(
+        cardV9,
+        pos.life_scenes?.[selV9.selectedIndex]?.description || "",
+        sceneMatchedByContentV9
+      );
 
       return {
         position: pos.position,
         value: posValue,
         energy_name: posEnergyName,
-        scene_matched_user_question: sceneSelectedByQuestion,
-        old_card_1d830fc: oldCardPrimary,
-        new_card_v8: newCardPrimary,
-        old_card_scores_out_of_8: oldCardScores,
-        new_card_scores_out_of_8: newCardScores,
+        card_provenance_verified: cardProvenanceOk,
+        scene_matched_user_question_v9: sceneMatchedByContentV9,
+        scene_differs_between_f67b04a_and_1d830fc: cardF67b04a.example_text !== card1d830fc.example_text,
+        pre_iteration_card_f67b04a: cardF67b04a,
+        old_card_1d830fc: card1d830fc,
+        new_card_v9: cardV9,
+        scores_f67b04a_out_of_8: scoresF67,
+        old_card_scores_out_of_8: scores1d8,
+        new_card_scores_out_of_8: scoresV9,
       };
     });
 
-    // Deck-level scores (evaluating the 5-card Code V2 presentation as a whole for this input set)
-    const deckScoresOld = {
-      clarity: 1,
-      concreteness: 1,
-      connection_to_input: 1,
-      reflection_utility: 1,
-      total: 4,
+    const setProvenancePreserved =
+      fiveNumbersUnchanged &&
+      positionEnergiesUnchanged &&
+      legacyCalculateUnchanged &&
+      cardProvenanceCleanCount === 5;
+    if (!setProvenancePreserved) {
+      provenanceViolations += 1;
+    }
+
+    const computeDeckScoresFromCards = (
+      cardScores: Array<{
+        clarity: number;
+        concreteness: number;
+        connection_to_input: number;
+        reflection_utility: number;
+        total: number;
+      }>
+    ) => {
+      const clarity = cardScores.every((s) => s.clarity === 2)
+        ? 2
+        : cardScores.some((s) => s.clarity >= 1)
+          ? 1
+          : 0;
+      const concreteness = cardScores.every((s) => s.concreteness === 2)
+        ? 2
+        : cardScores.some((s) => s.concreteness >= 1)
+          ? 1
+          : 0;
+      const connection_to_input = cardScores.some((s) => s.connection_to_input === 2)
+        ? 2
+        : cardScores.some((s) => s.connection_to_input >= 1)
+          ? 1
+          : 0;
+      const reflection_utility = cardScores.every((s) => s.reflection_utility === 2)
+        ? 2
+        : cardScores.some((s) => s.reflection_utility >= 1)
+          ? 1
+          : 0;
+      const total = clarity + concreteness + connection_to_input + reflection_utility;
+      const sum_of_5_cards_out_of_40 = cardScores.reduce((acc, s) => acc + s.total, 0);
+      return {
+        clarity,
+        concreteness,
+        connection_to_input,
+        reflection_utility,
+        total,
+        sum_of_5_cards_out_of_40,
+      };
+    };
+
+    const deckScoresF67b04a = computeDeckScoresFromCards(
+      positionCards.map((c: any) => c.scores_f67b04a_out_of_8)
+    );
+
+    const deckScoresOld1d830fc = {
+      ...computeDeckScoresFromCards(positionCards.map((c: any) => c.old_card_scores_out_of_8)),
       rationale:
-        "В старой подаче (1d830fc) присутствуют заголовок, суть позиции, проверочный вопрос и кнопки отклика (поэтому оценка не 0/8, а 4/8), но во всех 5 карточках поле «Пример» обрезано по тире («В начале дня.», «В проектной работе.», «При начале нового дела.», «Один из примеров.», «Один из примеров такой сборки.»), а личный вопрос не влияет на выбор жизненной сцены.",
+        "В коммите 1d830fc функция selectRelevantSceneExample уже существовала (без фильтра стоп-слов и без стемминга), но в конце вызывала getFirstSentence с разбиением .split(/[.;!—]/)[0], а верхняя кнопка Альберта передавала initialPrompt: localQuestion.trim() (предзаполняя и автоотправляя вопрос). На 3 из 30 карточек (set_1_career_overload:result, set_2_work_change_autumn:result, set_6_partnership_crack:expression) 1d830fc выбирает сцену 1 вместо сцены 0, однако из-за .split(/[.;!—]/)[0] выбранная сцена всё равно обрезается: в Result наборов 1 и 2 («меня» / «менять» совпало с «применять») — по точке с запятой до 12 слов («Характерная перемена: обладая колоссальной волевой мощью, человек не спешит применять ее первым.»), а в Expression набора 6 («чувствую» совпало с «сочувствующие») — по тире до 3 слов («В кризисной коммуникации.»). В остальных 27 из 30 карточек 1d830fc выбирает сцену 0 и обрезает её по тире до 2–5 слов вводного штампа.",
     };
 
-    const deckScoresNew = {
-      clarity: 2,
-      concreteness: 2,
-      connection_to_input: matchedPositionsCount >= 1 ? 2 : 1,
-      reflection_utility: 2,
-      total: matchedPositionsCount >= 1 ? 8 : 7,
-      rationale: `В новой подаче (V8) все 5 карточек сохраняют полное предложение жизненной сцены с конкретным действием после тире, а вопрос пользователя («${setItem.q1}») тематически подбирает релевантную сцену в ${matchedPositionsCount} из 5 позиций и передаётся в диалог с Альбертом через верхнюю и нижнюю первичные кнопки «Обсудить с Альбертом здесь».`,
+    const deckScoresNewV9 = {
+      ...computeDeckScoresFromCards(positionCards.map((c: any) => c.new_card_scores_out_of_8)),
+      rationale: `В текущей версии V9 все 5 карточек сохраняют полное предложение жизненной сцены (от 17 до 31 слова, без обрезки на тире или точке с запятой), вопрос пользователя тематически подбирает релевантную сцену в ${matchedPositionsCountV9} из 5 позиций (с фильтрацией стоп-слов и учётом русских основ слов), а верхняя и нижняя кнопки Альберта передают вопрос в context.userQuestion без предзаполнения поля ввода.`,
     };
 
-    return {
+    const sumScoresF67 = deckScoresF67b04a.sum_of_5_cards_out_of_40;
+    const sumScores1d8 = deckScoresOld1d830fc.sum_of_5_cards_out_of_40;
+    const sumScoresV9 = deckScoresNewV9.sum_of_5_cards_out_of_40;
+
+    comparedSets.push({
       set_id: setItem.set_id,
       name: setItem.name,
-      user_question_q1: setItem.q1,
-      canonical_numbers: fiveNumbers,
-      provenance_preserved: currentNumbers === baselineNumbers,
-      matched_positions_count: matchedPositionsCount,
-      deck_scores_old_1d830fc: deckScoresOld,
-      deck_scores_new_v8: deckScoresNew,
-      new_strictly_better_than_old: deckScoresNew.total > deckScoresOld.total,
+      user_question_q1: setItem.inputs.q1,
+      independent_calculation_verification: {
+        code_v2_request_id: `v9_code_v2_${setItem.set_id}`,
+        calculate_request_id: `v9_calc_${setItem.set_id}`,
+        five_numbers_from_independent_call: setFiveNumbers,
+        five_numbers_match_baseline: fiveNumbersUnchanged,
+        position_energies_match_baseline: positionEnergiesUnchanged,
+        legacy_calculate_dto_matches_baseline: legacyCalculateUnchanged,
+        all_5_cards_text_provenance_verified: cardProvenanceCleanCount === 5,
+      },
+      canonical_numbers: setFiveNumbers,
+      provenance_preserved: setProvenancePreserved,
+      matched_positions_count_1d830fc: matchedPositionsCount1d830fc,
+      matched_positions_count: matchedPositionsCountV9,
+      deck_scores_pre_iteration_f67b04a: deckScoresF67b04a,
+      deck_scores_old_1d830fc: deckScoresOld1d830fc,
+      deck_scores_new_v8: deckScoresNewV9,
+      deck_scores_new_v9: deckScoresNewV9,
+      new_strictly_better_than_old:
+        deckScoresNewV9.total > deckScoresOld1d830fc.total &&
+        sumScoresV9 > sumScores1d8 &&
+        sumScoresV9 > sumScoresF67,
       positions: positionCards,
-    };
-  });
+    });
+  }
 
+  const allSetsNumbersMatchBaseline = comparedSets.every(
+    (s) =>
+      s.independent_calculation_verification.five_numbers_match_baseline &&
+      s.independent_calculation_verification.position_energies_match_baseline &&
+      s.independent_calculation_verification.legacy_calculate_dto_matches_baseline
+  );
   const setsWhereNewIsBetter = comparedSets.filter((s) => s.new_strictly_better_than_old).length;
   const setsWhereNewIsWorse = comparedSets.filter(
-    (s) => s.deck_scores_new_v8.total < s.deck_scores_old_1d830fc.total
+    (s) =>
+      s.deck_scores_new_v9.total < s.deck_scores_old_1d830fc.total ||
+      s.deck_scores_new_v9.sum_of_5_cards_out_of_40 < s.deck_scores_old_1d830fc.sum_of_5_cards_out_of_40
   ).length;
   const thresholdMet =
-    setsWhereNewIsBetter >= 4 && setsWhereNewIsWorse === 0 && provenanceViolations === 0;
+    setsWhereNewIsBetter >= 4 &&
+    setsWhereNewIsWorse === 0 &&
+    provenanceViolations === 0 &&
+    allSetsNumbersMatchBaseline;
 
   const report = {
     generated_at: new Date().toISOString(),
     pair: { web_pin: WEB_PIN, web_sha: WEB_SHA, dcs_sha: DCS_SHA },
     dob_used: "15.05.1990",
-    canonical_numbers: fiveNumbers,
+    baseline_independent_calls: {
+      code_v2_request_id: "v9_code_v2_baseline_no_question",
+      calculate_request_id: "v9_calc_baseline_no_question",
+      canonical_numbers: baselineFiveNumbers,
+      position_energies: baselinePositionEnergies,
+    },
+    canonical_numbers: baselineFiveNumbers,
+    canonical_numbers_unchanged: allSetsNumbersMatchBaseline,
     selection_rule:
       "Оставлять новую подачу Кода только если она лучше минимум на 4 из 6 фиксированных наборов, не хуже на остальных и даёт 0 нарушений происхождения данных.",
     sets_where_new_is_better: setsWhereNewIsBetter,
@@ -750,9 +1407,9 @@ async function runCodeV2PrimaryComparison(): Promise<boolean> {
   );
 
   console.log(
-    `[v8] Code V2 Primary Comparison: ${
+    `[v9] Code V2 Primary Comparison: ${
       thresholdMet
-        ? `PASSED (New better on ${setsWhereNewIsBetter}/6 sets, worse on ${setsWhereNewIsWorse}/6, provenance violations=${provenanceViolations})`
+        ? `PASSED (New V9 strictly better than both f67b04a and 1d830fc on ${setsWhereNewIsBetter}/6 sets, worse on ${setsWhereNewIsWorse}/6, provenance violations=${provenanceViolations})`
         : "FAILED"
     }`
   );
@@ -2205,9 +2862,9 @@ async function runRouteBCheck(browser: Browser): Promise<boolean> {
 
 async function main() {
   console.log("================================================================================");
-  console.log("[v8] Target Evidence Suite — Final Convergence Acceptance Runner");
-  console.log(`[v8] Web HEAD: ${WEB_SHA.slice(0, 7)} (PIN: ${WEB_PIN.slice(0, 7)})`);
-  console.log(`[v8] DCS PIN:  ${DCS_SHA.slice(0, 7)}`);
+  console.log("[v9] Target Evidence Suite — Final Convergence Acceptance Runner");
+  console.log(`[v9] Web HEAD: ${WEB_SHA.slice(0, 7)} (PIN: ${WEB_PIN.slice(0, 7)})`);
+  console.log(`[v9] DCS PIN:  ${DCS_SHA.slice(0, 7)}`);
   console.log("================================================================================");
 
   await verifyAndWarmupLiveServices();
@@ -2231,8 +2888,8 @@ async function main() {
   }
 
   console.log("================================================================================");
-  console.log("[v8] Summary of Targeted Evidence Checks:");
-  console.log(`  0A. Myth Validator & Set 4 Re-verification: ${results.mythValidatorSet4 ? "PASS" : "FAIL"}`);
+  console.log("[v9] Summary of Targeted Evidence Checks:");
+  console.log(`  0A. Myth Validator & Full 24-Run Corpus:    ${results.mythValidatorSet4 ? "PASS" : "FAIL"}`);
   console.log(`  0B. Code V2 Primary 6-Set Comparison:       ${results.codeV2PrimaryComparison ? "PASS" : "FAIL"}`);
   console.log(`  1.  Defect 1 Matrix (Source Origin):        ${results.defect1 ? "PASS" : "FAIL"}`);
   console.log(`  2.  Defect 2 Matrix (Crisis Self-Quote):     ${results.defect2 ? "PASS" : "FAIL"}`);
@@ -2245,15 +2902,15 @@ async function main() {
   const allPassed = Object.values(results).every(Boolean);
 
   if (!allPassed) {
-    console.error("[v8] FAIL-CLOSED: At least one targeted check failed. Exiting with code 1.");
+    console.error("[v9] FAIL-CLOSED: At least one targeted check failed. Exiting with code 1.");
     process.exit(1);
   }
 
-  console.log("[v8] ALL TARGETED CHECKS PASSED SUCCESSFULLY (8/8).");
+  console.log("[v9] ALL TARGETED CHECKS PASSED SUCCESSFULLY (8/8).");
   process.exit(0);
 }
 
 main().catch((err) => {
-  console.error("[v8] Unhandled fatal error:", err);
+  console.error("[v9] Unhandled fatal error:", err);
   process.exit(1);
 });

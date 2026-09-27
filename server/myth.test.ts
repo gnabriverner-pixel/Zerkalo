@@ -575,6 +575,23 @@ describe("Personal Myth v1.1 release contract", () => {
       });
       const promptWithCrack = buildPersonalMythPromptV12(userCrackRequest);
       expect(promptWithCrack).toContain("Человек сам явно ввёл образ трещины");
+
+      const unknownQ3Request = parsePersonalMythRequest({
+        request_id: "req_unknown_q3_set3",
+        consent_version: PERSONAL_MYTH_WRITER_VERSION,
+        answers: {
+          q1: "очень устал от бесконечных задач",
+          q2: "тяжёлая мокрая губка",
+          q3: "не знаю",
+          q4: "тишина",
+        },
+      });
+      const v11UnknownQ3 = buildPersonalMythPromptV11(unknownQ3Request);
+      const v12UnknownQ3 = buildPersonalMythPromptV12(unknownQ3Request);
+      expect(v11UnknownQ3).toContain("фразой «в вашем ответе» можно называть ТОЛЬКО то, что буквально есть в q1–q4");
+      expect(v11UnknownQ3).toContain("не приписывай действие из story фразе «в вашем ответе»");
+      expect(v12UnknownQ3).toContain("В mirror фразой «в вашем ответе» называй ТОЛЬКО буквальные детали из q1–q4");
+      expect(v12UnknownQ3).toContain("не приписывай жест из story фразе «в вашем ответе»");
     });
   });
 });
