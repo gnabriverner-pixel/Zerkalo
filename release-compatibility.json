@@ -1,11 +1,11 @@
 {
   "manifest_version": 1,
   "stage": "stage-1-convergence-candidate",
-  "verified_at": "2026-09-27T08:50:00Z",
+  "verified_at": "2026-09-27T11:06:15Z",
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
     "branch": "codex/stage1-convergence-candidate",
-    "pinned_sha": "522f1463c4562f15f7fb5c9489be451633bba56b"
+    "pinned_sha": "ba3c29022731d5e9395da7d281288c6e8d768b47"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
