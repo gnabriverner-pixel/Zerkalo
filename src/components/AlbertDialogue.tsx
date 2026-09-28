@@ -59,6 +59,7 @@ export interface AlbertDialogueProps {
       innerTension?: string;
       hiddenResource?: string;
       newView?: string;
+      oneStep?: string;
     };
     meetingSummary?: string;
     parallels?: MeetingParallel[];
@@ -69,6 +70,7 @@ export interface AlbertDialogueProps {
     codeV2Payload?: CodeV2Payload | null;
     codeCalculation?: CalculationResult;
     codeDate?: string;
+    codeReactions?: Record<string, 'confirmed' | 'rejected'>;
     storyInputs?: StoryInputs | null;
     storyResult?: NonNullable<ApiResponse['story_result']> | null;
   };
@@ -161,6 +163,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   // Unify context and flat props
   const effectiveCodeV2Payload = context?.codeV2Payload ?? propCodeV2Payload ?? null;
   const effectiveCodeV2Context = effectiveCodeV2Payload?.albert_context ?? propCodeV2Context ?? null;
+  const effectiveCodeReactions = context?.codeReactions ?? codeReactions ?? {};
   const effectiveCalc: CalculationResult | null =
     context?.codeCalculation ??
     propCalc ??
@@ -181,6 +184,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
           innerTension: effectiveStoryResult.mirror?.innerTension,
           hiddenResource: effectiveStoryResult.mirror?.hiddenResource,
           newView: effectiveStoryResult.mirror?.newView,
+          oneStep: effectiveStoryResult.one_step,
         }
       : undefined);
   const effectiveMeetingSummary = context?.meetingSummary ?? meetingResult?.summary ?? '';
@@ -199,9 +203,20 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   const currentSourceStateVersion = computeSourceStateVersion({
     codeDate: effectiveCodeDate,
     codeResult: effectiveCalc,
+    codeV2Payload: effectiveCodeV2Payload,
+    codeReactions: effectiveCodeReactions,
+    mainPattern: effectiveMainPattern,
     storyInputs: effectiveStoryInputs,
     storyResult: effectiveStoryResult,
+    mythAnchors: effectiveMythAnchors,
     userQuestion: effectiveUserQuestion,
+    userNote,
+    meetingSummary: effectiveMeetingSummary,
+    confidenceNote: meetingResult?.confidenceNote,
+    reflectiveQuestion: effectiveReflectiveQuestion,
+    albertInsight: effectiveAlbertInsight,
+    parallels: effectiveParallels,
+    divergences: effectiveDivergences,
   });
 
   // Restore saved conversation on mount without triggering any network request
@@ -401,7 +416,9 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
     const contextPayload: Record<string, unknown> = {
       userNote,
       ...(effectiveUserQuestion ? { userQuestion: effectiveUserQuestion.slice(0, 500) } : {}),
-      ...(codeReactions && Object.keys(codeReactions).length > 0 ? { codeReactions } : {}),
+      ...(effectiveCodeReactions && Object.keys(effectiveCodeReactions).length > 0
+        ? { codeReactions: effectiveCodeReactions }
+        : {}),
       ...(effectiveMainPattern ? { mainPattern: effectiveMainPattern } : {}),
       ...(effectiveStoryInputs ? { storyInputs: effectiveStoryInputs } : {}),
     };
@@ -437,7 +454,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
         hiddenResource:
           effectiveMythAnchors?.hiddenResource ?? effectiveStoryResult?.mirror?.hiddenResource,
         newView: effectiveMythAnchors?.newView ?? effectiveStoryResult?.mirror?.newView,
-        oneStep: effectiveStoryResult?.one_step,
+        oneStep: effectiveMythAnchors?.oneStep ?? effectiveStoryResult?.one_step,
       };
     }
 
@@ -466,7 +483,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   }, [
     userNote,
     effectiveUserQuestion,
-    codeReactions,
+    effectiveCodeReactions,
     effectiveMainPattern,
     effectiveCodeDate,
     effectiveStoryInputs,

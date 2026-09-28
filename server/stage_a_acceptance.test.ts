@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import React, { act } from "react";
+import { createRoot } from "react-dom/client";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -27,6 +29,7 @@ import {
   savePersonalChapterSample,
   loadPersonalChapterSample,
   deletePersonalChapterSample,
+  loadLaunchInterestRecord,
   deleteLaunchInterestRecord,
   PAID_CHAPTER_SAMPLE_STORAGE_KEY,
   PAID_LAUNCH_INTEREST_STORAGE_KEY,
@@ -39,6 +42,13 @@ import {
   handleRecordLaunchInterest,
 } from "./chapterOffer.ts";
 import { recordEvent, FORBIDDEN_ANALYTICS_KEYS } from "./analytics.ts";
+import { PersonalChapterOfferModal } from "../src/components/PersonalChapterOfferModal.tsx";
+import { AlbertDialogue } from "../src/components/AlbertDialogue.tsx";
+
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
 
 describe("Stage A Acceptance Gate (A1-A5)", () => {
   beforeEach(() => {
@@ -126,10 +136,11 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
   });
 
   describe("A2: Data preservation, deduplication, stale state detection & crisis intercept", () => {
-    it("computes deterministic sourceStateVersion and marks opener stale when any input changes", () => {
+    it("computes deterministic sourceStateVersion and marks opener stale when question, codeReactions, myth step, or note changes", () => {
       const baseInput = {
         codeDate: "14.08.1988",
         codeResult: { soul: 5, expression: 9, path: 4, direction: 9, result: 9 } as any,
+        codeReactions: { central_motif: "confirmed" as const },
         storyInputs: { q1: "Кабинет", q2: "Туман", q3: "Лампа", q4: "Ясность" },
         storyResult: {
           title: "Свет лампы",
@@ -146,6 +157,7 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
           disclaimer: "Художественный миф",
         },
         userQuestion: "Как выбрать одну задачу?",
+        userNote: "Первая заметка",
       };
 
       const v1 = computeSourceStateVersion(baseInput);
@@ -170,14 +182,111 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       const loaded = loadAlbertConversation();
       expect(loaded).not.toBeNull();
       expect(isOpenerStale(loaded, v1)).toBe(false);
+      expect(isOpenerStale(loaded, baseInput)).toBe(false);
 
-      // Change user question -> version changes -> opener is marked stale
-      const v2 = computeSourceStateVersion({
+      // 1. Change user question -> version changes -> opener is marked stale
+      const vQuestionChanged = computeSourceStateVersion({
         ...baseInput,
         userQuestion: "Другой вопрос: стоит ли переезжать?",
       });
-      expect(v2).not.toBe(v1);
-      expect(isOpenerStale(loaded, v2)).toBe(true);
+      expect(vQuestionChanged).not.toBe(v1);
+      expect(isOpenerStale(loaded, vQuestionChanged)).toBe(true);
+
+      // 2. Change codeReactions ("Похоже" -> "Не похоже" or new position reaction) -> version changes -> opener is marked stale
+      const vReactionRejected = computeSourceStateVersion({
+        ...baseInput,
+        codeReactions: { central_motif: "rejected" },
+      });
+      expect(vReactionRejected).not.toBe(v1);
+      expect(isOpenerStale(loaded, vReactionRejected)).toBe(true);
+
+      const vPositionReactionAdded = computeSourceStateVersion({
+        ...baseInput,
+        codeReactions: { central_motif: "confirmed", soul: "rejected" },
+      });
+      expect(vPositionReactionAdded).not.toBe(v1);
+      expect(isOpenerStale(loaded, vPositionReactionAdded)).toBe(true);
+
+      // 3. Change Myth step (storyResult.one_step / mythAnchors.oneStep) -> version changes -> opener is marked stale
+      const vMythStepChanged = computeSourceStateVersion({
+        ...baseInput,
+        storyResult: {
+          ...baseInput.storyResult,
+          one_step: "Открыть окно и убрать лишние бумаги со стола",
+        },
+      });
+      expect(vMythStepChanged).not.toBe(v1);
+      expect(isOpenerStale(loaded, vMythStepChanged)).toBe(true);
+
+      // 4. Change userNote or mainPattern -> version changes -> opener is marked stale
+      const vNoteChanged = computeSourceStateVersion({
+        ...baseInput,
+        userNote: "Обновлённая заметка после размышления",
+      });
+      expect(vNoteChanged).not.toBe(v1);
+      expect(isOpenerStale(loaded, vNoteChanged)).toBe(true);
+    });
+
+    it("renders stale banner in AlbertDialogue when codeReactions changes without auto-sending a network request", async () => {
+      const calc = { soul: 5, expression: 9, path: 4, direction: 9, result: 9 } as any;
+      const initialVersion = computeSourceStateVersion({
+        codeDate: "14.08.1988",
+        codeResult: calc,
+        codeReactions: { central_motif: "confirmed" },
+        userQuestion: "Как распределить внимание?",
+      });
+
+      saveAlbertConversation({
+        version: 1,
+        sourceStateVersion: initialVersion,
+        messages: [
+          {
+            id: "opener_1",
+            sender: "albert",
+            text: "Прежнее сопоставление по вашему вопросу.",
+            timestamp: new Date(),
+            isOpener: true,
+            sourceStateVersion: initialVersion,
+          },
+        ],
+        openerRecord: {
+          version: 1,
+          sourceStateVersion: initialVersion,
+          openerText: "Прежнее сопоставление по вашему вопросу.",
+          createdAt: new Date().toISOString(),
+          lensesUsed: { hasCode: true, hasMyth: false, hasQuestion: true },
+        },
+        updatedAt: new Date().toISOString(),
+      });
+
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      await act(async () => {
+        root.render(
+          React.createElement(AlbertDialogue, {
+            isOpen: true,
+            codeDate: "14.08.1988",
+            calc,
+            codeReactions: { central_motif: "rejected" },
+            userQuestion: "Как распределить внимание?",
+          })
+        );
+      });
+
+      const staleBanner = container.querySelector('[data-testid="albert-stale-state-banner"]');
+      const refreshBtn = container.querySelector('[data-testid="albert-refresh-stale-opener-btn"]');
+      expect(staleBanner).not.toBeNull();
+      expect(refreshBtn).not.toBeNull();
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+      fetchSpy.mockRestore();
     });
 
     it("prevents duplicate in-flight opener requests for the same sourceStateVersion", () => {
@@ -242,8 +351,8 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
     });
   });
 
-  describe("A4: Personal Chapter Sample (6 parts, single source Web+PDF, user correction priority)", () => {
-    it("builds all 6 mandatory parts, prioritizes user corrections, and permanently excludes rejected statements from Web and PDF", async () => {
+  describe("A4: Personal Chapter Sample (6 parts, single source Web+PDF, Unicode font & PDF failure path)", () => {
+    it("builds all 6 mandatory parts, embeds Unicode Cyrillic TrueType font in PDF without mojibake, and excludes rejected statements", async () => {
       const rejectedMachineClaim = "Система считает, что вы боитесь публичной ответственности.";
       const initialSample = buildPersonalChapterSample({
         sourceStateVersion: "v1_12345678",
@@ -309,7 +418,14 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       expect(html).not.toContain("Марианна");
 
       const pdfBuffer = await generateChapterSamplePdfBuffer(updatedSample);
+      const pdfLatin1 = pdfBuffer.toString("latin1");
       expect(pdfBuffer.subarray(0, 8).toString("latin1")).toContain("%PDF-1.4");
+      // Must embed TrueType Unicode font (Lora) with Identity-H and ToUnicode cmap, never raw UTF-16BE \xfe\xff strings in Type1 Helvetica
+      expect(pdfLatin1).toContain("/BaseFont /Lora");
+      expect(pdfLatin1).toContain("/Identity-H");
+      expect(pdfLatin1).toContain("/ToUnicode");
+      expect(pdfLatin1).not.toContain("(\xfe\xff");
+
       const pdfText = pdfBuffer.toString("utf8");
       expect(pdfText).toContain(updatedSample.sampleId);
       expect(pdfText).toContain(updatedSample.sourceStateVersion);
@@ -318,9 +434,97 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       expect(pdfText).not.toContain(rejectedMachineClaim);
       expect(pdfText).not.toContain("26.05.1976");
     });
+
+    it("shows explicit PDF export error + retry on API failure without downloading HTML as .pdf or showing false success", async () => {
+      const sample = buildPersonalChapterSample({
+        sourceStateVersion: "v1_pdf_err_1",
+        userQuestion: "Как сохранить ясность при смене приоритетов?",
+        stance: "confirmed",
+        systemHypothesis: "Опираться на одно ключевое решение в день.",
+        userOwnPhrase: "Сначала закрываю главный вопрос утра.",
+      });
+      const validPdfBytes = await generateChapterSamplePdfBuffer(sample);
+
+      let shouldFailPdf = true;
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input: any) => {
+        const url = typeof input === "string" ? input : input?.url || "";
+        if (url.includes("/api/chapter-sample/pdf")) {
+          if (shouldFailPdf) {
+            return new Response(JSON.stringify({ error: "pdf_render_failed" }), {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          return new Response(new Uint8Array(validPdfBytes), {
+            status: 200,
+            headers: { "Content-Type": "application/pdf" },
+          });
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      });
+
+      const createObjectURLSpy = vi
+        .spyOn(URL, "createObjectURL")
+        .mockReturnValue("blob:http://localhost/real-pdf");
+      const revokeObjectURLSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      await act(async () => {
+        root.render(
+          React.createElement(PersonalChapterOfferModal, {
+            isOpen: true,
+            onClose: () => {},
+            sourceStateVersion: sample.sourceStateVersion,
+            userQuestion: sample.currentQuestion,
+            stance: "confirmed",
+            systemHypothesis: "Опираться на одно ключевое решение в день.",
+            userOwnPhrase: sample.userOwnPhrase,
+          })
+        );
+      });
+
+      const downloadBtn = container.querySelector(
+        '[data-testid="download-sample-pdf-btn"]'
+      ) as HTMLButtonElement;
+      expect(downloadBtn).not.toBeNull();
+
+      // 1. Trigger PDF download when API returns 500 -> must show error + retry, NEVER false success or blob download
+      await act(async () => {
+        downloadBtn.click();
+      });
+
+      expect(container.querySelector('[data-testid="sample-pdf-export-error"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="retry-sample-pdf-btn"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="sample-pdf-export-status"]')).toBeNull();
+      expect(createObjectURLSpy).not.toHaveBeenCalled();
+
+      // 2. Retry when API succeeds -> error clears, real PDF blob is downloaded, and success status is shown
+      shouldFailPdf = false;
+      const retryBtn = container.querySelector(
+        '[data-testid="retry-sample-pdf-btn"]'
+      ) as HTMLButtonElement;
+      await act(async () => {
+        retryBtn.click();
+      });
+
+      expect(container.querySelector('[data-testid="sample-pdf-export-error"]')).toBeNull();
+      expect(container.querySelector('[data-testid="sample-pdf-export-status"]')).not.toBeNull();
+      expect(createObjectURLSpy).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+      createObjectURLSpy.mockRestore();
+      revokeObjectURLSpy.mockRestore();
+      fetchSpy.mockRestore();
+    });
   });
 
-  describe("A5: Full package offer ('Личная глава' — 4 900 ₽), separate storage & analytics privacy", () => {
+  describe("A5: Full package offer ('Личная глава' — 4 900 ₽), separate storage, analytics privacy & launch interest failure path", () => {
     it("exposes the single 'Личная глава' 4 900 ₽ offer with 9 items, voice sample preview, and explicit non-promises", () => {
       expect(PERSONAL_CHAPTER_NINE_ITEMS).toHaveLength(9);
       expect(PERSONAL_CHAPTER_NINE_ITEMS.join(" ")).toContain("12 месяцев");
@@ -333,6 +537,119 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       expect(PERSONAL_CHAPTER_HONEST_LIMITATIONS.length).toBeGreaterThanOrEqual(4);
       expect(PERSONAL_CHAPTER_HONEST_LIMITATIONS.join(" ")).toContain("безлимитный чат");
       expect(PERSONAL_CHAPTER_HONEST_LIMITATIONS.join(" ")).toContain("подпиской");
+    });
+
+    it("shows explicit error + retry on /api/launch-interest failure without fake local confirmation, preserving user input", async () => {
+      let shouldFailInterest = true;
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input: any) => {
+        const url = typeof input === "string" ? input : input?.url || "";
+        if (url.includes("/api/launch-interest")) {
+          if (shouldFailInterest) {
+            return new Response(JSON.stringify({ error: "launch_interest_failed" }), {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          return new Response(
+            JSON.stringify({
+              status: "ok",
+              record: {
+                schemaVersion: "launch_interest.v1",
+                interestId: "li_server_verified_1",
+                createdAt: new Date().toISOString(),
+                sampleId: "sample_test_1",
+                sourceStateVersion: "v1_interest_1",
+                productCode: "personal_chapter_single",
+                productTitle: "Личная глава",
+                displayedPriceRub: 4900,
+                actionKind: "launch_interest_only",
+                isPaymentOrPreorder: false,
+                preferredChannel: "telegram",
+                contactOrNote: "@kept_user_input",
+              },
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      });
+
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      await act(async () => {
+        root.render(
+          React.createElement(PersonalChapterOfferModal, {
+            isOpen: true,
+            onClose: () => {},
+            sourceStateVersion: "v1_interest_1",
+            userQuestion: "Вопрос для проверки интереса к запуску",
+            stance: "confirmed",
+            systemHypothesis: "Гипотеза системы",
+            userOwnPhrase: "Фраза человека",
+          })
+        );
+      });
+
+      const telegramChannelBtn = container.querySelector(
+        '[data-testid="interest-channel-telegram"]'
+      ) as HTMLButtonElement;
+      const contactInput = container.querySelector(
+        '[data-testid="launch-interest-note-input"]'
+      ) as HTMLInputElement;
+      const submitBtn = container.querySelector(
+        '[data-testid="submit-launch-interest-btn"]'
+      ) as HTMLButtonElement;
+
+      await act(async () => {
+        telegramChannelBtn.click();
+      });
+      await act(async () => {
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype,
+          "value"
+        )?.set;
+        nativeInputValueSetter?.call(contactInput, "@kept_user_input");
+        contactInput.dispatchEvent(new Event("input", { bubbles: true }));
+        contactInput.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+
+      // 1. Submit when /api/launch-interest fails with 500 -> must show error + retry, NEVER confirmed, and preserve input
+      await act(async () => {
+        submitBtn.click();
+      });
+
+      expect(container.querySelector('[data-testid="launch-interest-error"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="retry-launch-interest-btn"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="launch-interest-confirmed"]')).toBeNull();
+      expect(loadLaunchInterestRecord()).toBeNull();
+      expect(
+        (container.querySelector('[data-testid="launch-interest-note-input"]') as HTMLInputElement)
+          ?.value
+      ).toBe("@kept_user_input");
+
+      // 2. Retry when /api/launch-interest succeeds -> error clears, confirmed block appears, server record saved
+      shouldFailInterest = false;
+      const retryInterestBtn = container.querySelector(
+        '[data-testid="retry-launch-interest-btn"]'
+      ) as HTMLButtonElement;
+      await act(async () => {
+        retryInterestBtn.click();
+      });
+
+      expect(container.querySelector('[data-testid="launch-interest-error"]')).toBeNull();
+      expect(container.querySelector('[data-testid="launch-interest-confirmed"]')).not.toBeNull();
+      expect(loadLaunchInterestRecord()?.interestId).toBe("li_server_verified_1");
+
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+      fetchSpy.mockRestore();
     });
 
     it("stores paid sample and launch interest separately from free session and enforces analytics privacy", async () => {

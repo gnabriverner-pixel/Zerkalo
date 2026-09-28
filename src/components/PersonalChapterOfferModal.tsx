@@ -166,6 +166,7 @@ export const PersonalChapterOfferModal: React.FC<PersonalChapterOfferModalProps>
     'idle' | 'loading' | 'exported' | 'error'
   >('idle');
   const [pdfExportFilename, setPdfExportFilename] = useState<string>('');
+  const [pdfExportError, setPdfExportError] = useState<string | null>(null);
 
   // Voice preview state
   const [isVoicePlaying, setIsVoicePlaying] = useState(false);
@@ -250,13 +251,17 @@ export const PersonalChapterOfferModal: React.FC<PersonalChapterOfferModalProps>
   const consentFetch = async (input: string, init: RequestInit): Promise<Response | null> => {
     try {
       return await protectedFetch(input, init);
-    } catch {
-      return await fetch(input, init);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('ConsentBoundary is required')) {
+        return await fetch(input, init);
+      }
+      throw err;
     }
   };
 
   const handleDownloadPdf = async () => {
     setPdfExportState('loading');
+    setPdfExportError(null);
     const filename = `personal-chapter-sample-${sample.sampleId}.pdf`;
     try {
       const response = await consentFetch('/api/chapter-sample/pdf', {
@@ -271,10 +276,29 @@ export const PersonalChapterOfferModal: React.FC<PersonalChapterOfferModalProps>
       }
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const errJson = await response.json().catch(() => ({}));
+        const safeMsg =
+          errJson?.ui?.safe_message ||
+          'Не удалось сформировать PDF-файл образца главы. Ваши правки сохранены — попробуйте повторить скачивание.';
+        setPdfExportError(safeMsg);
+        setPdfExportState('error');
+        return;
       }
 
-      const blob = await response.blob();
+      const contentType = (response.headers.get('content-type') || '').toLowerCase();
+      const arrayBuffer = await response.arrayBuffer();
+      const headerBytes = new Uint8Array(arrayBuffer.slice(0, 5));
+      const headerAscii = String.fromCharCode(...headerBytes);
+
+      if (!contentType.includes('application/pdf') || headerAscii !== '%PDF-') {
+        setPdfExportError(
+          'Сервер вернул некорректный формат вместо PDF-документа. Попробуйте повторить скачивание.'
+        );
+        setPdfExportState('error');
+        return;
+      }
+
+      const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
       if (typeof window !== 'undefined' && typeof URL.createObjectURL === 'function') {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -286,28 +310,13 @@ export const PersonalChapterOfferModal: React.FC<PersonalChapterOfferModalProps>
         setTimeout(() => URL.revokeObjectURL(url), 2000);
       }
       setPdfExportFilename(filename);
+      setPdfExportError(null);
       setPdfExportState('exported');
     } catch {
-      // Fallback if running in isolated environment without active server route
-      try {
-        const fallbackBlob = new Blob([unifiedHtmlDocument], {
-          type: 'application/pdf',
-        });
-        if (typeof window !== 'undefined' && typeof URL.createObjectURL === 'function') {
-          const url = URL.createObjectURL(fallbackBlob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          setTimeout(() => URL.revokeObjectURL(url), 2000);
-        }
-        setPdfExportFilename(filename);
-        setPdfExportState('exported');
-      } catch {
-        setPdfExportState('error');
-      }
+      setPdfExportError(
+        'Не удалось скачать PDF образца главы из-за сбоя соединения. Ваши правки сохранены — попробуйте повторить скачивание.'
+      );
+      setPdfExportState('error');
     }
   };
 
@@ -360,8 +369,8 @@ export const PersonalChapterOfferModal: React.FC<PersonalChapterOfferModalProps>
     }, 3500);
   };
 
-  const handleSubmitLaunchInterest = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitLaunchInterestRequest = async () => {
+    if (isSubmittingInterest) return;
     setIsSubmittingInterest(true);
     setInterestError(null);
 
@@ -388,50 +397,47 @@ export const PersonalChapterOfferModal: React.FC<PersonalChapterOfferModalProps>
         return;
       }
 
-      if (response.ok) {
-        const data = await response.json();
-        const savedRecord: LaunchInterestRecordV1 = data.record || {
-          schemaVersion: 'launch_interest.v1',
-          interestId: `li_${Date.now()}`,
-          productCode: PERSONAL_CHAPTER_PRODUCT_CODE,
-          productTitle: PERSONAL_CHAPTER_PRODUCT_TITLE,
-          displayedPriceRub: PERSONAL_CHAPTER_PRICE_RUB,
-          actionKind: 'launch_interest_only',
-          isPaymentOrPreorder: false,
-          sampleId: sample.sampleId,
-          preferredChannel,
-          ...(contactOrNote.trim() ? { contactOrNote: contactOrNote.trim() } : {}),
-          createdAt: new Date().toISOString(),
-        };
-        saveLaunchInterestRecord(savedRecord);
-        setExistingInterest(savedRecord);
-        setInterestConfirmedRecord(savedRecord);
-        onLaunchInterestRecorded?.(savedRecord);
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        const safeMsg =
+          errJson?.ui?.safe_message ||
+          'Не удалось сохранить отметку об интересе к запуску. Ваши данные сохранены — попробуйте повторить отправку.';
+        setInterestConfirmedRecord(null);
+        setInterestError(safeMsg);
         setIsSubmittingInterest(false);
         return;
       }
-    } catch {
-      // Fallback local record if offline in unit test
-    }
 
-    const fallbackRecord: LaunchInterestRecordV1 = {
-      schemaVersion: 'launch_interest.v1',
-      interestId: `li_local_${Date.now()}`,
-      productCode: PERSONAL_CHAPTER_PRODUCT_CODE,
-      productTitle: PERSONAL_CHAPTER_PRODUCT_TITLE,
-      displayedPriceRub: PERSONAL_CHAPTER_PRICE_RUB,
-      actionKind: 'launch_interest_only',
-      isPaymentOrPreorder: false,
-      sampleId: sample.sampleId,
-      preferredChannel,
-      ...(contactOrNote.trim() ? { contactOrNote: contactOrNote.trim() } : {}),
-      createdAt: new Date().toISOString(),
-    };
-    saveLaunchInterestRecord(fallbackRecord);
-    setExistingInterest(fallbackRecord);
-    setInterestConfirmedRecord(fallbackRecord);
-    onLaunchInterestRecorded?.(fallbackRecord);
-    setIsSubmittingInterest(false);
+      const data = await response.json().catch(() => null);
+      if (!data || data.status !== 'ok' || !data.record) {
+        const safeMsg =
+          data?.ui?.safe_message ||
+          'Сервер не подтвердил сохранение отметки об интересе. Ваши данные сохранены — попробуйте повторить отправку.';
+        setInterestConfirmedRecord(null);
+        setInterestError(safeMsg);
+        setIsSubmittingInterest(false);
+        return;
+      }
+
+      const savedRecord: LaunchInterestRecordV1 = data.record;
+      saveLaunchInterestRecord(savedRecord);
+      setExistingInterest(savedRecord);
+      setInterestConfirmedRecord(savedRecord);
+      setInterestError(null);
+      onLaunchInterestRecorded?.(savedRecord);
+      setIsSubmittingInterest(false);
+    } catch {
+      setInterestConfirmedRecord(null);
+      setInterestError(
+        'Не удалось отправить отметку об интересе к запуску из-за сбоя соединения. Ваши данные сохранены — попробуйте повторить отправку.'
+      );
+      setIsSubmittingInterest(false);
+    }
+  };
+
+  const handleSubmitLaunchInterest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitLaunchInterestRequest();
   };
 
   if (!isOpen) return null;
@@ -568,6 +574,27 @@ export const PersonalChapterOfferModal: React.FC<PersonalChapterOfferModalProps>
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                     <span>PDF сформирован из текущего образца ({pdfExportFilename})</span>
+                  </div>
+                )}
+
+                {pdfExportState === 'error' && (
+                  <div
+                    data-testid="sample-pdf-export-error"
+                    role="alert"
+                    className="p-3 rounded-sm bg-rose-950/40 border border-rose-500/40 text-rose-200 text-xs space-y-2 max-w-xs"
+                  >
+                    <p>
+                      {pdfExportError ||
+                        'Не удалось сформировать PDF образца главы. Ваши правки сохранены.'}
+                    </p>
+                    <button
+                      type="button"
+                      data-testid="retry-sample-pdf-btn"
+                      onClick={handleDownloadPdf}
+                      className="px-3 py-1.5 rounded-sm bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-rose-100 text-[11px] uppercase tracking-wider font-medium cursor-pointer"
+                    >
+                      Повторить скачивание PDF
+                    </button>
                   </div>
                 )}
               </div>
@@ -1101,7 +1128,22 @@ export const PersonalChapterOfferModal: React.FC<PersonalChapterOfferModalProps>
                 </div>
 
                 {interestError && (
-                  <p className="text-xs text-rose-400">{interestError}</p>
+                  <div
+                    data-testid="launch-interest-error"
+                    role="alert"
+                    className="p-4 rounded-sm bg-rose-950/40 border border-rose-500/40 text-rose-200 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <span>{interestError}</span>
+                    <button
+                      type="button"
+                      data-testid="retry-launch-interest-btn"
+                      disabled={isSubmittingInterest}
+                      onClick={() => void submitLaunchInterestRequest()}
+                      className="px-3.5 py-2 rounded-sm bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-rose-100 text-xs uppercase tracking-wider font-medium shrink-0 cursor-pointer"
+                    >
+                      Повторить отправку
+                    </button>
+                  </div>
                 )}
 
                 <div className="flex flex-wrap items-center justify-between gap-4 pt-1">

@@ -876,7 +876,7 @@ export function renderPersonalChapterSampleHtml(
     <div class="status-badge">Персональный образец будущей главы — не финальный платный пакет</div>
     <h1 class="doc-title">${escapeHtml(sample.sampleStatusLabel)}</h1>
     <div class="doc-meta">
-      Источник данных: единая модель PersonalChapterSampleV1 • Версия состояния: ${escapeHtml(sample.sourceStateVersion)}
+      Код образца: ${escapeHtml(sample.sampleId)} • Версия разбора: ${escapeHtml(sample.sourceStateVersion)}
     </div>
     ${sectionsHtml}
     <footer class="doc-footer">

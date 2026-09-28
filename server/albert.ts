@@ -280,6 +280,9 @@ export function buildCanonicalEnvelopeFromWebContext(
   const mythNewView = sanitizeVisibleAlbertText(
     (context?.mythAnchors?.newView || context?.storyResult?.mirror?.newView || "").trim()
   );
+  const mythOneStep = sanitizeVisibleAlbertText(
+    ((context?.mythAnchors as any)?.oneStep || context?.storyResult?.one_step || "").trim()
+  );
 
   const rawResonances = context?.resonances || context?.parallels || [];
   const sanitizedResonances = rawResonances.map((r) => ({
@@ -324,6 +327,11 @@ export function buildCanonicalEnvelopeFromWebContext(
   if (mythNewView) {
     evidence.push(
       machineClaim(`Новый взгляд в мифе: ${mythNewView.slice(0, 600)}`, "myth", "myth.newView", now)
+    );
+  }
+  if (mythOneStep) {
+    evidence.push(
+      machineClaim(`Предложенный шаг в мифе: ${mythOneStep.slice(0, 500)}`, "myth", "myth.oneStep", now)
     );
   }
 
@@ -386,6 +394,7 @@ export function buildCanonicalEnvelopeFromWebContext(
     rawReactions && typeof rawReactions === "object" ? rawReactions : {};
 
   const reactionStatements: Array<{ sender: "user"; text: string }> = [];
+  const handledReactionKeys = new Set<string>();
   const candidateHypotheses = [
     v2?.central_motif,
     v2?.synthesis?.strongest_motif,
@@ -400,12 +409,14 @@ export function buildCanonicalEnvelopeFromWebContext(
   if (codeHypothesis) {
     const snippet = codeHypothesis.slice(0, 300);
     if (reactions["central_motif"] === "rejected") {
+      handledReactionKeys.add("central_motif");
       const msg = `Отмечено «Не похоже» (центральная гипотеза карты не совпадает с моим опытом): ${snippet}`;
       evidence.push(machineClaim(msg, "user_statement", "user.reaction.central_motif", now));
       reactionStatements.push({ sender: "user", text: msg });
     } else {
       evidence.push(machineClaim(codeHypothesis.slice(0, 2000), "code_interpretation", "code.central_motif", now));
       if (reactions["central_motif"] === "confirmed") {
+        handledReactionKeys.add("central_motif");
         reactionStatements.push({ sender: "user", text: `Отмечено «Похоже» по центральной гипотезе карты: ${snippet}` });
       }
     }
@@ -418,17 +429,32 @@ export function buildCanonicalEnvelopeFromWebContext(
         const cleanEssence = sanitizeVisibleAlbertText(pos.essence);
         const summaryText = `${pos.public_name} (${pos.energy}, ${pos.role || ""}): ${cleanEssence}`.slice(0, 600);
         if (reactions[posKey] === "rejected") {
+          handledReactionKeys.add(posKey);
           const msg = `Отмечено «Не похоже» по позиции ${pos.public_name} (${pos.energy}, ${pos.role || ""}) — не считать это фактом обо мне.`;
           evidence.push(machineClaim(msg, "user_statement", `user.reaction.${posKey}`, now));
           reactionStatements.push({ sender: "user", text: msg });
         } else {
           evidence.push(machineClaim(summaryText, "code_interpretation", `code.position.${posKey}`, now));
           if (reactions[posKey] === "confirmed") {
+            handledReactionKeys.add(posKey);
             reactionStatements.push({ sender: "user", text: `Отмечено «Похоже» по позиции ${pos.public_name} (${pos.energy}).` });
           }
         }
       }
     }
+  }
+
+  for (const [rKey, rStatus] of Object.entries(reactions)) {
+    if (handledReactionKeys.has(rKey)) continue;
+    if (rStatus !== "confirmed" && rStatus !== "rejected") continue;
+    const cleanKey = sanitizeVisibleAlbertText(rKey).slice(0, 80);
+    if (!cleanKey) continue;
+    const msg =
+      rStatus === "rejected"
+        ? `Отмечено «Не похоже» по элементу карты (${cleanKey}) — не считать это фактом обо мне.`
+        : `Отмечено «Похоже» по элементу карты (${cleanKey}).`;
+    evidence.push(machineClaim(msg, "user_statement", `user.reaction.${cleanKey}`, now));
+    reactionStatements.push({ sender: "user", text: msg });
   }
 
   // Build salient_user_statements: up to 5 non-empty declarative strings <= 280 chars (no questions, no q1-q4)

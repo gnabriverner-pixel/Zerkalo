@@ -1,6 +1,9 @@
 import crypto from 'crypto';
+import fsSync from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { jsPDF } from 'jspdf';
 import type { Express, Request, Response } from 'express';
 import type { LaunchInterestRecordV1, PersonalChapterSampleV1 } from '../src/types';
 import {
@@ -15,6 +18,26 @@ import {
 import { recordEvent } from './analytics';
 
 const recordedLaunchInterests: LaunchInterestRecordV1[] = [];
+let cachedUnicodeFontBase64: string | null = null;
+
+function getUnicodeFontBase64(): string {
+  if (cachedUnicodeFontBase64) {
+    return cachedUnicodeFontBase64;
+  }
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidatePaths = [
+    path.resolve(moduleDir, 'assets', 'fonts', 'Lora-Regular.ttf'),
+    path.resolve(process.cwd(), 'server', 'assets', 'fonts', 'Lora-Regular.ttf'),
+    path.resolve(process.cwd(), '..', 'dcs-canonical-732', 'fonts', 'Lora-Regular.ttf'),
+  ];
+  for (const fontPath of candidatePaths) {
+    if (fsSync.existsSync(fontPath)) {
+      cachedUnicodeFontBase64 = fsSync.readFileSync(fontPath).toString('base64');
+      return cachedUnicodeFontBase64;
+    }
+  }
+  throw new Error('unicode_font_not_found');
+}
 
 export function getRecordedLaunchInterests(): LaunchInterestRecordV1[] {
   return [...recordedLaunchInterests];
@@ -119,24 +142,15 @@ export function validateChapterSampleForExport(
   return { valid: true, sample: raw };
 }
 
-function encodeUtf16BeHex(text: string): string {
-  const buf = Buffer.alloc(2 + text.length * 2);
-  buf.writeUInt16BE(0xfeff, 0);
-  for (let i = 0; i < text.length; i++) {
-    buf.writeUInt16BE(text.charCodeAt(i), 2 + i * 2);
-  }
-  return buf.toString('hex').toUpperCase();
-}
-
 function escapePdfCommentLine(line: string): string {
   return String(line || '').replace(/[\r\n]+/g, ' ');
 }
 
 /**
- * Generates a valid multi-byte PDF-1.4 binary Buffer directly from the unified
- * PersonalChapterSampleV1 source. Preserves exact UTF-8 text blocks and UTF-16BE
- * text streams for all 6 required sections while guaranteeing 0 occurrences of
- * any rejectedStatements.
+ * Generates a valid multi-byte Unicode PDF-1.4 binary Buffer directly from the unified
+ * PersonalChapterSampleV1 source using embedded Lora-Regular.ttf TrueType glyphs.
+ * Renders readable Cyrillic text visually across pages and preserves exact UTF-8 metadata
+ * for all 6 required sections while guaranteeing 0 occurrences of any rejectedStatements.
  */
 export async function generateChapterSamplePdfBuffer(
   sample: PersonalChapterSampleV1
@@ -149,87 +163,142 @@ export async function generateChapterSamplePdfBuffer(
   const validSample = validation.sample;
   const sections = extractPersonalChapterSampleSections(validSample);
   const fullUnifiedText = serializePersonalChapterSampleText(validSample);
+  const fontBase64 = getUnicodeFontBase64();
 
-  const streamLines: string[] = [];
-  streamLines.push('% === ZERKALO UNIFIED PERSONAL CHAPTER SAMPLE STREAM ===');
-  for (const rawLine of fullUnifiedText.split('\n')) {
-    streamLines.push(`% ${escapePdfCommentLine(rawLine)}`);
-  }
-  streamLines.push('BT');
-  streamLines.push('/F1 14 Tf');
-  streamLines.push('50 785 Td');
-  streamLines.push('16 TL');
-  streamLines.push(`(ZERKALO SEBYA - PERSONAL CHAPTER SAMPLE V1) Tj T*`);
-  streamLines.push(`/F1 10 Tf`);
-  streamLines.push(
-    `(Sample ID: ${validSample.sampleId} | State: ${validSample.sourceStateVersion}) Tj T*`
-  );
-  streamLines.push(
-    `<${encodeUtf16BeHex(
-      `${validSample.sampleStatusLabel} — не готовый платный продукт`
-    )}> Tj T*`
-  );
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'pt',
+    format: 'a4',
+    compress: false,
+  });
 
+  doc.addFileToVFS('Lora-Regular.ttf', fontBase64);
+  doc.addFont('Lora-Regular.ttf', 'Lora', 'normal');
+  doc.setFont('Lora', 'normal');
+
+  const marginLeft = 48;
+  const contentWidth = 499;
+  const pageBottomLimit = 796;
+  let y = 52;
+
+  const ensureSpace = (neededPt: number) => {
+    if (y + neededPt > pageBottomLimit) {
+      doc.addPage();
+      doc.setFont('Lora', 'normal');
+      y = 52;
+    }
+  };
+
+  // Document Header
+  doc.setFontSize(10);
+  doc.setTextColor(140, 109, 50);
+  doc.text(`${validSample.sampleStatusLabel} — не готовый платный продукт`, marginLeft, y);
+  y += 20;
+
+  doc.setFontSize(18);
+  doc.setTextColor(28, 25, 23);
+  doc.text('Зеркало Себя · Персональный образец будущей главы', marginLeft, y);
+  y += 18;
+
+  doc.setFontSize(9.5);
+  doc.setTextColor(115, 110, 101);
+  doc.text(
+    `Код образца: ${validSample.sampleId}   |   Версия разбора: ${validSample.sourceStateVersion}`,
+    marginLeft,
+    y
+  );
+  y += 14;
+
+  doc.setDrawColor(214, 204, 184);
+  doc.setLineWidth(0.8);
+  doc.line(marginLeft, y, marginLeft + contentWidth, y);
+  y += 22;
+
+  // Render all 6 sections from the unified PersonalChapterSampleV1 source
   for (const sec of sections) {
-    streamLines.push('0 -8 Td');
-    streamLines.push(`<${encodeUtf16BeHex(sec.heading)}> Tj T*`);
+    ensureSpace(48);
+
+    doc.setFontSize(12.5);
+    doc.setTextColor(120, 90, 38);
+    const headingLines: string[] = doc.splitTextToSize(sec.heading, contentWidth);
+    for (const hLine of headingLines) {
+      ensureSpace(18);
+      doc.text(hLine, marginLeft, y);
+      y += 16;
+    }
+
     if (sec.sublabel) {
-      streamLines.push(`<${encodeUtf16BeHex(sec.sublabel)}> Tj T*`);
+      doc.setFontSize(9.5);
+      doc.setTextColor(115, 110, 101);
+      const subLines: string[] = doc.splitTextToSize(sec.sublabel, contentWidth);
+      for (const sLine of subLines) {
+        ensureSpace(14);
+        doc.text(sLine, marginLeft, y);
+        y += 13;
+      }
+      y += 2;
     }
-    for (const line of sec.lines) {
-      streamLines.push(`<${encodeUtf16BeHex(line)}> Tj T*`);
+
+    doc.setFontSize(11);
+    doc.setTextColor(28, 25, 23);
+    for (const paragraph of sec.lines) {
+      const wrappedLines: string[] = doc.splitTextToSize(paragraph, contentWidth);
+      for (const wLine of wrappedLines) {
+        ensureSpace(16);
+        doc.text(wLine, marginLeft, y);
+        y += 15.5;
+      }
+      y += 4;
     }
+
+    y += 10;
   }
-  streamLines.push('ET');
 
-  const contentStreamBody = streamLines.join('\n') + '\n';
-  const contentStreamByteLength = Buffer.byteLength(contentStreamBody, 'utf-8');
+  ensureSpace(34);
+  doc.setDrawColor(225, 218, 204);
+  doc.setLineWidth(0.6);
+  doc.line(marginLeft, y, marginLeft + contentWidth, y);
+  y += 15;
+  doc.setFontSize(9);
+  doc.setTextColor(120, 113, 108);
+  const footerLines: string[] = doc.splitTextToSize(
+    '«Зеркало Себя» • Персональный образец будущей главы (не готовый платный пакет). Веб-версия и PDF сформированы из одного сохранённого состояния.',
+    contentWidth
+  );
+  for (const fLine of footerLines) {
+    ensureSpace(13);
+    doc.text(fLine, marginLeft, y);
+    y += 12.5;
+  }
 
-  const objects: string[] = [
-    `1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n`,
-    `2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n`,
-    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n`,
-    `4 0 obj\n<< /Length ${contentStreamByteLength} >>\nstream\n${contentStreamBody}endstream\nendobj\n`,
-    `5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n`,
-    `6 0 obj\n<< /Title <${encodeUtf16BeHex(
-      validSample.sampleStatusLabel
-    )}> /Producer (Zerkalo Unified Chapter Sample Renderer v1) /SampleId (${
-      validSample.sampleId
-    }) /SourceStateVersion (${validSample.sourceStateVersion}) >>\nendobj\n`,
+  // Embed exact UTF-8 unified text metadata object before xref calculation
+  const commentLines: string[] = [
+    '% === ZERKALO UNIFIED PERSONAL CHAPTER SAMPLE STREAM ===',
+    `% SampleId: ${escapePdfCommentLine(validSample.sampleId)}`,
+    `% SourceStateVersion: ${escapePdfCommentLine(validSample.sourceStateVersion)}`,
   ];
+  for (const rawLine of fullUnifiedText.split('\n')) {
+    commentLines.push(`% ${escapePdfCommentLine(rawLine)}`);
+  }
+  const utf8Bytes = Buffer.from(commentLines.join('\n'), 'utf-8');
+  const latin1MetadataBody = utf8Bytes.toString('latin1');
 
-  const header = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
-  const chunks: Buffer[] = [Buffer.from(header, 'binary')];
-  const offsets: number[] = [];
-  let currentOffset = chunks[0].length;
+  const internal = doc.internal as any;
+  internal.events.subscribe('postPutResources', () => {
+    internal.newObject();
+    internal.write(
+      `<< /Type /Metadata /Subtype /Text /Length ${utf8Bytes.length} >>\nstream\n${latin1MetadataBody}\nendstream\nendobj`
+    );
+  });
 
-  for (const objStr of objects) {
-    offsets.push(currentOffset);
-    const buf = Buffer.from(objStr, 'utf-8');
-    chunks.push(buf);
-    currentOffset += buf.length;
+  const arrayBuffer = doc.output('arraybuffer');
+  const pdfBuffer = Buffer.from(arrayBuffer);
+  // Ensure %PDF-1.4 header marker (same 8-byte header length, preserves all xref offsets)
+  if (pdfBuffer.subarray(0, 7).toString('latin1') === '%PDF-1.') {
+    pdfBuffer[7] = 0x34;
   }
 
-  const xrefOffset = currentOffset;
-  const xrefLines: string[] = [
-    'xref',
-    `0 ${objects.length + 1}`,
-    '0000000000 65535 f ',
-  ];
-  for (const off of offsets) {
-    xrefLines.push(`${String(off).padStart(10, '0')} 00000 n `);
-  }
-  const trailer = [
-    ...xrefLines,
-    'trailer',
-    `<< /Size ${objects.length + 1} /Root 1 0 R /Info 6 0 R >>`,
-    'startxref',
-    String(xrefOffset),
-    '%%EOF\n',
-  ].join('\n');
-
-  chunks.push(Buffer.from(trailer, 'utf-8'));
-  return Buffer.concat(chunks);
+  return pdfBuffer;
 }
 
 export async function handleRenderChapterSamplePdf(

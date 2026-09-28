@@ -4,6 +4,9 @@ import {
   ApiResponse,
   AlbertOpenerRecordV1,
   UserConclusionStateV1,
+  CodeV2Payload,
+  MeetingParallel,
+  MeetingDivergence,
 } from '../types';
 import { TRUTH_CLEARED_EVENT } from './albertTruthState';
 
@@ -32,9 +35,29 @@ export interface PersistedAlbertConversationV1 {
 export interface SourceStateVersionInputs {
   codeDate?: string;
   codeResult?: CalculationResult | null;
+  soulNumber?: number;
+  codeReactions?: Record<string, 'confirmed' | 'rejected'> | null;
+  codeV2Payload?: Partial<CodeV2Payload> | null;
+  mainPattern?: string;
   storyInputs?: StoryInputs | null;
   storyResult?: NonNullable<ApiResponse['story_result']> | null;
+  mythAnchors?: {
+    title?: string;
+    mainImage?: string;
+    innerTension?: string;
+    hiddenResource?: string;
+    newView?: string;
+    oneStep?: string;
+    journalQuestion?: string;
+  } | null;
   userQuestion?: string;
+  userNote?: string;
+  meetingSummary?: string;
+  confidenceNote?: string;
+  reflectiveQuestion?: string;
+  albertInsight?: string;
+  parallels?: MeetingParallel[] | null;
+  divergences?: MeetingDivergence[] | null;
 }
 
 const inFlightOpenerRequests = new Set<string>();
@@ -71,46 +94,173 @@ function fnv1a32Hex(input: string): string {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
+function normStr(val: unknown): string {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val.trim();
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  try {
+    return JSON.stringify(val);
+  } catch {
+    return '';
+  }
+}
+
 /**
  * Детерминированно вычисляет версию входного состояния (FNV-1a 32-bit hex)
- * по дате, результатам Кода, ответам/результату Личного мифа и вопросу человека.
+ * по всем смысловым входам, передаваемым Альберту: дате, числам и гипотезам Кода,
+ * реакции человека на Код (codeReactions), ответам, образам и шагу Личного мифа
+ * (включая one_step и journal_question), вопросу, заметке и контексту Встречи.
  */
 export function computeSourceStateVersion(inputs: SourceStateVersionInputs = {}): string {
-  const codeDateNorm = inputs.codeDate?.trim() || '';
-  const codeResultNorm = inputs.codeResult
+  const codeDateNorm = normStr(inputs.codeDate);
+
+  const effectiveCalc =
+    inputs.codeResult ||
+    inputs.codeV2Payload?.calculation?.canonical_result ||
+    (inputs.codeV2Payload?.calculation?.five_numbers as any) ||
+    null;
+
+  const codeResultNorm = effectiveCalc
     ? [
-        inputs.codeResult.soul,
-        inputs.codeResult.expression,
-        inputs.codeResult.path,
-        inputs.codeResult.direction,
-        inputs.codeResult.result,
+        effectiveCalc.soul,
+        effectiveCalc.expression,
+        effectiveCalc.path,
+        effectiveCalc.direction,
+        effectiveCalc.result,
       ].join('-')
+    : typeof inputs.soulNumber === 'number'
+    ? String(inputs.soulNumber)
     : '';
+
+  const reactions =
+    inputs.codeReactions && typeof inputs.codeReactions === 'object'
+      ? inputs.codeReactions
+      : {};
+  const codeReactionsNorm = Object.keys(reactions)
+    .sort()
+    .filter((k) => reactions[k] === 'confirmed' || reactions[k] === 'rejected')
+    .map((k) => `${normStr(k)}:${reactions[k]}`)
+    .join('|');
+
+  const centralMotifNorm = normStr(
+    inputs.mainPattern ||
+      inputs.codeV2Payload?.central_motif ||
+      inputs.codeV2Payload?.synthesis?.strongest_motif ||
+      ''
+  );
+
+  const albertCtx = inputs.codeV2Payload?.albert_context;
+  const albertCtxNorm = albertCtx
+    ? [
+        normStr(albertCtx.opening_statement),
+        normStr(albertCtx.opening_question),
+        normStr(albertCtx.strongest_hypothesis),
+      ].join('|')
+    : '';
+
+  const positionsNorm = Array.isArray(inputs.codeV2Payload?.positions)
+    ? inputs.codeV2Payload!.positions
+        .map((p) =>
+          [
+            normStr(p?.position),
+            normStr(p?.public_name),
+            normStr(p?.role),
+            normStr(p?.energy),
+            normStr(p?.essence),
+          ].join(':')
+        )
+        .join('|')
+    : '';
+
   const storyInputsNorm = inputs.storyInputs
     ? [
-        inputs.storyInputs.q1?.trim() || '',
-        inputs.storyInputs.q2?.trim() || '',
-        inputs.storyInputs.q3?.trim() || '',
-        inputs.storyInputs.q4?.trim() || '',
+        normStr(inputs.storyInputs.q1),
+        normStr(inputs.storyInputs.q2),
+        normStr(inputs.storyInputs.q3),
+        normStr(inputs.storyInputs.q4),
       ].join('|')
     : '';
-  const storyResultNorm = inputs.storyResult
-    ? [
-        inputs.storyResult.title?.trim() || '',
-        inputs.storyResult.mirror?.mainImage?.trim() || '',
-        inputs.storyResult.mirror?.innerTension?.trim() || '',
-        inputs.storyResult.mirror?.hiddenResource?.trim() || '',
-        inputs.storyResult.mirror?.newView?.trim() || '',
-      ].join('|')
+
+  const mythTitle = normStr(inputs.mythAnchors?.title ?? inputs.storyResult?.title ?? '');
+  const mythMainImage = normStr(
+    inputs.mythAnchors?.mainImage ?? inputs.storyResult?.mirror?.mainImage ?? ''
+  );
+  const mythInnerTension = normStr(
+    inputs.mythAnchors?.innerTension ?? inputs.storyResult?.mirror?.innerTension ?? ''
+  );
+  const mythHiddenResource = normStr(
+    inputs.mythAnchors?.hiddenResource ?? inputs.storyResult?.mirror?.hiddenResource ?? ''
+  );
+  const mythNewView = normStr(
+    inputs.mythAnchors?.newView ?? inputs.storyResult?.mirror?.newView ?? ''
+  );
+  const mythOneStep = normStr(
+    inputs.mythAnchors?.oneStep ?? inputs.storyResult?.one_step ?? ''
+  );
+  const mythJournalQuestion = normStr(
+    inputs.mythAnchors?.journalQuestion ?? inputs.storyResult?.journal_question ?? ''
+  );
+
+  const storyResultNorm = [
+    mythTitle,
+    mythMainImage,
+    mythInnerTension,
+    mythHiddenResource,
+    mythNewView,
+    mythOneStep,
+    mythJournalQuestion,
+  ].join('|');
+
+  const userQuestionNorm = normStr(inputs.userQuestion);
+  const userNoteNorm = normStr(inputs.userNote);
+
+  const parallelsNorm = Array.isArray(inputs.parallels)
+    ? inputs.parallels
+        .map((p) =>
+          [
+            normStr(p?.theme),
+            normStr(p?.codeAnchor),
+            normStr(p?.mythAnchor),
+            normStr(p?.synthesis),
+          ].join(':')
+        )
+        .join('|')
     : '';
-  const userQuestionNorm = inputs.userQuestion?.trim() || '';
+
+  const divergencesNorm = Array.isArray(inputs.divergences)
+    ? inputs.divergences
+        .map((d) =>
+          [
+            normStr(d?.theme),
+            normStr(d?.codeAspect),
+            normStr(d?.mythAspect),
+            normStr(d?.reflection),
+          ].join(':')
+        )
+        .join('|')
+    : '';
+
+  const meetingNorm = [
+    normStr(inputs.meetingSummary),
+    normStr(inputs.confidenceNote),
+    normStr(inputs.reflectiveQuestion),
+    normStr(inputs.albertInsight),
+    parallelsNorm,
+    divergencesNorm,
+  ].join('|');
 
   const payload = [
     codeDateNorm,
     codeResultNorm,
+    codeReactionsNorm,
+    centralMotifNorm,
+    albertCtxNorm,
+    positionsNorm,
     storyInputsNorm,
     storyResultNorm,
     userQuestionNorm,
+    userNoteNorm,
+    meetingNorm,
   ].join('\n');
 
   return `v1_${fnv1a32Hex(payload)}`;
@@ -218,15 +368,28 @@ export function clearAlbertConversation(): void {
 
 export function isOpenerStale(
   saved: PersistedAlbertConversationV1 | null,
-  currentSourceStateVersion: string
+  currentSourceStateVersionOrInputs: string | SourceStateVersionInputs
 ): boolean {
-  if (!saved || !Array.isArray(saved.messages) || saved.messages.length === 0) {
+  if (!saved) {
     return false;
   }
-  if (!saved.sourceStateVersion || !currentSourceStateVersion) {
+  const hasMessages = Array.isArray(saved.messages) && saved.messages.length > 0;
+  const hasOpener = Boolean(saved.openerRecord);
+  if (!hasMessages && !hasOpener) {
     return false;
   }
-  return saved.sourceStateVersion !== currentSourceStateVersion;
+  const currentVersion =
+    typeof currentSourceStateVersionOrInputs === 'string'
+      ? currentSourceStateVersionOrInputs
+      : computeSourceStateVersion(currentSourceStateVersionOrInputs);
+  if (!currentVersion) {
+    return false;
+  }
+  const savedVersion = saved.openerRecord?.sourceStateVersion || saved.sourceStateVersion;
+  if (!savedVersion) {
+    return false;
+  }
+  return savedVersion !== currentVersion;
 }
 
 export function isOpenerRequestInFlight(sourceStateVersion: string): boolean {
