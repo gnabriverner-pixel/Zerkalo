@@ -297,3 +297,69 @@ export interface CodeV2Payload {
   verification: string[];
   albert_context: CodeV2AlbertContext;
 }
+
+export type AlbertOpenerActionType = 'short_juxtaposition_opener' | 'user_message';
+
+export type AlbertInterpretationStance = 'unreviewed' | 'confirmed' | 'edited' | 'rejected';
+
+export interface AlbertOpenerRecordV1 {
+  version: 1;
+  sourceStateVersion: string;
+  openerText: string;
+  nextOpenLoop?: string | null;
+  createdAt: string;
+  lensesUsed: {
+    hasCode: boolean;
+    hasMyth: boolean;
+    hasQuestion: boolean;
+  };
+}
+
+export interface UserConclusionStateV1 {
+  stance: AlbertInterpretationStance;
+  systemHypothesis: string;
+  userOwnPhrase: string;
+  chosenStepOrQuestion: string;
+  updatedAt: string;
+  sourceStateVersion: string;
+}
+
+export interface PersonalChapterSampleV1 {
+  schemaVersion: 'personal_chapter_sample.v1';
+  sampleId: string;
+  sampleStatusLabel: 'Персональный образец будущей главы';
+  isPaidProductComplete: false;
+  sourceStateVersion: string;
+  createdAt: string;
+  updatedAt: string;
+  stance: AlbertInterpretationStance;
+  currentQuestion: string;
+  userOwnPhrase: string;
+  usefulDistinctions: string[];
+  mythImage: {
+    explicitLabel: string;
+    title: string;
+    imageText: string;
+  } | null;
+  chosenStepOrQuestion: string;
+  subsequentNoteSpace: {
+    prompt: string;
+    userNote: string;
+  };
+  rejectedStatements: string[];
+}
+
+export interface LaunchInterestRecordV1 {
+  schemaVersion: 'launch_interest.v1';
+  interestId: string;
+  productCode: 'personal_chapter_single';
+  productTitle: 'Личная глава';
+  displayedPriceRub: 4900;
+  actionKind: 'launch_interest_only';
+  isPaymentOrPreorder: false;
+  sampleId: string;
+  preferredChannel: 'email' | 'telegram' | 'on_site_note';
+  contactOrNote?: string;
+  createdAt: string;
+}
+

@@ -18,7 +18,8 @@ import {
   parsePersonalMythRequest,
 } from "./server/myth";
 import { containsMeetingCrisisInput, generateMeetingOfMirrors } from "./server/meeting";
-import { AlbertCanonicalError, generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
+import { AlbertCanonicalError, checkSafety, generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
+import { installChapterOfferRoutes } from "./server/chapterOffer";
 import crypto from "crypto";
 import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge, purgeCanonicalCaches, deriveCacheKey, bindCanonicalCacheOwner } from "./server/dcsBridge";
 import { createContinuationClaim, LOCAL_CANDIDATE_TELEGRAM_UNAVAILABLE_MESSAGE, sweepExpiredClaims } from "./server/handoff";
@@ -669,7 +670,7 @@ async function startServer() {
     }
   });
 
-  // Dedicated Albert Dialogue Endpoint (RP-1 DeepSeek conversation)
+  // Dedicated Albert Dialogue Endpoint (RP-1 DeepSeek conversation & Stage A short juxtaposition)
   const albertHandler = async (req: express.Request, res: express.Response) => {
     try {
       // Full message validation (non-empty AND within the generator's 2000-char contract)
@@ -681,6 +682,24 @@ async function startServer() {
           status: "error",
           code: "invalid_message",
           ui: { safe_message: "Пожалуйста, введите текст вопроса для Альберта." }
+        });
+      }
+
+      // Crisis pre-check strictly BEFORE provider readiness and daily budget consumption (A2)
+      const safetyCheck = checkSafety(req.body);
+      if (safetyCheck.isCrisis) {
+        return res.status(200).json({
+          status: "crisis",
+          isCrisis: true,
+          suppressCommercialOffer: true,
+          safetyState: "crisis",
+          message: safetyCheck.safeMessage,
+          response: safetyCheck.safeMessage,
+          provider: "safety_intercept",
+          model: null,
+          authority: "digital-code-system/telegram_v2.albert.orchestrator",
+          actionType: req.body?.actionType === "short_juxtaposition_opener" ? "short_juxtaposition_opener" : "user_message",
+          sourceStateVersion: typeof req.body?.sourceStateVersion === "string" ? req.body.sourceStateVersion : undefined,
         });
       }
 
@@ -711,7 +730,7 @@ async function startServer() {
         res.locals.consent
       );
 
-      liveGeneration.albert = dialogueRes.status === "ok";
+      liveGeneration.albert = dialogueRes.status === "ok" || dialogueRes.status === "crisis";
       return res.status(200).json(dialogueRes);
     } catch (error) {
       const code = error instanceof Error ? error.message.split(":", 1)[0] : "albert_failed";
@@ -764,7 +783,8 @@ async function startServer() {
     }
   };
 
-  app.post("/api/albert/dialogue", albertGuard, albertHandler);
+  app.post(["/api/albert/dialogue", "/api/albert"], albertGuard, albertHandler);
+  installChapterOfferRoutes(app);
 
   // Backward-compatible endpoint for deterministic code calculation
   app.post("/api/generate", async (req, res) => {

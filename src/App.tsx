@@ -8,7 +8,8 @@ import { AboutMethod } from './components/AboutMethod';
 import { AlabasterSanctuary } from './components/AlabasterSanctuary';
 import { CodeV2Experience } from './components/CodeV2/CodeV2Experience';
 import { AlbertDialogue } from './components/AlbertDialogue';
-import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, CodeV2Payload } from './types';
+import { PersonalChapterOfferModal } from './components/PersonalChapterOfferModal';
+import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, CodeV2Payload, UserConclusionStateV1 } from './types';
 import { 
   loadMyMirrorSnapshot, 
   deleteMyMirrorSnapshot, 
@@ -81,6 +82,9 @@ function AppContent() {
   }, [isQaMode]);
   const [isAlbertV2Open, setIsAlbertV2Open] = useState(false);
   const [albertInitialTopic, setAlbertInitialTopic] = useState<string | undefined>(undefined);
+  const [openerTriggerToken, setOpenerTriggerToken] = useState<number>(0);
+  const [isChapterOfferOpen, setIsChapterOfferOpen] = useState<boolean>(false);
+  const [userConclusionState, setUserConclusionState] = useState<UserConclusionStateV1 | null>(null);
   const [codeV2Payload, setCodeV2Payload] = useState<CodeV2Payload | null>(null);
 
   // Auto-activate preview on direct landing with ?preview=v2 or ?v=2
@@ -527,6 +531,12 @@ function AppContent() {
                   setStoryResult(result || null);
                   setMeetingResult(null);
                 }}
+                onOpenAlbertJuxtaposition={() => {
+                  setAlbertInitialTopic(undefined);
+                  setIsAlbertV2Open(true);
+                  setOpenerTriggerToken(prev => prev + 1);
+                }}
+                onReturnToCode={hasCode ? () => setMode('alabaster') : undefined}
                 onNavigateToMeeting={() => setMode(hasCode ? 'meeting' : 'alabaster')}
                 hasCodeResult={hasCode}
               />
@@ -579,7 +589,7 @@ function AppContent() {
       <MetaphorLibrary isOpen={showLibrary} onClose={() => setShowLibrary(false)} />
       <AboutMethod isOpen={showAbout} onClose={() => setShowAbout(false)} theme={mode === 'alabaster' && !isPreviewV2 ? 'light' : 'dark'} />
 
-      {/* Albert Dialogue Modal for Code V2 Preview */}
+      {/* Albert Dialogue Modal for Code V2 Preview & Stage A Short Juxtaposition */}
       <AlbertDialogue
         isOpen={isAlbertV2Open}
         onClose={() => {
@@ -589,17 +599,51 @@ function AppContent() {
         key={journeyId}
         journeyId={journeyId}
         initialTopic={albertInitialTopic}
+        openerTriggerToken={openerTriggerToken}
         userQuestion={userQuestion}
         onUserQuestionChange={setUserQuestion}
+        codeDate={codeDate}
         codeReactions={codeReactions}
         userNote={meetingUserNote}
         onUserNoteChange={setMeetingUserNote}
+        storyInputs={storyInputs}
         storyResult={storyResult}
         meetingResult={meetingResult}
         calc={codeResult}
         codeV2Payload={codeV2Payload}
         codeV2Context={codeV2Payload?.albert_context}
+        onReturnToCode={hasCode ? () => {
+          setIsAlbertV2Open(false);
+          setMode('alabaster');
+        } : undefined}
+        onReturnToMyth={hasMyth ? () => {
+          setIsAlbertV2Open(false);
+          setMode('myth');
+        } : undefined}
+        onOpenPersonalChapterSample={(payload) => {
+          setUserConclusionState({
+            ...payload,
+            updatedAt: new Date().toISOString(),
+          });
+          setIsChapterOfferOpen(true);
+        }}
         theme="dark"
+      />
+
+      {/* Personal Chapter Sample & Full Package Offer Modal (Stage A4 & A5) */}
+      <PersonalChapterOfferModal
+        isOpen={isChapterOfferOpen}
+        onClose={() => setIsChapterOfferOpen(false)}
+        conclusionState={userConclusionState}
+        sourceStateVersion={userConclusionState?.sourceStateVersion}
+        userQuestion={userQuestion}
+        stance={userConclusionState?.stance}
+        systemHypothesis={userConclusionState?.systemHypothesis}
+        userOwnPhrase={userConclusionState?.userOwnPhrase}
+        chosenStepOrQuestion={userConclusionState?.chosenStepOrQuestion}
+        codeV2Payload={codeV2Payload}
+        firstMirror={firstMirror}
+        storyResult={storyResult}
       />
     </div>
   );

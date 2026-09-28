@@ -11,6 +11,7 @@ leads.json
 feedback.json
 test-results/
 data/events/*.jsonl
+data/paid/*.jsonl
 data/feedback_qualitative/*.json
 data/claims/*.json
 data/*.json

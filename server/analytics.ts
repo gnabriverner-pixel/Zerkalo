@@ -18,7 +18,14 @@ export const ALLOWED_DECISION_EVENTS = [
   "dropoff_stage",
   "time_to_first_value",
   "book_preview_opened",
+  "chapter_sample_opened",
+  "chapter_sample_updated",
+  "chapter_sample_pdf_exported",
+  "package_offer_viewed",
+  "launch_interest_submitted",
 ] as const;
+
+export const ALLOWED_EVENTS = ALLOWED_DECISION_EVENTS;
 
 export type AllowedEventName = typeof ALLOWED_DECISION_EVENTS[number];
 
@@ -44,12 +51,21 @@ export const FORBIDDEN_ANALYTICS_KEYS = [
   "email",
   "telegram_id",
   "telegram",
+  "telegram_username",
   "phone",
   "ip",
   "ip_address",
   "client_ip",
   "user_note",
   "note",
+  "chapter_title",
+  "personal_chapter_title",
+  "access_token",
+  "token",
+  "user_own_phrase",
+  "subsequent_note",
+  "myth_image",
+  "contact_or_note",
 ];
 
 export const ALLOWED_STATUS_CODES = [
@@ -83,6 +99,8 @@ export const ALLOWED_FEEDBACK_CODES = [
 
 export const ALLOWED_NOVELTY_CODES = ["YES", "PARTIALLY", "NO"] as const;
 
+export const ALLOWED_PREFERRED_CHANNELS = ["email", "telegram", "on_site_note"] as const;
+
 export interface DecisionAnalyticsEvent {
   event_name: AllowedEventName;
   anonymous_id: string;
@@ -102,6 +120,11 @@ export interface DecisionAnalyticsEvent {
   unsupported_novel_claim?: boolean;
   classifier_version?: string;
   confidence?: number;
+  sample_id_hash?: string;
+  preferred_channel?: typeof ALLOWED_PREFERRED_CHANNELS[number];
+  displayed_price_rub?: number;
+  action_kind?: "launch_interest_only";
+  source_state_version?: string;
 }
 
 export const ALLOWED_ACQUISITION_SOURCES = [
@@ -364,6 +387,41 @@ export function validateAnalyticsEvent(payload: unknown): { valid: boolean; even
     event.confidence = raw.confidence;
   }
 
+  if (raw.sample_id_hash !== undefined && raw.sample_id_hash !== null) {
+    if (typeof raw.sample_id_hash !== "string" || !/^[a-zA-Z0-9_-]{6,64}$/.test(raw.sample_id_hash)) {
+      return { valid: false, error: "invalid_sample_id_hash" };
+    }
+    event.sample_id_hash = raw.sample_id_hash;
+  }
+
+  if (raw.preferred_channel !== undefined && raw.preferred_channel !== null) {
+    if (typeof raw.preferred_channel !== "string" || !ALLOWED_PREFERRED_CHANNELS.includes(raw.preferred_channel as any)) {
+      return { valid: false, error: "invalid_preferred_channel" };
+    }
+    event.preferred_channel = raw.preferred_channel as typeof ALLOWED_PREFERRED_CHANNELS[number];
+  }
+
+  if (raw.displayed_price_rub !== undefined && raw.displayed_price_rub !== null) {
+    if (typeof raw.displayed_price_rub !== "number" || isNaN(raw.displayed_price_rub) || raw.displayed_price_rub < 0 || raw.displayed_price_rub > 100_000) {
+      return { valid: false, error: "invalid_displayed_price_rub" };
+    }
+    event.displayed_price_rub = Math.round(raw.displayed_price_rub);
+  }
+
+  if (raw.action_kind !== undefined && raw.action_kind !== null) {
+    if (raw.action_kind !== "launch_interest_only") {
+      return { valid: false, error: "invalid_action_kind" };
+    }
+    event.action_kind = "launch_interest_only";
+  }
+
+  if (raw.source_state_version !== undefined && raw.source_state_version !== null) {
+    if (typeof raw.source_state_version !== "string" || !/^[a-zA-Z0-9_.:-]{1,64}$/.test(raw.source_state_version)) {
+      return { valid: false, error: "invalid_source_state_version" };
+    }
+    event.source_state_version = raw.source_state_version;
+  }
+
   return { valid: true, event };
 }
 
@@ -382,6 +440,40 @@ export async function logDecisionEvent(event: DecisionAnalyticsEvent): Promise<b
     console.warn("[Analytics] Failed to persist decision event:", err);
     return false;
   }
+}
+
+export async function recordEvent(
+  eventNameOrPayload: AllowedEventName | DecisionAnalyticsEvent | Record<string, unknown>,
+  technicalProps?: Record<string, unknown>
+): Promise<{ valid: boolean; event?: DecisionAnalyticsEvent; error?: string }> {
+  const rawPayload: Record<string, unknown> =
+    typeof eventNameOrPayload === "string"
+      ? {
+          event_name: eventNameOrPayload,
+          anonymous_id:
+            typeof technicalProps?.anonymous_id === "string"
+              ? technicalProps.anonymous_id
+              : `anon_paid_${Date.now()}`,
+          occurred_at: new Date().toISOString(),
+          release_sha: getAuthoritativeReleaseSha(),
+          ramp_stage: "A",
+          ...(technicalProps || {}),
+        }
+      : {
+          anonymous_id: `anon_paid_${Date.now()}`,
+          occurred_at: new Date().toISOString(),
+          release_sha: getAuthoritativeReleaseSha(),
+          ramp_stage: "A",
+          ...eventNameOrPayload,
+          ...(technicalProps || {}),
+        };
+
+  const validated = validateAnalyticsEvent(rawPayload);
+  if (!validated.valid || !validated.event) {
+    return validated;
+  }
+  await logDecisionEvent(validated.event);
+  return validated;
 }
 
 export const ANALYTICS_MAX_RETENTION_MS = 90 * 24 * 60 * 60 * 1000; // 90 days

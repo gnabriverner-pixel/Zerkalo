@@ -5,6 +5,7 @@ import { StoryInputs, ApiResponse } from '../types';
 import { EmblemPlate } from '../art/emblem';
 import { Orb } from './Orb';
 import { useProtectedFetch } from './ConsentBoundary';
+import { isShortJuxtapositionEnabled } from '../services/albertOpenerState';
 
 interface PersonalMythProps {
   initialInputs?: StoryInputs | null;
@@ -14,6 +15,9 @@ interface PersonalMythProps {
   onOpenAbout?: () => void;
   onMythCompleted?: (inputs: StoryInputs, result: ApiResponse['story_result']) => void;
   onNavigateToMeeting?: () => void;
+  onNext?: () => void;
+  onOpenAlbertJuxtaposition?: () => void;
+  onReturnToCode?: () => void;
   hasCodeResult?: boolean;
 }
 
@@ -25,9 +29,14 @@ export default function PersonalMyth({
   onOpenAbout,
   onMythCompleted,
   onNavigateToMeeting,
+  onNext,
+  onOpenAlbertJuxtaposition,
+  onReturnToCode,
   hasCodeResult 
 }: PersonalMythProps = {}) {
   const protectedFetch = useProtectedFetch();
+  const handleNavigateToMeeting = onNext || onNavigateToMeeting;
+  const shortJuxtapositionEnabled = isShortJuxtapositionEnabled();
   const [step, setStep] = useState(initialResult ? 6 : 0);
   const hasPrefilledFromQuestionRef = useRef<boolean>(
     Boolean(initialInputs?.q1?.trim() || userQuestion?.trim())
@@ -455,46 +464,128 @@ export default function PersonalMyth({
                 />
               </div>
 
-              {/* CTA TO DIGITAL CODE / MEETING */}
+              {/* CTA TO ALBERT SHORT JUXTAPOSITION / DIGITAL CODE / MEETING */}
               <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-10 rounded-xs text-center space-y-6">
-                <div>
-                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
-                    Следующее зеркало
-                  </span>
-                  <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
-                    {hasCodeResult ? 'Встреча двух зеркал' : 'Цифровой код вашей природы'}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-stone-400 font-normal max-w-md mx-auto leading-relaxed">
-                    {hasCodeResult 
-                      ? 'Ваш код уже рассчитан. Можно перейти к синтезу двух независимых отражений.'
-                      : 'Откройте независимую линзу через дату рождения, чтобы получить пять ключей и сопоставить их с вашим мифом.'}
-                  </p>
-                </div>
+                {shortJuxtapositionEnabled && onOpenAlbertJuxtaposition ? (
+                  <>
+                    <div>
+                      <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
+                        Следующий шаг · Разговор по существу
+                      </span>
+                      <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
+                        Сопоставить зеркала вокруг вашего вопроса
+                      </h3>
+                      <p className="text-xs sm:text-sm text-stone-300 font-normal max-w-lg mx-auto leading-relaxed">
+                        Альберт коротко сопоставит ваш Код, Личный миф и вопрос на сайте — без потери результатов
+                      </p>
+                    </div>
 
-                <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-                  {onNavigateToMeeting && (
-                    <button 
-                      onClick={onNavigateToMeeting}
-                      className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 cursor-pointer shadow-md"
-                    >
-                      <span>{hasCodeResult ? 'Открыть Встречу зеркал' : 'Открыть Цифровой код'}</span>
-                      <ArrowRight size={14} />
-                    </button>
-                  )}
+                    <div className="flex flex-col items-center gap-4">
+                      <button
+                        type="button"
+                        data-testid="myth-to-albert-juxtaposition-btn"
+                        onClick={onOpenAlbertJuxtaposition}
+                        className="px-8 py-4 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.18em] text-xs sm:text-sm font-semibold rounded-xs hover:bg-[#D9B770] focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none transition-all flex items-center gap-2.5 cursor-pointer shadow-md"
+                      >
+                        <span>Что это значит для моего вопроса?</span>
+                        <ArrowRight size={15} />
+                      </button>
 
-                  <button
-                    onClick={() => {
-                      setStep(0);
-                      setInputs({ q1: userQuestion?.trim() || '', q2: '', q3: '', q4: '' });
-                      setResult(null);
-                      requestIdRef.current = `myth_${crypto.randomUUID().replace(/-/g, '')}`;
-                    }}
-                    className="px-5 py-3 text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <RotateCcw size={13} />
-                    <span>Пройти заново</span>
-                  </button>
-                </div>
+                      <div className="flex flex-wrap justify-center items-center gap-4 pt-2">
+                        {onReturnToCode && (
+                          <button
+                            type="button"
+                            data-testid="myth-return-to-code-btn"
+                            onClick={onReturnToCode}
+                            className="px-4 py-2.5 text-xs uppercase tracking-wider text-stone-300 hover:text-[var(--color-antique-gold)] border border-white/10 hover:border-[var(--color-antique-gold)]/40 rounded-xs focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none transition-colors cursor-pointer"
+                          >
+                            Вернуться к Цифровому Коду
+                          </button>
+                        )}
+
+                        {handleNavigateToMeeting && (
+                          <button
+                            type="button"
+                            data-testid="myth-to-meeting-btn"
+                            onClick={handleNavigateToMeeting}
+                            className="px-4 py-2.5 text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 border border-white/10 hover:border-white/25 rounded-xs focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none transition-colors cursor-pointer"
+                          >
+                            Открыть полную сводку Встречи зеркал
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStep(0);
+                            setInputs({ q1: userQuestion?.trim() || '', q2: '', q3: '', q4: '' });
+                            setResult(null);
+                            requestIdRef.current = `myth_${crypto.randomUUID().replace(/-/g, '')}`;
+                          }}
+                          className="px-4 py-2.5 text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1.5 rounded-xs focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none transition-colors cursor-pointer"
+                        >
+                          <RotateCcw size={13} />
+                          <span>Пройти заново</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
+                        Следующее зеркало
+                      </span>
+                      <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
+                        {hasCodeResult ? 'Встреча двух зеркал' : 'Цифровой код вашей природы'}
+                      </h3>
+                      <p className="text-xs sm:text-sm text-stone-400 font-normal max-w-md mx-auto leading-relaxed">
+                        {hasCodeResult
+                          ? 'Ваш код уже рассчитан. Можно перейти к синтезу двух независимых отражений.'
+                          : 'Откройте независимую линзу через дату рождения, чтобы получить пять ключей и сопоставить их с вашим мифом.'}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-4">
+                      {handleNavigateToMeeting && (
+                        <button
+                          type="button"
+                          data-testid="myth-to-meeting-btn"
+                          onClick={handleNavigateToMeeting}
+                          className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none transition-all flex items-center gap-2 cursor-pointer shadow-md"
+                        >
+                          <span>{hasCodeResult ? 'Открыть Встречу зеркал' : 'Открыть Цифровой код'}</span>
+                          <ArrowRight size={14} />
+                        </button>
+                      )}
+
+                      {onReturnToCode && (
+                        <button
+                          type="button"
+                          data-testid="myth-return-to-code-btn"
+                          onClick={onReturnToCode}
+                          className="px-5 py-3 text-xs uppercase tracking-wider text-stone-300 hover:text-[var(--color-antique-gold)] border border-white/10 hover:border-[var(--color-antique-gold)]/40 rounded-xs focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none transition-colors cursor-pointer"
+                        >
+                          Вернуться к Цифровому Коду
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStep(0);
+                          setInputs({ q1: userQuestion?.trim() || '', q2: '', q3: '', q4: '' });
+                          setResult(null);
+                          requestIdRef.current = `myth_${crypto.randomUUID().replace(/-/g, '')}`;
+                        }}
+                        className="px-5 py-3 text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1.5 rounded-xs focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none transition-colors cursor-pointer"
+                      >
+                        <RotateCcw size={13} />
+                        <span>Пройти заново</span>
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
             </motion.div>
