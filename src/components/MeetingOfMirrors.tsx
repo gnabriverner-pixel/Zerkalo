@@ -26,6 +26,7 @@ import {
   deleteMyMirrorSnapshot,
   isSnapshotMatchingCurrentSession
 } from '../services/myMirrorStorage';
+import { isShortJuxtapositionEnabled } from '../services/albertOpenerState';
 
 export interface MeetingOfMirrorsProps {
   codeDate?: string;
@@ -35,6 +36,7 @@ export interface MeetingOfMirrorsProps {
   userQuestion?: string;
   onUserQuestionChange?: (question: string) => void;
   onOpenAlbert?: () => void;
+  onOpenAlbertJuxtaposition?: () => void;
   codeResult: CalculationResult | null;
   firstMirror: FirstMirror | null;
   storyInputs: StoryInputs | null;
@@ -57,6 +59,7 @@ export function MeetingOfMirrors({
   userQuestion,
   onUserQuestionChange,
   onOpenAlbert,
+  onOpenAlbertJuxtaposition,
   codeResult,
   firstMirror,
   storyInputs,
@@ -71,6 +74,8 @@ export function MeetingOfMirrors({
   onOpenMyth
 }: MeetingOfMirrorsProps) {
   const protectedFetch = useProtectedFetch();
+  const shortJuxtapositionEnabled = isShortJuxtapositionEnabled();
+  const useNewOpenerRoute = shortJuxtapositionEnabled && typeof onOpenAlbertJuxtaposition === 'function';
   const [meetingResult, setMeetingResult] = useState<MeetingOfMirrorsResult | null>(initialMeetingResult || null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -227,6 +232,15 @@ export function MeetingOfMirrors({
       
       <div className="w-full max-w-4xl flex flex-col items-center relative z-10 my-auto">
         
+        {!shortJuxtapositionEnabled && (
+          <div
+            data-testid="legacy-meeting-comparison-banner"
+            className="mb-6 px-4 py-2 rounded-xs bg-amber-950/30 border border-amber-500/30 text-[11px] uppercase tracking-widest text-amber-300/90 text-center"
+          >
+            Режим сравнения (только для приёмки) · Прежний маршрут полной сводки Встречи зеркал
+          </div>
+        )}
+
         {/* ========================================================= */}
         {/* VISUAL CENTER: TWO CONVERGING ORBS */}
         {/* ========================================================= */}
@@ -253,7 +267,7 @@ export function MeetingOfMirrors({
           </div>
 
           <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] mb-3">
-            Синтез двух зеркал · Встреча
+            {useNewOpenerRoute ? 'Начало разговора · Встреча' : 'Синтез двух зеркал · Встреча'}
           </span>
 
           <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-light text-stone-100 mb-4 tracking-tight">
@@ -261,7 +275,9 @@ export function MeetingOfMirrors({
           </h1>
 
           <p className="text-sm sm:text-base text-stone-300 font-normal max-w-xl mx-auto leading-relaxed">
-            Два независимых взгляда встречаются, чтобы показать новое различие и возможную опору — без требования согласиться с ними.
+            {useNewOpenerRoute
+              ? 'На основном пути Встреча открывает короткое вступление Альберта вокруг вашего вопроса — без повторного пересказа результатов Кода и Мифа.'
+              : 'Два независимых взгляда встречаются, чтобы показать новое различие и возможную опору — без требования согласиться с ними.'}
           </p>
         </div>
 
@@ -352,60 +368,93 @@ export function MeetingOfMirrors({
 
         </div>
 
-        {/* Synthesis Action Button */}
-        {!meetingResult && (
-          <div className="flex flex-col items-center mb-12">
+        {/* Main route: New Albert Opener Action */}
+        {useNewOpenerRoute ? (
+          <div className="flex flex-col items-center mb-12 w-full max-w-xl text-center">
             <button
-              onClick={handleRunSynthesis}
-              disabled={!isReadyForSynthesis || isLoading}
-              className={`w-full sm:w-auto px-8 py-3.5 rounded-xs uppercase tracking-[0.18em] text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                isReadyForSynthesis && !isLoading
+              type="button"
+              onClick={onOpenAlbertJuxtaposition}
+              disabled={!hasCode && !hasMyth}
+              data-testid="meeting-open-albert-juxtaposition-btn"
+              className={`w-full sm:w-auto px-8 py-4 rounded-xs uppercase tracking-[0.18em] text-sm font-semibold transition-all flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none ${
+                hasCode || hasMyth
                   ? 'bg-[var(--color-antique-gold)] text-gray-950 hover:bg-[#D9B770] cursor-pointer shadow-md'
                   : 'bg-white/5 text-stone-500 cursor-not-allowed border border-white/[0.06]'
               }`}
             >
-              {isLoading ? (
-                <>
-                  <RefreshCw size={14} className="animate-spin text-stone-400" />
-                  <span>Сопоставляем отражения...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={14} />
-                  <span>Провести Встречу зеркал</span>
-                </>
-              )}
+              <MessageSquare size={15} />
+              <span>Что это значит для моего вопроса?</span>
             </button>
-
-            {errorMessage && (
-              <p className="mt-3 text-sm text-red-300 flex items-center gap-1.5">
-                <AlertCircle size={13} />
-                <span>{errorMessage}</span>
-              </p>
-            )}
-
-            {crisisMessage && (
-              <div
-                data-testid="meeting-crisis-support"
-                role="status"
-                className="mt-6 w-full max-w-2xl bg-[#0D121D] border border-[var(--color-antique-gold)]/35 p-6 sm:p-8 rounded-xs text-left space-y-3"
+            <p className="mt-3 text-xs sm:text-sm text-stone-400 leading-relaxed max-w-md">
+              Альберт выделит одну неразрешённую точку относительно вашего вопроса и задаст один конкретный вопрос без пересказа прочитанного.
+            </p>
+            {onOpenAlbert && (hasCode || hasMyth) && (
+              <button
+                type="button"
+                onClick={onOpenAlbert}
+                data-testid="meeting-open-albert-direct-btn"
+                className="mt-4 px-5 py-2.5 rounded-xs border border-white/15 bg-white/[0.03] hover:bg-white/[0.07] text-xs uppercase tracking-widest text-stone-300 hover:text-stone-100 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none"
               >
-                <span className="text-[12px] uppercase font-mono tracking-[0.22em] text-[var(--color-antique-gold)] block">
-                  Важное сообщение поддержки
-                </span>
-                <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed">
-                  {crisisMessage}
-                </p>
-              </div>
+                Начать разговор с Альбертом со своего вопроса
+              </button>
             )}
           </div>
-        )}
+        ) : (
+          <>
+            {/* Synthesis Action Button (Legacy comparison mode only) */}
+            {!meetingResult && (
+              <div className="flex flex-col items-center mb-12">
+                <button
+                  onClick={handleRunSynthesis}
+                  disabled={!isReadyForSynthesis || isLoading}
+                  className={`w-full sm:w-auto px-8 py-3.5 rounded-xs uppercase tracking-[0.18em] text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                    isReadyForSynthesis && !isLoading
+                      ? 'bg-[var(--color-antique-gold)] text-gray-950 hover:bg-[#D9B770] cursor-pointer shadow-md'
+                      : 'bg-white/5 text-stone-500 cursor-not-allowed border border-white/[0.06]'
+                  }`}
+                >
+                  {isLoading ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin text-stone-400" />
+                      <span>Сопоставляем отражения...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} />
+                      <span>Провести Встречу зеркал</span>
+                    </>
+                  )}
+                </button>
 
-        {/* ========================================================= */}
-        {/* SYNTHESIS RESULTS DISPLAY */}
-        {/* ========================================================= */}
-        <AnimatePresence>
-          {meetingResult && (
+                {errorMessage && (
+                  <p className="mt-3 text-sm text-red-300 flex items-center gap-1.5">
+                    <AlertCircle size={13} />
+                    <span>{errorMessage}</span>
+                  </p>
+                )}
+
+                {crisisMessage && (
+                  <div
+                    data-testid="meeting-crisis-support"
+                    role="status"
+                    className="mt-6 w-full max-w-2xl bg-[#0D121D] border border-[var(--color-antique-gold)]/35 p-6 sm:p-8 rounded-xs text-left space-y-3"
+                  >
+                    <span className="text-[12px] uppercase font-mono tracking-[0.22em] text-[var(--color-antique-gold)] block">
+                      Важное сообщение поддержки
+                    </span>
+                    <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed">
+                      {crisisMessage}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* SYNTHESIS RESULTS DISPLAY */}
+            {/* ========================================================= */}
+            <AnimatePresence>
+              {meetingResult && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -702,6 +751,8 @@ export function MeetingOfMirrors({
             </motion.div>
           )}
         </AnimatePresence>
+          </>
+        )}
 
       </div>
 

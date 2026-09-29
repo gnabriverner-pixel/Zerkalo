@@ -5,7 +5,11 @@ import { createRoot } from "react-dom/client";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  buildPreviousThreePartOpenerPrompt,
   buildShortJuxtapositionOpenerPrompt,
+  buildMissingQuestionOpenerResponse,
+  isAlbertNatureQuestion,
+  ALBERT_AI_NATURE_DISCLOSURE_RESPONSE,
   buildCanonicalEnvelopeFromWebContext,
   sanitizeVisibleAlbertText,
   checkSafety,
@@ -57,8 +61,8 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
     deleteLaunchInterestRecord();
   });
 
-  describe("A1: Short juxtaposition opener & provenance separation", () => {
-    it("builds a 3-part short juxtaposition prompt starting with 'Что ' and ending with '?' without digits 1, 2, 3", () => {
+  describe("A1: Focused 1-point opener, provenance separation & AI persona disclosure", () => {
+    it("builds a focused 1-unresolved-point opener prompt starting with 'Что ' and ending with '?' without digits, while preserving previous 3-part prompt for comparison", () => {
       const promptWithMyth = buildShortJuxtapositionOpenerPrompt({
         userQuestion: "Стоит ли сейчас менять команду или сначала пересобрать роль?",
         codeCalculation: { soul: 2, expression: 7, path: 5, direction: 9, result: 5 } as any,
@@ -71,10 +75,22 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       expect(promptWithMyth.startsWith("Что ")).toBe(true);
       expect(promptWithMyth.endsWith("?")).toBe(true);
       expect(promptWithMyth).not.toMatch(/[0-9]/);
-      expect(promptWithMyth).toContain("первое");
-      expect(promptWithMyth).toContain("второе");
-      expect(promptWithMyth).toContain("третье");
+      expect(promptWithMyth).toContain("главным нерешённым моментом или различением относительно моего вопроса");
+      expect(promptWithMyth).toContain("не пересказывай уже прочитанные результаты");
       expect(promptWithMyth).toContain("как будто");
+      expect(promptWithMyth).toContain("один конкретный вопрос");
+
+      const prevPrompt = buildPreviousThreePartOpenerPrompt({
+        userQuestion: "Стоит ли сейчас менять команду или сначала пересобрать роль?",
+        codeCalculation: { soul: 2, expression: 7, path: 5, direction: 9, result: 5 } as any,
+        mythAnchors: {
+          title: "Мастерская у воды",
+          mainImage: "Дверь мастерской приоткрыта к воде",
+        },
+      });
+      expect(prevPrompt).toContain("первое");
+      expect(prevPrompt).toContain("второе");
+      expect(prevPrompt).toContain("третье");
 
       const promptCodeOnly = buildShortJuxtapositionOpenerPrompt({
         userQuestion: "Как распределить силы на ближайший месяц?",
@@ -85,6 +101,45 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       expect(promptCodeOnly.endsWith("?")).toBe(true);
       expect(promptCodeOnly).not.toMatch(/[0-9]/);
       expect(promptCodeOnly).toContain("Цифрового Кода");
+    });
+
+    it("invites the user to formulate a question first when no initial question is present, without calling DCS", async () => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      const res = await generateAlbertDialogue({
+        actionType: "short_juxtaposition_opener",
+        context: {
+          codeCalculation: { soul: 6, expression: 2, path: 3, direction: 9, result: 9 } as any,
+        },
+      });
+      expect(res.status).toBe("ok");
+      expect(res.provider).toBe("albert_opener_guard");
+      expect(res.response).toContain("исходный вопрос для разбора пока не указан");
+      expect(res.response).toContain("между какими вариантами вы выбираете");
+      expect(fetchSpy).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it("answers direct questions about Albert's nature honestly without fictional human biography", async () => {
+      expect(isAlbertNatureQuestion("Кто ты? Ты живой человек или ИИ?")).toBe(true);
+      expect(isAlbertNatureQuestion("Расскажи про свою биографию, ты настоящий психолог?")).toBe(true);
+      expect(isAlbertNatureQuestion("Как мне выбрать между двумя задачами?")).toBe(false);
+
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      const res = await generateAlbertDialogue({
+        actionType: "user_message",
+        message: "Скажи честно, ты живой человек или искусственный интеллект?",
+        context: {
+          userQuestion: "Как распределить время?",
+        },
+      });
+      expect(res.status).toBe("ok");
+      expect(res.provider).toBe("albert_identity_disclosure");
+      expect(res.response).toBe(ALBERT_AI_NATURE_DISCLOSURE_RESPONSE);
+      expect(res.response).toContain("ИИ-собеседник проекта «Зеркало»");
+      expect(res.response).toContain("Имя «Альберт» и образ собеседника вымышлены");
+      expect(res.response).toContain("у меня нет собственной биографии");
+      expect(fetchSpy).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
     });
 
     it("passes storyInputs and all Myth mirror facets into SharedContextEnvelopeV1 without leaking q1-q4 or mainPattern", () => {
@@ -112,6 +167,8 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       expect(serialized).not.toMatch(/\bq[1-4]\b/i);
       expect(serialized).not.toMatch(/\bcodeAnchor\b/i);
       expect(serialized).not.toMatch(/\bmythAnchor\b/i);
+      expect(serialized).not.toContain("Заминка или трещина");
+      expect(serialized).toContain("Образ состояния");
 
       // Must preserve "как будто" modality from user's own storyInputs
       expect(serialized).toContain("как будто закрытая мастерская у воды");
@@ -324,8 +381,8 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
     });
   });
 
-  describe("A3: Typography (20px / 1.6) & UI contracts in source components", () => {
-    it("enforces 20px font size and 1.6 line-height on Albert responses and includes all required testids", () => {
+  describe("A3: Typography (20px / 1.6), AI persona disclosure & unambiguous main route", () => {
+    it("enforces 20px font size and 1.6 line-height on Albert responses, renders AI disclosure before first message, and keeps legacy Meeting behind comparison mode", async () => {
       const albertComponentSource = fs.readFileSync(
         path.resolve(process.cwd(), "src/components/AlbertDialogue.tsx"),
         "utf8"
@@ -334,11 +391,40 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       expect(albertComponentSource).toContain("text-[20px] leading-[1.6]");
       expect(albertComponentSource).toContain("fontSize: msg.sender === 'albert' ? '20px'");
       expect(albertComponentSource).toContain("lineHeight: msg.sender === 'albert' ? 1.6");
+      expect(albertComponentSource).toContain('data-testid="albert-header-title"');
+      expect(albertComponentSource).toContain("Альберт · ИИ-собеседник");
+      expect(albertComponentSource).toContain('data-testid="albert-ai-disclosure"');
+      expect(albertComponentSource).toContain(
+        "Альберт — ИИ-собеседник «Зеркала». Имя и образ вымышлены; ваши смыслы остаются вашими."
+      );
       expect(albertComponentSource).toContain('data-testid="albert-stale-state-banner"');
       expect(albertComponentSource).toContain('data-testid="albert-refresh-stale-opener-btn"');
       expect(albertComponentSource).toContain('data-testid="albert-retry-btn"');
       expect(albertComponentSource).toContain('data-testid="albert-crisis-banner"');
       expect(albertComponentSource).toContain('data-testid="albert-conclusion-panel"');
+
+      // Render AlbertDialogue before any message is sent and verify disclosure is visible without a mandatory modal
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+      await act(async () => {
+        root.render(
+          React.createElement(AlbertDialogue, {
+            isOpen: true,
+            userQuestion: "Какой шаг сделать первым?",
+          })
+        );
+      });
+      const headerTitle = container.querySelector('[data-testid="albert-header-title"]');
+      const aiDisclosure = container.querySelector('[data-testid="albert-ai-disclosure"]');
+      expect(headerTitle?.textContent).toContain("Альберт · ИИ-собеседник");
+      expect(aiDisclosure?.textContent).toContain(
+        "Альберт — ИИ-собеседник «Зеркала». Имя и образ вымышлены; ваши смыслы остаются вашими."
+      );
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
 
       const mythComponentSource = fs.readFileSync(
         path.resolve(process.cwd(), "src/components/PersonalMyth.tsx"),
@@ -347,6 +433,14 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       expect(mythComponentSource).toContain("Что это значит для моего вопроса?");
       expect(mythComponentSource).toContain('data-testid="myth-to-albert-juxtaposition-btn"');
       expect(mythComponentSource).toContain('data-testid="myth-return-to-code-btn"');
+      expect(mythComponentSource).toContain('data-testid="legacy-meeting-comparison-banner"');
+
+      const meetingComponentSource = fs.readFileSync(
+        path.resolve(process.cwd(), "src/components/MeetingOfMirrors.tsx"),
+        "utf8"
+      );
+      expect(meetingComponentSource).toContain('data-testid="meeting-open-albert-juxtaposition-btn"');
+      expect(meetingComponentSource).toContain('data-testid="legacy-meeting-comparison-banner"');
       expect(isShortJuxtapositionEnabled()).toBe(true);
     });
   });

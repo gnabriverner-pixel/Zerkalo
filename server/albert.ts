@@ -229,11 +229,86 @@ function hasMythInContext(context?: AlbertDialogueContext): boolean {
   );
 }
 
-export function buildShortJuxtapositionOpenerPrompt(context?: AlbertDialogueContext): string {
+export const ALBERT_AI_NATURE_DISCLOSURE_RESPONSE =
+  "Я — Альберт, ИИ-собеседник проекта «Зеркало». Имя «Альберт» и образ собеседника вымышлены: у меня нет собственной биографии или личного человеческого опыта. Моя задача здесь — помогать вам выделять важные различения вокруг вашего вопроса, опираясь на ваши слова, расчёт Цифрового Кода и образы Личного мифа, а все смыслы и решения остаются за вами. Какую конкретную развилку в вашей ситуации вы хотите разобрать сейчас?";
+
+export function isAlbertNatureQuestion(rawText?: string): boolean {
+  if (!rawText || typeof rawText !== "string") return false;
+  const text = rawText.trim().toLowerCase();
+  if (!text) return false;
+  return (
+    /(?<![а-яёa-z0-9_])(?:кто\s+(?:ты|вы)(?:\s+такой)?|кто\s+такой\s+альберт)(?![а-яёa-z0-9_])/i.test(text) ||
+    /(?<![а-яёa-z0-9_])(?:ты|вы)\s+(?:живой\s+)?(?:человек|люди|бот|робот|ии|ai|нейросеть|искусственный\s+интеллект|программа|алгоритм|настоящий\s+(?:человек|психолог))(?![а-яёa-z0-9_])/i.test(
+      text
+    ) ||
+    /(?<![а-яёa-z0-9_])(?:расскажи|расскажите)\s+(?:о|про)\s+себ[ея](?![а-яёa-z0-9_])/i.test(text) ||
+    /(?<![а-яёa-z0-9_])(?:твоя|ваша|свою)\s+биографи[яию](?![а-яёa-z0-9_])/i.test(text) ||
+    /(?<![а-яёa-z0-9_])альберт\s*[—–-]?\s*(?:это\s+)?(?:человек|бот|ии|нейросеть|искусственный\s+интеллект)(?![а-яёa-z0-9_])/i.test(
+      text
+    )
+  );
+}
+
+export function buildMissingQuestionOpenerResponse(context?: AlbertDialogueContext): {
+  text: string;
+  nextOpenLoop: string;
+} {
+  const nextOpenLoop =
+    "Опишите коротко своими словами ситуацию, которую вы сейчас обдумываете: между какими вариантами вы выбираете или какое решение откладываете, и что именно в этом шаге вызывает у вас главную заминку?";
+  if (hasMythInContext(context)) {
+    return {
+      text: `У нас уже собраны расчёт Цифрового Кода и художественная сцена Личного мифа, однако исходный вопрос для разбора пока не указан. Без вашей собственной задачи любое сопоставление превратится в повторный пересказ уже прочитанных карточек, а смысл разговора — выделить один нерешённый момент вокруг реального выбора. ${nextOpenLoop}`,
+      nextOpenLoop,
+    };
+  }
+  return {
+    text: `У нас уже готов расчёт Цифрового Кода, однако исходный вопрос для разбора пока не указан. Сами по себе вычисленные позиции и гипотезы карты дают лишь общую схему, и пересказывать их заново нет смысла — разговор работает тогда, когда мы опираемся на вашу живую задачу. ${nextOpenLoop}`,
+    nextOpenLoop,
+  };
+}
+
+/**
+ * Прежний вариант задания вступления (коммит 715fd3f2), сохранённый для честного парного сравнения на 6 синтетических наборах.
+ */
+export function buildPreviousThreePartOpenerPrompt(context?: AlbertDialogueContext): string {
   if (hasMythInContext(context)) {
     return "Что доступные результаты Кода и Личного мифа значат для моего вопроса? Ответь предельно сжато в трёх коротких абзацах (по одному-два предложения в каждом абзаце, без записи новых числительных цифрами): первое — одно конкретное схождение или расхождение с понятным основанием (а если содержательной связи между ними не видно, честно признай это без натяжки), строго разделяя вычисленные числа, мои собственные слова и художественную сцену Мифа и сохраняя модальность «как будто», если она есть во вводных; второе — возможный смысл для моей текущей ситуации в форме осторожной гипотезы без придумывания скрытого конфликта; третье — какой один короткий вопрос в самом конце позволит мне уточнить или отвергнуть эту гипотезу?";
   }
   return "Что доступный результат Цифрового Кода значит для моего вопроса? Ответь предельно сжато в трёх коротких абзацах (по одному-два предложения в каждом абзаце, без записи новых числительных цифрами): первое — как ключевая линия Кода соотносится с моим вопросом (или честно признай, если прямой связи не видно), строго разделяя вычисленные числа и гипотезу интерпретации; второе — возможный смысл для моей текущей ситуации в форме осторожной гипотезы; третье — какой один короткий вопрос в самом конце позволит мне уточнить или отвергнуть эту гипотезу?";
+}
+
+/**
+ * Новое задание для первого сообщения Альберта (70–120 слов, один нерешённый момент вокруг вопроса без пересказа обеих линз).
+ */
+export function buildShortJuxtapositionOpenerPrompt(context?: AlbertDialogueContext): string {
+  const rawQuestion = typeof context?.userQuestion === "string" ? context.userQuestion.trim() : "";
+  const fallbackQuestionFromMyth =
+    typeof context?.storyInputs?.q1 === "string" ? context.storyInputs.q1.trim() : "";
+  const effectiveQuestion = rawQuestion || fallbackQuestionFromMyth;
+
+  if (!effectiveQuestion) {
+    return "Что вы хотите разобрать в первую очередь? Поскольку исходный вопрос ещё не сформулирован, не пересказывай результаты и не выдумывай скрытых конфликтов: коротко в одном абзаце (семьдесят — сто слов, без записи новых числительных цифрами) отметь, какие материалы уже собраны, и предложи сначала назвать одну конкретную жизненную ситуацию или выбор, с которого стоит начать разговор?";
+  }
+
+  if (hasMythInContext(context)) {
+    return (
+      "Что в моей ситуации остаётся главным нерешённым моментом или различением относительно моего вопроса? " +
+      "Не соединяй искусственно Код и Миф и не пересказывай уже прочитанные результаты обеих линз. " +
+      "Ответь в объёме семьдесят — сто двадцать слов в два коротких абзаца без воды и без записи новых числительных цифрами: " +
+      "сначала коротко назови одно конкретное различение или неясность относительно моего вопроса (а если в самой ситуации нет затруднения и нового различения не видно — честно скажи, что дополнительного вывода из сопоставления не видно, и предложи обсудить выбранную мной задачу, не выдумывая скрытый мотив, диагноз или опору ради новизны) " +
+      "и прямо укажи его основание с короткой дословной цитатой в кавычках — судя по моим словам о «...» (сохраняя оговорку «как будто», если это воображаемый образ, и не используя обороты «Вы писали» или «Вы говорили»), в гипотезе Кода или в художественной сцене Мифа, строго не смешивая их вес; " +
+      "затем задай в самом конце один конкретный вопрос (ровно один вопросительный знак вне кавычек в конце текста), ответ на который изменит понимание ситуации или выбор следующего практического шага?"
+    );
+  }
+
+  return (
+    "Что в моей ситуации остаётся главным нерешённым моментом или различением относительно моего вопроса с учётом Цифрового Кода? " +
+    "Не пересказывай заново содержание карточек Кода. " +
+    "Ответь в объёме семьдесят — сто двадцать слов в два коротких абзаца без воды и без записи новых числительных цифрами: " +
+    "сначала коротко назови одно конкретное различение или неясность относительно моего вопроса (а если нового различения не видно — честно скажи, что дополнительного вывода из сопоставления не видно, не выдумывая скрытый мотив или диагноз) " +
+    "и прямо укажи его основание в моих словах (в кавычках, без фраз «Вы писали» или «Вы говорили») или в гипотезе Цифрового Кода, строго разделяя вычисленные числа и гипотезу интерпретации; " +
+    "затем задай в самом конце один конкретный вопрос (ровно один вопросительный знак вне кавычек в конце текста), ответ на который изменит понимание ситуации или выбор следующего шага?"
+  );
 }
 
 /**
@@ -356,22 +431,22 @@ export function buildCanonicalEnvelopeFromWebContext(
     const viewAns = typeof storyInputs.q4 === "string" ? sanitizeVisibleAlbertText(storyInputs.q4.trim()) : "";
 
     if (spaceAns) {
-      storyTurnSegments.push(`Пространство — ${spaceAns}`);
-      const stmt = toDeclarativeStatement(`Пространство в моём ответе: ${spaceAns}`, 280);
+      storyTurnSegments.push(`Ситуация — ${spaceAns}`);
+      const stmt = toDeclarativeStatement(`Ситуация в моём ответе: ${spaceAns}`, 280);
       if (stmt) storyInputStatements.push(stmt);
     }
     if (tensionAns) {
-      storyTurnSegments.push(`Заминка или трещина — ${tensionAns}`);
+      storyTurnSegments.push(`Образ состояния — ${tensionAns}`);
       const stmt = toDeclarativeStatement(`Образ состояния в моём ответе: ${tensionAns}`, 280);
       if (stmt) storyInputStatements.push(stmt);
     }
     if (resourceAns) {
-      storyTurnSegments.push(`Опора — ${resourceAns}`);
+      storyTurnSegments.push(`Точка живости или опоры — ${resourceAns}`);
       const stmt = toDeclarativeStatement(`Опора и точка живости в моём ответе: ${resourceAns}`, 280);
       if (stmt) storyInputStatements.push(stmt);
     }
     if (viewAns) {
-      storyTurnSegments.push(`Изменение взгляда — ${viewAns}`);
+      storyTurnSegments.push(`Искомое качество — ${viewAns}`);
       const stmt = toDeclarativeStatement(`Искомое качество и изменение взгляда: ${viewAns}`, 280);
       if (stmt) storyInputStatements.push(stmt);
     }
@@ -615,6 +690,47 @@ export async function generateAlbertDialogue(
       provider: "safety_guard",
       model: null,
       authority: "digital-code-system/telegram_v2.albert.orchestrator",
+    };
+  }
+
+  const rawQuestion = typeof request?.context?.userQuestion === "string" ? request.context.userQuestion.trim() : "";
+  const fallbackQuestionFromMyth =
+    typeof request?.context?.storyInputs?.q1 === "string" ? request.context.storyInputs.q1.trim() : "";
+  const effectiveQuestion = rawQuestion || fallbackQuestionFromMyth;
+
+  if (actionType === "short_juxtaposition_opener" && !effectiveQuestion) {
+    const missingQuestionTurn = buildMissingQuestionOpenerResponse(request.context);
+    return {
+      status: "ok",
+      message: missingQuestionTurn.text,
+      response: missingQuestionTurn.text,
+      provider: "albert_opener_guard",
+      model: null,
+      authority: "digital-code-system/telegram_v2.albert.orchestrator",
+      actionType,
+      sourceStateVersion,
+      next_open_loop: missingQuestionTurn.nextOpenLoop,
+      nextOpenLoop: missingQuestionTurn.nextOpenLoop,
+      safetyState: "nominal",
+      grounding_state: "ungrounded",
+    };
+  }
+
+  if (actionType === "user_message" && isAlbertNatureQuestion(request.message)) {
+    const nextOpenLoop = "Какую конкретную развилку в вашей ситуации вы хотите разобрать сейчас?";
+    return {
+      status: "ok",
+      message: ALBERT_AI_NATURE_DISCLOSURE_RESPONSE,
+      response: ALBERT_AI_NATURE_DISCLOSURE_RESPONSE,
+      provider: "albert_identity_disclosure",
+      model: null,
+      authority: "digital-code-system/telegram_v2.albert.orchestrator",
+      actionType,
+      sourceStateVersion,
+      next_open_loop: nextOpenLoop,
+      nextOpenLoop,
+      safetyState: "nominal",
+      grounding_state: "grounded",
     };
   }
 

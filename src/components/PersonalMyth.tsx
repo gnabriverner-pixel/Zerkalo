@@ -473,10 +473,10 @@ export default function PersonalMyth({
                         Следующий шаг · Разговор по существу
                       </span>
                       <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
-                        Сопоставить зеркала вокруг вашего вопроса
+                        Разобрать один главный вопрос с Альбертом
                       </h3>
                       <p className="text-xs sm:text-sm text-stone-300 font-normal max-w-lg mx-auto leading-relaxed">
-                        Альберт коротко сопоставит ваш Код, Личный миф и вопрос на сайте — без потери результатов
+                        Альберт выделит один нерешённый момент вокруг вашего вопроса и начнёт разговор на сайте — без пересказа и без потери результатов
                       </p>
                     </div>
 
@@ -503,17 +503,6 @@ export default function PersonalMyth({
                           </button>
                         )}
 
-                        {handleNavigateToMeeting && (
-                          <button
-                            type="button"
-                            data-testid="myth-to-meeting-btn"
-                            onClick={handleNavigateToMeeting}
-                            className="px-4 py-2.5 text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 border border-white/10 hover:border-white/25 rounded-xs focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none transition-colors cursor-pointer"
-                          >
-                            Открыть полную сводку Встречи зеркал
-                          </button>
-                        )}
-
                         <button
                           type="button"
                           onClick={() => {
@@ -532,6 +521,14 @@ export default function PersonalMyth({
                   </>
                 ) : (
                   <>
+                    {!shortJuxtapositionEnabled && (
+                      <div
+                        data-testid="legacy-meeting-comparison-banner"
+                        className="px-4 py-2.5 rounded-xs border border-amber-500/40 bg-amber-950/30 text-amber-200 text-xs font-mono uppercase tracking-wider"
+                      >
+                        Режим сравнения для приёмки: прежний вариант Встречи зеркал
+                      </div>
+                    )}
                     <div>
                       <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
                         Следующее зеркало

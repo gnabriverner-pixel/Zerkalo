@@ -22,6 +22,7 @@ import {
 } from './services/myMirrorStorage';
 import { firstMirrorFromV2 } from './services/codeV2Session';
 import { truthJourneyKey } from './services/albertTruthState';
+import { isShortJuxtapositionEnabled } from './services/albertOpenerState';
 import { loadQaPanel, type QaPanelModule } from './components/CodeV2/qaPanelLoader';
 import { EmblemDefs } from './art/emblem';
 import { ConsentBoundary } from './components/ConsentBoundary';
@@ -563,6 +564,11 @@ function AppContent() {
                   setAlbertInitialTopic(undefined);
                   setIsAlbertV2Open(true);
                 }}
+                onOpenAlbertJuxtaposition={() => {
+                  setAlbertInitialTopic(undefined);
+                  setIsAlbertV2Open(true);
+                  setOpenerTriggerToken(prev => prev + 1);
+                }}
                 codeResult={codeResult}
                 firstMirror={firstMirror}
                 storyInputs={storyInputs}
@@ -608,7 +614,7 @@ function AppContent() {
         onUserNoteChange={setMeetingUserNote}
         storyInputs={storyInputs}
         storyResult={storyResult}
-        meetingResult={meetingResult}
+        meetingResult={!isShortJuxtapositionEnabled() ? meetingResult : null}
         calc={codeResult}
         codeV2Payload={codeV2Payload}
         codeV2Context={codeV2Payload?.albert_context}
