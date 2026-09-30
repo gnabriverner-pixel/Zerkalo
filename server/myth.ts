@@ -38,6 +38,7 @@ export interface PersonalMythQualityReport {
   blockers: string[];
   word_count: number;
   paragraph_count: number;
+  damageMatches?: DamageTokenMatch[];
 }
 
 const ANSWER_KEYS: (keyof StoryInputs)[] = ["q1", "q2", "q3", "q4"];
@@ -567,11 +568,20 @@ ${adaptiveFidelityBlock}
 }`;
 }
 
-export function formatBlockerForRepair(blocker: string): string {
+export interface DamageTokenMatch {
+  field: string;
+  token: string;
+}
+
+export function formatBlockerForRepair(blocker: string, damageMatches?: DamageTokenMatch[]): string {
   switch (blocker) {
     case "template_fingerprint":
       return "Категорически запрещена фраза «впервые за долгое время» и похожие штампы. Удали их из текста.";
     case "unprompted_crack_cliche":
+      if (damageMatches && damageMatches.length > 0) {
+        const details = damageMatches.map((m) => `${m.field}: «${m.token}»`).join(", ");
+        return `КАТЕГОРИЧЕСКИ ЗАПРЕЩЁН навязанный сюжет повреждённого предмета («трещина / скол / борозда / щербина / надлом / разлом → починка или принятие изъяна»), если сам пользователь не называл повреждение в ответах q1–q4. В предыдущей версии найдены конкретные слова повреждения: ${details}. Не заменяй их косметическими синонимами («борозда», «скол», «щербина», «надлом», «разлом»). Полностью перепиши эти места во всех указанных полях через реальную функцию, грань, вес, положение или ритм предмета из q2 без намёка на трещину или изъян.`;
+      }
       return "КАТЕГОРИЧЕСКИ ЗАПРЕЩЁН навязанный сюжет повреждённого предмета («трещина / скол / борозда / щербина / надлом / разлом → починка или принятие изъяна»), если сам пользователь не называл повреждение в ответах q1–q4. Не заменяй слово «трещина» косметическими синонимами («борозда», «скол», «щербина», «надлом», «разлом»). Полностью перепиши этот ход через реальную функцию, грань, вес, положение или ритм предмета из q2.";
     case "post_story_third_person_forbidden":
       return "В пояснениях после истории (mirror, meaning, one_step, journal_question) запрещено обсуждать человека в третьем лице («человек», «читатель», «пользователь», «автор ответов»). Обращайся напрямую («вы», «в вашем ответе»).";
@@ -622,8 +632,11 @@ export function buildPersonalMythRepairPrompt(
   previousMirror: PersonalMythResult["mirror"],
   blockers: string[],
   previousResult?: PersonalMythResult,
+  damageMatches?: DamageTokenMatch[],
 ): string {
-  const formattedViolations = blockers.map((b) => `- ${formatBlockerForRepair(b)}`).join("\n");
+  const formattedViolations = blockers
+    .map((b) => `- ${formatBlockerForRepair(b, b === "unprompted_crack_cliche" ? damageMatches : undefined)}`)
+    .join("\n");
   const observedWords=previousStory.trim().split(/\s+/u).filter(Boolean).length;
   const lengthRepair=blockers.includes('story_word_count_out_of_contract_300_to_800')
     ? `Измеренный объём story: ${observedWords} слов. Перепиши story в 400–550 слов (сделай 5 развёрнутых абзацев по 85–105 слов каждый, чтобы гарантированно преодолеть порог 300 слов): ${observedWords<300 ? 'добавь полноценное действие и наблюдаемые детали в каждый абзац, не новые факты жизни' : 'сократи повторения и описания'}. Возврат прежнего story без изменения НЕ является исправлением. Остальные поля не считаются объёмом истории.`
@@ -736,6 +749,65 @@ function stripQuotedDialogue(text: string): string {
 
 const POST_STORY_THIRD_PERSON_ABOUT_USER = /(?<![а-яё])(?:пользователь[а-яё]*|читатель[а-яё]*|автор[а-яё]*\s+ответов|человек(?:а|у|ом|е)?(?:\s+в\s+ответах|\s+описыва|\s+рассказыва|\s+пишет|\s+хочет|\s+боится|\s+ищет|\s+говорит|\s+ответил|\s+чувствует|\s+выбирает|\s+сталкивается))(?![а-яё])/iu;
 
+const DAMAGE_NOUN_SOURCE =
+  "(?:(?:трещин|щербин|надлом|разлом)[а-яё]*|борозд(?![ия])[а-яё]*|(?<!о)(?:ра)?скол(?:а|у|ом|е|ы|ов|ам|ами|ах|от[а-яё]*)?)";
+
+const USER_DAMAGE_SOURCE =
+  "(?:(?:трещин|щербин|надлом|разлом|разбит|сломан)[а-яё]*|борозд(?![ия])[а-яё]*|(?<!о)(?:ра)?скол(?:а|у|ом|е|ы|ов|ам|ами|ах|от[а-яё]*)?)";
+
+const NEGATED_CRACK_PHRASE = new RegExp(
+  "(?<![а-яё])(?:(?:без|ни|нет)\\s+(?:единой\\s+|малейшей\\s+|всяких\\s+|каких-либо\\s+|следов\\s+|видимых\\s+|заметных\\s+)?|не\\s+(?:является\\s+|было\\s+|заметно\\s+|видно\\s+|единой\\s+|малейшей\\s+)?)" +
+    DAMAGE_NOUN_SOURCE +
+    "(?:\\s*(?:,\\s*(?:и|или|ни)\\s*|\\s+(?:и|или|ни)\\s+)(?:(?:единой\\s+|малейшей\\s+|всяких\\s+|каких-либо\\s+|следов\\s+|видимых\\s+|заметных\\s+)?)" +
+    DAMAGE_NOUN_SOURCE +
+    ")*",
+  "giu",
+);
+
+const NEGATED_USER_DAMAGE_PHRASE = new RegExp(
+  "(?<![а-яё])(?:(?:без|ни|нет)\\s+(?:единой\\s+|малейшей\\s+|всяких\\s+|каких-либо\\s+|следов\\s+|видимых\\s+|заметных\\s+)?|не\\s+(?:является\\s+|было\\s+|заметно\\s+|видно\\s+|единой\\s+|малейшей\\s+)?)" +
+    USER_DAMAGE_SOURCE +
+    "(?:\\s*(?:,\\s*(?:и|или|ни)\\s*|\\s+(?:и|или|ни)\\s+)(?:(?:единой\\s+|малейшей\\s+|всяких\\s+|каких-либо\\s+|следов\\s+|видимых\\s+|заметных\\s+)?)" +
+    USER_DAMAGE_SOURCE +
+    ")*",
+  "giu",
+);
+
+const USER_DAMAGE_REGEX = new RegExp("(?<![а-яё])" + USER_DAMAGE_SOURCE + "(?![а-яё])", "iu");
+
+export function userIntroducedDamage(text: string): boolean {
+  const stripped = (text || "").replace(NEGATED_USER_DAMAGE_PHRASE, " ");
+  return USER_DAMAGE_REGEX.test(stripped);
+}
+
+export function findUnpromptedDamageMatches(result: PersonalMythResult): DamageTokenMatch[] {
+  const fields: Array<[string, string]> = [
+    ["title", result.title || ""],
+    ["story", result.story || ""],
+    ["mirror.mainImage", result.mirror?.mainImage || ""],
+    ["mirror.innerTension", result.mirror?.innerTension || ""],
+    ["mirror.hiddenResource", result.mirror?.hiddenResource || ""],
+    ["mirror.newView", result.mirror?.newView || ""],
+    ["meaning", Array.isArray(result.meaning) ? result.meaning.join(" ") : ""],
+    ["one_step", result.one_step || ""],
+    ["journal_question", result.journal_question || ""],
+  ];
+
+  const matches: DamageTokenMatch[] = [];
+  for (const [field, text] of fields) {
+    if (!text) continue;
+    const stripped = text.replace(NEGATED_CRACK_PHRASE, " ");
+    const regex = new RegExp("(?<![а-яё])" + DAMAGE_NOUN_SOURCE + "(?![а-яё])", "giu");
+    for (const m of stripped.matchAll(regex)) {
+      const token = m[0].trim();
+      if (token) {
+        matches.push({ field, token });
+      }
+    }
+  }
+  return matches;
+}
+
 export function validatePersonalMythResult(result: PersonalMythResult, request?: PersonalMythRequest): PersonalMythQualityReport {
   const blockers: string[] = [];
   const words = result.story.split(/\s+/u).filter(Boolean);
@@ -834,12 +906,15 @@ export function validatePersonalMythResult(result: PersonalMythResult, request?:
   if (SERIAL_FINGERPRINTS.some((pattern) => pattern.test(nonDisclaimerText))) {
     blockers.push("template_fingerprint");
   }
+  let damageMatches: DamageTokenMatch[] | undefined;
   if (request) {
     const userAnswersCombined = ANSWER_KEYS.map((k) => request.answers[k] || "").join(" ");
-    const userIntroducedCrack = /(?<![а-яё])(?:трещин[а-яё]*|борозд[а-яё]*|щербин[а-яё]*|надлом[а-яё]*|разлом[а-яё]*|разбит[а-яё]*|сломан[а-яё]*|(?:ра)?скол(?:а|у|ом|е|ы|ов|ам|ами|ах|от[а-яё]*)?)(?![а-яё])/iu.test(userAnswersCombined);
-    const hasUnpromptedDamagedObjectCliche = /(?<![а-яё])(?<!без\s)(?:(?:трещин|борозд|щербин|надлом|разлом)[а-яё]*|(?:ра)?скол(?:а|у|ом|е|ы|ов|ам|ами|ах|от[а-яё]*)?)(?![а-яё])/iu.test(nonDisclaimerText);
-    if (!userIntroducedCrack && hasUnpromptedDamagedObjectCliche) {
-      blockers.push("unprompted_crack_cliche");
+    const userIntroducedCrack = userIntroducedDamage(userAnswersCombined);
+    if (!userIntroducedCrack) {
+      damageMatches = findUnpromptedDamageMatches(result);
+      if (damageMatches.length > 0) {
+        blockers.push("unprompted_crack_cliche");
+      }
     }
   }
   const negationContrasts = nonDisclaimerText.match(NEGATION_CONTRAST_TEMPLATE) || [];
@@ -864,6 +939,7 @@ export function validatePersonalMythResult(result: PersonalMythResult, request?:
     blockers: [...new Set(blockers)],
     word_count,
     paragraph_count,
+    damageMatches,
   };
 }
 
@@ -1009,7 +1085,12 @@ async function generatePersonalMythAttempt(
     };
   }
 
-  console.warn(`[PersonalMyth Quality Check] initial attempt failed with blockers:`, initialQuality.blockers);
+  const damageMatches = initialQuality.damageMatches || (request ? findUnpromptedDamageMatches(initialResult) : []);
+  if (damageMatches.length > 0) {
+    console.warn(`[PersonalMyth Quality Check] initial attempt failed with unprompted damage:`, damageMatches.map((m) => `${m.field}:${m.token}`));
+  } else {
+    console.warn(`[PersonalMyth Quality Check] initial attempt failed with blockers:`, initialQuality.blockers);
+  }
 
   // Attempt 2: Targeted editorial repair (exactly 1 repair)
   const repairPrompt = buildPersonalMythRepairPrompt(
@@ -1018,6 +1099,7 @@ async function generatePersonalMythAttempt(
     initialResult.mirror,
     initialQuality.blockers,
     initialResult,
+    damageMatches,
   );
   const rawRepair = await provider.generate(repairPrompt, timeoutMs);
 
@@ -1041,7 +1123,12 @@ async function generatePersonalMythAttempt(
     };
   }
 
-  console.warn(`[PersonalMyth Quality Check] repair attempt failed with blockers:`, repairQuality.blockers);
+  const repairDamageMatches = repairQuality.damageMatches || (request ? findUnpromptedDamageMatches(repairedResult) : []);
+  if (repairDamageMatches.length > 0) {
+    console.warn(`[PersonalMyth Quality Check] repair attempt failed with unprompted damage:`, repairDamageMatches.map((m) => `${m.field}:${m.token}`));
+  } else {
+    console.warn(`[PersonalMyth Quality Check] repair attempt failed with blockers:`, repairQuality.blockers);
+  }
   const qualityError = new Error(`personal_myth_quality_failed:${repairQuality.blockers.join("|")}`);
   (qualityError as any).initialBlockers = initialQuality.blockers;
   (qualityError as any).repairBlockers = repairQuality.blockers;

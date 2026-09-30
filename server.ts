@@ -410,7 +410,8 @@ async function startServer() {
       const code = error instanceof Error ? error.message.split(":", 1)[0] : "personal_myth_failed";
       const inputError = code.startsWith("invalid_");
       const notReady = code === "personal_myth_provider_not_ready";
-      if (!inputError) {
+      const qualityFailed = code === "personal_myth_quality_failed";
+      if (!inputError && !qualityFailed) {
         liveGeneration.personal_myth = false;
       }
       console.error("Personal Myth generation failed:", code);
