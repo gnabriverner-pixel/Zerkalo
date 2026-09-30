@@ -65,6 +65,8 @@ describe("Personal Myth V11: Targeted Crack Filter & Reliability Suite", () => {
       { id: "case_12a", text: "лодка бороздит воду", expected: "ALLOW" },
       { id: "case_12b", text: "бороздя воду", expected: "ALLOW" },
       { id: "case_13", text: "гладкая ровная поверхность дерева", expected: "ALLOW" },
+      { id: "probe_sol_01", text: "Ты замечаешь, что ни трещина, ни скол не мешают крышке открываться.", expected: "BLOCK" },
+      { id: "probe_sol_02", text: "Ты видишь, что не трещина мешала крышке открываться, а тугая петля.", expected: "BLOCK" },
     ];
 
     for (const tc of matrixCases) {
@@ -172,6 +174,14 @@ describe("Personal Myth V11: Targeted Crack Filter & Reliability Suite", () => {
       const negatedFixture = makeCleanFixture("Поверхность без единой трещины.");
       const allowQuality = validatePersonalMythResult(negatedFixture, userNegatedReq);
       expect(allowQuality.blockers).not.toContain("unprompted_crack_cliche");
+    });
+
+    it("recognizes damage when user mentions damage with action negation in q2 ('ни трещина не мешает')", () => {
+      expect(userIntroducedDamage("ни трещина, ни скол не мешают мне")).toBe(true);
+      expect(userIntroducedDamage("не трещина мешала, а петля")).toBe(true);
+      expect(userIntroducedDamage("старая чашка с трещиной")).toBe(true);
+      expect(userIntroducedDamage("старая чашка без единой трещины")).toBe(false);
+      expect(userIntroducedDamage("нет ни трещин, ни сколов")).toBe(false);
     });
   });
 

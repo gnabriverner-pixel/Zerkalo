@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import { fileURLToPath } from "url";
 import fs from "fs/promises";
 import nodeFs from "fs";
 import "dotenv/config";
@@ -12,6 +13,7 @@ import { RouterAIClient, PRIMARY_MODEL, MEETING_FALLBACK_MODEL } from "./server/
 import {
   createRouterAIMythProvider,
   PERSONAL_MYTH_WRITER_VERSION,
+  PersonalMythProvider,
   SAFE_CRISIS_MESSAGE,
   containsCrisisLanguage,
   generatePersonalMyth,
@@ -63,11 +65,16 @@ function isCrisisInput(inputs: StoryInputs): boolean {
   return containsCrisisLanguage(inputs);
 }
 
-async function startServer() {
+export interface CreateAppOptions {
+  mythProvider?: PersonalMythProvider;
+  skipVite?: boolean;
+  isProviderReady?: () => boolean;
+}
+
+export async function createApp(options: CreateAppOptions = {}) {
   registerCachePurger(purgeCanonicalCaches);
   registerCacheOwnerBinder(bindCanonicalCacheOwner);
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
   // Trust exactly one hop: the loopback nginx proxy (verified topology — the app binds
   // 127.0.0.1, external access to its port is DROPped by iptables, nginx forwards
   // X-Forwarded-For with $proxy_add_x_forwarded_for). Never `true`/`*`: trusting
@@ -76,7 +83,13 @@ async function startServer() {
   app.set('trust proxy', 'loopback');
   const deepseekClient = new RouterAIClient(process.env);
   const meetingClient = deepseekClient.withFallback(MEETING_FALLBACK_MODEL);
-  const mythProvider = createRouterAIMythProvider(deepseekClient);
+  const mythProvider = options.mythProvider || createRouterAIMythProvider(deepseekClient);
+  const isProviderConfigured = () =>
+    options.isProviderReady
+      ? options.isProviderReady()
+      : options.mythProvider
+      ? true
+      : deepseekClient.isReady();
   const personalMythTimeoutMs = Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 75_000));
   const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
 
@@ -195,7 +208,7 @@ async function startServer() {
   }
 
   app.get("/health/ready", async (_req, res) => {
-    const providerConfigured = deepseekClient.isReady();
+    const providerConfigured = isProviderConfigured();
     const releaseInfo = getPackageReleaseInfo();
     const releaseSha =
       process.env.RELEASE_SHA ||
@@ -364,7 +377,7 @@ async function startServer() {
         return res.status(200).json(cached.payload);
       }
 
-      if (!deepseekClient.isReady()) {
+      if (!isProviderConfigured()) {
         return res.status(503).json({
           mode: "story",
           status: "error",
@@ -822,23 +835,49 @@ async function startServer() {
   });
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+  if (!options.skipVite) {
+    if (process.env.NODE_ENV !== "production") {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), 'dist');
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    }
   }
 
+  return {
+    app,
+    liveGeneration,
+    mythCache,
+    deepseekClient,
+    meetingClient,
+    mythProvider,
+  };
+}
+
+async function startServer() {
+  const { app } = await createApp();
+  const PORT = Number(process.env.PORT) || 3000;
   app.listen(PORT, process.env.HOST || "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
-startServer();
+const currentFile = fileURLToPath(import.meta.url);
+const isDirectRun =
+  Boolean(process.argv[1]) &&
+  (path.resolve(process.argv[1]) === currentFile ||
+    process.argv[1].endsWith("/server.ts") ||
+    process.argv[1].endsWith("\\server.ts") ||
+    process.argv[1] === "server.ts");
+
+if (isDirectRun && !process.env.NO_AUTO_START_SERVER) {
+  startServer();
+}
+

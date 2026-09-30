@@ -755,21 +755,49 @@ const DAMAGE_NOUN_SOURCE =
 const USER_DAMAGE_SOURCE =
   "(?:(?:трещин|щербин|надлом|разлом|разбит|сломан)[а-яё]*|борозд(?![ия])[а-яё]*|(?<!о)(?:ра)?скол(?:а|у|ом|е|ы|ов|ам|ами|ах|от[а-яё]*)?)";
 
+const DAMAGE_ABSENCE_MODIFIERS =
+  "(?:единой|малейшей|всяких|каких-либо|видимых|заметных|следов)";
+
+// Safe absence constructions that unambiguously assert non-existence of damage:
+// 1. "без" + [modifier]? + damage_noun (+ (и|или|без) + [modifier]? + damage_noun)*
+const PATTERN_BEZ = (nounSrc: string) =>
+  "(?:без\\s+(?:" + DAMAGE_ABSENCE_MODIFIERS + "\\s+)?" + nounSrc + "(?:\\s*(?:,\\s*(?:и|или|без)\\s*|\\s+(?:и|или|без)\\s+)(?:" + DAMAGE_ABSENCE_MODIFIERS + "\\s+)?" + nounSrc + ")*)";
+
+// 2. "нет" + [ни|никаких|...]? + damage_noun (+ (и|или|ни) + [modifier]? + damage_noun)*
+const PATTERN_NET = (nounSrc: string) =>
+  "(?:нет\\s+(?:(?:ни|никаких|никакой|" + DAMAGE_ABSENCE_MODIFIERS + ")\\s+)?" + nounSrc + "(?:\\s*(?:,\\s*(?:и|или|ни)\\s*|\\s+(?:и|или|ни)\\s+)(?:" + DAMAGE_ABSENCE_MODIFIERS + "\\s+)?" + nounSrc + ")*)";
+
+// 3. "не" + (mandatory predicate of absence) + [ни|никаких|...]? + damage_noun
+const ABSENCE_PREDICATE =
+  "(?:является|являлось|было|будет|заметно|видно|осталось|нашлось|обнаружено)";
+const PATTERN_NE_PREDICATE = (nounSrc: string) =>
+  "(?:не\\s+" + ABSENCE_PREDICATE + "\\s+(?:(?:ни|никаких|никакой|" + DAMAGE_ABSENCE_MODIFIERS + ")\\s+)?" + nounSrc + "(?:\\s*(?:,\\s*(?:и|или|ни)\\s*|\\s+(?:и|или|ни)\\s+)(?:" + DAMAGE_ABSENCE_MODIFIERS + "\\s+)?" + nounSrc + ")*)";
+
+// 4. "не" + noun + "и не" + noun (coordination of identity, not followed by action verbs like меша/вреди)
+const PATTERN_NE_COORDINATED = (nounSrc: string) =>
+  "(?:не\\s+" + nounSrc + "\\s+и\\s+не\\s+" + nounSrc + "(?![а-яё])(?!(?:\\s+[а-яё]+){1,3}\\s+(?:меша|вреди|препятств|влия|останав|порport)))";
+
 const NEGATED_CRACK_PHRASE = new RegExp(
-  "(?<![а-яё])(?:(?:без|ни|нет)\\s+(?:единой\\s+|малейшей\\s+|всяких\\s+|каких-либо\\s+|следов\\s+|видимых\\s+|заметных\\s+)?|не\\s+(?:является\\s+|было\\s+|заметно\\s+|видно\\s+|единой\\s+|малейшей\\s+)?)" +
-    DAMAGE_NOUN_SOURCE +
-    "(?:\\s*(?:,\\s*(?:и|или|ни)\\s*|\\s+(?:и|или|ни)\\s+)(?:(?:единой\\s+|малейшей\\s+|всяких\\s+|каких-либо\\s+|следов\\s+|видимых\\s+|заметных\\s+)?)" +
-    DAMAGE_NOUN_SOURCE +
-    ")*",
+  "(?<![а-яё])(?:" +
+    [
+      PATTERN_BEZ(DAMAGE_NOUN_SOURCE),
+      PATTERN_NET(DAMAGE_NOUN_SOURCE),
+      PATTERN_NE_PREDICATE(DAMAGE_NOUN_SOURCE),
+      PATTERN_NE_COORDINATED(DAMAGE_NOUN_SOURCE),
+    ].join("|") +
+    ")",
   "giu",
 );
 
 const NEGATED_USER_DAMAGE_PHRASE = new RegExp(
-  "(?<![а-яё])(?:(?:без|ни|нет)\\s+(?:единой\\s+|малейшей\\s+|всяких\\s+|каких-либо\\s+|следов\\s+|видимых\\s+|заметных\\s+)?|не\\s+(?:является\\s+|было\\s+|заметно\\s+|видно\\s+|единой\\s+|малейшей\\s+)?)" +
-    USER_DAMAGE_SOURCE +
-    "(?:\\s*(?:,\\s*(?:и|или|ни)\\s*|\\s+(?:и|или|ни)\\s+)(?:(?:единой\\s+|малейшей\\s+|всяких\\s+|каких-либо\\s+|следов\\s+|видимых\\s+|заметных\\s+)?)" +
-    USER_DAMAGE_SOURCE +
-    ")*",
+  "(?<![а-яё])(?:" +
+    [
+      PATTERN_BEZ(USER_DAMAGE_SOURCE),
+      PATTERN_NET(USER_DAMAGE_SOURCE),
+      PATTERN_NE_PREDICATE(USER_DAMAGE_SOURCE),
+      PATTERN_NE_COORDINATED(USER_DAMAGE_SOURCE),
+    ].join("|") +
+    ")",
   "giu",
 );
 
