@@ -178,97 +178,98 @@ export async function generateChapterSamplePdfBuffer(
 
   const marginLeft = 48;
   const contentWidth = 499;
-  const pageBottomLimit = 796;
-  let y = 52;
+  const pageBottomLimit = 782;
+  let y = 44;
 
   const ensureSpace = (neededPt: number) => {
     if (y + neededPt > pageBottomLimit) {
       doc.addPage();
       doc.setFont('Lora', 'normal');
-      y = 52;
+      y = 44;
     }
   };
 
   // Document Header
-  doc.setFontSize(10);
+  doc.setFontSize(9.5);
   doc.setTextColor(140, 109, 50);
   doc.text(`${validSample.sampleStatusLabel} — не готовый платный продукт`, marginLeft, y);
-  y += 20;
+  y += 16;
 
-  doc.setFontSize(18);
+  doc.setFontSize(16.5);
   doc.setTextColor(28, 25, 23);
   doc.text('Зеркало Себя · Персональный образец будущей главы', marginLeft, y);
-  y += 18;
+  y += 15;
 
-  doc.setFontSize(9.5);
+  doc.setFontSize(9);
   doc.setTextColor(115, 110, 101);
   doc.text(
     `Код образца: ${validSample.sampleId}   |   Версия разбора: ${validSample.sourceStateVersion}`,
     marginLeft,
     y
   );
-  y += 14;
+  y += 11;
 
   doc.setDrawColor(214, 204, 184);
   doc.setLineWidth(0.8);
   doc.line(marginLeft, y, marginLeft + contentWidth, y);
-  y += 22;
+  y += 16;
 
   // Render all 6 sections from the unified PersonalChapterSampleV1 source
   for (const sec of sections) {
-    ensureSpace(48);
+    ensureSpace(40);
 
-    doc.setFontSize(12.5);
+    doc.setFontSize(11.5);
     doc.setTextColor(120, 90, 38);
     const headingLines: string[] = doc.splitTextToSize(sec.heading, contentWidth);
     for (const hLine of headingLines) {
-      ensureSpace(18);
+      ensureSpace(15);
       doc.text(hLine, marginLeft, y);
-      y += 16;
+      y += 14;
     }
 
     if (sec.sublabel) {
-      doc.setFontSize(9.5);
+      doc.setFontSize(9);
       doc.setTextColor(115, 110, 101);
       const subLines: string[] = doc.splitTextToSize(sec.sublabel, contentWidth);
       for (const sLine of subLines) {
-        ensureSpace(14);
+        ensureSpace(12);
         doc.text(sLine, marginLeft, y);
-        y += 13;
+        y += 11.5;
       }
-      y += 2;
+      y += 1.5;
     }
 
-    doc.setFontSize(11);
+    doc.setFontSize(10.2);
     doc.setTextColor(28, 25, 23);
     for (const paragraph of sec.lines) {
       const wrappedLines: string[] = doc.splitTextToSize(paragraph, contentWidth);
       for (const wLine of wrappedLines) {
-        ensureSpace(16);
+        ensureSpace(14);
         doc.text(wLine, marginLeft, y);
-        y += 15.5;
+        y += 13.5;
       }
-      y += 4;
+      y += 3;
     }
 
-    y += 10;
+    y += 7;
   }
 
-  ensureSpace(34);
+  // Footer is drawn within the reserved bottom margin (<= 820pt on 841.89pt A4)
+  // so it never triggers an orphan page containing only the footer.
+  y += 4;
   doc.setDrawColor(225, 218, 204);
   doc.setLineWidth(0.6);
   doc.line(marginLeft, y, marginLeft + contentWidth, y);
-  y += 15;
-  doc.setFontSize(9);
+  y += 12;
+  doc.setFontSize(8.5);
   doc.setTextColor(120, 113, 108);
   const footerLines: string[] = doc.splitTextToSize(
     '«Зеркало Себя» • Персональный образец будущей главы (не готовый платный пакет). Веб-версия и PDF сформированы из одного сохранённого состояния.',
     contentWidth
   );
   for (const fLine of footerLines) {
-    ensureSpace(13);
     doc.text(fLine, marginLeft, y);
-    y += 12.5;
+    y += 11;
   }
 
   // Embed exact UTF-8 unified text metadata object before xref calculation

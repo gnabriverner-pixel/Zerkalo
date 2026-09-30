@@ -519,6 +519,8 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       expect(pdfLatin1).toContain("/Identity-H");
       expect(pdfLatin1).toContain("/ToUnicode");
       expect(pdfLatin1).not.toContain("(\xfe\xff");
+      // Must fit all 6 sections and footer on a single page (/Count 1), never spilling the footer onto page 2
+      expect(pdfLatin1).toMatch(/\/Type\s*\/Pages[\s\S]*?\/Count\s+1\b/);
 
       const pdfText = pdfBuffer.toString("utf8");
       expect(pdfText).toContain(updatedSample.sampleId);
