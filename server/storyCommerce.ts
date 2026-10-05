@@ -1,0 +1,256 @@
+import type {Express,Request,Response} from 'express';
+import path from 'node:path';
+import {CommerceStore,CommerceError,type StoryOrder} from './commerceStore';
+import {MockStoryPayment,YooTestPayment,type StoryPayment} from './storyPayment';
+import {makeStoryPdf,storySections} from './storyPdf';
+import {STORY_SAMPLE} from './storySample';
+import {verifyConsent} from './consent';
+import {parsePersonalMythRequest,parsePersonalMythResult,containsCrisisLanguage,SAFE_CRISIS_MESSAGE} from './myth';
+import {parseAlbertMessage,checkSafety} from './albert';
+import {checkAndIncrementRate,consumeDailyBudget} from './rateLimit';
+
+const COOKIE='zerkalo_stories';
+const cookie=(req:Request,name:string)=>(req.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(name+'='))?.slice(name.length+1);
+const local=(req:Request)=>['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress||'') && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.get('host')||'');
+const sameOrigin=(req:Request)=>{try{return new URL(req.get('origin')||'').host===req.get('host');}catch{return false;}};
+const key=(value:unknown)=>{if(typeof value!=='string'||!/^[\w-]{8,100}$/.test(value))throw new CommerceError('request_key_required',400);return value;};
+function publicOrder(order:StoryOrder){
+  return {id:order.id,kind:order.kind,state:order.state,test:Boolean(order.test),created_at:order.created_at,
+    remaining:order.remaining,pending:order.pending,data:order.data,checkout_url:order.checkout_url};
+}
+export interface StoryCommerceOptions {
+  store?:CommerceStore; payment?:StoryPayment;
+  myth:(body:any)=>Promise<any>;
+  albert:(body:any,consent:any)=>Promise<any>;
+  ready:()=>boolean;
+}
+
+export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
+  let database=options.store;
+  const enabled=()=>Boolean(options.store)||process.env.COMMERCE_ENABLED==='true';
+  const store=()=>{
+    if(!enabled())throw new CommerceError('commerce_disabled',503);
+    if(!database)database=new CommerceStore(path.resolve(process.env.COMMERCE_DB_PATH||'data/commerce/stories.sqlite'),process.env.COMMERCE_DATA_KEY||'');
+    return database;
+  };
+  let mock:MockStoryPayment|undefined;
+  const payment=():StoryPayment=>{
+    if(options.payment)return options.payment;
+    if(process.env.COMMERCE_PAYMENT_MODE==='test')return new YooTestPayment(process.env);
+    if(process.env.COMMERCE_PAYMENT_MODE==='mock' && process.env.NODE_ENV!=='production')return mock ||= new MockStoryPayment();
+    throw new CommerceError('checkout_not_connected',503);
+  };
+  const account=(req:Request)=>{const id=store().account(cookie(req,COOKIE));if(!id)throw new CommerceError('account_required',401);return id;};
+  const setAccess=(res:Response,access:string)=>res.cookie(COOKIE,access,{httpOnly:true,sameSite:'strict',secure:process.env.NODE_ENV==='production',path:'/',maxAge:365*86400000});
+  const errors:Record<string,string>={
+    checkout_not_connected:'Оплата ещё не подключена. Ваш бесплатный результат доступен.',
+    commerce_key_missing:'Сохранение историй ещё не настроено. Ответы остаются в форме.',
+    recovery_invalid:'Код восстановления не найден. Проверьте сохранённый код.',
+    new_answers_required:'Для новой истории нужны новые ответы. Предыдущая история уже сохранена.',
+    albert_limit:'Пять ответов этого заказа уже выданы. История и PDF остаются доступны.',
+    complete_free_first:'Сначала завершите первую бесплатную историю.',
+    delivery_needs_support:'Лимит безопасных попыток исчерпан. Сохраните номер заказа и обратитесь в поддержку для выдачи или возврата.',
+    account_deleted:'Эта история удалена. Запоздавший ответ не сохранён.',
+    operation_in_progress:'Запрос уже выполняется или его результат неизвестен. Проверьте сохранённую историю.',
+  };
+  const route=(fn:(req:Request,res:Response)=>Promise<any>|any)=>(req:Request,res:Response)=>{
+    Promise.resolve().then(()=>fn(req,res)).catch(error=>{
+      const known=error instanceof CommerceError,code=known?error.code:'story_delivery_failed';
+      // Never log provider bodies, customer texts, keys or a raw stack containing them.
+      res.status(known?error.status:502).json({status:'error',code,operation_failed:error?.operation_failed===true,ui:{safe_message:errors[code]||'Не удалось завершить действие. Ваш ввод остаётся в форме; проверьте историю перед повтором.'}});
+    });
+  };
+  const buckets=new Map();
+  app.get('/api/stories-sample',(_req,res)=>res.json({synthetic:true,provenance:'historical_test_fixture_and_prepared_dialogue',sections:storySections(STORY_SAMPLE)}));
+  app.get('/api/stories-sample/pdf',(_req,res)=>res.set('Content-Disposition','attachment; filename="synthetic-story-sample.pdf"').type('application/pdf').send(makeStoryPdf(STORY_SAMPLE)));
+  app.get('/api/stories/status',(req,res)=>{
+    // Reopen an existing archive after restart without creating accounts or requesting consent here.
+    if(!database&&enabled()&&cookie(req,COOKIE)){try{store();}catch{/* Configuration is reported by the local setup screen. */}}
+    const id=database?.account(cookie(req,COOKIE));
+    res.set('Cache-Control','no-store').json({enabled:enabled(),storage_accepted:Boolean(id&&database?.storageAccepted(id)),payment_mode:process.env.COMMERCE_PAYMENT_MODE||options.payment?.mode||'disabled',live_checkout:false,title:'Новая личная история',price_rub:790});
+  });
+  // A forged notification cannot issue rights. Retrieve the object under the merchant's credentials.
+  app.post('/api/stories/payment-webhook',route(async(req,res)=>{
+    if(!enabled())throw new CommerceError('commerce_disabled',503);
+    if(!checkAndIncrementRate(req.ip||'unknown',20,Date.now(),60000,buckets).allowed)throw new CommerceError('rate_limit',429);
+    const adapter=payment(),notification=req.body;
+    if(adapter.mode==='mock')throw new CommerceError('mock_notifications_disabled',403);
+    const id=String(notification?.object?.id||'');
+    if(notification?.event==='refund.succeeded'){
+      if(!adapter.refund)throw new CommerceError('refund_not_supported',503);
+      const refund=await adapter.refund(id),found=store().paymentOrder(refund.payment_id);
+      if(found && refund.status==='succeeded' && refund.amount?.value==='790.00' && refund.amount?.currency==='RUB')store().markRefunded(found.account,found.id);
+    }else if(['payment.succeeded','payment.canceled'].includes(notification?.event)){
+      const actual=await adapter.get(id),found=store().paymentOrder(actual.id);
+      if(found)store().confirmPayment(found.account,found.id,actual);
+      // Unknown payment is never associated by an untrusted order_id from the notification.
+    }else throw new CommerceError('notification_invalid',400);
+    res.json({received:true});
+  }));
+  app.use('/api/stories',(req,res,next)=>{
+    res.set('Cache-Control','no-store');
+    const consent=verifyConsent(cookie(req,'zerkalo_consent')||'');
+    if(!consent)return res.status(403).json({status:'error',code:'consent_required'});
+    if(req.method!=='GET'&&!sameOrigin(req))return res.status(403).json({code:'origin_rejected'});
+    res.locals.consent=consent;next();
+  });
+  app.post('/api/stories/account',route((req,res)=>{
+    const previous=store().account(cookie(req,COOKIE));
+    const accepted=req.body?.storage_accepted===true&&req.body?.storage_version==='personal-history-storage-v1';
+    if(previous){if(accepted)store().acceptStorage(previous);if(!store().storageAccepted(previous))throw new CommerceError('storage_consent_required',403);return res.json({created:false});}
+    if(!accepted)throw new CommerceError('storage_consent_required',403);
+    if(!checkAndIncrementRate('account:'+req.ip,10,Date.now(),600000,buckets).allowed)throw new CommerceError('account_rate_limit',429);
+    const created=store().createAccount(true);setAccess(res,created.access);res.json({created:true,recovery:created.recovery});
+  }));
+  app.post('/api/stories/restore',route((req,res)=>{
+    if(!checkAndIncrementRate('restore:'+req.ip,5,Date.now(),600000,buckets).allowed)throw new CommerceError('recovery_rate_limit',429);
+    const restored=store().restore(String(req.body?.recovery||'').trim());setAccess(res,restored.access);res.json({restored:true});
+  }));
+  app.post('/api/stories/recovery',route((req,res)=>res.json({recovery:store().recovery(account(req))})));
+  app.post('/api/stories/import-free',route((req,res)=>{
+    const answers=parsePersonalMythRequest({request_id:'legacy_import_0001',answers:req.body?.answers}).answers;
+    const myth=parsePersonalMythResult(JSON.stringify(req.body?.myth));
+    if(!myth.title||!myth.story||myth.story.length>16000)throw new CommerceError('legacy_myth_invalid',400);
+    res.json({order:publicOrder(store().importFree(account(req),answers,myth))});
+  }));
+  app.get('/api/stories',route((req,res)=>res.json({orders:store().list(account(req)).map(publicOrder)})));
+  app.get('/api/stories/:id',route((req,res)=>res.json({order:publicOrder(store().order(account(req),req.params.id))})));
+  app.post('/api/stories/offer',route((req,res)=>{
+    const free=store().list(account(req)).find(order=>order.kind==='free'&&order.state==='ready');
+    if(free)store().event('offer_shown',free);res.json({recorded:Boolean(free)});
+  }));
+  app.post('/api/stories/orders',route((req,res)=>{
+    const adapter=payment();
+    if(adapter.mode==='mock'&&!local(req))throw new CommerceError('mock_local_only',403);
+    res.json({order:publicOrder(store().createOrder(account(req),key(req.body?.request_key),'paid',true))});
+  }));
+  app.post('/api/stories/:id/checkout',route(async(req,res)=>{
+    const id=account(req),db=store(),adapter=payment();
+    if(adapter.mode==='mock'&&!local(req))throw new CommerceError('mock_local_only',403);
+    let order=db.order(id,req.params.id);
+    if(order.checkout_url)return res.json({url:order.checkout_url});
+    db.paymentStarted(id,order.id);order=db.order(id,order.id);
+    const actual=await adapter.create(order);
+    if(!actual.id||actual.amount?.value!=='790.00'||actual.amount?.currency!=='RUB'||actual.metadata?.order_id!==order.id||actual.test!==true)throw new CommerceError('payment_mismatch',422);
+    const terminal=['succeeded','canceled'].includes(actual.status);
+    const url=terminal?'/?stories=1':actual.confirmation?.confirmation_url;
+    if(!url)throw new CommerceError('payment_mismatch',422);
+    if(adapter.mode==='test' && !terminal && !(new URL(url).protocol==='https:' && /(^|\.)yoomoney\.ru$/.test(new URL(url).hostname)))throw new CommerceError('payment_url_invalid',422);
+    db.attachPayment(id,order.id,actual.id,url);res.json({url});
+  }));
+  app.post('/api/stories/:id/payment-refresh',route(async(req,res)=>{
+    const id=account(req),db=store(),order=db.order(id,req.params.id);
+    if(!order.payment_id)throw new CommerceError('payment_not_created');
+    if(!checkAndIncrementRate('payment:'+id,12,Date.now(),60000,buckets).allowed)throw new CommerceError('payment_refresh_rate_limit',429);
+    const actual=await payment().get(order.payment_id);
+    res.json({order:publicOrder(db.confirmPayment(id,order.id,actual))});
+  }));
+  app.get('/api/stories/mock-checkout/:payment',route((req,res)=>{
+    const adapter=payment();if(!(adapter instanceof MockStoryPayment)||!local(req))throw new CommerceError('mock_local_only',403);
+    const found=store().paymentOrder(req.params.payment);
+    if(!found||found.account!==account(req))throw new CommerceError('story_not_found',404);
+    // POST form is deliberate and same-origin. This simulation cannot be enabled in production.
+    res.type('html').send(`<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Имитация оплаты</title><body><h1>Имитация оплаты — деньги не списываются</h1><p>Новая личная история · 790 ₽</p><form method="post"><button name="decision" value="success">Имитировать успешную оплату</button><button name="decision" value="cancel">Имитировать отмену</button></form></body></html>`);
+  }));
+  // Express urlencoded is installed by the caller before these routes.
+  app.post('/api/stories/mock-checkout/:payment',route((req,res)=>{
+    const adapter=payment();if(!(adapter instanceof MockStoryPayment)||!local(req))throw new CommerceError('mock_local_only',403);
+    const found=store().paymentOrder(req.params.payment);
+    if(!found||found.account!==account(req))throw new CommerceError('story_not_found',404);
+    adapter.decide(req.params.payment,req.body?.decision==='success');res.redirect(303,'/?stories=1');
+  }));
+  app.post('/api/stories/:id/answers',route((req,res)=>{
+    const parsed=parsePersonalMythRequest({request_id:key(req.body?.request_key),answers:req.body?.answers});
+    const question=String(req.body?.question||'').trim();if(question.length>2000)throw new CommerceError('question_too_long',400);
+    res.json({order:publicOrder(store().saveAnswers(account(req),req.params.id,parsed.answers,question))});
+  }));
+  async function generate(req:Request,res:Response,order:StoryOrder,requestKey:string,kind:'myth'|'albert',input:any,createdAccount?:string){
+    const db=store(),id=createdAccount||account(req);
+    const reserved=db.reserve(id,order.id,requestKey,kind,kind==='albert'?{message:input.message}:{answers:input.answers});
+    if(reserved.state==='complete')return res.json({...reserved.result,order:publicOrder(db.order(id,order.id)),replayed:true});
+    if(reserved.state!=='reserved')return res.status(202).json({status:reserved.state,order:publicOrder(db.order(id,order.id))});
+    try{
+      let result:any;
+      const safety=kind==='albert'?checkSafety(input):null;
+      if(kind==='myth' && containsCrisisLanguage(input.answers))result={status:'crisis',ui:{safe_message:SAFE_CRISIS_MESSAGE}};
+      else if(safety?.isCrisis)result={status:'crisis',response:safety.safeMessage,ui:{safe_message:safety.safeMessage}};
+      else{
+        if(!options.ready())throw new CommerceError('provider_not_ready',503);
+        if(!checkAndIncrementRate('generate:'+req.ip,30,Date.now(),600000,buckets).allowed)throw new CommerceError('rate_limit',429);
+        if(!consumeDailyBudget().allowed)throw new CommerceError('daily_budget_reached',429);
+        result=kind==='myth'?await options.myth(input):await options.albert(input,res.locals.consent);
+      }
+      if(result.status==='ok' && kind==='albert'){
+        result={...result,reply:result.response||result.message};
+        if(typeof result.reply!=='string'||!result.reply.trim())throw new CommerceError('empty_albert_response',502);
+      }
+      if(!['ok','crisis'].includes(result.status))throw new CommerceError('generation_not_delivered',502);
+      const updated=db.complete(id,order.id,requestKey,result,kind==='albert'?input.message:undefined);
+      return res.json({...result,order:publicOrder(updated)});
+    }catch(error){try{db.fail(id,order.id,requestKey);Object.assign(error,{operation_failed:true});}catch{/* Deletion/revocation wins over a delayed response. */}throw error;}
+  }
+  app.post('/api/stories/:id/myth',route(async(req,res)=>{
+    const order=store().order(account(req),req.params.id),requestKey=key(req.body?.request_key);
+    const input=parsePersonalMythRequest({request_id:requestKey,answers:order.data.answers});
+    return generate(req,res,order,requestKey,'myth',input);
+  }));
+  app.post('/api/stories/:id/albert',route(async(req,res)=>{
+    const order=store().order(account(req),req.params.id),message=parseAlbertMessage(req.body);
+    const m=order.data.myth;
+    // Ordinary Albert gets actual saved answers, issued Myth and the human's question, never a model's invented choice.
+    const input={message,history:order.data.messages,context:{storyInputs:order.data.answers,storyResult:m,userQuestion:order.data.question,
+      mythAnchors:m?{title:m.title,...m.mirror,oneStep:m.one_step}:undefined}};
+    return generate(req,res,order,key(req.body?.request_key),'albert',input);
+  }));
+  app.post('/api/stories/:id/retry-interrupted',route((req,res)=>{
+    if(req.body?.acknowledged!==true)throw new CommerceError('explicit_retry_required',400);
+    store().acknowledgeUncertain(account(req),req.params.id);res.json({acknowledged:true});
+  }));
+  app.post('/api/stories/:id/note',route((req,res)=>{
+    const note=req.body?.note;if(typeof note!=='string'||note.length>12000)throw new CommerceError('note_invalid',400);
+    store().note(account(req),req.params.id,note);res.json({saved:true});
+  }));
+  app.post('/api/stories/:id/support',route((req,res)=>{
+    if(!['delivery','refund'].includes(req.body?.reason))throw new CommerceError('support_reason_invalid',400);
+    store().support(account(req),req.params.id,req.body.reason);res.json({recorded:true,order_id:req.params.id});
+  }));
+  app.post('/api/stories/:id/pdf',route((req,res)=>{
+    const order=store().order(account(req),req.params.id);
+    if(!order.data.myth)throw new CommerceError('story_not_issued');
+    res.set('Content-Disposition','attachment; filename="personal-story.pdf"').type('application/pdf').send(makeStoryPdf(order));
+  }));
+  app.post('/api/stories/delete',route((req,res)=>{
+    if(req.body?.confirmed!==true)throw new CommerceError('explicit_deletion_required',400);
+    store().deleteAccount(account(req));res.clearCookie(COOKIE,{path:'/'});res.json({deleted:true});
+  }));
+  // The accepted free Myth route is tracked when commerce is enabled; already-issued UI results remain readable.
+  app.post('/api/personal-myth',(req,res,next)=>{
+    if(!enabled())return next();
+    return route(async()=>{
+      if(!sameOrigin(req))throw new CommerceError('origin_rejected',403);
+      const parsed=parsePersonalMythRequest(req.body),requestKey=key(parsed.request_id);
+      if(containsCrisisLanguage(parsed.answers))return res.json({mode:'story',status:'crisis',ui:{safe_message:SAFE_CRISIS_MESSAGE}});
+      const db=store();let id=db.account(cookie(req,COOKIE));
+      if(!id){
+        if(!checkAndIncrementRate('account:'+req.ip,10,Date.now(),600000,buckets).allowed)throw new CommerceError('account_rate_limit',429);
+        const created=db.createAccount();id=created.id;setAccess(res,created.access);
+      }
+      let order=db.createOrder(id,requestKey,'free',process.env.NODE_ENV!=='production');
+      if(order.state==='ready'){
+        if(JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('free_story_already_issued',402);
+        return res.json({status:'ok',mode:'story',story_result:order.data.myth,replayed:true});
+      }
+      if(!order.data.answers)order=db.saveAnswers(id,order.id,parsed.answers,'');
+      if(JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('saved_answers_differ',409);
+      return generate(req,res,order,requestKey,'myth',parsed,id);
+    })(req,res);
+  });
+  // General deletion additionally clears paid history. A missing legacy token does not authorize a stranger.
+  const deleteOwned=(req:Request,res:Response)=>{
+    if(!enabled() || !cookie(req,COOKIE))return false;
+    const db=store(),id=db.account(cookie(req,COOKIE));if(!id)return false;
+    if(!sameOrigin(req))throw new CommerceError('origin_rejected',403);
+    db.deleteAccount(id);res.clearCookie(COOKIE,{path:'/'});return true;
+  };
+  return {deleteOwned,store};
+}

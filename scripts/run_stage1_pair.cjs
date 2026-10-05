@@ -421,13 +421,15 @@ async function main() {
     return;
   }
   const verifyEnvScript = path.join(dcsRoot, "scripts", "verify_release_env.sh");
-  if (!fs.existsSync(verifyEnvScript)) {
+  const publishedBridgeVerifier=path.join(webRoot,'scripts','verify_dcs_de78_environment.cjs');
+  const exactPublishedBridge=actualDcsSha==='de78eb346a32da5b9f2fe6b5d40e10c85309c93f';
+  if (!fs.existsSync(verifyEnvScript) && !exactPublishedBridge) {
     console.error(`[stage1-pair] Required environment verification script missing at ${verifyEnvScript}.`);
     await shutdown(1);
     return;
   }
   try {
-    execFileSync("bash", [verifyEnvScript, "--verify-packages", dcsRoot], {
+    execFileSync(fs.existsSync(verifyEnvScript)?"bash":process.execPath, fs.existsSync(verifyEnvScript)?[verifyEnvScript, "--verify-packages", dcsRoot]:[publishedBridgeVerifier,dcsRoot], {
       cwd: dcsRoot,
       env: { ...process.env, PYTHON_BIN: pythonBin },
       stdio: "pipe",

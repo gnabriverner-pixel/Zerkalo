@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 
 export interface AlbertDialogueProps {
+  onSafetyBlocked?: (blocked:boolean) => void;
   context?: {
     soulNumber?: number;
     mainPattern?: string;
@@ -134,6 +135,7 @@ function sanitizeClientAlbertText(text: string): string {
 }
 
 export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
+  onSafetyBlocked,
   context,
   isOpen = true,
   onOpenChange,
@@ -239,6 +241,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   const [crisisIntercepted, setCrisisIntercepted] = useState<boolean>(
     () => Boolean(initialSaved?.crisisIntercepted)
   );
+  useEffect(()=>{onSafetyBlocked?.(crisisIntercepted);},[crisisIntercepted,onSafetyBlocked]);
 
   const [stance, setStance] = useState<AlbertInterpretationStance>(
     () => initialSaved?.userConclusion?.stance ?? 'confirmed'
@@ -1426,7 +1429,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                     className="px-5 py-2.5 rounded-xs bg-[var(--color-antique-gold)] text-gray-950 font-sans text-xs font-semibold uppercase tracking-wider hover:bg-[#D9B770] transition-colors flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none"
                   >
                     <BookOpen className="w-4 h-4" />
-                    <span>Собрать персональный образец главы</span>
+                    <span>Мои истории · новая история за 790 ₽</span>
                   </button>
                 </div>
               </section>

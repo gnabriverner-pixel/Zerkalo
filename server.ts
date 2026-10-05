@@ -27,6 +27,8 @@ import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge
 import { createContinuationClaim, LOCAL_CANDIDATE_TELEGRAM_UNAVAILABLE_MESSAGE, sweepExpiredClaims } from "./server/handoff";
 import { registerDeletionScope, executeDataDeletion, registerCachePurger, registerCacheOwnerBinder, bindSessionCalculationsToToken } from "./server/deletion";
 import { installConsentRoutes, verifyConsent } from './server/consent';
+import { installStoryCommerce, type StoryCommerceOptions } from './server/storyCommerce';
+import { installLocalStorySetup } from './server/localStorySetup';
 import {
   checkAndIncrementRate,
   consumeDailyBudget,
@@ -69,6 +71,7 @@ export interface CreateAppOptions {
   mythProvider?: PersonalMythProvider;
   skipVite?: boolean;
   isProviderReady?: () => boolean;
+  storyCommerce?: Partial<StoryCommerceOptions>;
 }
 
 export async function createApp(options: CreateAppOptions = {}) {
@@ -115,9 +118,22 @@ export async function createApp(options: CreateAppOptions = {}) {
 
   // Schema reference: "status": "crisis", "story_result": { "mirror": { "mainImage": "", "innerTension": "" } }
   app.use(express.json({ limit: "5mb" }));
+  app.use(express.urlencoded({extended:false,limit:'8kb'}));
   app.get('/privacy', (_req,res)=>res.sendFile(path.resolve('public/privacy.html')));
   app.get('/terms', (_req,res)=>res.sendFile(path.resolve('public/terms.html')));
   installConsentRoutes(app);
+  installLocalStorySetup(app);
+  const commerce=installStoryCommerce(app,{
+    ...options.storyCommerce,
+    ready:options.storyCommerce?.ready||isProviderConfigured,
+    myth:options.storyCommerce?.myth|| (async body=>{
+      const generated=await generatePersonalMyth(body,mythProvider,personalMythTimeoutMs);
+      return {mode:'story',status:'ok',provider:generated.provider,model:generated.model,
+        writer_version:PERSONAL_MYTH_WRITER_VERSION,story_result:generated.result,
+        qa:{passed:generated.quality.passed,word_count:generated.quality.word_count,repaired:generated.repaired}};
+    }),
+    albert:options.storyCommerce?.albert||((body,receipt)=>generateAlbertDialogue(body,deepseekClient,ALBERT_MODEL,45000,receipt)),
+  });
   const sweepClaims = () => sweepExpiredClaims().catch(()=>console.warn('claim_retention_sweep_failed'));
   void sweepClaims();
   setInterval(sweepClaims,60_000).unref();
@@ -678,6 +694,7 @@ export async function createApp(options: CreateAppOptions = {}) {
         const isInput = result.code === "invalid_token" || result.code === "deletion_scope_not_found";
         return res.status(isInput ? 400 : 503).json(result);
       }
+      commerce.deleteOwned(req,res);
       return res.status(200).json(result);
     } catch (err: any) {
       return res.status(503).json({ status: "error", code: "deletion_incomplete", retryable: true, message: err.message });
@@ -880,4 +897,3 @@ const isDirectRun =
 if (isDirectRun && !process.env.NO_AUTO_START_SERVER) {
   startServer();
 }
-

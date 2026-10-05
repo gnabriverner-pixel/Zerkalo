@@ -8,6 +8,7 @@ import { useProtectedFetch } from './ConsentBoundary';
 import { isShortJuxtapositionEnabled } from '../services/albertOpenerState';
 
 interface PersonalMythProps {
+  onSafetyBlocked?: (blocked:boolean) => void;
   initialInputs?: StoryInputs | null;
   initialResult?: ApiResponse['story_result'] | null;
   userQuestion?: string;
@@ -22,6 +23,7 @@ interface PersonalMythProps {
 }
 
 export default function PersonalMyth({ 
+  onSafetyBlocked,
   initialInputs,
   initialResult,
   userQuestion,
@@ -156,12 +158,14 @@ export default function PersonalMyth({
       const data: ApiResponse = await res.json();
 
       if (data.status === 'crisis') {
+        onSafetyBlocked?.(true);
         setErrorText(data.ui?.safe_message || "Мы не можем сформировать историю по текущему запросу.");
         setStep(4);
       } else if (data.status === 'error' || !data.story_result) {
         setErrorText(data.ui?.safe_message || "Связь с зеркалом прервалась. Попробуйте обновить.");
         setStep(4);
       } else {
+        onSafetyBlocked?.(false);
         setResult(data.story_result);
         if (onMythCompleted) {
           onMythCompleted(inputs, data.story_result);

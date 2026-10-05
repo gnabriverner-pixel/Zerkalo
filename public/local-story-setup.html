@@ -1,0 +1,11 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Настройка локального кандидата</title><link rel="stylesheet" href="/local-story-setup.css"></head><body><main>
+<h1>Настройка «Новой личной истории»</h1><p>Только этот локальный кандидат. Настоящие платежи закрыты. Пустые поля сохранят уже установленные значения; ключи не показываются повторно.</p>
+<p id="status" role="status">Загрузка состояния…</p><form id="setup">
+<label>Ключ RouterAI для Мифа<input type="password" name="ROUTERAI_API_KEY" autocomplete="off"></label>
+<label>Идентификатор тестового магазина ЮKassa<input name="YOOKASSA_SHOP_ID" autocomplete="off"></label>
+<label>Секретный ключ тестового магазина ЮKassa<input type="password" name="YOOKASSA_SECRET_KEY" autocomplete="off"></label>
+<label>HTTPS-адрес возврата из тестового магазина<input name="COMMERCE_PUBLIC_ORIGIN" type="url" placeholder="https://…"></label>
+<p>Платёжного аккаунта нет? Оставьте поля магазина пустыми. Хранилище и восстановление можно подготовить сейчас; оплату — после получения тестового магазина. После сохранения сообщите исполнителю: «Настройки сохранены». Он перезапустит локальную пару: штатный запуск передаст установленный здесь ключ обоим процессам, без копирования в другой файл.</p>
+<label><input type="checkbox" id="confirm" required> Сохранить введённые настройки в этом кандидате. Новые локальные служебные ключи создать только при их отсутствии.</label>
+<button>Сохранить настройки</button><a href="/">Вернуться к «Зеркалу»</a></form>
+</main><script src="/local-story-setup.js"></script></body></html>

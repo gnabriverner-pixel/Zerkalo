@@ -8,7 +8,7 @@ import { AboutMethod } from './components/AboutMethod';
 import { AlabasterSanctuary } from './components/AlabasterSanctuary';
 import { CodeV2Experience } from './components/CodeV2/CodeV2Experience';
 import { AlbertDialogue } from './components/AlbertDialogue';
-import { PersonalChapterOfferModal } from './components/PersonalChapterOfferModal';
+import { PersonalStoryLibrary } from './components/PersonalStoryLibrary';
 import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, CodeV2Payload, UserConclusionStateV1 } from './types';
 import { 
   loadMyMirrorSnapshot, 
@@ -53,6 +53,7 @@ function AppContent() {
     return 'entry';
   });
   const [showLibrary, setShowLibrary] = useState(false);
+  const [commerceSafetyBlocked,setCommerceSafetyBlocked]=useState(false);
   const [showAbout, setShowAbout] = useState(false);
 
   // Digital Code V2 Preview State
@@ -84,7 +85,7 @@ function AppContent() {
   const [isAlbertV2Open, setIsAlbertV2Open] = useState(false);
   const [albertInitialTopic, setAlbertInitialTopic] = useState<string | undefined>(undefined);
   const [openerTriggerToken, setOpenerTriggerToken] = useState<number>(0);
-  const [isChapterOfferOpen, setIsChapterOfferOpen] = useState<boolean>(false);
+  const [isChapterOfferOpen, setIsChapterOfferOpen] = useState<boolean>(()=>new URLSearchParams(window.location.search).get('stories')==='1');
   const [userConclusionState, setUserConclusionState] = useState<UserConclusionStateV1 | null>(null);
   const [codeV2Payload, setCodeV2Payload] = useState<CodeV2Payload | null>(null);
 
@@ -522,6 +523,7 @@ function AppContent() {
               className="w-full"
             >
               <PersonalMyth 
+                onSafetyBlocked={setCommerceSafetyBlocked}
                 initialInputs={storyInputs}
                 initialResult={storyResult}
                 userQuestion={userQuestion}
@@ -597,6 +599,7 @@ function AppContent() {
 
       {/* Albert Dialogue Modal for Code V2 Preview & Stage A Short Juxtaposition */}
       <AlbertDialogue
+        onSafetyBlocked={setCommerceSafetyBlocked}
         isOpen={isAlbertV2Open}
         onClose={() => {
           setIsAlbertV2Open(false);
@@ -636,20 +639,13 @@ function AppContent() {
         theme="dark"
       />
 
-      {/* Personal Chapter Sample & Full Package Offer Modal (Stage A4 & A5) */}
-      <PersonalChapterOfferModal
+      {!commerceSafetyBlocked&&<button className="fixed bottom-4 right-4 z-40 px-5 py-3 rounded-full bg-[#111c2c] text-[#e0c693] border border-[#bd9d65]/40" onClick={()=>setIsChapterOfferOpen(true)}>Мои истории · 790 ₽</button>}
+      <PersonalStoryLibrary
         isOpen={isChapterOfferOpen}
         onClose={() => setIsChapterOfferOpen(false)}
-        conclusionState={userConclusionState}
-        sourceStateVersion={userConclusionState?.sourceStateVersion}
-        userQuestion={userQuestion}
-        stance={userConclusionState?.stance}
-        systemHypothesis={userConclusionState?.systemHypothesis}
-        userOwnPhrase={userConclusionState?.userOwnPhrase}
-        chosenStepOrQuestion={userConclusionState?.chosenStepOrQuestion}
-        codeV2Payload={codeV2Payload}
-        firstMirror={firstMirror}
-        storyResult={storyResult}
+        previousAnswers={storyInputs}
+        previousMyth={storyResult}
+        onStoriesDeleted={()=>{handleDeleteSavedMirror();handleClearDraft();}}
       />
     </div>
   );
