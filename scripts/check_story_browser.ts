@@ -104,7 +104,21 @@ try{
   mark('mock_payment_server_confirmation_new_answers_new_myth',{money_moved:false});await shot(page,'02-new-paid-test-myth-390');
   for(let i=0;i<5;i++){
     await resumed.getByLabel('Ваше сообщение Альберту',{exact:true}).fill(`Технический вопрос ${i+1} о вымышленном письме.`);
+    if(i===0)await page.route('**/api/stories/*/albert',async route=>{
+      const reply=await route.fetch();const output=await reply.json();
+      traffic.push({path:new URL(route.request().url()).pathname,method:'POST',status:reply.status(),input:redact(route.request().postDataJSON()),output:redact(output),provenance:'fault_injection_received_server_response_before_browser_disconnect'});
+      await route.abort('failed');
+    },{times:1});
     await resumed.getByRole('button',{name:'Отправить Альберту',exact:true}).click();
+    if(i===0){
+      await resumed.getByRole('alert').waitFor();const afterLoss=calls.length;
+      await resumed.getByRole('button',{name:'Проверить сохранённую историю',exact:true}).click();
+      await resumed.getByText('Осталось ответов: 4 из 5. Засчитывается только успешно сохранённый ответ.',{exact:true}).waitFor();
+      await resumed.getByRole('button',{name:'Отправить Альберту',exact:true}).click();
+      await page.waitForFunction(()=>Array.from(document.querySelectorAll('.story-library label')).find(l=>l.textContent?.includes('Ваше сообщение Альберту'))?.querySelector('textarea')?.value==='');
+      assert(calls.length===afterLoss,'lost response replay called generator twice');
+      mark('network_loss_after_server_delivery_reopen_and_same_request_replay',{fault:'browser_transport_abort_after_real_synthetic_server_completion',charged_once:true,extra_generator_calls:0});
+    }
     await resumed.getByText(`Осталось ответов: ${4-i} из 5. Засчитывается только успешно сохранённый ответ.`,{exact:true}).waitFor();
   }
   assert(await resumed.getByRole('button',{name:'Отправить Альберту',exact:true}).count()===0,'sixth UI reply must be unavailable');
@@ -112,6 +126,10 @@ try{
   await resumed.locator('.story-message').last().screenshot({path:path.join(out,'long-message-390.png')});
   mark('five_delivered_replies_no_sixth_action_mobile_longtext',{width:390,synthetic_albert_successes:5});
   await resumed.getByLabel('Ваша заметка — слова человека',{exact:true}).fill('Мои слова: письмо о времени разговора не обещает окончательный результат.');await resumed.getByRole('button',{name:'Сохранить мою заметку',exact:true}).click();
+  await page.route('**/api/stories/*/pdf',route=>route.fulfill({status:503,contentType:'application/json',body:'{"status":"error"}'}),{times:1});
+  const beforePdfError=calls.length;await resumed.getByRole('button',{name:'Скачать историю PDF',exact:true}).click();
+  await resumed.getByText('PDF сейчас недоступен. История остаётся сохранённой.',{exact:true}).waitFor();assert(calls.length===beforePdfError,'PDF error triggered generation');
+  mark('PDF_transport_error_keeps_history_without_generation',{fault:'synthetic_HTTP_503_at_browser_transport',renderer_failure_tested:false});
   const download=page.waitForEvent('download');await resumed.getByRole('button',{name:'Скачать историю PDF',exact:true}).click();await(await download).saveAs(path.join(out,'delivered-synthetic-story.pdf'));
   const count=calls.length;await page.reload({waitUntil:'networkidle'});
   await page.getByText('Мои слова: письмо о времени разговора не обещает окончательный результат.',{exact:true}).waitFor();assert(calls.length===count,'reload must not generate');mark('saved_history_pdf_reload_no_generation');await shot(page,'03-five-replies-restored-390');
@@ -130,6 +148,7 @@ try{
   await p.reload({waitUntil:'networkidle'});assert(await p.getByText(/ЗАПОЗДАВШИЙ ТЕКСТ/).count()===0,'late text returned after reload');
   await p.getByLabel('Код для восстановления',{exact:true}).fill(recovery);await p.getByRole('button',{name:'Восстановить истории',exact:true}).click();await p.getByText('Код восстановления не найден. Проверьте сохранённый код.',{exact:true}).waitFor();mark('real_server_deletion_late_reply_reopen_recovery_denied');await shot(p,'05-deleted-reopened-390');
   fs.writeFileSync(path.join(out,'deletion-proof.json'),JSON.stringify({transport:'synthetic_ai_mock_payment',server_deleted_payloads:true,deleted_account_id:ordersBefore.account_id,orders:store.db.prepare('SELECT id,state,payload FROM orders WHERE account_id=?').all(ordersBefore.account_id),late_reply_persisted:false,recovery_denied:true},null,2));
+  fs.writeFileSync(path.join(out,'events-proof.json'),JSON.stringify({scope:'actual_synthetic_browser_database',events:store.db.prepare('SELECT name,COUNT(*) AS count,MIN(test) AS all_test FROM events GROUP BY name').all(),non_test_events:(store.db.prepare('SELECT COUNT(*) AS n FROM events WHERE test=0').get() as any).n,storage_receipt:store.db.prepare('SELECT storage_accepted,storage_version,storage_accepted_at,deleted FROM accounts WHERE id=?').get(ordersBefore.account_id)},null,2));
   fs.writeFileSync(path.join(out,'browser-result.json'),JSON.stringify({status:'PASS',scope:'technical_synthetic_browser_only',web_sha:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),dcs_sha:execFileSync('git',['rev-parse','HEAD'],{cwd:dcsRoot,encoding:'utf8'}).trim(),steps,actual_external_provider_attempts:0,synthetic_calls:calls.length,preseeded_cookies:false,preseeded_storage:false},null,2));
   store.close();
 }catch(error:any){
