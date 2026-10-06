@@ -155,7 +155,7 @@ export class RouterAIClient implements ChatClient {
     } finally {
       event.latencyMs = Date.now() - started;
       this.observe(event);
-      if(budget)budget.db.finishAI(budget.id,transportComplete);
+      if(budget)budget.db.finishAI(budget.id,transportComplete,event);
     }
   }
 }

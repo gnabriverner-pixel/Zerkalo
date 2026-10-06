@@ -22,7 +22,7 @@ export interface StoryOrder {
   id:string; account_id:string; kind:'free'|'paid'; state:string;
   payment_id:string|null; checkout_url:string|null; payment_started:number|null;
   created_at:number; test:number; issued_at:number|null;
-  data:SavedStory; remaining:number; pending:number;
+  data:SavedStory; remaining:number; pending:number;preview_temporary?:boolean;
 }
 const digest = (value:string) => crypto.createHash('sha256').update(value).digest('hex');
 const token = () => crypto.randomBytes(32).toString('base64url');
@@ -72,12 +72,16 @@ export class CommerceStore {
       CREATE TABLE IF NOT EXISTS operations(order_id TEXT NOT NULL REFERENCES orders(id),request_key TEXT NOT NULL,kind TEXT NOT NULL,input_hash TEXT NOT NULL,state TEXT NOT NULL,charged INTEGER NOT NULL DEFAULT 0,result TEXT,created_at INTEGER NOT NULL,finished_at INTEGER,PRIMARY KEY(order_id,request_key));
       CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY,name TEXT NOT NULL,order_id TEXT,created_at INTEGER NOT NULL,test INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS support_requests(order_id TEXT PRIMARY KEY REFERENCES orders(id),reason TEXT NOT NULL,created_at INTEGER NOT NULL,test INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS preview_access(order_id TEXT PRIMARY KEY REFERENCES orders(id));
+      CREATE TABLE IF NOT EXISTS preview_feedback(order_id TEXT PRIMARY KEY REFERENCES orders(id),account_id TEXT NOT NULL,text_encrypted TEXT NOT NULL,consent_version TEXT NOT NULL,created_at INTEGER NOT NULL);
       UPDATE operations SET state='uncertain' WHERE state='running';`);
     const accountColumns=new Set((this.db.prepare('PRAGMA table_info(accounts)').all() as any[]).map(row=>row.name));
     for(const [table,columns] of [['ai_budget_attempts',['estimate_version','policy_version']],['ai_budget_commitments',['estimate_version']]] as const){
       const existing=new Set((this.db.prepare('PRAGMA table_info('+table+')').all() as any[]).map(row=>row.name));
       for(const column of columns)if(!existing.has(column))this.db.exec('ALTER TABLE '+table+' ADD COLUMN '+column+' TEXT');
     }
+    const attemptColumns=new Set((this.db.prepare('PRAGMA table_info(ai_budget_attempts)').all() as any[]).map(row=>row.name));
+    for(const [column,type] of [['input_tokens','INTEGER'],['output_tokens','INTEGER'],['usage_cost','REAL'],['usage_currency','TEXT'],['duration_ms','INTEGER'],['outcome','TEXT']])if(!attemptColumns.has(column))this.db.exec('ALTER TABLE ai_budget_attempts ADD COLUMN '+column+' '+type);
     if(!accountColumns.has('storage_version'))this.db.exec('ALTER TABLE accounts ADD COLUMN storage_version TEXT');
     if(!accountColumns.has('storage_accepted_at'))this.db.exec('ALTER TABLE accounts ADD COLUMN storage_accepted_at INTEGER');
     const fingerprint=digest('commerce-key:'+keyHex);
@@ -119,12 +123,12 @@ export class CommerceStore {
     try { const result=action(); this.db.exec('COMMIT'); return result; }
     catch(error){this.db.exec('ROLLBACK');throw error;}
   }
-  configureAIBudget(policy:{free:{limit_micro:number;attempt_limit:number};paid:{limit_micro:number;attempt_limit:number;order_limit:number}}){
-    for(const p of [policy.free,policy.paid])if(!Number.isSafeInteger(p.limit_micro)||p.limit_micro<=0||!Number.isSafeInteger(p.attempt_limit)||p.attempt_limit<=0)throw new CommerceError('ai_budget_unconfigured',503);
-    if(!Number.isSafeInteger(policy.paid.order_limit)||policy.paid.order_limit<=0)throw new CommerceError('ai_budget_unconfigured',503);
+  configureAIBudget(policy:{free:{limit_micro:number;attempt_limit:number};paid?:{limit_micro:number;attempt_limit:number;order_limit:number}}){
+    for(const p of [policy.free,...(policy.paid?[policy.paid]:[])])if(!Number.isSafeInteger(p.limit_micro)||p.limit_micro<=0||!Number.isSafeInteger(p.attempt_limit)||p.attempt_limit<=0)throw new CommerceError('ai_budget_unconfigured',503);
+    if(policy.paid&&(!Number.isSafeInteger(policy.paid.order_limit)||policy.paid.order_limit<=0))throw new CommerceError('ai_budget_unconfigured',503);
     this.tx(()=>{
       for(const pool of ['free','paid'] as const){
-        const p=policy[pool],order_limit=pool==='paid'?policy.paid.order_limit:0;
+        const p=policy[pool];if(!p)continue;const order_limit=pool==='paid'?policy.paid!.order_limit:0;
         const old=this.db.prepare('SELECT * FROM ai_budget_limits WHERE pool=?').get(pool) as any;
         if(old&&(old.limit_micro!==p.limit_micro||old.attempt_limit!==p.attempt_limit||old.order_limit!==order_limit))throw new CommerceError('ai_budget_policy_changed_needs_review',503);
         this.db.prepare('INSERT OR IGNORE INTO ai_budget_limits VALUES (?,?,?,?)').run(pool,p.limit_micro,p.attempt_limit,order_limit);
@@ -153,6 +157,7 @@ export class CommerceStore {
   reserveAI(pool:'free'|'paid',orderId:string|undefined,model:string,cost:number,version:string='LEGACY_UNKNOWN',policyVersion:string='LEGACY_UNKNOWN',maximum?:number){
     return this.tx(()=>{
       this.aiBudgetOpen();if(!Number.isSafeInteger(cost)||cost<=0)throw new CommerceError('ai_price_bound_unknown',503);
+      if(process.env.FREE_PREVIEW_ENABLED==='true'&&(this.db.prepare("SELECT COUNT(*) AS n FROM ai_budget_attempts WHERE state='reserved'").get() as any).n>=2)throw new CommerceError('ai_concurrency_limit',429);
       if(pool==='paid'){
         const order=this.db.prepare('SELECT kind,state FROM orders WHERE id=?').get(orderId||'') as any;
         if(order?.kind!=='paid'||!['paid','answers_saved','generating','generation_failed','ready'].includes(order.state))throw new CommerceError('paid_order_not_available',503);
@@ -166,11 +171,28 @@ export class CommerceStore {
         if(!p||used.attempts>=p.attempt_limit||used.cost+cost>p.limit_micro)throw new CommerceError('free_budget_exhausted',429);
       }
       const id=crypto.randomUUID();this.db.prepare("INSERT INTO ai_budget_attempts(id,pool,order_id,model,cost_micro,state,created_at,finished_at,estimate_version,policy_version) VALUES (?,?,?,?,?,'reserved',?,NULL,?,?)").run(id,pool,orderId||null,model,cost,Date.now(),version,policyVersion);
-      this.db.prepare("UPDATE ai_budget_incidents SET state='resolved' WHERE order_id=?").run(orderId||'service');return id;
+      this.db.prepare("UPDATE ai_budget_incidents SET state='resolved' WHERE order_id=?").run(orderId||'service');if(pool==='free')this.freeBudgetAvailable(0);return id;
     });
   }
-  finishAI(id:string,success:boolean){this.db.prepare("UPDATE ai_budget_attempts SET state=?,finished_at=? WHERE id=? AND state='reserved'").run(success?'complete':'uncertain',Date.now(),id);}
-  budgetSummary(){return {limits:this.db.prepare('SELECT * FROM ai_budget_limits').all(),attempts:this.db.prepare('SELECT pool,state,COUNT(*) AS count,SUM(cost_micro) AS reserved_micro FROM ai_budget_attempts GROUP BY pool,state').all(),commitments:this.db.prepare('SELECT order_id,capacity_micro,spent_micro,attempt_limit,attempts,estimate_version FROM ai_budget_commitments').all(),incidents:this.db.prepare('SELECT * FROM ai_budget_incidents ORDER BY created_at DESC').all()};}
+  finishAI(id:string,success:boolean,usage?:{inputTokens?:number|null;outputTokens?:number|null;usageCost?:number|null;usageCostCurrency?:string;latencyMs?:number;outcome?:string}){
+    const numeric=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:null;
+    this.db.prepare("UPDATE ai_budget_attempts SET state=?,finished_at=?,input_tokens=?,output_tokens=?,usage_cost=?,usage_currency=?,duration_ms=?,outcome=? WHERE id=? AND state='reserved'").run(success?'complete':'uncertain',Date.now(),numeric(usage?.inputTokens),numeric(usage?.outputTokens),numeric(usage?.usageCost),usage?.usageCostCurrency||'UNKNOWN',numeric(usage?.latencyMs),usage?.outcome||null,id);
+  }
+  budgetSummary(){const free=this.freeBudgetAvailable(0);return {free,limits:this.db.prepare('SELECT * FROM ai_budget_limits').all(),attempts:this.db.prepare('SELECT pool,state,COUNT(*) AS count,SUM(cost_micro) AS reserved_micro FROM ai_budget_attempts GROUP BY pool,state').all(),usage:this.db.prepare('SELECT usage_currency,COUNT(*) AS attempts_with_usage,SUM(usage_cost) AS reported_cost,SUM(input_tokens) AS input_tokens,SUM(output_tokens) AS output_tokens FROM ai_budget_attempts WHERE usage_cost IS NOT NULL OR input_tokens IS NOT NULL OR output_tokens IS NOT NULL GROUP BY usage_currency').all(),commitments:this.db.prepare('SELECT order_id,capacity_micro,spent_micro,attempt_limit,attempts,estimate_version FROM ai_budget_commitments').all(),incidents:this.db.prepare('SELECT * FROM ai_budget_incidents ORDER BY created_at DESC').all()};}
+  freeBudgetAvailable(maximum:number){
+    const locked=Boolean(this.db.prepare("SELECT 1 FROM configuration WHERE key='ai_budget_recovery_locked'").get());
+    const limit=this.db.prepare("SELECT * FROM ai_budget_limits WHERE pool='free'").get() as any;
+    const used=this.db.prepare("SELECT COUNT(*) AS attempts,COALESCE(SUM(cost_micro),0) AS cost FROM ai_budget_attempts WHERE pool='free'").get() as any;
+    const warning=Boolean(limit&&used.cost>=Math.floor(limit.limit_micro*0.7));
+    if(warning)this.recordBudgetIncident(undefined,'free_budget_warning_70_percent');
+    return {available:Boolean(!locked&&limit&&used.attempts<limit.attempt_limit&&used.cost+maximum<=limit.limit_micro),warning,
+      used_micro:used.cost,limit_micro:limit?.limit_micro??null,attempts:used.attempts,attempt_limit:limit?.attempt_limit??null};
+  }
+  previewFeedback(account:string,id:string,text:string|null){
+    this.order(account,id);if(!this.storageAccepted(account))throw new CommerceError('storage_consent_required',403);
+    if(text===null){this.db.prepare('DELETE FROM preview_feedback WHERE order_id=? AND account_id=?').run(id,account);return;}
+    this.db.prepare("INSERT INTO preview_feedback VALUES (?,?,?,'free-preview-feedback-v1',?) ON CONFLICT(order_id) DO UPDATE SET text_encrypted=excluded.text_encrypted,consent_version=excluded.consent_version,created_at=excluded.created_at").run(id,account,this.encrypt({text}),Date.now());
+  }
   createAccount(storageAccepted=false){
     const id=crypto.randomUUID(), access=token(), recovery=token();
     this.db.prepare('INSERT INTO accounts(id,access_hash,recovery_hash,storage_accepted,created_at,storage_version,storage_accepted_at) VALUES (?,?,?,?,?,?,?)').run(id,digest(access),digest(recovery),+storageAccepted,Date.now(),storageAccepted?'personal-history-storage-v1':null,storageAccepted?Date.now():null);
@@ -224,7 +246,7 @@ export class CommerceStore {
       this.db.prepare('UPDATE operations SET result=NULL WHERE order_id=?').run(id);
     }
     const used=this.db.prepare("SELECT SUM(charged) AS used,SUM(CASE WHEN state='running' AND kind='albert' THEN 1 ELSE 0 END) AS pending FROM operations WHERE order_id=?").get(id) as any;
-    return {...row,data:this.decrypt(row.payload),remaining:ALBERT_ALLOWANCE-(used.used||0),pending:used.pending||0};
+    return {...row,data:this.decrypt(row.payload),remaining:ALBERT_ALLOWANCE-(used.used||0),pending:used.pending||0,preview_temporary:Boolean(this.db.prepare('SELECT 1 FROM preview_access WHERE order_id=?').get(id))};
   }
   list(account:string){
     this.assertAccount(account);
@@ -251,7 +273,7 @@ export class CommerceStore {
     return this.order(account,order.id);
   }
   event(name:string,order:StoryOrder){
-    if(!['first_completed','offer_shown','checkout_started','server_confirmed','issued','delivery_error'].includes(name))throw new Error('unknown_event');
+    if(!['first_completed','offer_shown','checkout_started','server_confirmed','issued','delivery_error','experience_started','albert_used','pdf_exported'].includes(name))throw new Error('unknown_event');
     // One occurrence per order/event: replay is not another customer or sale.
     this.db.prepare('INSERT OR IGNORE INTO events VALUES (?,?,?,?,?)').run(`${order.id}:${name}`,name,order.id,Date.now(),order.test);
   }
@@ -304,6 +326,7 @@ export class CommerceStore {
       if(kind==='albert' && order.state!=='ready')throw new CommerceError('story_not_ready');
       if(kind==='albert' && order.remaining-order.pending<=0)throw new CommerceError('albert_limit');
       if(this.db.prepare("SELECT 1 FROM operations WHERE order_id=? AND state IN ('running','uncertain')").get(id))throw new CommerceError('operation_in_progress');
+      if(process.env.FREE_PREVIEW_ENABLED==='true'&&(this.db.prepare("SELECT COUNT(*) AS count FROM operations WHERE state IN ('running','uncertain')").get() as any).count>=2)throw new CommerceError('service_busy',503);
       const attempts=(this.db.prepare('SELECT COUNT(*) AS n FROM operations WHERE order_id=? AND kind=?').get(id,kind) as any).n;
       if(attempts>=(kind==='myth'?3:10))throw new CommerceError('delivery_needs_support',503);
       const day=Math.floor(Date.now()/86400000)*86400000;
@@ -328,6 +351,7 @@ export class CommerceStore {
       this.db.prepare("UPDATE operations SET state='complete',charged=?,result=?,finished_at=? WHERE order_id=? AND request_key=?").run(+(success&&op.kind==='albert'),this.encrypt(result),Date.now(),id,key);
       this.db.prepare('UPDATE orders SET state=?,payload=?,issued_at=CASE WHEN ? THEN COALESCE(issued_at,?) ELSE issued_at END WHERE id=?').run(op.kind==='myth'?(success?'ready':'generation_failed'):order.state,this.encrypt(data),+(success&&op.kind==='myth'),Date.now(),id);
       if(success&&op.kind==='myth'){this.event('issued',order);if(order.kind==='free')this.event('first_completed',order);}
+      if(success&&op.kind==='albert')this.event('albert_used',order);
       return this.order(account,id);
     });
   }
@@ -361,11 +385,12 @@ export class CommerceStore {
   }
   support(account:string,id:string,reason:'delivery'|'refund'){
     const order=this.order(account,id);
-    if(order.kind!=='paid')throw new CommerceError('paid_order_required');
+    if(order.kind!=='paid'&&reason!=='delivery')throw new CommerceError('paid_order_required');
     this.db.prepare('INSERT INTO support_requests VALUES (?,?,?,?) ON CONFLICT(order_id) DO UPDATE SET reason=excluded.reason').run(id,reason,Date.now(),order.test);
   }
   private eraseRows(account:string){
     this.tx(()=>{
+      this.db.prepare('DELETE FROM preview_feedback WHERE account_id=?').run(account);
       this.db.prepare('UPDATE operations SET result=NULL,state=\'deleted\' WHERE order_id IN (SELECT id FROM orders WHERE account_id=?)').run(account);
       this.db.prepare("UPDATE orders SET payload=NULL,checkout_url=NULL,state='deleted' WHERE account_id=?").run(account);
       this.db.prepare('UPDATE accounts SET access_hash=NULL,recovery_hash=NULL,deleted=1 WHERE id=?').run(account);

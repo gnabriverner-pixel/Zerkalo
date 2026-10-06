@@ -6,8 +6,10 @@ import { EmblemPlate } from '../art/emblem';
 import { Orb } from './Orb';
 import { useProtectedFetch } from './ConsentBoundary';
 import { isShortJuxtapositionEnabled } from '../services/albertOpenerState';
+import {useFreePreview,readFreePreview} from '../services/freePreview';
 
 interface PersonalMythProps {
+  onOpenSavedStory?:()=>void;
   onSafetyBlocked?: (blocked:boolean) => void;
   initialInputs?: StoryInputs | null;
   initialResult?: ApiResponse['story_result'] | null;
@@ -23,6 +25,7 @@ interface PersonalMythProps {
 }
 
 export default function PersonalMyth({ 
+  onOpenSavedStory,
   onSafetyBlocked,
   initialInputs,
   initialResult,
@@ -37,6 +40,7 @@ export default function PersonalMyth({
   hasCodeResult 
 }: PersonalMythProps = {}) {
   const protectedFetch = useProtectedFetch();
+  const freePreview=useFreePreview();
   const handleNavigateToMeeting = onNext || onNavigateToMeeting;
   const shortJuxtapositionEnabled = isShortJuxtapositionEnabled();
   const [step, setStep] = useState(initialResult ? 6 : 0);
@@ -145,6 +149,7 @@ export default function PersonalMyth({
     setStep(5);
     setErrorText('');
     try {
+      const access=await readFreePreview();if(access.enabled&&!access.can_start_myth){setErrorText(access.pause_message);setStep(4);return;}
       const res = await protectedFetch('/api/personal-myth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -222,13 +227,15 @@ export default function PersonalMyth({
                 Четыре образных вопроса. Никаких анкет и дат рождения — только живая история, рождающаяся из твоих собственных метафор.
               </p>
               
+              {freePreview?.enabled&&<p role="status">Пробный доступ — бесплатно. История создаётся ИИ; её можно принять, уточнить или отвергнуть.{!freePreview.can_start_myth&&' '+freePreview.pause_message}</p>}
               <button 
-                onClick={() => setStep(1)}
+                onClick={async()=>{try{const access=await readFreePreview();if(access.enabled&&!access.can_start_myth){setErrorText(access.pause_message);return;}setStep(1);}catch(e:any){setErrorText(e.message);}}}
                 className="px-8 py-4 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] shadow-[0_0_30px_rgba(200,164,93,0.25)] transition-all cursor-pointer inline-flex items-center gap-2"
               >
                 <span>Войти через образы</span>
                 <ArrowRight size={14} />
               </button>
+              {errorText&&<p role="alert">{errorText}</p>}
               
               <div className="mt-14 text-xs text-stone-400/60 font-normal tracking-wide flex items-center justify-center gap-2">
                  <span>Образный формат для внутренней тишины и саморефлексии.</span>
@@ -470,7 +477,7 @@ export default function PersonalMyth({
 
               {/* CTA TO ALBERT SHORT JUXTAPOSITION / DIGITAL CODE / MEETING */}
               <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-10 rounded-xs text-center space-y-6">
-                {shortJuxtapositionEnabled && onOpenAlbertJuxtaposition ? (
+                {freePreview?.active&&onOpenSavedStory?<><p>До пяти успешно выданных ответов Альберта, сохранение и PDF — бесплатно в пробный период.</p><button onClick={onOpenSavedStory}>Обсудить с Альбертом и сохранить</button><p>Встреча — дополнительный раздел; она не обязательна и не входит в проверенный пробный опыт.</p></>:shortJuxtapositionEnabled && onOpenAlbertJuxtaposition ? (
                   <>
                     <div>
                       <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">

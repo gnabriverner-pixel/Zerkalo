@@ -13,7 +13,7 @@ const context=new AsyncLocalStorage<Scope>();
 let runtime:AIBudget|undefined;
 export const withAIBudget=<T>(scope:Scope,fn:()=>T):T=>context.run(scope,fn);
 export const registerAIBudget=(value:AIBudget|undefined)=>{runtime=value;};
-export const financialGuardRequired=()=>process.env.COMMERCE_ENABLED==='true'||process.env.COMMERCE_BUDGET_APPROVED==='true';
+export const financialGuardRequired=()=>process.env.COMMERCE_ENABLED==='true'||process.env.COMMERCE_BUDGET_APPROVED==='true'||process.env.FREE_PREVIEW_ENABLED==='true';
 const positive=(value:string|undefined)=>{const n=Number(value);if(!Number.isSafeInteger(n)||n<=0)throw new CommerceError('ai_budget_unconfigured',503);return n;};
 export function validateAIRequest(model:string,messages:unknown,maxTokens:number,now=Date.now()){
   try{return estimateAttempt(tariffs,model,messages,maxTokens,now).cost_micro;}catch(e){throw new CommerceError(e.message,e.message==='ai_input_bound_exceeded'?413:503);}
@@ -23,8 +23,10 @@ export class AIBudget {
   configured(){return this.env.COMMERCE_BUDGET_APPROVED==='true';}
   db(){
     if(!this.configured())throw new CommerceError('ai_budget_unconfigured',503);
-    const db=this.store();db.configureAIBudget({free:{limit_micro:positive(this.env.COMMERCE_FREE_BUDGET_RUB)*1e6,attempt_limit:positive(this.env.COMMERCE_FREE_ATTEMPT_MAX)},paid:{limit_micro:positive(this.env.COMMERCE_PAID_BUDGET_RUB)*1e6,attempt_limit:positive(this.env.COMMERCE_PAID_ATTEMPT_MAX),order_limit:positive(this.env.COMMERCE_PAID_ORDER_MAX)}});db.aiBudgetOpen();initialiseTariffs(db.db,tariffs);return db;
+    if(this.store().db.prepare("SELECT 1 FROM configuration WHERE key='free_preview_pause_generations'").get())throw new CommerceError('free_budget_exhausted',503);
+    const db=this.store();db.configureAIBudget({free:{limit_micro:positive(this.env.COMMERCE_FREE_BUDGET_RUB)*1e6,attempt_limit:positive(this.env.COMMERCE_FREE_ATTEMPT_MAX)},...(this.env.FREE_PREVIEW_ENABLED==='true'?{}:{paid:{limit_micro:positive(this.env.COMMERCE_PAID_BUDGET_RUB)*1e6,attempt_limit:positive(this.env.COMMERCE_PAID_ATTEMPT_MAX),order_limit:positive(this.env.COMMERCE_PAID_ORDER_MAX)}})});db.aiBudgetOpen();initialiseTariffs(db.db,tariffs);return db;
   }
+  freeAvailability(){try{const db=this.db(),snapshot=currentTariffs(db.db);estimateAttempt(snapshot,tariffs.rows[0].model,[{role:'user',content:'availability check'}],1,this.clock());return db.freeBudgetAvailable(maxAttempt(snapshot));}catch{return {available:false,warning:false};}}
   async prepare(){const db=this.db();try{const snapshot=await prepareTariffs(db.db,this.transport,this.clock());const maximum=maxAttempt(snapshot);
       for(const row of db.db.prepare('SELECT * FROM ai_budget_commitments').all() as any[])if(row.spent_micro+Math.max(0,row.attempt_limit-row.attempts)*maximum>row.capacity_micro)db.recordBudgetIncident(row.order_id,'paid_service_waiting',snapshot.version);
       return snapshot;

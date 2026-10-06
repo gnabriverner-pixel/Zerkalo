@@ -26,6 +26,7 @@ import { isShortJuxtapositionEnabled } from './services/albertOpenerState';
 import { loadQaPanel, type QaPanelModule } from './components/CodeV2/qaPanelLoader';
 import { EmblemDefs } from './art/emblem';
 import { ConsentBoundary } from './components/ConsentBoundary';
+import {useFreePreview} from './services/freePreview';
 
 function sanitizeUrlDob(): void {
   if (typeof window === 'undefined') return;
@@ -58,6 +59,7 @@ function AppContent() {
 
   // Digital Code V2 Preview State
   const [isPreviewV2, setIsPreviewV2] = useState(true);
+  const freePreview=useFreePreview();
   const [isQaMode, setIsQaMode] = useState<boolean>(() => {
     if (typeof window === 'undefined' || !import.meta.env.DEV) return false;
     const params = new URLSearchParams(window.location.search);
@@ -523,6 +525,7 @@ function AppContent() {
               className="w-full"
             >
               <PersonalMyth 
+                onOpenSavedStory={()=>setIsChapterOfferOpen(true)}
                 onSafetyBlocked={setCommerceSafetyBlocked}
                 initialInputs={storyInputs}
                 initialResult={storyResult}
@@ -639,7 +642,7 @@ function AppContent() {
         theme="dark"
       />
 
-      {!commerceSafetyBlocked&&<button className="fixed bottom-4 right-4 z-40 px-5 py-3 rounded-full bg-[#111c2c] text-[#e0c693] border border-[#bd9d65]/40" onClick={()=>setIsChapterOfferOpen(true)}>Мои истории · 790 ₽</button>}
+      {!commerceSafetyBlocked&&<button className="fixed bottom-4 right-4 z-40 px-5 py-3 rounded-full bg-[#111c2c] text-[#e0c693] border border-[#bd9d65]/40" onClick={()=>setIsChapterOfferOpen(true)}>{freePreview?.enabled?'Мои истории · бесплатно':'Мои истории · 790 ₽'}</button>}
       <PersonalStoryLibrary
         isOpen={isChapterOfferOpen}
         onClose={() => setIsChapterOfferOpen(false)}

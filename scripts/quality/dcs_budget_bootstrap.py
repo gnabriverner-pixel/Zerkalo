@@ -60,6 +60,8 @@ def reserve(body, scope):
     try:
         db.execute('BEGIN IMMEDIATE')
         if db.execute("SELECT 1 FROM configuration WHERE key='ai_budget_recovery_locked'").fetchone():raise RuntimeError('ai_budget_recovery_waiting')
+        if db.execute("SELECT 1 FROM configuration WHERE key='free_preview_pause_generations'").fetchone():raise RuntimeError('free_budget_exhausted')
+        if os.environ.get('FREE_PREVIEW_ENABLED')=='true' and db.execute("SELECT COUNT(*) FROM ai_budget_attempts WHERE state='reserved'").fetchone()[0]>=2:raise RuntimeError('ai_concurrency_limit')
         if pool=='paid':
             order=db.execute('SELECT kind,state FROM orders WHERE id=?',(order_id,)).fetchone()
             if not order or order['kind']!='paid' or order['state'] not in ('paid','answers_saved','generating','generation_failed','ready'):raise RuntimeError('paid_order_not_available')
@@ -86,11 +88,17 @@ def accounted_post(body,key,timeout,transport):
     except Exception as error:
         scope['budget_error']=str(error) if str(error).startswith(('ai_','paid_','free_')) else 'ai_budget_unavailable'
         raise
-    successful=False
+    successful=False;usage={};started=time.monotonic()
     try:
-        response=native_post(body,key,timeout,transport);successful=response.status_code==200;return response
+        response=native_post(body,key,timeout,transport);successful=response.status_code==200
+        try:
+            payload=response.json();candidate=payload.get('usage') if isinstance(payload,dict) else None
+            usage=candidate if isinstance(candidate,dict) else {}
+        except Exception:pass
+        return response
     finally:
-        with sqlite3.connect(DB,timeout=5) as db:db.execute("UPDATE ai_budget_attempts SET state=?,finished_at=? WHERE id=? AND state='reserved'",('complete' if successful else 'uncertain',int(time.time()*1000),ident))
+        number=lambda value:value if type(value) in (int,float) and math.isfinite(value) and value>=0 else None
+        with sqlite3.connect(DB,timeout=5) as db:db.execute("UPDATE ai_budget_attempts SET state=?,finished_at=?,input_tokens=?,output_tokens=?,usage_cost=?,usage_currency='UNKNOWN',duration_ms=? WHERE id=? AND state='reserved'",('complete' if successful else 'uncertain',int(time.time()*1000),number(usage.get('prompt_tokens')),number(usage.get('completion_tokens')),number(usage.get('cost')),round((time.monotonic()-started)*1000),ident))
 routerai._bounded_post=accounted_post
 native_init=routerai.RouterAIProvider.__init__
 def budget_provider_init(self,settings,*,transport=None,observe=None):
