@@ -3,13 +3,14 @@
 Every native _bounded_post (including retry/fallback) reserves before transport.
 No keys/prompts/provider bodies are written to accounting records.
 """
-import base64, contextvars, hashlib, hmac, json, os, runpy, sqlite3, sys, time, uuid
+import base64, contextvars, hashlib, hmac, json, math, os, runpy, sqlite3, subprocess, sys, time, uuid
 from pathlib import Path
 sys.path.insert(0, os.getcwd())
 from telegram_v2.albert import routerai
 from integration import dcs_service
 
-TARIFFS=json.loads((Path(__file__).resolve().parents[2]/'server/aiTariffs.json').read_text())
+WEB_ROOT=Path(__file__).resolve().parents[2]
+POLICY=json.loads((WEB_ROOT/'server/aiBudgetPolicy.json').read_text())
 SCOPE=contextvars.ContextVar('ai_scope',default=None)
 DB=os.environ.get('COMMERCE_DB_PATH','')
 if not DB or not os.path.isabs(DB):raise RuntimeError('absolute_commerce_db_required')
@@ -19,16 +20,42 @@ if os.environ.get('FIRST_SALES_PROXY_URL'):
     if proxy.scheme!='http' or proxy.hostname!='127.0.0.1':raise RuntimeError('bounded_proxy_required')
     routerai.URL=os.environ['FIRST_SALES_PROXY_URL'].rstrip('/')+'/api/v1'
 
-def reserve(body, scope):
-    now=int(time.time()*1000)
-    captured=int(__import__('datetime').datetime.fromisoformat(TARIFFS['captured_at'].replace('Z','+00:00')).timestamp()*1000)
-    if not captured<=now<=captured+TARIFFS['valid_for_ms']:raise RuntimeError('ai_tariffs_stale')
-    row=next((r for r in TARIFFS['rows'] if r['model']==body.get('model')),None)
+def current_tariffs():
+    with sqlite3.connect(DB,timeout=5) as db:
+        try:row=db.execute("SELECT snapshot FROM ai_tariff_versions WHERE version=(SELECT value FROM configuration WHERE key='ai_tariff_current')").fetchone()
+        except sqlite3.OperationalError:row=None
+    return json.loads(row[0]) if row else None
+
+def estimate(snapshot,body,now):
+    captured=int(__import__('datetime').datetime.fromisoformat(snapshot['captured_at'].replace('Z','+00:00')).timestamp()*1000)
+    if not captured<=now<=captured+snapshot['valid_for_ms']:raise RuntimeError('ai_tariffs_stale')
+    row=next((r for r in snapshot['rows'] if r['model']==body.get('model')),None)
     if not row:raise RuntimeError('ai_price_bound_unknown')
     messages=body.get('messages');maximum=body.get('max_tokens')
-    if not isinstance(messages,list) or not 1<=len(messages)<=100 or any(not isinstance(m.get('content'),str) or m.get('role') not in ('system','user','assistant') for m in messages) or len(json.dumps(messages,ensure_ascii=False).encode())>65536 or not isinstance(maximum,int) or not 1<=maximum<=8000:raise RuntimeError('ai_input_bound_exceeded')
+    if not isinstance(messages,list) or not 1<=len(messages)<=POLICY['max_messages'] or any(not isinstance(m,dict) or set(m)-{'role','content'} or not isinstance(m.get('content'),str) or m.get('role') not in ('system','user','assistant') for m in messages) or type(maximum)!=int or not 1<=maximum<=POLICY['max_output_tokens'] or any(k in body for k in ['tools','plugins','web_search','input','images']):raise RuntimeError('ai_input_bound_exceeded')
+    value={'messages':messages}
+    if body.get('response_format'):value['response_format']=body['response_format']
+    try:size=len(json.dumps(value,ensure_ascii=False,separators=(',',':')).encode('utf8'))
+    except UnicodeEncodeError:raise RuntimeError('ai_input_bound_exceeded')
+    if size>POLICY['max_input_bytes']:raise RuntimeError('ai_input_bound_exceeded')
+    cost=math.ceil((size*row['input_rate']+maximum*row['output_rate'])*POLICY['margin_numerator']/POLICY['margin_denominator']*1e6)
+    maximum_cost=max(math.ceil((POLICY['max_input_bytes']*r['input_rate']+POLICY['max_output_tokens']*r['output_rate'])*POLICY['margin_numerator']/POLICY['margin_denominator']*1e6) for r in snapshot['rows'])
+    return cost,size,maximum_cost
+
+def reserve(body, scope):
+    now=int(time.time()*1000)
     if os.environ.get('COMMERCE_BUDGET_APPROVED')!='true':raise RuntimeError('ai_budget_unconfigured')
-    pool=scope.get('pool','free');order_id=scope.get('orderId');cost=row['reserve_micro_rub']
+    snapshot=current_tariffs()
+    captured=int(__import__('datetime').datetime.fromisoformat(snapshot['captured_at'].replace('Z','+00:00')).timestamp()*1000) if snapshot else 0
+    if not snapshot or now-captured>=43200000 or captured>now:
+        try:subprocess.run([os.environ.get('AI_TARIFF_NODE_BIN','node'),str(WEB_ROOT/'scripts/capture_ai_tariffs.mjs'),'--runtime',DB],cwd=WEB_ROOT,check=True,capture_output=True,timeout=20)
+        except Exception:
+            if not snapshot or now<captured or now-captured>86400000:
+                with sqlite3.connect(DB,timeout=5) as db:db.execute("INSERT INTO ai_budget_incidents VALUES (?,'ai_tariffs_stale',?,?,'open') ON CONFLICT(order_id,reason) DO UPDATE SET state='open'",(scope.get('orderId') or 'service',snapshot.get('version') if snapshot else None,now))
+                raise RuntimeError('ai_tariffs_stale')
+        snapshot=current_tariffs()
+    cost,size,maximum_cost=estimate(snapshot,body,now)
+    pool=scope.get('pool','free');order_id=scope.get('orderId')
     db=sqlite3.connect(DB,timeout=5,isolation_level=None);db.row_factory=sqlite3.Row
     try:
         db.execute('BEGIN IMMEDIATE')
@@ -38,15 +65,18 @@ def reserve(body, scope):
             if not order or order['kind']!='paid' or order['state'] not in ('paid','answers_saved','generating','generation_failed','ready'):raise RuntimeError('paid_order_not_available')
             held=db.execute('SELECT * FROM ai_budget_commitments WHERE order_id=?',(order_id,)).fetchone()
             if not held or held['spent_micro']+cost>held['capacity_micro'] or held['attempts']>=held['attempt_limit']:raise RuntimeError('paid_service_waiting')
+            if held['spent_micro']+cost+max(0,held['attempt_limit']-held['attempts']-1)*maximum_cost>held['capacity_micro']:raise RuntimeError('paid_service_waiting')
             db.execute('UPDATE ai_budget_commitments SET spent_micro=spent_micro+?,attempts=attempts+1 WHERE order_id=?',(cost,order_id))
         else:
             pool='free';order_id=None
             limit=db.execute("SELECT * FROM ai_budget_limits WHERE pool='free'").fetchone()
             used=db.execute("SELECT COUNT(*) AS attempts,COALESCE(SUM(cost_micro),0) AS cost FROM ai_budget_attempts WHERE pool='free'").fetchone()
             if not limit or used['attempts']>=limit['attempt_limit'] or used['cost']+cost>limit['limit_micro']:raise RuntimeError('free_budget_exhausted')
-        ident=str(uuid.uuid4());db.execute("INSERT INTO ai_budget_attempts VALUES (?,?,?,?,?,'reserved',?,NULL)",(ident,pool,order_id,body['model'],cost,now));db.execute('COMMIT');return ident
-    except:
-        db.execute('ROLLBACK');raise
+        ident=str(uuid.uuid4());db.execute("INSERT INTO ai_budget_attempts(id,pool,order_id,model,cost_micro,state,created_at,finished_at,estimate_version,policy_version) VALUES (?,?,?,?,?,'reserved',?,NULL,?,?)",(ident,pool,order_id,body['model'],cost,now,snapshot['version'],POLICY['version']));db.execute("UPDATE ai_budget_incidents SET state='resolved' WHERE order_id=?",(order_id or 'service',));db.execute('COMMIT');return ident
+    except Exception as error:
+        db.execute('ROLLBACK')
+        if pool=='paid':db.execute("INSERT INTO ai_budget_incidents VALUES (?,?,?,?, 'open') ON CONFLICT(order_id,reason) DO UPDATE SET estimate_version=excluded.estimate_version,state='open'",(order_id,str(error) if str(error).startswith(('paid_','ai_')) else 'ai_budget_unavailable',snapshot['version'],now))
+        raise
     finally:db.close()
 
 native_post=routerai._bounded_post

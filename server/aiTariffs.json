@@ -9,9 +9,6 @@
       "source": "https://routerai.ru/api/v1/models/deepseek/deepseek-v4.1-flash/endpoints",
       "input_rate": 0.0000364353561,
       "output_rate": 0.00032063113368,
-      "input_tokens": 1048576,
-      "output_tokens": 1048576,
-      "reserve_micro_rub": 468014190,
       "endpoints": [
         {
           "name": "DeepSeek | deepseek/deepseek-v4.1-flash",
@@ -1258,9 +1255,6 @@
       "source": "https://routerai.ru/api/v1/models/anthropic/claude-sonnet-5/endpoints",
       "input_rate": 0.000276025425,
       "output_rate": 0.0011041017,
-      "input_tokens": 1000000,
-      "output_tokens": 128000,
-      "reserve_micro_rub": 521688054,
       "endpoints": [
         {
           "name": "Anthropic | anthropic/claude-sonnet-5",
@@ -1454,9 +1448,6 @@
       "source": "https://routerai.ru/api/v1/models/openai/gpt-5.4-mini/endpoints",
       "input_rate": 0.000165615255,
       "output_rate": 0.00099369153,
-      "input_tokens": 400000,
-      "output_tokens": 128000,
-      "reserve_micro_rub": 241798273,
       "endpoints": [
         {
           "name": "OpenAI | openai/gpt-5.4-mini",

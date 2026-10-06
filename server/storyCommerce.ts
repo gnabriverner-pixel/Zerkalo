@@ -61,6 +61,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     free_budget_exhausted:'Лимит бесплатных обращений достигнут. Сохранённые результаты остаются доступны.',
     dcs_budget_not_covered:'Сервис диалога ожидает безопасного запуска. Для оплаченного заказа сохраните его номер и обратитесь в поддержку.',
     ai_budget_recovery_waiting:'После восстановления требуется проверка финансового журнала. Заказ сохранён; обратитесь в поддержку.',
+    ai_tariffs_stale:'Сервис временно приостановлен: стоимость вызова не подтверждена. Ваш заказ и сохранённые результаты доступны; поддержка видит причину остановки.',
   };
   const route=(fn:(req:Request,res:Response)=>Promise<any>|any)=>(req:Request,res:Response)=>{
     Promise.resolve().then(()=>fn(req,res)).catch(error=>{
@@ -95,11 +96,12 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
   }));
   app.get('/api/stories-sample',(_req,res)=>res.json({synthetic:true,provenance:'historical_test_fixture_and_prepared_dialogue',sections:storySections(STORY_SAMPLE)}));
   app.get('/api/stories-sample/pdf',(_req,res)=>res.set('Content-Disposition','attachment; filename="synthetic-story-sample.pdf"').type('application/pdf').send(makeStoryPdf(STORY_SAMPLE)));
-  app.get('/api/stories/status',(req,res)=>{
+  app.get('/api/stories/status',async(req,res)=>{
     // Reopen an existing archive after restart without creating accounts or requesting consent here.
     if(!database&&enabled()&&cookie(req,COOKIE)){try{store();}catch{/* Configuration is reported by the local setup screen. */}}
     const id=database?.account(cookie(req,COOKIE));
     const configuredMode=options.payment?.mode||process.env.COMMERCE_PAYMENT_MODE||'disabled';
+    if(configuredMode==='live'&&budget.configured()){try{await budget.prepare();}catch{/* Rights remain available; capacity reports the pause. */}}
     const live=liveCheckoutConfigured(process.env)&&budget.capacity();
     res.set('Cache-Control','no-store').json({enabled:enabled(),storage_accepted:Boolean(id&&database?.storageAccepted(id)),payment_mode:configuredMode==='live'&&!liveCheckoutConfigured(process.env)?'disabled':configuredMode,live_checkout:live,new_sales_paused:configuredMode==='live'&&!live,title:'Новая личная история',price_rub:790,support_email:process.env.COMMERCE_SUPPORT_EMAIL||null});
   });
@@ -156,6 +158,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
   app.post('/api/stories/orders',route(async(req,res)=>{
     const adapter=payment();
     if(adapter.mode==='mock'&&!local(req))throw new CommerceError('mock_local_only',403);
+    if(adapter.mode==='live')await budget.prepare();
     if(adapter.mode==='live'&&!budget.capacity())throw new CommerceError('new_sales_paused',503);
     if(adapter.mode==='live')await budget.dcsHeaders(process.env.DCS_BRIDGE_URL||'http://127.0.0.1:39500');
     res.json({order:publicOrder(store().createOrder(account(req),key(req.body?.request_key),'paid',adapter.mode!=='live'))});

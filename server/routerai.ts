@@ -102,7 +102,7 @@ export class RouterAIClient implements ChatClient {
     const event: ProviderEvent = {gateway:'routerai',model:this.defaultModel,upstream:null,responseModel:null,
       outcome:'provider_unavailable',latencyMs:0,costRub:null,usageCost:null,usageCostCurrency:'UNKNOWN',inputTokens:null,outputTokens:null,gatewayCode:null};
     const responseFormat = transportResponseFormat(options.response_format, this.defaultModel);
-    const budget=reserveProviderAttempt(this.defaultModel,options);
+    const budget=await reserveProviderAttempt(this.defaultModel,{...options,response_format:responseFormat});
     let transportComplete=false;
     try {
       const response = await this.transport(`${ROUTERAI_URL}/chat/completions`, {

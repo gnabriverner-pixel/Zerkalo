@@ -64,6 +64,7 @@ export class CommerceStore {
       CREATE TABLE IF NOT EXISTS ai_budget_limits(pool TEXT PRIMARY KEY,limit_micro INTEGER NOT NULL,attempt_limit INTEGER NOT NULL,order_limit INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS ai_budget_commitments(order_id TEXT PRIMARY KEY,capacity_micro INTEGER NOT NULL,attempt_limit INTEGER NOT NULL,spent_micro INTEGER NOT NULL DEFAULT 0,attempts INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS ai_budget_attempts(id TEXT PRIMARY KEY,pool TEXT NOT NULL,order_id TEXT,model TEXT NOT NULL,cost_micro INTEGER NOT NULL,state TEXT NOT NULL,created_at INTEGER NOT NULL,finished_at INTEGER);
+      CREATE TABLE IF NOT EXISTS ai_budget_incidents(order_id TEXT NOT NULL,reason TEXT NOT NULL,estimate_version TEXT,created_at INTEGER NOT NULL,state TEXT NOT NULL,PRIMARY KEY(order_id,reason));
       UPDATE ai_budget_attempts SET state='uncertain' WHERE state='reserved';
       CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, access_hash TEXT UNIQUE, recovery_hash TEXT UNIQUE, deleted INTEGER NOT NULL DEFAULT 0, storage_accepted INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS orders(id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),request_key TEXT NOT NULL,kind TEXT NOT NULL,state TEXT NOT NULL,test INTEGER NOT NULL,created_at INTEGER NOT NULL,issued_at INTEGER,payment_started INTEGER,payment_id TEXT UNIQUE,checkout_url TEXT,payload TEXT,payload_expires INTEGER,UNIQUE(account_id,request_key));
@@ -73,6 +74,10 @@ export class CommerceStore {
       CREATE TABLE IF NOT EXISTS support_requests(order_id TEXT PRIMARY KEY REFERENCES orders(id),reason TEXT NOT NULL,created_at INTEGER NOT NULL,test INTEGER NOT NULL);
       UPDATE operations SET state='uncertain' WHERE state='running';`);
     const accountColumns=new Set((this.db.prepare('PRAGMA table_info(accounts)').all() as any[]).map(row=>row.name));
+    for(const [table,columns] of [['ai_budget_attempts',['estimate_version','policy_version']],['ai_budget_commitments',['estimate_version']]] as const){
+      const existing=new Set((this.db.prepare('PRAGMA table_info('+table+')').all() as any[]).map(row=>row.name));
+      for(const column of columns)if(!existing.has(column))this.db.exec('ALTER TABLE '+table+' ADD COLUMN '+column+' TEXT');
+    }
     if(!accountColumns.has('storage_version'))this.db.exec('ALTER TABLE accounts ADD COLUMN storage_version TEXT');
     if(!accountColumns.has('storage_accepted_at'))this.db.exec('ALTER TABLE accounts ADD COLUMN storage_accepted_at INTEGER');
     const fingerprint=digest('commerce-key:'+keyHex);
@@ -133,15 +138,19 @@ export class CommerceStore {
     const held=this.db.prepare('SELECT COALESCE(SUM(capacity_micro),0) AS cost,COALESCE(SUM(attempt_limit),0) AS attempts,COUNT(*) AS orders FROM ai_budget_commitments').get() as any;
     return held.cost+cost<=limit.limit_micro&&held.attempts+attempts<=limit.attempt_limit&&held.orders<limit.order_limit;
   }
-  holdAIBudget(account:string,id:string,cost:number,attempts:number){
+  paidLiabilitiesCovered(maximum:number){return (this.db.prepare('SELECT * FROM ai_budget_commitments').all() as any[]).every(p=>p.spent_micro+Math.max(0,p.attempt_limit-p.attempts)*maximum<=p.capacity_micro);}
+  recordBudgetIncident(id:string|undefined,reason:string,version:string|null=null){
+    this.db.prepare("INSERT INTO ai_budget_incidents VALUES (?,?,?,?,'open') ON CONFLICT(order_id,reason) DO UPDATE SET estimate_version=excluded.estimate_version,state='open'").run(id||'service',reason,version,Date.now());
+  }
+  holdAIBudget(account:string,id:string,cost:number,attempts:number,version:string='LEGACY_UNKNOWN'){
     return this.tx(()=>{
       this.aiBudgetOpen();const order=this.order(account,id);if(order.kind!=='paid')throw new CommerceError('paid_order_required');
       if(this.db.prepare('SELECT 1 FROM ai_budget_commitments WHERE order_id=?').get(id))return;
       if(!this.aiCapacity(cost,attempts))throw new CommerceError('new_sales_paused',503);
-      this.db.prepare('INSERT INTO ai_budget_commitments(order_id,capacity_micro,attempt_limit) VALUES (?,?,?)').run(id,cost,attempts);
+      this.db.prepare('INSERT INTO ai_budget_commitments(order_id,capacity_micro,attempt_limit,estimate_version) VALUES (?,?,?,?)').run(id,cost,attempts,version);
     });
   }
-  reserveAI(pool:'free'|'paid',orderId:string|undefined,model:string,cost:number){
+  reserveAI(pool:'free'|'paid',orderId:string|undefined,model:string,cost:number,version:string='LEGACY_UNKNOWN',policyVersion:string='LEGACY_UNKNOWN',maximum?:number){
     return this.tx(()=>{
       this.aiBudgetOpen();if(!Number.isSafeInteger(cost)||cost<=0)throw new CommerceError('ai_price_bound_unknown',503);
       if(pool==='paid'){
@@ -149,17 +158,19 @@ export class CommerceStore {
         if(order?.kind!=='paid'||!['paid','answers_saved','generating','generation_failed','ready'].includes(order.state))throw new CommerceError('paid_order_not_available',503);
         const p=this.db.prepare('SELECT * FROM ai_budget_commitments WHERE order_id=?').get(orderId||'') as any;
         if(!p||p.spent_micro+cost>p.capacity_micro||p.attempts>=p.attempt_limit)throw new CommerceError('paid_service_waiting',503);
+        if(maximum&&p.spent_micro+cost+Math.max(0,p.attempt_limit-p.attempts-1)*maximum>p.capacity_micro)throw new CommerceError('paid_service_waiting',503);
         this.db.prepare('UPDATE ai_budget_commitments SET spent_micro=spent_micro+?,attempts=attempts+1 WHERE order_id=?').run(cost,orderId!);
       }else{
         const p=this.db.prepare("SELECT * FROM ai_budget_limits WHERE pool='free'").get() as any;
         const used=this.db.prepare("SELECT COUNT(*) AS attempts,COALESCE(SUM(cost_micro),0) AS cost FROM ai_budget_attempts WHERE pool='free'").get() as any;
         if(!p||used.attempts>=p.attempt_limit||used.cost+cost>p.limit_micro)throw new CommerceError('free_budget_exhausted',429);
       }
-      const id=crypto.randomUUID();this.db.prepare("INSERT INTO ai_budget_attempts VALUES (?,?,?,?,?,'reserved',?,NULL)").run(id,pool,orderId||null,model,cost,Date.now());return id;
+      const id=crypto.randomUUID();this.db.prepare("INSERT INTO ai_budget_attempts(id,pool,order_id,model,cost_micro,state,created_at,finished_at,estimate_version,policy_version) VALUES (?,?,?,?,?,'reserved',?,NULL,?,?)").run(id,pool,orderId||null,model,cost,Date.now(),version,policyVersion);
+      this.db.prepare("UPDATE ai_budget_incidents SET state='resolved' WHERE order_id=?").run(orderId||'service');return id;
     });
   }
   finishAI(id:string,success:boolean){this.db.prepare("UPDATE ai_budget_attempts SET state=?,finished_at=? WHERE id=? AND state='reserved'").run(success?'complete':'uncertain',Date.now(),id);}
-  budgetSummary(){return {limits:this.db.prepare('SELECT * FROM ai_budget_limits').all(),attempts:this.db.prepare('SELECT pool,state,COUNT(*) AS count,SUM(cost_micro) AS reserved_micro FROM ai_budget_attempts GROUP BY pool,state').all(),commitments:this.db.prepare('SELECT order_id,capacity_micro,spent_micro,attempt_limit,attempts FROM ai_budget_commitments').all()};}
+  budgetSummary(){return {limits:this.db.prepare('SELECT * FROM ai_budget_limits').all(),attempts:this.db.prepare('SELECT pool,state,COUNT(*) AS count,SUM(cost_micro) AS reserved_micro FROM ai_budget_attempts GROUP BY pool,state').all(),commitments:this.db.prepare('SELECT order_id,capacity_micro,spent_micro,attempt_limit,attempts,estimate_version FROM ai_budget_commitments').all(),incidents:this.db.prepare('SELECT * FROM ai_budget_incidents ORDER BY created_at DESC').all()};}
   createAccount(storageAccepted=false){
     const id=crypto.randomUUID(), access=token(), recovery=token();
     this.db.prepare('INSERT INTO accounts(id,access_hash,recovery_hash,storage_accepted,created_at,storage_version,storage_accepted_at) VALUES (?,?,?,?,?,?,?)').run(id,digest(access),digest(recovery),+storageAccepted,Date.now(),storageAccepted?'personal-history-storage-v1':null,storageAccepted?Date.now():null);

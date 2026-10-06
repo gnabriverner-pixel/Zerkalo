@@ -1,0 +1,13 @@
+{
+  "version": "request-components-v2",
+  "max_input_bytes": 65536,
+  "max_messages": 100,
+  "max_output_tokens": 8000,
+  "paid_attempts": 52,
+  "free_example_attempts": 12,
+  "margin_numerator": 5,
+  "margin_denominator": 4,
+  "input_bound_basis": "nonempty-byte-token-pieces; serialized UTF-8 messages",
+  "provider_framing_bound": null,
+  "strict_invoice_ceiling_verified": false
+}
