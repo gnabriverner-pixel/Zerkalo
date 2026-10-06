@@ -1,16 +1,18 @@
 {
   "manifest_version": 1,
-  "stage": "stage-a-candidate",
-  "verified_at": "2026-09-30T15:36:30Z",
+  "stage": "commercial-candidate-unverified",
+  "verified_at": null,
+  "verification_status": "PENDING_EXTERNAL_RELEASE_VERIFIER",
+  "production_authorized": false,
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
-    "branch": "codex/stage-a-candidate",
-    "pinned_sha": "895435ee28e04291fccc074b65fcf8bbc6c926fd"
+    "branch": "codex/release-first-sales-790",
+    "pinned_sha": "921fef99080a9154f96baa6b927a4e4660b1aaec"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
-    "branch": "codex/stage1-owner-iteration",
-    "pinned_sha": "14fecae953fda67b9bea50af239412714f5a7b3a"
+    "branch": null,
+    "pinned_sha": "de78eb346a32da5b9f2fe6b5d40e10c85309c93f"
   },
   "contracts": {
     "dcs_service_http": {
@@ -29,8 +31,9 @@
   },
   "runtime": {
     "node_major": 24,
-    "python": "3.11+",
+    "python": "3.12",
     "live_provider_required": true,
-    "fallback_forbidden_in_production": true
+    "vendor_fallbacks_allowed": false,
+    "application_fallbacks": "accepted_native_routes_only"
   }
 }
