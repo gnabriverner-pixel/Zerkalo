@@ -7,7 +7,7 @@
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
     "branch": "codex/free-preview-internal-staging-2026-10-07",
-    "pinned_sha": "9ead05fe6a1ddf9bf06b73e9772755da2b300f48"
+    "pinned_sha": "373dafc8520581afb0effd29fb0c24f161d7725f"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
