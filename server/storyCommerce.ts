@@ -1,7 +1,7 @@
 import type {Express,Request,Response} from 'express';
 import path from 'node:path';
 import {CommerceStore,CommerceError,type StoryOrder} from './commerceStore';
-import {MockStoryPayment,YooTestPayment,type StoryPayment} from './storyPayment';
+import {MockStoryPayment,YooTestPayment,liveCheckoutConfigured,validReceiptEmail,type StoryPayment} from './storyPayment';
 import {makeStoryPdf,storySections} from './storyPdf';
 import {STORY_SAMPLE} from './storySample';
 import {verifyConsent} from './consent';
@@ -37,11 +37,12 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
   const payment=():StoryPayment=>{
     if(options.payment)return options.payment;
     if(process.env.COMMERCE_PAYMENT_MODE==='test')return new YooTestPayment(process.env);
+    if(process.env.COMMERCE_PAYMENT_MODE==='live'&&liveCheckoutConfigured(process.env))return new YooTestPayment(process.env,fetch,'live');
     if(process.env.COMMERCE_PAYMENT_MODE==='mock' && process.env.NODE_ENV!=='production')return mock ||= new MockStoryPayment();
     throw new CommerceError('checkout_not_connected',503);
   };
   const account=(req:Request)=>{const id=store().account(cookie(req,COOKIE));if(!id)throw new CommerceError('account_required',401);return id;};
-  const setAccess=(res:Response,access:string)=>res.cookie(COOKIE,access,{httpOnly:true,sameSite:'strict',secure:process.env.NODE_ENV==='production',path:'/',maxAge:365*86400000});
+  const setAccess=(res:Response,access:string)=>res.cookie(COOKIE,access,{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production'||process.env.COMMERCE_PUBLIC_ORIGIN?.startsWith('https://'),path:'/',maxAge:365*86400000});
   const errors:Record<string,string>={
     checkout_not_connected:'Оплата ещё не подключена. Ваш бесплатный результат доступен.',
     commerce_key_missing:'Сохранение историй ещё не настроено. Ответы остаются в форме.',
@@ -61,13 +62,23 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     });
   };
   const buckets=new Map();
+  app.get('/local-story-support',(req,res)=>{
+    if(!local(req)||process.env.LOCAL_STORY_SETUP!=='true'||process.env.NODE_ENV==='production')return res.sendStatus(404);
+    res.set('Cache-Control','no-store').type('html').send('<!doctype html><html lang="ru"><meta charset="utf-8"><title>Обращения по историям</title><h1>Обращения по историям — локальный оператор</h1><p>Тексты и ключи здесь не показываются. Сначала проверьте выдачу заказа. Возврат выполняется в кабинете магазина; эта страница денег не переводит.</p><button onclick="location.reload()">Обновить</button><pre id="queue"></pre><script>fetch("/api/local-story-support").then(r=>r.json()).then(d=>document.getElementById("queue").textContent=JSON.stringify(d,null,2))</script></html>');
+  });
+  app.get('/api/local-story-support',route((req,res)=>{
+    if(!local(req)||process.env.LOCAL_STORY_SETUP!=='true'||process.env.NODE_ENV==='production')return res.sendStatus(404);
+    res.json({recipient:'local_owner_operator',requests:store().db.prepare('SELECT s.order_id,s.reason,s.created_at,s.test,o.state FROM support_requests s JOIN orders o ON o.id=s.order_id ORDER BY s.created_at DESC LIMIT 100').all()});
+  }));
   app.get('/api/stories-sample',(_req,res)=>res.json({synthetic:true,provenance:'historical_test_fixture_and_prepared_dialogue',sections:storySections(STORY_SAMPLE)}));
   app.get('/api/stories-sample/pdf',(_req,res)=>res.set('Content-Disposition','attachment; filename="synthetic-story-sample.pdf"').type('application/pdf').send(makeStoryPdf(STORY_SAMPLE)));
   app.get('/api/stories/status',(req,res)=>{
     // Reopen an existing archive after restart without creating accounts or requesting consent here.
     if(!database&&enabled()&&cookie(req,COOKIE)){try{store();}catch{/* Configuration is reported by the local setup screen. */}}
     const id=database?.account(cookie(req,COOKIE));
-    res.set('Cache-Control','no-store').json({enabled:enabled(),storage_accepted:Boolean(id&&database?.storageAccepted(id)),payment_mode:process.env.COMMERCE_PAYMENT_MODE||options.payment?.mode||'disabled',live_checkout:false,title:'Новая личная история',price_rub:790});
+    const configuredMode=options.payment?.mode||process.env.COMMERCE_PAYMENT_MODE||'disabled';
+    const live=liveCheckoutConfigured(process.env);
+    res.set('Cache-Control','no-store').json({enabled:enabled(),storage_accepted:Boolean(id&&database?.storageAccepted(id)),payment_mode:configuredMode==='live'&&!live?'disabled':configuredMode,live_checkout:live,title:'Новая личная история',price_rub:790,support_email:process.env.COMMERCE_SUPPORT_EMAIL||null});
   });
   // A forged notification cannot issue rights. Retrieve the object under the merchant's credentials.
   app.post('/api/stories/payment-webhook',route(async(req,res)=>{
@@ -122,20 +133,25 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
   app.post('/api/stories/orders',route((req,res)=>{
     const adapter=payment();
     if(adapter.mode==='mock'&&!local(req))throw new CommerceError('mock_local_only',403);
-    res.json({order:publicOrder(store().createOrder(account(req),key(req.body?.request_key),'paid',true))});
+    res.json({order:publicOrder(store().createOrder(account(req),key(req.body?.request_key),'paid',adapter.mode!=='live'))});
   }));
   app.post('/api/stories/:id/checkout',route(async(req,res)=>{
     const id=account(req),db=store(),adapter=payment();
     if(adapter.mode==='mock'&&!local(req))throw new CommerceError('mock_local_only',403);
     let order=db.order(id,req.params.id);
     if(order.checkout_url)return res.json({url:order.checkout_url});
+    if(adapter.mode==='live'){
+      const email=String(req.body?.receipt_email||order.data?.receipt_email||'').trim();
+      if(!validReceiptEmail(email))throw new CommerceError('receipt_email_required',400);
+      db.receiptContact(id,order.id,email);order=db.order(id,order.id);
+    }
     db.paymentStarted(id,order.id);order=db.order(id,order.id);
     const actual=await adapter.create(order);
-    if(!actual.id||actual.amount?.value!=='790.00'||actual.amount?.currency!=='RUB'||actual.metadata?.order_id!==order.id||actual.test!==true)throw new CommerceError('payment_mismatch',422);
+    if(!actual.id||actual.amount?.value!=='790.00'||actual.amount?.currency!=='RUB'||actual.metadata?.order_id!==order.id||actual.test!==Boolean(order.test))throw new CommerceError('payment_mismatch',422);
     const terminal=['succeeded','canceled'].includes(actual.status);
     const url=terminal?'/?stories=1':actual.confirmation?.confirmation_url;
     if(!url)throw new CommerceError('payment_mismatch',422);
-    if(adapter.mode==='test' && !terminal && !(new URL(url).protocol==='https:' && /(^|\.)yoomoney\.ru$/.test(new URL(url).hostname)))throw new CommerceError('payment_url_invalid',422);
+    if(['test','live'].includes(adapter.mode) && !terminal && !(new URL(url).protocol==='https:' && /(^|\.)yoomoney\.ru$/.test(new URL(url).hostname)))throw new CommerceError('payment_url_invalid',422);
     db.attachPayment(id,order.id,actual.id,url);res.json({url});
   }));
   app.post('/api/stories/:id/payment-refresh',route(async(req,res)=>{

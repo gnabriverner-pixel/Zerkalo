@@ -10,6 +10,7 @@ import {CONSENT_VERSION} from '../src/services/consent';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import http from 'node:http';
 async function setup(payment:StoryPayment=new MockStoryPayment()){
   const store=new CommerceStore(':memory:','c'.repeat(64)),app=express();app.use(express.json());installConsentRoutes(app);
   const myth=vi.fn(async()=>({status:'ok',story_result:STORY_SAMPLE_MYTH}));
@@ -28,6 +29,18 @@ async function setup(payment:StoryPayment=new MockStoryPayment()){
   return {store,myth,albert,call,consent,close,origin};
 }
 describe('commerce HTTP contracts, synthetic transport only',()=>{
+  it('operator view reads queued order status, excludes personal text and remains loopback-only',async()=>{
+    const before=process.env.LOCAL_STORY_SETUP;process.env.LOCAL_STORY_SETUP='true';const s=await setup();
+    try{
+      await s.consent();await s.call('/api/personal-myth',{request_id:'support_free_001',answers:STORY_SAMPLE_ANSWERS});
+      expect((await s.call('/api/stories/account',{storage_accepted:true,storage_version:'personal-history-storage-v1'})).response.status).toBe(200);
+      const order=(await s.call('/api/stories/orders',{request_key:'support_order_001'})).data.order;
+      await s.call(`/api/stories/${order.id}/support`,{reason:'delivery'});
+      const r=await s.call('/api/local-story-support');expect(r.response.status).toBe(200);expect(r.data.requests).toEqual([expect.objectContaining({order_id:order.id,reason:'delivery',test:1,state:'pending_payment'})]);
+      expect(JSON.stringify(r.data)).not.toContain(STORY_SAMPLE_ANSWERS.q1);expect(JSON.stringify(r.data)).not.toContain('recovery');
+      const status=await new Promise(resolve=>{http.get(s.origin+'/api/local-story-support',{headers:{Host:'public.example.test'}},r=>{r.resume();resolve(r.statusCode);});});expect(status).toBe(404);
+    }finally{s.close();if(before===undefined)delete process.env.LOCAL_STORY_SETUP;else process.env.LOCAL_STORY_SETUP=before;}
+  });
   it('general deletion reopens the archive after restart even when its library has not been opened',async()=>{
     const filename=path.join(fs.mkdtempSync(path.join(os.tmpdir(),'general-delete-')),'stories.sqlite'),key='d'.repeat(64);
     const previous=new CommerceStore(filename,key),owner=previous.createAccount(true);
@@ -92,14 +105,14 @@ describe('commerce HTTP contracts, synthetic transport only',()=>{
     }finally{s.close();}
   });
   it('Yoo test requests freeze price/idempotency and reject a real-money object',async()=>{
-    const transport=vi.fn(async(_url:string,_init?:RequestInit)=>new Response(JSON.stringify({test:false}),{status:200}));
+    const transport=vi.fn(async(url:string,_init?:RequestInit)=>new Response(JSON.stringify(url.endsWith('/me')?{account_id:'test-shop',status:'enabled',test:true}:{test:false}),{status:200}));
     const adapter=new YooTestPayment({YOOKASSA_SHOP_ID:'test-shop',YOOKASSA_SECRET_KEY:'synthetic-not-a-secret',COMMERCE_PUBLIC_ORIGIN:'https://example.test'},transport as any);
     await expect(adapter.create({id:'order-1',test:1,payment_started:Date.now()} as any)).rejects.toThrow('test_shop_required');
-    const init=transport.mock.calls[0][1] as RequestInit;
+    const init=transport.mock.calls[1][1] as RequestInit;
     expect(init.headers).toMatchObject({'Idempotence-Key':'order-1'});
     expect(JSON.parse(init.body as string)).toMatchObject({amount:{value:'790.00',currency:'RUB'},capture:true,metadata:{order_id:'order-1'}});
     expect(JSON.parse(init.body as string)).not.toHaveProperty('save_payment_method');
     await expect(adapter.create({id:'order-1',test:1,payment_started:Date.now()-86400000} as any)).rejects.toThrow('payment_uncertain_needs_support');
-    expect(transport).toHaveBeenCalledTimes(1);
+    expect(transport).toHaveBeenCalledTimes(2);
   });
 });

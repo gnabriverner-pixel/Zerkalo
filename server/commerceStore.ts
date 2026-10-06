@@ -13,6 +13,7 @@ export interface SavedStory {
   provenance?:'browser_import'|'server_issued';
   answers?: {q1:string;q2:string;q3:string;q4:string};
   question?: string;
+  receipt_email?: string;
   myth?: any;
   messages: {role:'user'|'assistant'; content:string}[];
   note: string;
@@ -280,6 +281,12 @@ export class CommerceStore {
   note(account:string,id:string,note:string){
     const order=this.order(account,id);
     this.db.prepare('UPDATE orders SET payload=? WHERE id=?').run(this.encrypt({...order.data,note}),id);
+  }
+  receiptContact(account:string,id:string,email:string){
+    const order=this.order(account,id);
+    if(order.state!=='pending_payment')throw new CommerceError('payment_already_started');
+    if(order.data?.receipt_email&&order.data.receipt_email!==email)throw new CommerceError('receipt_contact_conflict');
+    this.db.prepare('UPDATE orders SET payload=? WHERE id=?').run(this.encrypt({...order.data,receipt_email:email}),id);
   }
   support(account:string,id:string,reason:'delivery'|'refund'){
     const order=this.order(account,id);

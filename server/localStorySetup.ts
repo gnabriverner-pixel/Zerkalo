@@ -5,7 +5,7 @@ import path from 'node:path';
 
 const permitted=(req:Request)=>process.env.LOCAL_STORY_SETUP==='true' && process.env.NODE_ENV!=='production' &&
   ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress||'') && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.get('host')||'');
-const fields=['ROUTERAI_API_KEY','YOOKASSA_SHOP_ID','YOOKASSA_SECRET_KEY','COMMERCE_PUBLIC_ORIGIN'] as const;
+const fields=['ROUTERAI_API_KEY','YOOKASSA_SHOP_ID','YOOKASSA_SECRET_KEY','COMMERCE_PUBLIC_ORIGIN','COMMERCE_SELLER_NAME','COMMERCE_SUPPORT_EMAIL'] as const;
 export function installLocalStorySetup(app:Express){
   app.get('/local-story-setup',(req,res)=>{
     if(!permitted(req))return res.sendStatus(404);
@@ -28,6 +28,7 @@ export function installLocalStorySetup(app:Express){
       additions[field]=value.trim();
     }
     if(additions.COMMERCE_PUBLIC_ORIGIN){try{const url=new URL(additions.COMMERCE_PUBLIC_ORIGIN);if(url.protocol!=='https:'||url.username||url.password||url.pathname!=='/')throw new Error();}catch{return res.status(400).json({error:'Адрес возврата должен быть отдельным HTTPS-адресом без пути и пароля.'});}}
+    if(additions.COMMERCE_SUPPORT_EMAIL&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(additions.COMMERCE_SUPPORT_EMAIL))return res.status(400).json({error:'Укажите корректную почту поддержки.'});
     const filename=path.resolve('.env');
     try{
       let text=fs.existsSync(filename)?fs.readFileSync(filename,'utf8'):'';

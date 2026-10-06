@@ -4,7 +4,9 @@
 <label>Ключ RouterAI для Мифа<input type="password" name="ROUTERAI_API_KEY" autocomplete="off"></label>
 <label>Идентификатор тестового магазина ЮKassa<input name="YOOKASSA_SHOP_ID" autocomplete="off"></label>
 <label>Секретный ключ тестового магазина ЮKassa<input type="password" name="YOOKASSA_SECRET_KEY" autocomplete="off"></label>
-<label>HTTPS-адрес возврата из тестового магазина<input name="COMMERCE_PUBLIC_ORIGIN" type="url" placeholder="https://…"></label>
+<p>HTTPS-адрес возврата и получение уведомлений настраивает исполнитель. Вам не нужно выбирать адрес или выполнять команды.</p>
+<label>Продавец (реальное наименование, когда определён)<input name="COMMERCE_SELLER_NAME" autocomplete="organization"></label>
+<label>Электронная почта поддержки (когда определена)<input type="email" name="COMMERCE_SUPPORT_EMAIL" autocomplete="email"></label>
 <p>Платёжного аккаунта нет? Оставьте поля магазина пустыми. Хранилище и восстановление можно подготовить сейчас; оплату — после получения тестового магазина. После сохранения сообщите исполнителю: «Настройки сохранены». Он перезапустит локальную пару: штатный запуск передаст установленный здесь ключ обоим процессам, без копирования в другой файл.</p>
 <label><input type="checkbox" id="confirm" required> Сохранить введённые настройки в этом кандидате. Новые локальные служебные ключи создать только при их отсутствии.</label>
 <button>Сохранить настройки</button><a href="/">Вернуться к «Зеркалу»</a></form>

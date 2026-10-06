@@ -23,6 +23,7 @@ export function PersonalStoryLibrary({isOpen,onClose,onStoriesDeleted,previousAn
   const [answers,setAnswers]=useState<StoryInputs>(empty),[question,setQuestion]=useState(''),[message,setMessage]=useState(''),[note,setNote]=useState('');
   const [recovery,setRecovery]=useState(''),[restoreCode,setRestoreCode]=useState(''),[savedCode,setSavedCode]=useState(false),[deleteChecked,setDeleteChecked]=useState(false);
   const [sample,setSample]=useState<any>(null);
+  const [receiptEmail,setReceiptEmail]=useState('');
   const [storageAccepted,setStorageAccepted]=useState(false),[storageChecked,setStorageChecked]=useState(false);
   const [crisisBlocked,setCrisisBlocked]=useState(false);
   const generation=useRef(0),request=useRef<AbortController|null>(null),lock=useRef(false),started=useRef(false);
@@ -71,7 +72,7 @@ export function PersonalStoryLibrary({isOpen,onClose,onStoriesDeleted,previousAn
   const createOrder=()=>run(async epoch=>{
     const requestKey=keys.current.purchase ||= newKey();
     const result=await api('/api/stories/orders',{request_key:requestKey},epoch);choose(result.order);updateOrder(result.order);
-    const checkout=await api(`/api/stories/${result.order.id}/checkout`,{},epoch);
+    const checkout=await api(`/api/stories/${result.order.id}/checkout`,{receipt_email:receiptEmail},epoch);
     window.location.assign(checkout.url);
   });
   const generateMyth=()=>run(async epoch=>{
@@ -131,7 +132,7 @@ export function PersonalStoryLibrary({isOpen,onClose,onStoriesDeleted,previousAn
       {recovery&&<><code>{recovery}</code><button onClick={()=>{const url=URL.createObjectURL(new Blob([recovery],{type:'text/plain'})),a=document.createElement('a');a.href=url;a.download='zerkalo-recovery.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}}>Скачать код</button><label><input type="checkbox" checked={savedCode} onChange={e=>setSavedCode(e.target.checked)}/> Я сохранил код в безопасном месте</label></>}
       <label>Код для восстановления<input value={restoreCode} onChange={e=>setRestoreCode(e.target.value)} autoComplete="off"/></label><button disabled={busy||!restoreCode.trim()} onClick={restore}>Восстановить истории</button>
     </div>
-    {freeDone&&!crisisBlocked&&<><p>790 ₽ за одну новую историю. Не подписка. Ошибка или кризисный ответ не расходуют пять ответов. При сбое — повторное открытие истории, ограниченный повтор или обращение по номеру заказа для выдачи/возврата. Новая генерация не начинается сама при перезагрузке.</p><button disabled={busy||!savedCode||mode==='disabled'} onClick={createOrder}>Купить новую историю — 790 ₽</button>{!savedCode&&<p>Перед оплатой получите и сохраните код восстановления.</p>}</>}
+    {freeDone&&!crisisBlocked&&<><p>790 ₽ за одну новую историю. Не подписка. Ошибка или кризисный ответ не расходуют пять ответов. При сбое — повторное открытие истории, ограниченный повтор или обращение по номеру заказа для выдачи/возврата. Новая генерация не начинается сама при перезагрузке.</p>{mode==='live'&&<label>Электронная почта для чека<input type="email" value={receiptEmail} maxLength={254} onChange={e=>setReceiptEmail(e.target.value)}/></label>}<button disabled={busy||!savedCode||mode==='disabled'||(mode==='live'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiptEmail))} onClick={createOrder}>Купить новую историю — 790 ₽</button>{!savedCode&&<p>Перед оплатой получите и сохраните код восстановления.</p>}</>}
     {order&&<article className="story-prose"><h2>{order.data.myth?.title||'Ваш новый Миф'}</h2><small>Заказ {order.id}</small>
       {order.kind==='paid'&&<div><button disabled={busy} onClick={()=>run(async epoch=>{await api(`/api/stories/${order.id}/support`,{reason:'delivery'},epoch);setNotice(`Запрос помощи сохранён для заказа ${order.id}. В локальном тесте он не отправляется внешнему оператору.`);})}>Запросить помощь с выдачей</button><button disabled={busy} onClick={()=>run(async epoch=>{await api(`/api/stories/${order.id}/support`,{reason:'refund'},epoch);setNotice(`Запрос возврата сохранён для заказа ${order.id}. Это не выполненный возврат денег; решение и операция магазина ещё нужны.`);})}>Запросить возврат</button></div>}
       {order.test&&<p className="story-test">Тестовая история. Продажа не подтверждается этим экземпляром.</p>}

@@ -14,7 +14,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -n "$REPO_ROOT" && -d "$REPO_ROOT/.git" ]] || {
+[[ -n "$REPO_ROOT" ]] && git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
   echo "FAIL_CLOSED: invalid repo root: '$REPO_ROOT'" >&2
   exit 1
 }

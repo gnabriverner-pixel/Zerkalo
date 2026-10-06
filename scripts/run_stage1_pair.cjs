@@ -35,10 +35,13 @@ function parseArgs() {
   let checkOnly = false;
   let allowDirty = false;
   let autoPorts = false;
+  let boundedLive = false;
 
   for (let i = 0; i < args.length; i += 1) {
     const a = args[i];
-    if (a === "--dcs-root" && args[i + 1] !== undefined) {
+    if (a === "--bounded-live") {
+      boundedLive = true;
+    } else if (a === "--dcs-root" && args[i + 1] !== undefined) {
       dcsRootArg = path.resolve(args[i + 1]);
       i += 1;
     } else if ((a === "--web-sha" || a === "--expected-web-sha") && args[i + 1] !== undefined) {
@@ -88,6 +91,7 @@ function parseArgs() {
     checkOnly,
     allowDirty,
     autoPorts,
+    boundedLive,
   };
 }
 
@@ -485,9 +489,14 @@ async function main() {
   );
 
   let childExitedEarly = false;
+  const boundedLive = process.argv.includes('--bounded-live');
+  if (boundedLive) {
+    const proxy = new URL(env.FIRST_SALES_PROXY_URL || '');
+    if (proxy.protocol !== 'http:' || proxy.hostname !== '127.0.0.1' || process.env.NODE_ENV === 'production') throw new Error('bounded_proxy_required');
+  }
   const dcsProc = spawn(
     pythonBin,
-    ["-m", "integration.dcs_service", "--host", "127.0.0.1", "--port", String(dcsPort)],
+    [...(boundedLive ? [path.join(webRoot,'scripts/quality/first_sales_dcs_bootstrap.py')] : ["-m", "integration.dcs_service"]), "--host", "127.0.0.1", "--port", String(dcsPort)],
     {
       cwd: dcsRoot,
       env: { ...env, RELEASE_SHA: actualDcsSha, DCS_RELEASE_SHA: actualDcsSha },
@@ -545,7 +554,7 @@ async function main() {
   }
 
   const tsxLoaderUrl = pathToFileURL(path.join(webRoot, "node_modules", "tsx", "dist", "loader.mjs")).href;
-  const webProc = spawn(process.execPath, ["--import", tsxLoaderUrl, "server.ts"], {
+  const webProc = spawn(process.execPath, ["--import", tsxLoaderUrl, boundedLive ? "scripts/quality/firstSalesWebBootstrap.ts" : "server.ts"], {
     cwd: webRoot,
     env,
     stdio: "inherit",
