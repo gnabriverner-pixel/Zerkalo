@@ -1,13 +1,13 @@
 {
   "manifest_version": 1,
-  "stage": "commercial-candidate-tests-verified",
-  "verified_at": "2026-10-06T08:02:40Z",
-  "verification_status": "STRICT_EXTERNAL_VERIFIER_PASS",
+  "stage": "free-preview-candidate-prepared",
+  "verified_at": null,
+  "verification_status": "PENDING_FINAL_RUN",
   "production_authorized": false,
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
     "branch": "codex/release-first-sales-790",
-    "pinned_sha": "b2eee7d36701500a9e9a53ba89275972f5c362d7"
+    "pinned_sha": "a71a67edfbff9a1fa5e5b241367abc2f967088e4"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
