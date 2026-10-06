@@ -6,7 +6,8 @@ type Attempt={number:number;started_at:string;duration_ms:number|null;status:num
 export class FirstSalesAttemptGuard {
   private lock:number;private closed=false;
   private state:{experiment:'first-sales-2026-10-06';limit:8;attempts:Attempt[]};
-  constructor(private file:string){
+  constructor(private file:string,private stopAt=8){
+    if(!Number.isInteger(stopAt)||stopAt<1||stopAt>8)throw new Error('attempt_stop_invalid');
     fs.mkdirSync(path.dirname(file),{recursive:true});
     this.lock=fs.openSync(file+'.lock','wx',0o600);
     try{
@@ -23,7 +24,7 @@ export class FirstSalesAttemptGuard {
   }
   async call(body:string,send:()=>Promise<Response>):Promise<Response>{
     if(this.closed||this.state.attempts.some(a=>a.state==='uncertain'))throw new Error('attempt_guard_STOP');
-    if(this.state.attempts.length>=8)throw new Error('attempt_budget_exhausted');
+    if(this.state.attempts.length>=this.stopAt)throw new Error('attempt_budget_exhausted');
     const request=JSON.parse(body);
     const a:Attempt={number:this.state.attempts.length+1,started_at:new Date().toISOString(),duration_ms:null,status:null,state:'reserved',model:typeof request.model==='string'?request.model:null,usage:null};
     this.state.attempts.push(a);this.save(); // durable reservation BEFORE network I/O, including retries/fallback

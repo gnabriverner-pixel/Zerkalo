@@ -1,9 +1,9 @@
 import http from 'node:http';
 import {FirstSalesAttemptGuard} from './firstSalesAttemptGuard';
 /** Loopback-only experiment gateway. Product requests are forwarded unchanged. */
-export async function startFirstSalesProxy(file:string,apiKey:string,transport:typeof fetch=fetch){
+export async function startFirstSalesProxy(file:string,apiKey:string,transport:typeof fetch=fetch,stopAt=8){
   if(!apiKey)throw new Error('owner_routerai_key_required');
-  const guard=new FirstSalesAttemptGuard(file);
+  const guard=new FirstSalesAttemptGuard(file,stopAt);
   const server=http.createServer(async(req,res)=>{
     if(req.method!=='POST'||req.url!=='/api/v1/chat/completions'||req.headers.authorization!==`Bearer ${apiKey}`){res.writeHead(403);res.end();return;}
     let body='';

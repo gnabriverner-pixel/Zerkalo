@@ -4,6 +4,10 @@ import {FirstSalesAttemptGuard} from '../scripts/quality/firstSalesAttemptGuard'
 import {startFirstSalesProxy} from '../scripts/quality/firstSalesProxy';
 describe('one shared first-sales budget, synthetic I/O',()=>{
   const file=()=>path.join(fs.mkdtempSync(path.join(os.tmpdir(),'attempt-guard-')),'attempts.json');
+  it('two-call smoke adds no new ledger budget and cannot regain headroom on restart',async()=>{
+    const p=file(),initial=new FirstSalesAttemptGuard(p);await initial.call('{}',async()=>Response.json({}));await initial.call('{}',async()=>Response.json({}));initial.close();
+    const g=new FirstSalesAttemptGuard(p,4),send=vi.fn(async()=>Response.json({}));await Promise.all([g.call('{}',send),g.call('{}',send)]);await expect(g.call('{}',send)).rejects.toThrow('attempt_budget_exhausted');expect(send).toHaveBeenCalledTimes(2);expect(g.snapshot().limit).toBe(8);g.close();const restarted=new FirstSalesAttemptGuard(p,4);await expect(restarted.call('{}',send)).rejects.toThrow('attempt_budget_exhausted');expect(send).toHaveBeenCalledTimes(2);restarted.close();
+  });
   it('counts concurrent Web/DCS/fallback attempts before I/O and keeps the budget after restart',async()=>{
     const p=file(),g=new FirstSalesAttemptGuard(p),send=vi.fn(async()=>new Response('{"usage":{"prompt_tokens":3}}'));
     await Promise.all(Array.from({length:8},(_,i)=>g.call(JSON.stringify({model:i%2?'fallback':'primary'}),send)));
