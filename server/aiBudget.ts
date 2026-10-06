@@ -39,7 +39,7 @@ export class AIBudget {
     await this.prepare(); // Refresh public prices; no model or payment I/O.
     const r=await fetch(url+'/health',{signal:AbortSignal.timeout(2000)});
     const binding=crypto.createHmac('sha256',this.env.COMMERCE_DATA_KEY||'').update('budget-db:'+this.db().filename).digest('hex');
-    if(!r.ok||r.headers.get('x-ai-budget-schema')!=='1'||r.headers.get('x-ai-budget-fingerprint')!==binding)throw new CommerceError('dcs_budget_not_covered',503);
+    if(!r.ok||r.headers.get('x-ai-budget-schema')!=='1'||r.headers.get('x-ai-budget-policy')!==budgetPolicy.version||r.headers.get('x-ai-budget-fingerprint')!==binding)throw new CommerceError('dcs_budget_not_covered',503);
     const scope=context.getStore()||{pool:'free' as const};
     const data=Buffer.from(JSON.stringify({...scope,at:Date.now()})).toString('base64url');
     const signature=crypto.createHmac('sha256',this.env.COMMERCE_DATA_KEY||'').update(data).digest('hex');

@@ -127,6 +127,7 @@ dcs_service.DCSRequestHandler._send_json=budget_json
 native_end=dcs_service.DCSRequestHandler.end_headers
 def budget_headers(self):
     self.send_header('X-AI-Budget-Schema','1')
+    self.send_header('X-AI-Budget-Policy',POLICY['version'])
     self.send_header('X-AI-Budget-Fingerprint',hmac.new(os.environ.get('COMMERCE_DATA_KEY','').encode(),('budget-db:'+DB).encode(),hashlib.sha256).hexdigest())
     return native_end(self)
 dcs_service.DCSRequestHandler.end_headers=budget_headers
