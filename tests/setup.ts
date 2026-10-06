@@ -1,6 +1,24 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import {beforeEach,afterEach,expect,vi} from 'vitest';
+import tariffs from '../server/aiTariffs.json';
+
+const nativeFetch=globalThis.fetch;
+let fetchGuard:ReturnType<typeof vi.spyOn>|undefined;
+let budgetClock:ReturnType<typeof vi.spyOn>|undefined;
+beforeEach(()=>{
+  // Ordinary unit runs never query a public catalog because a fixture aged.
+  fetchGuard=vi.spyOn(globalThis,'fetch').mockImplementation((input,init)=>{
+    const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url);
+    if(!['127.0.0.1','localhost','[::1]'].includes(url.hostname))throw Error('unit_external_fetch_forbidden: '+url.hostname);
+    return nativeFetch(input,init);
+  });
+  if(/\/(aiBudget|aiTariffService|freePreview|storyCommerce|storyPayment|localStorySetup)\.test\.ts$/.test(expect.getState().testPath||'')){
+    budgetClock=vi.spyOn(Date,'now').mockReturnValue(Date.parse(tariffs.captured_at)+3600000);
+  }
+});
+afterEach(()=>{fetchGuard?.mockRestore();budgetClock?.mockRestore();fetchGuard=undefined;budgetClock=undefined;});
 
 class MemoryStorage implements Storage {
   private store = new Map<string, string>();

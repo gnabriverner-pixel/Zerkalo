@@ -54,6 +54,9 @@ def reserve(body, scope):
                 with sqlite3.connect(DB,timeout=5) as db:db.execute("INSERT INTO ai_budget_incidents VALUES (?,'ai_tariffs_stale',?,?,'open') ON CONFLICT(order_id,reason) DO UPDATE SET state='open'",(scope.get('orderId') or 'service',snapshot.get('version') if snapshot else None,now))
                 raise RuntimeError('ai_tariffs_stale')
         snapshot=current_tariffs()
+    # Capture can accept a snapshot newer than the time sampled before I/O.
+    # Validate the version actually read against the current wall clock.
+    now=int(time.time()*1000)
     cost,size,maximum_cost=estimate(snapshot,body,now)
     pool=scope.get('pool','free');order_id=scope.get('orderId')
     db=sqlite3.connect(DB,timeout=5,isolation_level=None);db.row_factory=sqlite3.Row
