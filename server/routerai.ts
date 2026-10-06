@@ -9,6 +9,7 @@ export interface ProviderEvent {
   gateway: 'routerai'; model: string; upstream: string | null;
   responseModel: string | null;
   outcome: string; latencyMs: number; costRub: number | null;
+  usageCost: number | null; usageCostCurrency:'UNKNOWN';
   inputTokens: number | null; outputTokens: number | null;
   /** Bounded gateway error code when the transport refused without an upstream answer. */
   gatewayCode: number | null;
@@ -99,7 +100,7 @@ export class RouterAIClient implements ChatClient {
         ? {reasoning:{effort:'low'},provider:{only:['openai'],allow_fallbacks:false}}
         : {reasoning:{effort:'low'},provider:{order:['claude-on-aws'],allow_fallbacks:false}};
     const event: ProviderEvent = {gateway:'routerai',model:this.defaultModel,upstream:null,responseModel:null,
-      outcome:'provider_unavailable',latencyMs:0,costRub:null,inputTokens:null,outputTokens:null,gatewayCode:null};
+      outcome:'provider_unavailable',latencyMs:0,costRub:null,usageCost:null,usageCostCurrency:'UNKNOWN',inputTokens:null,outputTokens:null,gatewayCode:null};
     const responseFormat = transportResponseFormat(options.response_format, this.defaultModel);
     const budget=reserveProviderAttempt(this.defaultModel,options);
     let transportComplete=false;
@@ -118,7 +119,7 @@ export class RouterAIClient implements ChatClient {
       let payload: any;
       try { payload = await response.json(); } catch { throw new Error('provider_invalid_json'); }
       const usage = payload?.usage;
-      event.costRub = typeof usage?.cost === 'number' ? usage.cost : null;
+      event.usageCost = typeof usage?.cost === 'number' ? usage.cost : null;
       event.inputTokens = typeof usage?.prompt_tokens === 'number' ? usage.prompt_tokens : null;
       event.outputTokens = typeof usage?.completion_tokens === 'number' ? usage.completion_tokens : null;
       // RouterAI can answer HTTP 200 with a payload-level error envelope instead of an upstream

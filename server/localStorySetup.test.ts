@@ -8,7 +8,7 @@ it('owner form preserves credentials and requires separate financial approval',a
  const post=(body:any,from=origin)=>fetch(origin+'/api/local-story-setup',{method:'POST',headers:{Origin:from,'Content-Type':'application/json'},body:JSON.stringify(body)});
  try{
   expect((await post({confirmed:true,financial_confirmed:true})).status).toBe(400);
-  const finance={COMMERCE_FREE_BUDGET_RUB:'1050',COMMERCE_FREE_ATTEMPT_MAX:'2',COMMERCE_PAID_BUDGET_RUB:'16700',COMMERCE_PAID_ATTEMPT_MAX:'32',COMMERCE_PAID_ORDER_MAX:'1'};
+  const finance={COMMERCE_FREE_BUDGET_RUB:'1050',COMMERCE_FREE_ATTEMPT_MAX:'2',COMMERCE_PAID_BUDGET_RUB:'27150',COMMERCE_PAID_ATTEMPT_MAX:'52',COMMERCE_PAID_ORDER_MAX:'1'};
   expect((await post({confirmed:true,financial_confirmed:true,...finance})).status).toBe(200);expect(process.env.COMMERCE_BUDGET_APPROVED).toBe('true');
   expect((await post({confirmed:true,ROUTERAI_API_KEY:'',COMMERCE_SELLER_NAME:''})).status).toBe(200);expect(fs.readFileSync(filename,'utf8')).toContain('ROUTERAI_API_KEY="synthetic-existing"');expect(fs.readFileSync(filename,'utf8')).toContain('COMMERCE_SELLER_NAME="synthetic-seller"');
   expect((await post({confirmed:true,COMMERCE_FREE_BUDGET_RUB:'1000'})).status).toBe(200);expect(process.env.COMMERCE_BUDGET_APPROVED).toBe('false');

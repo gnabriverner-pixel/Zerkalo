@@ -4,7 +4,7 @@ import tariffs from './aiTariffs.json';
 import {CommerceError,CommerceStore} from './commerceStore';
 import type {DeepSeekRequestOptions} from './deepseek';
 
-export const PAID_ATTEMPT_RESERVE=32; // Existing 3 Myth operations *4 +10 Albert operations *2.
+export const PAID_ATTEMPT_RESERVE=52; // 3 Myth operations *4 +10 Albert operations *4 (repair + fallback).
 export const MAX_ATTEMPT_MICRO=Math.max(...tariffs.rows.map(row=>row.reserve_micro_rub));
 export const PAID_COST_RESERVE=PAID_ATTEMPT_RESERVE*MAX_ATTEMPT_MICRO;
 type Scope={pool:'free'|'paid';orderId?:string};

@@ -62,6 +62,15 @@ def accounted_post(body,key,timeout,transport):
     finally:
         with sqlite3.connect(DB,timeout=5) as db:db.execute("UPDATE ai_budget_attempts SET state=?,finished_at=? WHERE id=? AND state='reserved'",('complete' if successful else 'uncertain',int(time.time()*1000),ident))
 routerai._bounded_post=accounted_post
+native_init=routerai.RouterAIProvider.__init__
+def budget_provider_init(self,settings,*,transport=None,observe=None):
+    def observe_unknown_currency(event):
+        clean=dict(event)
+        if 'usageCost' not in clean:clean['usageCost']=clean.get('costRub')
+        clean['costRub']=None;clean['usageCostCurrency']='UNKNOWN'
+        (observe or (lambda item:routerai.LOGGER.info('provider_completion %s',item)))(clean)
+    native_init(self,settings,transport=transport,observe=observe_unknown_currency)
+routerai.RouterAIProvider.__init__=budget_provider_init
 
 native_turn=dcs_service.DCSRequestHandler._handle_albert_turn
 def scoped_turn(self,body):

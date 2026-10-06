@@ -7,14 +7,14 @@ import {RouterAIClient,PRIMARY_MODEL,FALLBACK_MODEL} from './routerai';
 import {backupStories,restoreStories} from '../scripts/story_backup';
 const directory=()=>fs.mkdtempSync(path.join(os.tmpdir(),'story-budget-'));const encryption='f'.repeat(64);
 const policy={free:{limit_micro:MAX_ATTEMPT_MICRO*2,attempt_limit:2},paid:{limit_micro:PAID_COST_RESERVE,attempt_limit:PAID_ATTEMPT_RESERVE,order_limit:1}};
-const env={COMMERCE_BUDGET_APPROVED:'true',COMMERCE_FREE_BUDGET_RUB:String(Math.ceil(policy.free.limit_micro/1e6)),COMMERCE_FREE_ATTEMPT_MAX:'2',COMMERCE_PAID_BUDGET_RUB:String(Math.ceil(policy.paid.limit_micro/1e6)),COMMERCE_PAID_ATTEMPT_MAX:'32',COMMERCE_PAID_ORDER_MAX:'1',COMMERCE_DATA_KEY:encryption};
+const env={COMMERCE_BUDGET_APPROVED:'true',COMMERCE_FREE_BUDGET_RUB:String(Math.ceil(policy.free.limit_micro/1e6)),COMMERCE_FREE_ATTEMPT_MAX:'2',COMMERCE_PAID_BUDGET_RUB:String(Math.ceil(policy.paid.limit_micro/1e6)),COMMERCE_PAID_ATTEMPT_MAX:String(PAID_ATTEMPT_RESERVE),COMMERCE_PAID_ORDER_MAX:'1',COMMERCE_DATA_KEY:encryption};
 const paid=(db:CommerceStore)=>{const a=db.createAccount(true);db.importFree(a.id,STORY_SAMPLE_ANSWERS,STORY_SAMPLE_MYTH);const o=db.createOrder(a.id,'paid_budget_test','paid',true);return {a,o};};
 const pay=(db:CommerceStore,a:string,id:string)=>{db.attachPayment(a,id,'payment_'+id,'https://yoomoney.ru/test');db.confirmPayment(a,id,{id:'payment_'+id,status:'succeeded',paid:true,test:true,amount:{value:'790.00',currency:'RUB'},metadata:{order_id:id}});};
 afterEach(()=>{registerAIBudget(undefined);delete process.env.COMMERCE_ENABLED;});
 it('free exhaustion cannot spend the protected paid commitment; unknown outcomes never refund reservations',()=>{
- const db=new CommerceStore(':memory:',encryption);db.configureAIBudget(policy);const {a,o}=paid(db);db.holdAIBudget(a.id,o.id,PAID_COST_RESERVE,32);pay(db,a.id,o.id);
+ const db=new CommerceStore(':memory:',encryption);db.configureAIBudget(policy);const {a,o}=paid(db);db.holdAIBudget(a.id,o.id,PAID_COST_RESERVE,PAID_ATTEMPT_RESERVE);pay(db,a.id,o.id);
  const first=db.reserveAI('free',undefined,PRIMARY_MODEL,MAX_ATTEMPT_MICRO);db.finishAI(first,false);db.reserveAI('free',undefined,PRIMARY_MODEL,MAX_ATTEMPT_MICRO);
- expect(()=>db.reserveAI('free',undefined,PRIMARY_MODEL,1)).toThrow('free_budget_exhausted');expect(()=>db.reserveAI('paid',o.id,FALLBACK_MODEL,MAX_ATTEMPT_MICRO)).not.toThrow();expect(db.aiCapacity(PAID_COST_RESERVE,32)).toBe(false);expect(()=>db.holdAIBudget(a.id,o.id,1,1)).not.toThrow();db.close();
+ expect(()=>db.reserveAI('free',undefined,PRIMARY_MODEL,1)).toThrow('free_budget_exhausted');expect(()=>db.reserveAI('paid',o.id,FALLBACK_MODEL,MAX_ATTEMPT_MICRO)).not.toThrow();expect(db.aiCapacity(PAID_COST_RESERVE,PAID_ATTEMPT_RESERVE)).toBe(false);expect(()=>db.holdAIBudget(a.id,o.id,1,1)).not.toThrow();db.close();
 });
 it('restart retains attempts and reservations; unfinished attempt becomes uncertain, policy cannot silently refill',()=>{
  const file=path.join(directory(),'stories.sqlite');let db=new CommerceStore(file,encryption);db.configureAIBudget(policy);db.reserveAI('free',undefined,PRIMARY_MODEL,MAX_ATTEMPT_MICRO);db.close();
