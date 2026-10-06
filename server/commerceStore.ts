@@ -61,6 +61,10 @@ export class CommerceStore {
     this.db=new DatabaseSync(filename);
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA secure_delete=ON; PRAGMA busy_timeout=5000;
       CREATE TABLE IF NOT EXISTS configuration(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS ai_budget_limits(pool TEXT PRIMARY KEY,limit_micro INTEGER NOT NULL,attempt_limit INTEGER NOT NULL,order_limit INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS ai_budget_commitments(order_id TEXT PRIMARY KEY,capacity_micro INTEGER NOT NULL,attempt_limit INTEGER NOT NULL,spent_micro INTEGER NOT NULL DEFAULT 0,attempts INTEGER NOT NULL DEFAULT 0);
+      CREATE TABLE IF NOT EXISTS ai_budget_attempts(id TEXT PRIMARY KEY,pool TEXT NOT NULL,order_id TEXT,model TEXT NOT NULL,cost_micro INTEGER NOT NULL,state TEXT NOT NULL,created_at INTEGER NOT NULL,finished_at INTEGER);
+      UPDATE ai_budget_attempts SET state='uncertain' WHERE state='reserved';
       CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, access_hash TEXT UNIQUE, recovery_hash TEXT UNIQUE, deleted INTEGER NOT NULL DEFAULT 0, storage_accepted INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS orders(id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),request_key TEXT NOT NULL,kind TEXT NOT NULL,state TEXT NOT NULL,test INTEGER NOT NULL,created_at INTEGER NOT NULL,issued_at INTEGER,payment_started INTEGER,payment_id TEXT UNIQUE,checkout_url TEXT,payload TEXT,payload_expires INTEGER,UNIQUE(account_id,request_key));
       CREATE UNIQUE INDEX IF NOT EXISTS one_free ON orders(account_id) WHERE kind='free';
@@ -77,6 +81,12 @@ export class CommerceStore {
     this.db.prepare('INSERT OR IGNORE INTO configuration VALUES (?,?)').run('encryption_key',fingerprint);
     for(const account of this.db.prepare('SELECT id FROM accounts WHERE deleted=0').all() as any[]){
       if(this.tombstones.has(this.accountHash(account.id)))this.eraseRows(account.id);
+    }
+    if(filename!==':memory:'&&fs.existsSync(filename+'.revocations.jsonl')){
+      for(const line of fs.readFileSync(filename+'.revocations.jsonl','utf8').split('\n').filter(Boolean)){
+        const record=JSON.parse(line);if(!/^[a-f0-9-]{36}$/.test(record.order_id))throw new CommerceError('invalid_revocation_journal',503);
+        this.db.prepare("UPDATE orders SET state='refunded' WHERE id=? AND state!='deleted'").run(record.order_id);
+      }
     }
     this.purgeTemporary();this.purgeTimer=setInterval(()=>this.purgeTemporary(),10000);this.purgeTimer.unref?.();
   }
@@ -104,6 +114,52 @@ export class CommerceStore {
     try { const result=action(); this.db.exec('COMMIT'); return result; }
     catch(error){this.db.exec('ROLLBACK');throw error;}
   }
+  configureAIBudget(policy:{free:{limit_micro:number;attempt_limit:number};paid:{limit_micro:number;attempt_limit:number;order_limit:number}}){
+    for(const p of [policy.free,policy.paid])if(!Number.isSafeInteger(p.limit_micro)||p.limit_micro<=0||!Number.isSafeInteger(p.attempt_limit)||p.attempt_limit<=0)throw new CommerceError('ai_budget_unconfigured',503);
+    if(!Number.isSafeInteger(policy.paid.order_limit)||policy.paid.order_limit<=0)throw new CommerceError('ai_budget_unconfigured',503);
+    this.tx(()=>{
+      for(const pool of ['free','paid'] as const){
+        const p=policy[pool],order_limit=pool==='paid'?policy.paid.order_limit:0;
+        const old=this.db.prepare('SELECT * FROM ai_budget_limits WHERE pool=?').get(pool) as any;
+        if(old&&(old.limit_micro!==p.limit_micro||old.attempt_limit!==p.attempt_limit||old.order_limit!==order_limit))throw new CommerceError('ai_budget_policy_changed_needs_review',503);
+        this.db.prepare('INSERT OR IGNORE INTO ai_budget_limits VALUES (?,?,?,?)').run(pool,p.limit_micro,p.attempt_limit,order_limit);
+      }
+    });
+  }
+  aiBudgetOpen(){if(this.db.prepare("SELECT 1 FROM configuration WHERE key='ai_budget_recovery_locked'").get())throw new CommerceError('ai_budget_recovery_waiting',503);}
+  aiCapacity(cost:number,attempts:number){
+    this.aiBudgetOpen();const limit=this.db.prepare("SELECT * FROM ai_budget_limits WHERE pool='paid'").get() as any;
+    if(!limit)throw new CommerceError('ai_budget_unconfigured',503);
+    const held=this.db.prepare('SELECT COALESCE(SUM(capacity_micro),0) AS cost,COALESCE(SUM(attempt_limit),0) AS attempts,COUNT(*) AS orders FROM ai_budget_commitments').get() as any;
+    return held.cost+cost<=limit.limit_micro&&held.attempts+attempts<=limit.attempt_limit&&held.orders<limit.order_limit;
+  }
+  holdAIBudget(account:string,id:string,cost:number,attempts:number){
+    return this.tx(()=>{
+      this.aiBudgetOpen();const order=this.order(account,id);if(order.kind!=='paid')throw new CommerceError('paid_order_required');
+      if(this.db.prepare('SELECT 1 FROM ai_budget_commitments WHERE order_id=?').get(id))return;
+      if(!this.aiCapacity(cost,attempts))throw new CommerceError('new_sales_paused',503);
+      this.db.prepare('INSERT INTO ai_budget_commitments(order_id,capacity_micro,attempt_limit) VALUES (?,?,?)').run(id,cost,attempts);
+    });
+  }
+  reserveAI(pool:'free'|'paid',orderId:string|undefined,model:string,cost:number){
+    return this.tx(()=>{
+      this.aiBudgetOpen();if(!Number.isSafeInteger(cost)||cost<=0)throw new CommerceError('ai_price_bound_unknown',503);
+      if(pool==='paid'){
+        const order=this.db.prepare('SELECT kind,state FROM orders WHERE id=?').get(orderId||'') as any;
+        if(order?.kind!=='paid'||!['paid','answers_saved','generating','generation_failed','ready'].includes(order.state))throw new CommerceError('paid_order_not_available',503);
+        const p=this.db.prepare('SELECT * FROM ai_budget_commitments WHERE order_id=?').get(orderId||'') as any;
+        if(!p||p.spent_micro+cost>p.capacity_micro||p.attempts>=p.attempt_limit)throw new CommerceError('paid_service_waiting',503);
+        this.db.prepare('UPDATE ai_budget_commitments SET spent_micro=spent_micro+?,attempts=attempts+1 WHERE order_id=?').run(cost,orderId!);
+      }else{
+        const p=this.db.prepare("SELECT * FROM ai_budget_limits WHERE pool='free'").get() as any;
+        const used=this.db.prepare("SELECT COUNT(*) AS attempts,COALESCE(SUM(cost_micro),0) AS cost FROM ai_budget_attempts WHERE pool='free'").get() as any;
+        if(!p||used.attempts>=p.attempt_limit||used.cost+cost>p.limit_micro)throw new CommerceError('free_budget_exhausted',429);
+      }
+      const id=crypto.randomUUID();this.db.prepare("INSERT INTO ai_budget_attempts VALUES (?,?,?,?,?,'reserved',?,NULL)").run(id,pool,orderId||null,model,cost,Date.now());return id;
+    });
+  }
+  finishAI(id:string,success:boolean){this.db.prepare("UPDATE ai_budget_attempts SET state=?,finished_at=? WHERE id=? AND state='reserved'").run(success?'complete':'uncertain',Date.now(),id);}
+  budgetSummary(){return {limits:this.db.prepare('SELECT * FROM ai_budget_limits').all(),attempts:this.db.prepare('SELECT pool,state,COUNT(*) AS count,SUM(cost_micro) AS reserved_micro FROM ai_budget_attempts GROUP BY pool,state').all(),commitments:this.db.prepare('SELECT order_id,capacity_micro,spent_micro,attempt_limit,attempts FROM ai_budget_commitments').all()};}
   createAccount(storageAccepted=false){
     const id=crypto.randomUUID(), access=token(), recovery=token();
     this.db.prepare('INSERT INTO accounts(id,access_hash,recovery_hash,storage_accepted,created_at,storage_version,storage_accepted_at) VALUES (?,?,?,?,?,?,?)').run(id,digest(access),digest(recovery),+storageAccepted,Date.now(),storageAccepted?'personal-history-storage-v1':null,storageAccepted?Date.now():null);
@@ -218,6 +274,10 @@ export class CommerceStore {
   markRefunded(account:string,id:string){
     // A verified merchant refund may arrive after the person deleted the archive. Never revive its payload.
     if(!this.db.prepare('SELECT id FROM orders WHERE id=? AND account_id=?').get(id,account))throw new CommerceError('story_not_found',404);
+    if(this.filename!==':memory:'){
+      const fd=fs.openSync(this.filename+'.revocations.jsonl','a',0o600);
+      try{fs.writeSync(fd,JSON.stringify({order_id:id,revoked_at:Date.now()})+'\n');fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
+    }
     this.db.prepare("UPDATE orders SET state='refunded' WHERE id=?").run(id);
   }
   reserve(account:string,id:string,key:string,kind:'myth'|'albert',input:unknown):{state:string;result?:any} {
@@ -237,8 +297,8 @@ export class CommerceStore {
       if(attempts>=(kind==='myth'?3:10))throw new CommerceError('delivery_needs_support',503);
       const day=Math.floor(Date.now()/86400000)*86400000;
       const maximum=Number(process.env.COMMERCE_DAILY_OPERATION_MAX)||50;
-      const daily=(this.db.prepare('SELECT COUNT(*) AS n FROM operations WHERE created_at>=?').get(day) as any).n;
-      if(daily>=maximum)throw new CommerceError('daily_budget_reached',429);
+      const daily=(this.db.prepare("SELECT COUNT(*) AS n FROM operations p JOIN orders o ON o.id=p.order_id WHERE p.created_at>=? AND o.kind='free'").get(day) as any).n;
+      if(order.kind==='free'&&daily>=maximum)throw new CommerceError('daily_budget_reached',429);
       this.db.prepare("INSERT INTO operations(order_id,request_key,kind,input_hash,state,created_at) VALUES (?,?,?,?,'running',?)").run(id,key,kind,inputHash,Date.now());
       if(kind==='myth')this.db.prepare("UPDATE orders SET state='generating' WHERE id=?").run(id);
       return {state:'reserved'};

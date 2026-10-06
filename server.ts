@@ -1,4 +1,5 @@
 import express from "express";
+import {AIBudget,registerAIBudget,financialGuardRequired} from './server/aiBudget';
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -139,6 +140,8 @@ export async function createApp(options: CreateAppOptions = {}) {
       return result;
     }),
   });
+  registerAIBudget(financialGuardRequired()?new AIBudget(commerce.store,process.env):undefined);
+  app.get('/health/commerce',(_req,res)=>res.json({...commerce.readiness(),live_generation_verified_since_start:{...liveGeneration},note:'Configuration and capacity are separate from provider live proof and merchant verification.'}));
   const sweepClaims = () => sweepExpiredClaims().catch(()=>console.warn('claim_retention_sweep_failed'));
   void sweepClaims();
   setInterval(sweepClaims,60_000).unref();

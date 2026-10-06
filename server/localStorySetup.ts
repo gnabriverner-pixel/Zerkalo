@@ -5,7 +5,7 @@ import path from 'node:path';
 
 const permitted=(req:Request)=>process.env.LOCAL_STORY_SETUP==='true' && process.env.NODE_ENV!=='production' &&
   ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress||'') && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.get('host')||'');
-const fields=['ROUTERAI_API_KEY','YOOKASSA_SHOP_ID','YOOKASSA_SECRET_KEY','COMMERCE_PUBLIC_ORIGIN','COMMERCE_SELLER_NAME','COMMERCE_SUPPORT_EMAIL'] as const;
+const fields=['ROUTERAI_API_KEY','YOOKASSA_SHOP_ID','YOOKASSA_SECRET_KEY','COMMERCE_PUBLIC_ORIGIN','COMMERCE_SELLER_NAME','COMMERCE_SELLER_STATUS','COMMERCE_SUPPORT_EMAIL','COMMERCE_SUPPORT_OWNER','COMMERCE_SUPPORT_SLA_HOURS','COMMERCE_FREE_BUDGET_RUB','COMMERCE_FREE_ATTEMPT_MAX','COMMERCE_PAID_BUDGET_RUB','COMMERCE_PAID_ATTEMPT_MAX','COMMERCE_PAID_ORDER_MAX'] as const;
 export function installLocalStorySetup(app:Express){
   app.get('/local-story-setup',(req,res)=>{
     if(!permitted(req))return res.sendStatus(404);
@@ -29,6 +29,12 @@ export function installLocalStorySetup(app:Express){
     }
     if(additions.COMMERCE_PUBLIC_ORIGIN){try{const url=new URL(additions.COMMERCE_PUBLIC_ORIGIN);if(url.protocol!=='https:'||url.username||url.password||url.pathname!=='/')throw new Error();}catch{return res.status(400).json({error:'Адрес возврата должен быть отдельным HTTPS-адресом без пути и пароля.'});}}
     if(additions.COMMERCE_SUPPORT_EMAIL&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(additions.COMMERCE_SUPPORT_EMAIL))return res.status(400).json({error:'Укажите корректную почту поддержки.'});
+    for(const field of ['COMMERCE_SUPPORT_SLA_HOURS','COMMERCE_FREE_BUDGET_RUB','COMMERCE_FREE_ATTEMPT_MAX','COMMERCE_PAID_BUDGET_RUB','COMMERCE_PAID_ATTEMPT_MAX','COMMERCE_PAID_ORDER_MAX'])if(additions[field]&&!/^[1-9][0-9]{0,5}$/.test(additions[field]))return res.status(400).json({error:'Финансовые пределы и срок ответа должны быть положительными целыми числами.'});
+    if(req.body?.financial_confirmed===true){
+      if(['COMMERCE_FREE_BUDGET_RUB','COMMERCE_FREE_ATTEMPT_MAX','COMMERCE_PAID_BUDGET_RUB','COMMERCE_PAID_ATTEMPT_MAX','COMMERCE_PAID_ORDER_MAX'].some(field=>!additions[field]))return res.status(400).json({error:'Для отдельного утверждения финансового предела заполните все пять полей бюджета.'});
+      additions.COMMERCE_BUDGET_APPROVED='true';
+    }
+    else if(Object.keys(additions).some(field=>/^COMMERCE_(FREE|PAID)_/.test(field)))additions.COMMERCE_BUDGET_APPROVED='false';
     const filename=path.resolve('.env');
     try{
       let text=fs.existsSync(filename)?fs.readFileSync(filename,'utf8'):'';

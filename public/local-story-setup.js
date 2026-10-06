@@ -3,8 +3,9 @@ fetch('/api/local-story-setup',{cache:'no-store'}).then(r=>r.json()).then(d=>{st
 form.addEventListener('submit',async event=>{
  event.preventDefault();const button=form.querySelector('button');button.disabled=true;
  try{const values=Object.fromEntries(new FormData(form));values.confirmed=document.getElementById('confirm').checked;
+ values.financial_confirmed=document.getElementById('financial-confirm').checked;
  const response=await fetch('/api/local-story-setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)}),result=await response.json();
- status.textContent=response.ok?'Сохранено. Настоящая оплата закрыта. Перейдите в «Зеркало».':result.error;
+ status.textContent=response.ok?'Сохранено. Настоящая оплата закрыта. Сообщите исполнителю о сохранении.':result.error;
  if(response.ok)form.reset();
  }catch{status.textContent='Не удалось сохранить. Не отправляйте ключи в чат.';}finally{button.disabled=false;}
 });

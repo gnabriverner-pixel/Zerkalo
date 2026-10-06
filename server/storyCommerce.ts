@@ -8,6 +8,7 @@ import {verifyConsent} from './consent';
 import {parsePersonalMythRequest,parsePersonalMythResult,containsCrisisLanguage,SAFE_CRISIS_MESSAGE} from './myth';
 import {parseAlbertMessage,checkSafety} from './albert';
 import {checkAndIncrementRate,consumeDailyBudget} from './rateLimit';
+import {AIBudget,withAIBudget} from './aiBudget';
 
 const COOKIE='zerkalo_stories';
 const cookie=(req:Request,name:string)=>(req.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(name+'='))?.slice(name.length+1);
@@ -42,6 +43,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     throw new CommerceError('checkout_not_connected',503);
   };
   const account=(req:Request)=>{const id=store().account(cookie(req,COOKIE));if(!id)throw new CommerceError('account_required',401);return id;};
+  const budget=new AIBudget(store,process.env);
   const setAccess=(res:Response,access:string)=>res.cookie(COOKIE,access,{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production'||process.env.COMMERCE_PUBLIC_ORIGIN?.startsWith('https://'),path:'/',maxAge:365*86400000});
   const errors:Record<string,string>={
     checkout_not_connected:'Оплата ещё не подключена. Ваш бесплатный результат доступен.',
@@ -53,6 +55,12 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     delivery_needs_support:'Лимит безопасных попыток исчерпан. Сохраните номер заказа и обратитесь в поддержку для выдачи или возврата.',
     account_deleted:'Эта история удалена. Запоздавший ответ не сохранён.',
     operation_in_progress:'Запрос уже выполняется или его результат неизвестен. Проверьте сохранённую историю.',
+    new_sales_paused:'Новые покупки временно приостановлены до восстановления резерва выдачи. Ваши сохранённые результаты доступны.',
+    paid_service_waiting:'Выдача оплаченного заказа ожидает восстановления резерва. Сохраните номер заказа и обратитесь в поддержку.',
+    ai_budget_unconfigured:'Финансовый предел запуска ещё не утверждён. Сохранённые результаты доступны.',
+    free_budget_exhausted:'Лимит бесплатных обращений достигнут. Сохранённые результаты остаются доступны.',
+    dcs_budget_not_covered:'Сервис диалога ожидает безопасного запуска. Для оплаченного заказа сохраните его номер и обратитесь в поддержку.',
+    ai_budget_recovery_waiting:'После восстановления требуется проверка финансового журнала. Заказ сохранён; обратитесь в поддержку.',
   };
   const route=(fn:(req:Request,res:Response)=>Promise<any>|any)=>(req:Request,res:Response)=>{
     Promise.resolve().then(()=>fn(req,res)).catch(error=>{
@@ -64,11 +72,26 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
   const buckets=new Map();
   app.get('/local-story-support',(req,res)=>{
     if(!local(req)||process.env.LOCAL_STORY_SETUP!=='true'||process.env.NODE_ENV==='production')return res.sendStatus(404);
-    res.set('Cache-Control','no-store').type('html').send('<!doctype html><html lang="ru"><meta charset="utf-8"><title>Обращения по историям</title><h1>Обращения по историям — локальный оператор</h1><p>Тексты и ключи здесь не показываются. Сначала проверьте выдачу заказа. Возврат выполняется в кабинете магазина; эта страница денег не переводит.</p><button onclick="location.reload()">Обновить</button><pre id="queue"></pre><script>fetch("/api/local-story-support").then(r=>r.json()).then(d=>document.getElementById("queue").textContent=JSON.stringify(d,null,2))</script></html>');
+    res.set('Cache-Control','no-store').type('html').send(`<!doctype html><html lang="ru"><meta charset="utf-8"><title>Обращения по историям</title><h1>Локальный оператор</h1><p>Найдите оплаченный невыданный заказ или заявку на возврат. Сначала сверьте платеж. Освобождение прерванного запроса позволяет человеку явно повторить действие, но само не генерирует ответ и не возвращает финансовый резерв. Возврат денег выполняется в кабинете магазина; его подтверждение должно отозвать доступ.</p><button onclick="location.reload()">Обновить очередь</button><pre id="queue"></pre><form id="operator"><label>Номер заказа<input name="order_id" required></label><select name="action"><option value="verify_payment">Сверить платёж через API</option><option value="acknowledge_interrupted">Разрешить явный повтор прерванного запроса</option><option value="request_refund">Записать заявку на возврат</option></select><label><input id="confirmed" type="checkbox"> Подтверждаю разрешение явного повтора</label><button>Выполнить</button></form><p id="result"></p><script>fetch('/api/local-story-support').then(r=>r.json()).then(d=>document.getElementById('queue').textContent=JSON.stringify(d,null,2));document.getElementById('operator').onsubmit=async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));values.confirmed=document.getElementById('confirmed').checked;const r=await fetch('/api/local-story-support/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});document.getElementById('result').textContent=JSON.stringify(await r.json());};</script></html>`);
   });
   app.get('/api/local-story-support',route((req,res)=>{
     if(!local(req)||process.env.LOCAL_STORY_SETUP!=='true'||process.env.NODE_ENV==='production')return res.sendStatus(404);
-    res.json({recipient:'local_owner_operator',requests:store().db.prepare('SELECT s.order_id,s.reason,s.created_at,s.test,o.state FROM support_requests s JOIN orders o ON o.id=s.order_id ORDER BY s.created_at DESC LIMIT 100').all()});
+    res.json({recipient:'local_owner_operator',requests:store().db.prepare("SELECT o.id AS order_id,s.reason,COALESCE(s.created_at,o.created_at) AS created_at,o.test,o.state,o.payment_id FROM orders o LEFT JOIN support_requests s ON o.id=s.order_id WHERE o.kind='paid' AND (s.order_id IS NOT NULL OR o.state IN ('paid','answers_saved','generating','generation_failed')) ORDER BY created_at DESC LIMIT 100").all(),budget:store().budgetSummary(),actions:['verify_payment','acknowledge_interrupted','request_refund']});
+  }));
+  app.post('/api/local-story-support/action',route(async(req,res)=>{
+    if(!local(req)||process.env.LOCAL_STORY_SETUP!=='true'||process.env.NODE_ENV==='production')return res.sendStatus(404);
+    if(!sameOrigin(req))throw new CommerceError('origin_rejected',403);
+    const db=store(),row=db.db.prepare("SELECT id,account_id,payment_id FROM orders WHERE id=? AND kind='paid'").get(String(req.body?.order_id||'')) as any;
+    if(!row)throw new CommerceError('story_not_found',404);
+    if(req.body?.action==='verify_payment'){
+      if(!row.payment_id)throw new CommerceError('payment_not_created');
+      db.confirmPayment(row.account_id,row.id,await payment().get(row.payment_id));
+    }else if(req.body?.action==='acknowledge_interrupted'){
+      if(req.body?.confirmed!==true)throw new CommerceError('explicit_retry_required',400);
+      db.acknowledgeUncertain(row.account_id,row.id);
+    }else if(req.body?.action==='request_refund')db.support(row.account_id,row.id,'refund');
+    else throw new CommerceError('operator_action_invalid',400);
+    res.json({recorded:true,order_id:row.id,action:req.body.action,money_moved:false});
   }));
   app.get('/api/stories-sample',(_req,res)=>res.json({synthetic:true,provenance:'historical_test_fixture_and_prepared_dialogue',sections:storySections(STORY_SAMPLE)}));
   app.get('/api/stories-sample/pdf',(_req,res)=>res.set('Content-Disposition','attachment; filename="synthetic-story-sample.pdf"').type('application/pdf').send(makeStoryPdf(STORY_SAMPLE)));
@@ -77,8 +100,8 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     if(!database&&enabled()&&cookie(req,COOKIE)){try{store();}catch{/* Configuration is reported by the local setup screen. */}}
     const id=database?.account(cookie(req,COOKIE));
     const configuredMode=options.payment?.mode||process.env.COMMERCE_PAYMENT_MODE||'disabled';
-    const live=liveCheckoutConfigured(process.env);
-    res.set('Cache-Control','no-store').json({enabled:enabled(),storage_accepted:Boolean(id&&database?.storageAccepted(id)),payment_mode:configuredMode==='live'&&!live?'disabled':configuredMode,live_checkout:live,title:'Новая личная история',price_rub:790,support_email:process.env.COMMERCE_SUPPORT_EMAIL||null});
+    const live=liveCheckoutConfigured(process.env)&&budget.capacity();
+    res.set('Cache-Control','no-store').json({enabled:enabled(),storage_accepted:Boolean(id&&database?.storageAccepted(id)),payment_mode:configuredMode==='live'&&!liveCheckoutConfigured(process.env)?'disabled':configuredMode,live_checkout:live,new_sales_paused:configuredMode==='live'&&!live,title:'Новая личная история',price_rub:790,support_email:process.env.COMMERCE_SUPPORT_EMAIL||null});
   });
   // A forged notification cannot issue rights. Retrieve the object under the merchant's credentials.
   app.post('/api/stories/payment-webhook',route(async(req,res)=>{
@@ -130,9 +153,11 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     const free=store().list(account(req)).find(order=>order.kind==='free'&&order.state==='ready');
     if(free)store().event('offer_shown',free);res.json({recorded:Boolean(free)});
   }));
-  app.post('/api/stories/orders',route((req,res)=>{
+  app.post('/api/stories/orders',route(async(req,res)=>{
     const adapter=payment();
     if(adapter.mode==='mock'&&!local(req))throw new CommerceError('mock_local_only',403);
+    if(adapter.mode==='live'&&!budget.capacity())throw new CommerceError('new_sales_paused',503);
+    if(adapter.mode==='live')await budget.dcsHeaders(process.env.DCS_BRIDGE_URL||'http://127.0.0.1:39500');
     res.json({order:publicOrder(store().createOrder(account(req),key(req.body?.request_key),'paid',adapter.mode!=='live'))});
   }));
   app.post('/api/stories/:id/checkout',route(async(req,res)=>{
@@ -141,6 +166,8 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     let order=db.order(id,req.params.id);
     if(order.checkout_url)return res.json({url:order.checkout_url});
     if(adapter.mode==='live'){
+      await budget.dcsHeaders(process.env.DCS_BRIDGE_URL||'http://127.0.0.1:39500');
+      budget.hold(id,order.id); // Persistent obligation reserved before any payment POST.
       const email=String(req.body?.receipt_email||order.data?.receipt_email||'').trim();
       if(!validReceiptEmail(email))throw new CommerceError('receipt_email_required',400);
       db.receiptContact(id,order.id,email);order=db.order(id,order.id);
@@ -193,8 +220,8 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
       else{
         if(!options.ready())throw new CommerceError('provider_not_ready',503);
         if(!checkAndIncrementRate('generate:'+req.ip,30,Date.now(),600000,buckets).allowed)throw new CommerceError('rate_limit',429);
-        if(!consumeDailyBudget().allowed)throw new CommerceError('daily_budget_reached',429);
-        result=kind==='myth'?await options.myth(input):await options.albert(input,res.locals.consent);
+        if(order.kind==='free'&&!consumeDailyBudget().allowed)throw new CommerceError('daily_budget_reached',429);
+        result=await withAIBudget({pool:order.kind==='paid'?'paid':'free',orderId:order.kind==='paid'?order.id:undefined},()=>kind==='myth'?options.myth(input):options.albert(input,res.locals.consent));
       }
       if(result.status==='ok' && kind==='albert'){
         result={...result,reply:result.response||result.message};
@@ -203,7 +230,11 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
       if(!['ok','crisis'].includes(result.status))throw new CommerceError('generation_not_delivered',502);
       const updated=db.complete(id,order.id,requestKey,result,kind==='albert'?input.message:undefined);
       return res.json({...result,order:publicOrder(updated)});
-    }catch(error){try{db.fail(id,order.id,requestKey);Object.assign(error,{operation_failed:true});}catch{/* Deletion/revocation wins over a delayed response. */}throw error;}
+    }catch(error:any){
+      const code=error?.canonical_error;
+      if(['paid_service_waiting','free_budget_exhausted','ai_budget_unconfigured','ai_budget_recovery_waiting','ai_tariffs_stale'].includes(code))error=new CommerceError(code,503);
+      try{db.fail(id,order.id,requestKey);Object.assign(error,{operation_failed:true});}catch{/* Deletion/revocation wins over a delayed response. */}throw error;
+    }
   }
   app.post('/api/stories/:id/myth',route(async(req,res)=>{
     const order=store().order(account(req),req.params.id),requestKey=key(req.body?.request_key);
@@ -268,5 +299,6 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     if(!sameOrigin(req))throw new CommerceError('origin_rejected',403);
     db.deleteAccount(id);res.clearCookie(COOKIE,{path:'/'});return true;
   };
-  return {deleteOwned,store};
+  const readiness=()=>({process_up:true,storage_configured:Boolean(options.store||process.env.COMMERCE_DATA_KEY),provider_configured:options.ready(),financial_policy_approved:budget.configured(),new_paid_obligation_capacity:budget.capacity(),payment_mode:process.env.COMMERCE_PAYMENT_MODE||'disabled',merchant_network_verified:null,new_live_payments_configuration_ready:liveCheckoutConfigured(process.env)&&budget.capacity(),merchant_verification_scope:'NOT_CHECKED_BY_THIS_HEALTH_ENDPOINT'});
+  return {deleteOwned,store,readiness};
 }

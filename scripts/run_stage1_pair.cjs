@@ -479,6 +479,7 @@ async function main() {
     GOOGLE_API_KEY: googleApiKeyValue,
     GEMINI_API_KEY: geminiApiKeyValue,
     TELEGRAM_V2_ALBERT_API_KEY: process.env.TELEGRAM_V2_ALBERT_API_KEY ? String(process.env.TELEGRAM_V2_ALBERT_API_KEY).trim() : "",
+    COMMERCE_DB_PATH:path.resolve(webRoot,process.env.COMMERCE_DB_PATH||'data/commerce/stories.sqlite'),
     STAGE1_LOCAL_CANDIDATE_MODE: process.env.STAGE1_LOCAL_CANDIDATE_MODE || "true",
   };
 
@@ -496,7 +497,7 @@ async function main() {
   }
   const dcsProc = spawn(
     pythonBin,
-    [...(boundedLive ? [path.join(webRoot,'scripts/quality/first_sales_dcs_bootstrap.py')] : ["-m", "integration.dcs_service"]), "--host", "127.0.0.1", "--port", String(dcsPort)],
+    [...(env.COMMERCE_ENABLED==='true' ? [path.join(webRoot,'scripts/quality/dcs_budget_bootstrap.py')] : boundedLive ? [path.join(webRoot,'scripts/quality/first_sales_dcs_bootstrap.py')] : ["-m", "integration.dcs_service"]), "--host", "127.0.0.1", "--port", String(dcsPort)],
     {
       cwd: dcsRoot,
       env: { ...env, RELEASE_SHA: actualDcsSha, DCS_RELEASE_SHA: actualDcsSha },

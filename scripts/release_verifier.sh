@@ -209,9 +209,15 @@ NODE_VERSION="$(node -v 2>/dev/null || echo missing)"
 PYTHON_BASE="$(command -v python3.12 || command -v python3 || true)"
 [[ -n "$PYTHON_BASE" ]] || { say "FATAL: python3.12 not found"; exit 1; }
 say "prepare release-local DCS venv ($WORK/dcs/.venv)"
-run_check DCS pip_install "$WORK/dcs" env PYTHON_BIN="$PYTHON_BASE" bash scripts/prepare_release_env.sh "$WORK/dcs"
+if [[ -f "$WORK/dcs/scripts/prepare_release_env.sh" ]]; then
+  run_check DCS pip_install "$WORK/dcs" env PYTHON_BIN="$PYTHON_BASE" bash scripts/prepare_release_env.sh "$WORK/dcs"
+else
+  run_check DCS pip_install "$WORK/dcs" env PYTHON_BIN="$PYTHON_BASE" bash "$SCRIPT_DIR/prepare_current_dcs_env.sh" "$WORK/dcs"
+fi
 VENV_PY="$WORK/dcs/.venv/bin/python"
 [[ -x "$VENV_PY" ]] || { say "FATAL: release-local venv creation failed ($VENV_PY)"; exit 1; }
+cp "$WORK/dcs/.venv/installed-dependencies.txt" "$OUT_DIR/dcs-installed-dependencies.txt" 2>/dev/null || true
+run_check DCS compile_tracked "$WORK/dcs" bash -c 'git ls-files -z -- "*.py" ":!archive/**" | xargs -0 "$1" -m py_compile' _ "$VENV_PY"
 
 # ------------------------------------------------------- DCS checks
 run_check DCS pytest_full "$WORK/dcs" env PYTHONDONTWRITEBYTECODE=1 "$VENV_PY" -B -m pytest -q -p no:cacheprovider \

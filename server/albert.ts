@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import {dcsBudgetHeaders} from './aiBudget';
 import { PRIMARY_MODEL } from "./routerai";
 import { machineClaim, meetingEvidence, mergeTruthEvidence, type TruthState } from "./truthEvidence";
 import { checkCrisisAndHazardousAction, CRISIS_SAFE_MESSAGE, type CrisisCheckResult } from "./safety";
@@ -752,9 +753,10 @@ export async function generateAlbertDialogue(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const budgetHeaders=await dcsBudgetHeaders(dcsUrl);
     const resp = await fetch(`${dcsUrl}/api/canonical/albert/turn`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json",...budgetHeaders },
       body: JSON.stringify({
         request_id: requestId,
         user_message: userText,
@@ -881,4 +883,3 @@ export async function generateAlbertDialogue(
     });
   }
 }
-

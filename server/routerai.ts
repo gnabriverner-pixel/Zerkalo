@@ -1,4 +1,5 @@
 import type { DeepSeekRequestOptions } from './deepseek';
+import {reserveProviderAttempt} from './aiBudget';
 
 export const ROUTERAI_URL = 'https://routerai.ru/api/v1';
 export const PRIMARY_MODEL = 'deepseek/deepseek-v4.1-flash';
@@ -100,6 +101,8 @@ export class RouterAIClient implements ChatClient {
     const event: ProviderEvent = {gateway:'routerai',model:this.defaultModel,upstream:null,responseModel:null,
       outcome:'provider_unavailable',latencyMs:0,costRub:null,inputTokens:null,outputTokens:null,gatewayCode:null};
     const responseFormat = transportResponseFormat(options.response_format, this.defaultModel);
+    const budget=reserveProviderAttempt(this.defaultModel,options);
+    let transportComplete=false;
     try {
       const response = await this.transport(`${ROUTERAI_URL}/chat/completions`, {
         method:'POST', headers:{Authorization:`Bearer ${this.env.ROUTERAI_API_KEY!.trim()}`,'Content-Type':'application/json'},
@@ -140,6 +143,7 @@ export class RouterAIClient implements ChatClient {
       const content = payload?.choices?.[0]?.message?.content;
       if (typeof content !== 'string' || !content.trim()) throw new Error('provider_empty_output');
       event.outcome = 'success';
+      transportComplete=true;
       return content;
     } catch (error) {
       const raw = error instanceof Error ? error : new Error('provider_unavailable');
@@ -150,6 +154,7 @@ export class RouterAIClient implements ChatClient {
     } finally {
       event.latencyMs = Date.now() - started;
       this.observe(event);
+      if(budget)budget.db.finishAI(budget.id,transportComplete);
     }
   }
 }

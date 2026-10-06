@@ -6,8 +6,18 @@
 <label>Секретный ключ тестового магазина ЮKassa<input type="password" name="YOOKASSA_SECRET_KEY" autocomplete="off"></label>
 <p>HTTPS-адрес возврата и получение уведомлений настраивает исполнитель. Вам не нужно выбирать адрес или выполнять команды.</p>
 <label>Продавец (реальное наименование, когда определён)<input name="COMMERCE_SELLER_NAME" autocomplete="organization"></label>
+<label>Статус продавца и налоговый режим (когда определены)<input name="COMMERCE_SELLER_STATUS" autocomplete="off"></label>
 <label>Электронная почта поддержки (когда определена)<input type="email" name="COMMERCE_SUPPORT_EMAIL" autocomplete="email"></label>
+<label>Кто разбирает обращения<input name="COMMERCE_SUPPORT_OWNER" autocomplete="off"></label>
+<label>Срок первого ответа, часов<input type="number" min="1" name="COMMERCE_SUPPORT_SLA_HOURS"></label>
+<details><summary>Финансовый предел ограниченного старта — отдельное решение</summary><p>Поля оставлены пустыми. Значения из отчёта — предложение, а не разрешение расходовать деньги. Резерв может быть значительно больше ожидаемых затрат; оплаченные обязательства защищены отдельно от бесплатных обращений.</p>
+<label>Общий бесплатный резерв, ₽<input type="number" min="1" name="COMMERCE_FREE_BUDGET_RUB"></label>
+<label>Максимум фактических бесплатных попыток<input type="number" min="1" name="COMMERCE_FREE_ATTEMPT_MAX"></label>
+<label>Отдельный резерв оплаченных обязательств, ₽<input type="number" min="1" name="COMMERCE_PAID_BUDGET_RUB"></label>
+<label>Максимум фактических оплаченных попыток<input type="number" min="1" name="COMMERCE_PAID_ATTEMPT_MAX"></label>
+<label>Максимум новых оплаченных заказов<input type="number" min="1" name="COMMERCE_PAID_ORDER_MAX"></label>
+<label><input type="checkbox" id="financial-confirm"> Отдельно утверждаю введённый финансовый предел. Это не разрешение на production или реальные платежи.</label></details>
 <p>Платёжного аккаунта нет? Оставьте поля магазина пустыми. Хранилище и восстановление можно подготовить сейчас; оплату — после получения тестового магазина. После сохранения сообщите исполнителю: «Настройки сохранены». Он перезапустит локальную пару: штатный запуск передаст установленный здесь ключ обоим процессам, без копирования в другой файл.</p>
 <label><input type="checkbox" id="confirm" required> Сохранить введённые настройки в этом кандидате. Новые локальные служебные ключи создать только при их отсутствии.</label>
-<button>Сохранить настройки</button><a href="/">Вернуться к «Зеркалу»</a></form>
+<button>Сохранить настройки</button></form>
 </main><script src="/local-story-setup.js"></script></body></html>
