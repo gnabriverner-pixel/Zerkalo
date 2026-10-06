@@ -30,6 +30,12 @@ async function setup(){
   return {store,myth,albert,call,consent,issue,clearCookies:()=>{cookies='';},close:()=>{server.close();server.closeAllConnections();store.close();}};
 }
 describe('bounded free preview, synthetic only',()=>{
+  it('operator opens only an explicitly approved window and read-only summaries never alter attempts or leak feedback',()=>{
+    const filename=path.join(fs.mkdtempSync(path.join(os.tmpdir(),'preview-control-')),'test.sqlite'),db=new CommerceStore(filename,key);new AIBudget(()=>db,env).db();
+    const a=db.createAccount(true),o=db.importFree(a.id,STORY_SAMPLE_ANSWERS,STORY_SAMPLE_MYTH);db.previewFeedback(a.id,o.id,'ОТДЕЛЬНЫЙ ДОБРОВОЛЬНЫЙ ОТЗЫВ');const attempt=db.reserveAI('free',undefined,PRIMARY_MODEL,1);
+    const cli=(args:string[])=>spawnSync(process.execPath,['--import','tsx',path.resolve('scripts/free_preview_control.ts'),'--db',filename,...args],{env:{...process.env,...env,COMMERCE_DATA_KEY:key},encoding:'utf8'});
+    try{const summary=cli([]);expect(summary.status,summary.stderr).toBe(0);expect(summary.stdout).not.toContain('ОТДЕЛЬНЫЙ ДОБРОВОЛЬНЫЙ ОТЗЫВ');expect(db.db.prepare('SELECT state FROM ai_budget_attempts WHERE id=?').get(attempt)).toEqual({state:'reserved'});expect(cli(['--activate']).status).not.toBe(0);expect(cli(['--activate','--confirm-public-opening','--confirmed-budget-rub','500','--support-url',env.FREE_PREVIEW_SUPPORT_URL]).status).not.toBe(0);expect(cli(['--activate','--confirm-public-opening','--confirmed-budget-rub','1000','--support-url',env.FREE_PREVIEW_SUPPORT_URL]).status).toBe(0);expect(cli(['--activate','--confirm-public-opening','--confirmed-budget-rub','1000','--support-url',env.FREE_PREVIEW_SUPPORT_URL]).status).not.toBe(0);expect(cli(['--feedback']).status).not.toBe(0);expect(cli(['--feedback','--private-consented-feedback']).stdout).toContain('ОТДЕЛЬНЫЙ ДОБРОВОЛЬНЫЙ ОТЗЫВ');expect(cli(['--pause-generations']).status).toBe(0);expect(new AIBudget(()=>db,env).freeAvailability().available).toBe(false);}finally{db.close();}
+  });
   it('native Python reservations enforce two in-flight calls before I/O and tolerate missing usage',()=>{
     const filename=path.join(fs.mkdtempSync(path.join(os.tmpdir(),'preview-python-')),'test.sqlite'),db=new CommerceStore(filename,key);new AIBudget(()=>db,env).db();
     const root=process.env.DCS_ROOT||'/Users/artemkrysin/Documents/Zerkalo-Independent-Audit/work/release-first-sales-dcs-de78';
