@@ -128,11 +128,16 @@ export async function createApp(options: CreateAppOptions = {}) {
     ready:options.storyCommerce?.ready||isProviderConfigured,
     myth:options.storyCommerce?.myth|| (async body=>{
       const generated=await generatePersonalMyth(body,mythProvider,personalMythTimeoutMs);
+      liveGeneration.personal_myth=true;
       return {mode:'story',status:'ok',provider:generated.provider,model:generated.model,
         writer_version:PERSONAL_MYTH_WRITER_VERSION,story_result:generated.result,
         qa:{passed:generated.quality.passed,word_count:generated.quality.word_count,repaired:generated.repaired}};
     }),
-    albert:options.storyCommerce?.albert||((body,receipt)=>generateAlbertDialogue(body,deepseekClient,ALBERT_MODEL,45000,receipt)),
+    albert:options.storyCommerce?.albert||(async(body,receipt)=>{
+      const result=await generateAlbertDialogue(body,deepseekClient,ALBERT_MODEL,45000,receipt);
+      if(result.status==='ok')liveGeneration.albert=true;
+      return result;
+    }),
   });
   const sweepClaims = () => sweepExpiredClaims().catch(()=>console.warn('claim_retention_sweep_failed'));
   void sweepClaims();
