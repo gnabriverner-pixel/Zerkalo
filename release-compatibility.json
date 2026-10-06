@@ -1,13 +1,13 @@
 {
   "manifest_version": 1,
   "stage": "free-preview-internal-staging-candidate",
-  "verified_at": null,
-  "verification_status": "PENDING_STRICT_VERIFIER",
+  "verified_at": "2026-10-06T23:02:07Z",
+  "verification_status": "LOCAL_STRICT_VERIFIER_PASS_INTERNAL_STAGING_ONLY",
   "production_authorized": false,
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
     "branch": "codex/free-preview-internal-staging-2026-10-07",
-    "pinned_sha": "373dafc8520581afb0effd29fb0c24f161d7725f"
+    "pinned_sha": "ac90097e407248a57b6ab9ac2d20bfe379b5eb77"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
