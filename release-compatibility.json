@@ -7,7 +7,7 @@
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
     "branch": "codex/release-first-sales-790",
-    "pinned_sha": "15e5c31876413af23dbeb06889f806c76d2c425b"
+    "pinned_sha": "4906d03fcd62955e282caf026d47ff1eeb0cf57d"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
