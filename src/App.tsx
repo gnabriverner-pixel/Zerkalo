@@ -26,7 +26,7 @@ import { isShortJuxtapositionEnabled } from './services/albertOpenerState';
 import { loadQaPanel, type QaPanelModule } from './components/CodeV2/qaPanelLoader';
 import { EmblemDefs } from './art/emblem';
 import { ConsentBoundary } from './components/ConsentBoundary';
-import {useFreePreview} from './services/freePreview';
+import {useFreePreview,meetingUnavailable} from './services/freePreview';
 
 function sanitizeUrlDob(): void {
   if (typeof window === 'undefined') return;
@@ -60,6 +60,8 @@ function AppContent() {
   // Digital Code V2 Preview State
   const [isPreviewV2, setIsPreviewV2] = useState(true);
   const freePreview=useFreePreview();
+  const meetingBlocked=meetingUnavailable(freePreview);
+  const openOrdinaryAlbert=()=>{setAlbertInitialTopic(undefined);setIsAlbertV2Open(true);};
   const [isQaMode, setIsQaMode] = useState<boolean>(() => {
     if (typeof window === 'undefined' || !import.meta.env.DEV) return false;
     const params = new URLSearchParams(window.location.search);
@@ -339,7 +341,7 @@ function AppContent() {
           </button>
 
           {/* Synthesis: Meeting */}
-          <button
+          {!meetingBlocked&&<button
             onClick={() => setMode('meeting')}
             className={`min-h-[40px] px-3.5 py-2 rounded-full text-[13px] sm:text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
               mode === 'meeting'
@@ -353,7 +355,7 @@ function AppContent() {
           >
             <span>Встреча</span>
             {hasBoth && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />}
-          </button>
+          </button>}
         </nav>
 
         {/* Right: Quiet About / Notes Links (Desktop & Mobile Accessible) */}
@@ -432,8 +434,8 @@ function AppContent() {
                     setMeetingUserNote('');
                     setJourneyId(crypto.randomUUID());
                   }}
-                  onContinue={() => setMode(hasMyth ? 'meeting' : 'myth')}
-                  continueLabel={hasMyth ? 'Открыть Встречу зеркал' : 'Перейти к Личному мифу'}
+                  onContinue={() => hasMyth&&meetingBlocked?openOrdinaryAlbert():setMode(hasMyth ? 'meeting' : 'myth')}
+                  continueLabel={hasMyth ? meetingBlocked?'Обсудить с Альбертом':'Открыть Встречу зеркал' : 'Перейти к Личному мифу'}
                   isQaMode={isQaMode && import.meta.env.DEV}
                   onOpenAlbert={(p, options) => {
                     setCodeV2Payload(p);
@@ -468,8 +470,8 @@ function AppContent() {
                     setMeetingUserNote('');
                   }}
                   onBackToCollection={() => setMode('entry')}
-                  onContinue={() => setMode(hasMyth ? 'meeting' : 'myth')}
-                  continueLabel={hasMyth ? 'Открыть Встречу зеркал' : 'Перейти к Личному мифу'}
+                  onContinue={() => hasMyth&&meetingBlocked?openOrdinaryAlbert():setMode(hasMyth ? 'meeting' : 'myth')}
+                  continueLabel={hasMyth ? meetingBlocked?'Обсудить с Альбертом':'Открыть Встречу зеркал' : 'Перейти к Личному мифу'}
                   onOpenAbout={() => setShowAbout(true)}
                 />
               )}
@@ -486,6 +488,7 @@ function AppContent() {
               className="w-full"
             >
               <LabEntryView
+                meetingAvailable={!meetingBlocked}
                 codeResult={codeResult}
                 storyResult={storyResult}
                 savedSnapshot={savedSnapshot}
@@ -508,7 +511,8 @@ function AppContent() {
                     setCodeDate(initialDate);
                   }
                   if ((m as string) !== 'ab-test') {
-                    setMode(m === 'code' ? 'alabaster' : (m as 'alabaster' | 'myth' | 'meeting' | 'entry'));
+                    if(m==='meeting'&&meetingBlocked)openOrdinaryAlbert();
+                    else setMode(m === 'code' ? 'alabaster' : (m as 'alabaster' | 'myth' | 'meeting' | 'entry'));
                   }
                 }}
               />
@@ -543,13 +547,20 @@ function AppContent() {
                   setOpenerTriggerToken(prev => prev + 1);
                 }}
                 onReturnToCode={hasCode ? () => setMode('alabaster') : undefined}
-                onNavigateToMeeting={() => setMode(hasCode ? 'meeting' : 'alabaster')}
+                onNavigateToMeeting={meetingBlocked?undefined:() => setMode(hasCode ? 'meeting' : 'alabaster')}
                 hasCodeResult={hasCode}
               />
             </motion.div>
           )}
 
-          {mode === 'meeting' && (
+          {mode==='meeting'&&meetingBlocked&&<motion.section key="meeting-unavailable" className="max-w-2xl mx-auto p-8 space-y-5 text-stone-100" aria-label="Сохранённая Встреча" role="status">
+            <h1 className="font-serif text-2xl">{freePreview?'Встреча пока не проверена для пробного доступа':'Проверяем доступность раздела'}</h1>
+            <p>Сохранённые тексты и заметки остаются на месте. Можно продолжить разговор напрямую с Альбертом.</p>
+            {meetingUserNote&&<p className="whitespace-pre-wrap">{meetingUserNote}</p>}
+            <button className="px-5 py-3 rounded border border-amber-300/40" onClick={openOrdinaryAlbert}>Продолжить с Альбертом</button>
+            <button className="px-5 py-3 rounded border border-white/20" onClick={()=>setIsChapterOfferOpen(true)}>Мои истории</button>
+          </motion.section>}
+          {mode === 'meeting' && !meetingBlocked && (
             <motion.div
               key="meeting"
               initial={{ opacity: 0 }}

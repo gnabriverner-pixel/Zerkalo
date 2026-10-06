@@ -10,6 +10,7 @@ import { RotateCcw } from 'lucide-react';
 import mirrorHero from '../assets/mirror-hero.jpg';
 
 interface LabEntryViewProps {
+  meetingAvailable?:boolean;
   onSelectMyth?: () => void;
   onSelectCode?: (initialDate?: string) => void;
   onSelectMeeting?: () => void;
@@ -37,6 +38,7 @@ function pluralRu(value: number, one: string, few: string, many: string) {
 }
 
 export function LabEntryView({
+  meetingAvailable=true,
   onSelectMyth,
   onSelectCode,
   onSelectMeeting,
@@ -177,7 +179,7 @@ export function LabEntryView({
           <a href="#collection" className="mt-7 inline-flex min-h-12 items-center justify-center border border-[var(--color-border-gold)] bg-[#111723]/80 px-9 py-3 text-[13px] uppercase tracking-[0.28em] text-[var(--color-antique-gold)] transition-colors hover:bg-[#18202e]">
             Выбрать зеркало
           </a>
-          <p className="text-[13px] text-[var(--color-text-muted)]">Начните с любого зеркала. Встреча откроется только после обоих.</p>
+          <p className="text-[13px] text-[var(--color-text-muted)]">{meetingAvailable?'Начните с любого зеркала. Встреча откроется только после обоих.':'Начните с любого зеркала. Затем можно обсудить историю с Альбертом.'}</p>
         </motion.div>
 
         {/* ========================================================= */}
@@ -442,7 +444,7 @@ export function LabEntryView({
         {/* ========================================================= */}
         {/* 3. SYNTHESIS BANNER (MEETING OF MIRRORS) */}
         {/* ========================================================= */}
-        <motion.div
+        {meetingAvailable&&<motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.35 }}
@@ -478,7 +480,7 @@ export function LabEntryView({
           <div className="flex items-center gap-2 text-[13px] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] font-mono whitespace-nowrap shrink-0">
             <span>{isMeetingReady ? 'Провести встречу →' : 'Узнать больше →'}</span>
           </div>
-        </motion.div>
+        </motion.div>}
 
         {/* ========================================================= */}
         {/* 4. PANTHEON TEASER */}

@@ -33,6 +33,8 @@ export class CommerceStore {
   private key:Buffer;
   private purgeTimer:ReturnType<typeof setInterval>;
   private processLock:string|null=null;
+  private privateStateDir:string|null=null;
+  private stateFile(suffix:string){return this.privateStateDir?path.join(this.privateStateDir,path.basename(this.filename)+suffix):this.filename+suffix;}
   private tombstones=new Set<string>();
   private accountHash(id:string){return crypto.createHmac('sha256',this.key).update('deleted-account:'+id).digest('hex');}
   private unlock(){if(this.processLock){fs.unlinkSync(this.processLock);this.processLock=null;}}
@@ -40,10 +42,21 @@ export class CommerceStore {
     if (!/^[a-f0-9]{64}$/i.test(keyHex)) throw new CommerceError('commerce_key_missing',503);
     this.key=Buffer.from(keyHex,'hex');
     if (filename!==':memory:') {
-      fs.mkdirSync(path.dirname(filename),{recursive:true,mode:0o700});
-      if (!fs.existsSync(filename)) fs.closeSync(fs.openSync(filename,'wx',0o600));
-      fs.chmodSync(filename,0o600);
-      const lock=filename+'.process.lock';
+      const shared=process.env.COMMERCE_SHARED_SQLITE==='true',mode=shared?0o660:0o600;
+      if(shared){
+        // Only the two already authorised service identities. Never widen an arbitrary store.
+        if(![997,999].includes(process.getuid?.()??-1)||!process.getgroups?.().includes(987))throw new CommerceError('commerce_shared_identity_invalid',503);
+        const dir=fs.lstatSync(path.dirname(filename)),privateDir=process.env.COMMERCE_PRIVATE_STATE_DIR;
+        if(!dir.isDirectory()||dir.uid!==997||dir.gid!==987||(dir.mode&0o7777)!==0o2770)throw new CommerceError('commerce_shared_directory_invalid',503);
+        if(!privateDir||!path.isAbsolute(privateDir)||path.resolve(privateDir)===path.dirname(path.resolve(filename)))throw new CommerceError('commerce_private_directory_required',503);
+        const state=fs.lstatSync(privateDir),parent=fs.statSync(path.dirname(privateDir));
+        if(!state.isDirectory()||state.uid!==997||(state.mode&0o777)!==0o700||(parent.mode&0o022)!==0)throw new CommerceError('commerce_private_directory_invalid',503);
+        this.privateStateDir=privateDir;
+        if(fs.existsSync(filename)){const file=fs.lstatSync(filename);if(!file.isFile()||file.uid!==997||file.gid!==987)throw new CommerceError('commerce_shared_file_invalid',503);}
+      }else fs.mkdirSync(path.dirname(filename),{recursive:true,mode:0o700});
+      if (!fs.existsSync(filename)) fs.closeSync(fs.openSync(filename,'wx',mode));
+      fs.chmodSync(filename,mode);
+      const lock=this.stateFile('.process.lock');
       if(fs.existsSync(lock)){
         const pid=Number(fs.readFileSync(lock,'utf8'));let alive=false;
         try{process.kill(pid,0);alive=true;}catch(error:any){if(error.code!=='ESRCH')throw error;}
@@ -51,8 +64,8 @@ export class CommerceStore {
         fs.unlinkSync(lock);
       }
       fs.writeFileSync(lock,String(process.pid),{flag:'wx',mode:0o600});this.processLock=lock;
-      if(fs.existsSync(filename+'.deletions.jsonl')){
-        for(const line of fs.readFileSync(filename+'.deletions.jsonl','utf8').trim().split('\n').filter(Boolean)){
+      if(fs.existsSync(this.stateFile('.deletions.jsonl'))){
+        for(const line of fs.readFileSync(this.stateFile('.deletions.jsonl'),'utf8').trim().split('\n').filter(Boolean)){
           const record=JSON.parse(line);if(!/^[a-f0-9]{64}$/.test(record.account_hash))throw new Error('invalid_deletion_journal');
           this.tombstones.add(record.account_hash);
         }
@@ -91,8 +104,14 @@ export class CommerceStore {
     for(const account of this.db.prepare('SELECT id FROM accounts WHERE deleted=0').all() as any[]){
       if(this.tombstones.has(this.accountHash(account.id)))this.eraseRows(account.id);
     }
-    if(filename!==':memory:'&&fs.existsSync(filename+'.revocations.jsonl')){
-      for(const line of fs.readFileSync(filename+'.revocations.jsonl','utf8').split('\n').filter(Boolean)){
+    if(filename!==':memory:'&&this.privateStateDir){
+      for(const suffix of ['-wal','-shm'])if(fs.existsSync(filename+suffix)){
+        const file=fs.lstatSync(filename+suffix);
+        if(!file.isFile()||![997,999].includes(file.uid)||file.gid!==987||(file.mode&0o777)!==0o660)throw new CommerceError('commerce_shared_sidecar_invalid',503);
+      }
+    }
+    if(filename!==':memory:'&&fs.existsSync(this.stateFile('.revocations.jsonl'))){
+      for(const line of fs.readFileSync(this.stateFile('.revocations.jsonl'),'utf8').split('\n').filter(Boolean)){
         const record=JSON.parse(line);if(!/^[a-f0-9-]{36}$/.test(record.order_id))throw new CommerceError('invalid_revocation_journal',503);
         this.db.prepare("UPDATE orders SET state='refunded' WHERE id=? AND state!='deleted'").run(record.order_id);
       }
@@ -308,7 +327,7 @@ export class CommerceStore {
     // A verified merchant refund may arrive after the person deleted the archive. Never revive its payload.
     if(!this.db.prepare('SELECT id FROM orders WHERE id=? AND account_id=?').get(id,account))throw new CommerceError('story_not_found',404);
     if(this.filename!==':memory:'){
-      const fd=fs.openSync(this.filename+'.revocations.jsonl','a',0o600);
+      const fd=fs.openSync(this.stateFile('.revocations.jsonl'),'a',0o600);
       try{fs.writeSync(fd,JSON.stringify({order_id:id,revoked_at:Date.now()})+'\n');fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
     }
     this.db.prepare("UPDATE orders SET state='refunded' WHERE id=?").run(id);
@@ -400,7 +419,7 @@ export class CommerceStore {
   deleteAccount(account:string){
     this.assertAccount(account);const hash=this.accountHash(account);
     if(this.filename!==':memory:'){
-      const fd=fs.openSync(this.filename+'.deletions.jsonl','a',0o600);
+      const fd=fs.openSync(this.stateFile('.deletions.jsonl'),'a',0o600);
       try{fs.writeSync(fd,JSON.stringify({account_hash:hash,deleted_at:Date.now()})+'\n');fs.fsyncSync(fd);}finally{fs.closeSync(fd);}
     }
     this.tombstones.add(hash);this.eraseRows(account);
