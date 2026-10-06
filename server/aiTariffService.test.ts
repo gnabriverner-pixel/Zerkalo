@@ -1,5 +1,6 @@
 // @vitest-environment node
-import {it,expect} from 'vitest';
+import {it,expect,vi} from 'vitest';
+import crypto from 'node:crypto';
 import fs from 'node:fs';import path from 'node:path';import os from 'node:os';import {spawnSync} from 'node:child_process';
 import seed from './aiTariffs.json';
 import {CommerceStore} from './commerceStore';import {AIBudget,PAID_COST_RESERVE,MAX_ATTEMPT_MICRO,withAIBudget} from './aiBudget';
@@ -11,6 +12,13 @@ function paid(db:CommerceStore,b:AIBudget){const a=db.createAccount(true);db.imp
 const transport=(multiplier=1,requests:string[]=[])=>(async(url:any,options:any)=>{requests.push(String(url));expect(options?.headers).toBeUndefined();const row=seed.rows.find(r=>String(url)===r.source)!;const endpoints=structuredClone(row.endpoints);
  for(const e of endpoints){for(const k of Object.keys(e.pricing))e.pricing[k]*=multiplier;for(const v of e.variable_pricings)for(const k of ['prompt','completion','input_cache_read','input_cache_write'])if(v[k]!==undefined)v[k]*=multiplier;}
  return new Response(JSON.stringify({data:{id:row.model,endpoints}}));}) as typeof fetch;
+it('DCS health must prove this budget policy and database, an old wrapper cannot open the bridge',async()=>{
+ const db=new CommerceStore(':memory:',key),b=new AIBudget(()=>db,env,transport(),()=>base);b.db();const binding=crypto.createHmac('sha256',key).update('budget-db:'+db.filename).digest('hex');
+ const spy=vi.spyOn(globalThis,'fetch');try{
+   spy.mockResolvedValue(new Response('{}',{headers:{'x-ai-budget-schema':'1','x-ai-budget-fingerprint':binding}}));await expect(b.dcsHeaders('http://127.0.0.1:9')).rejects.toThrow('dcs_budget_not_covered');
+   spy.mockResolvedValue(new Response('{}',{headers:{'x-ai-budget-schema':'1','x-ai-budget-policy':budgetPolicy.version,'x-ai-budget-fingerprint':binding}}));expect((await b.dcsHeaders('http://127.0.0.1:9'))['X-AI-Budget-Scope']).toContain('.');
+ }finally{spy.mockRestore();db.close();}
+});
 it('request components and response schema obey exact UTF-8 boundary; output limits include generation, no mean word length',()=>{
  const s={...seed,version:'fixture'};const content='x'.repeat(65536-Buffer.byteLength(JSON.stringify({messages:[{role:'user',content:''}]})));
  expect(estimateAttempt(s,seed.rows[0].model,[{role:'user',content}],8000,base).input_bytes).toBe(65536);
