@@ -7,6 +7,7 @@ import { Orb } from './Orb';
 import { useProtectedFetch } from './ConsentBoundary';
 import { isShortJuxtapositionEnabled } from '../services/albertOpenerState';
 import {useFreePreview,readFreePreview} from '../services/freePreview';
+import { waitForMyth, MYTH_SLOW_HINT_MS } from '../services/mythWait';
 
 interface PersonalMythProps {
   onOpenSavedStory?:()=>void;
@@ -63,6 +64,19 @@ export default function PersonalMyth({
   const resultRef = useRef<HTMLDivElement>(null);
   const requestIdRef = useRef(`myth_${crypto.randomUUID().replace(/-/g, '')}`);
   const generatingRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const [elapsedSec, setElapsedSec] = useState(0);
+
+  // Stop waiting/re-sending when the component goes away.
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  useEffect(() => {
+    if (step !== 5) return;
+    const startedAt = Date.now();
+    setElapsedSec(0);
+    const timer = setInterval(() => setElapsedSec(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [step]);
 
   useEffect(() => {
     if (initialResult) {
@@ -148,19 +162,31 @@ export default function PersonalMyth({
     generatingRef.current = true;
     setStep(5);
     setErrorText('');
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const access=await readFreePreview();if(access.enabled&&!access.can_start_myth){setErrorText(access.pause_message);setStep(4);return;}
-      const res = await protectedFetch('/api/personal-myth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          request_id: requestIdRef.current,
-          answers: inputs,
-        })
+      // Re-sending the same request_id is safe only where the server replays by it (story path: /api/free-preview enabled && active).
+      const canWait = Boolean(access.enabled && access.active);
+      const body = JSON.stringify({ request_id: requestIdRef.current, answers: inputs });
+      const outcome = await waitForMyth({
+        retry: canWait,
+        signal: controller.signal,
+        send: () => protectedFetch('/api/personal-myth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          signal: controller.signal,
+        }),
       });
-      if (!res) { setStep(4); return; }
-      
-      const data: ApiResponse = await res.json();
+      if (outcome.kind === 'aborted') return;
+      if (outcome.kind === 'declined') { setStep(4); return; }
+      if (outcome.kind === 'timeout') {
+        setErrorText("История пока не пришла, но генерация не отменена: она ещё может дописаться. Если сохранение историй включено, готовую историю можно найти в сохранённых. Если нет, ответы остаются на экране: нажмите «Соткать историю» ещё раз.");
+        setStep(4);
+        return;
+      }
+      const data: ApiResponse = outcome.data;
 
       if (data.status === 'crisis') {
         onSafetyBlocked?.(true);
@@ -178,6 +204,7 @@ export default function PersonalMyth({
         setStep(6);
       }
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error(err);
       setErrorText("Связь с зеркалом прервалась. Попробуйте обновить страницу или отправить запрос снова.");
       setStep(4);
@@ -357,8 +384,13 @@ export default function PersonalMyth({
                 Собираем метафорическую историю...
               </h3>
               <p className="text-xs text-stone-400 font-normal max-w-sm leading-relaxed">
-                Сказка рождается строго из ваших четырёх ответов, без домыслов и шаблонов.
+                История пишется. Обычно это занимает около минуты.
               </p>
+              {elapsedSec * 1000 >= MYTH_SLOW_HINT_MS && (
+                <p role="status" className="text-xs text-stone-400 font-normal max-w-sm leading-relaxed mt-2">
+                  Прошло {elapsedSec} с. Страницу можно не обновлять: история сохранится.
+                </p>
+              )}
             </motion.div>
           )}
 
