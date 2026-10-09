@@ -7,7 +7,7 @@ import { Orb } from './Orb';
 import { useProtectedFetch } from './ConsentBoundary';
 import { isShortJuxtapositionEnabled } from '../services/albertOpenerState';
 import {useFreePreview,readFreePreview} from '../services/freePreview';
-import { waitForMyth, MYTH_SLOW_HINT_MS } from '../services/mythWait';
+import { waitForMyth, checkMythReadiness, readStorageAccepted, hasStoryAccount, MYTH_COPY, MYTH_SLOW_HINT_MS } from '../services/mythWait';
 
 interface PersonalMythProps {
   onOpenSavedStory?:()=>void;
@@ -66,6 +66,12 @@ export default function PersonalMyth({
   const generatingRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
+  // Set when the answer did not arrive in time and the state of the operation is not known (story path only).
+  const [waitState, setWaitState] = useState<null | 'unknown' | 'notFound' | 'failed' | 'expired'>(null);
+  const waitRef = useRef<typeof waitState>(null);
+  const setWait = (value: typeof waitState) => { waitRef.current = value; setWaitState(value); };
+  const [checking, setChecking] = useState(false);
+  const [storageOn, setStorageOn] = useState(false);
 
   // Stop waiting/re-sending when the component goes away.
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -157,8 +163,40 @@ export default function PersonalMyth({
     }
   };
 
+  const showUnknown = () => {
+    setWait('unknown');
+    setStep(4);
+    void readStorageAccepted(protectedFetch).then(setStorageOn);
+  };
+
+  // Read-only check (GET); it can never start a model call.
+  const handleCheck = async () => {
+    if (checking) return;
+    setChecking(true);
+    try {
+      const r = await checkMythReadiness(protectedFetch, inputs);
+      if (r.kind === 'ready') {
+        setWait(null);
+        onSafetyBlocked?.(false);
+        setResult(r.story);
+        onMythCompleted?.(inputs, r.story);
+        setStep(6);
+      } else if (r.kind === 'failed' || r.kind === 'expired' || r.kind === 'notFound') {
+        setWait(r.kind);
+      }
+    } finally { setChecking(false); }
+  };
+
+  // Explicit NEW generation: a fresh request_id, never a re-send of the old one.
+  const handleNewGeneration = () => {
+    requestIdRef.current = `myth_${crypto.randomUUID().replace(/-/g, '')}`;
+    setWait(null);
+    setErrorText('');
+    void handleGenerate();
+  };
+
   const handleGenerate = async () => {
-    if (generatingRef.current) return;
+    if (generatingRef.current || waitRef.current) return;
     generatingRef.current = true;
     setStep(5);
     setErrorText('');
@@ -172,6 +210,7 @@ export default function PersonalMyth({
       const outcome = await waitForMyth({
         retry: canWait,
         signal: controller.signal,
+        canResend: () => hasStoryAccount(protectedFetch),
         send: () => protectedFetch('/api/personal-myth', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -181,12 +220,12 @@ export default function PersonalMyth({
       });
       if (outcome.kind === 'aborted') return;
       if (outcome.kind === 'declined') { setStep(4); return; }
-      if (outcome.kind === 'timeout') {
-        setErrorText("История пока не пришла, но генерация не отменена: она ещё может дописаться. Если сохранение историй включено, готовую историю можно найти в сохранённых. Если нет, ответы остаются на экране: нажмите «Соткать историю» ещё раз.");
-        setStep(4);
+      if (outcome.kind === 'timeout' || outcome.kind === 'unsafe') {
+        showUnknown();
         return;
       }
       const data: ApiResponse = outcome.data;
+      if (canWait && (data as any).status === 'failed') { setWait('failed'); setStep(4); return; }
 
       if (data.status === 'crisis') {
         onSafetyBlocked?.(true);
@@ -336,6 +375,32 @@ export default function PersonalMyth({
                 </div>
               </div>
 
+              {waitState && (
+                <div role="status" className="w-full max-w-xl mx-auto mb-6 p-4 bg-red-950/40 border border-red-500/30 rounded-xs text-center text-sm text-red-200">
+                  <p className="mb-3 text-xs sm:text-sm font-normal">
+                    {waitState === 'unknown' && MYTH_COPY.unknown}
+                    {waitState === 'notFound' && MYTH_COPY.notFound}
+                    {waitState === 'failed' && MYTH_COPY.failed}
+                    {waitState === 'expired' && MYTH_COPY.expired}
+                  </p>
+                  {waitState === 'unknown' && (
+                    <p className="mb-3 text-xs sm:text-sm font-normal">{storageOn ? MYTH_COPY.storageOn : MYTH_COPY.storageOff}</p>
+                  )}
+                  {(waitState === 'unknown' || waitState === 'notFound') && (
+                    <button type="button" disabled={checking} onClick={handleCheck}
+                      className="px-4 py-2 bg-red-900/60 hover:bg-red-800 text-xs font-mono uppercase tracking-wider text-red-100 rounded-xs transition-colors cursor-pointer mr-2">
+                      {checking ? MYTH_COPY.checking : MYTH_COPY.check}
+                    </button>
+                  )}
+                  {(waitState === 'notFound' || waitState === 'failed') && (
+                    <button type="button" onClick={handleNewGeneration}
+                      className="px-4 py-2 bg-red-900/60 hover:bg-red-800 text-xs font-mono uppercase tracking-wider text-red-100 rounded-xs transition-colors cursor-pointer">
+                      {MYTH_COPY.newGeneration}
+                    </button>
+                  )}
+                </div>
+              )}
+
               {errorText && (
                 <div className="w-full max-w-xl mx-auto mb-6 p-4 bg-red-950/40 border border-red-500/30 rounded-xs text-center text-sm text-red-200">
                   <p className="mb-3 text-xs sm:text-sm font-normal">{errorText}</p>
@@ -354,7 +419,7 @@ export default function PersonalMyth({
 
               <div className="flex flex-col items-center gap-4">
                 <button
-                  disabled={currentInputValue.trim().length < 3}
+                  disabled={currentInputValue.trim().length < 3 || Boolean(waitState)}
                   onClick={handleNext}
                   className={`px-8 py-3.5 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs transition-all flex items-center gap-2 cursor-pointer ${
                     currentInputValue.trim().length >= 3
@@ -384,11 +449,14 @@ export default function PersonalMyth({
                 Собираем метафорическую историю...
               </h3>
               <p className="text-xs text-stone-400 font-normal max-w-sm leading-relaxed">
-                История пишется. Обычно это занимает около минуты.
+                {MYTH_COPY.writing}
+              </p>
+              <p className="text-xs text-stone-400 font-normal max-w-sm leading-relaxed mt-1">
+                {MYTH_COPY.mayTakeMinutes}
               </p>
               {elapsedSec * 1000 >= MYTH_SLOW_HINT_MS && (
                 <p role="status" className="text-xs text-stone-400 font-normal max-w-sm leading-relaxed mt-2">
-                  Прошло {elapsedSec} с. Страницу можно не обновлять: история сохранится.
+                  {MYTH_COPY.elapsed(elapsedSec)}
                 </p>
               )}
             </motion.div>

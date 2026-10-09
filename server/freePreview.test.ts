@@ -71,6 +71,43 @@ describe('bounded free preview, synthetic only',()=>{
   it('same request_id while running returns 202 without a second generation, then replays the finished story',async()=>{
     const s=await setup();let finish:any;s.myth.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));try{await s.consent();await s.call('/api/stories/account',{storage_accepted:true,storage_version:'personal-history-storage-v1'});const body={request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS};const pending=s.call('/api/personal-myth',body);await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));for(let i=0;i<3;i++){const again=await s.call('/api/personal-myth',body);expect(again.status).toBe(202);expect(again.body.status).toBe('running');expect(again.body.story_result).toBeUndefined();}expect(s.myth).toHaveBeenCalledTimes(1);finish({status:'ok',story_result:STORY_SAMPLE_MYTH});expect((await pending).body.story_result.title).toBe(STORY_SAMPLE_MYTH.title);const replay=await s.call('/api/personal-myth',body);expect(replay.status).toBe(200);expect(replay.body.replayed).toBe(true);expect(replay.body.story_result.title).toBe(STORY_SAMPLE_MYTH.title);expect(s.myth).toHaveBeenCalledTimes(1);}finally{s.close();}
   });
+  it('re-POST of the same request_id: failed/uncertain/expired never start a second call; a lost cookie does (why "check" is a GET)',async()=>{
+    const s=await setup();try{
+      await s.consent();const body={request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS};
+      // read-only list without a cookie: 401, creates no account
+      expect((await s.call('/api/stories')).status).toBe(401);
+      // failed -> same key answers 202 failed, no new call
+      s.myth.mockRejectedValueOnce(new Error('provider down'));
+      expect((await s.call('/api/personal-myth',body)).status).toBe(502);
+      for(let i=0;i<2;i++){const again=await s.call('/api/personal-myth',body);expect(again.status).toBe(202);expect(again.body.status).toBe('failed');}
+      expect(s.myth).toHaveBeenCalledTimes(1);
+      // uncertain (server restart) -> 202 uncertain, no new call
+      s.store.db.prepare("UPDATE operations SET state='uncertain'").run();
+      const un=await s.call('/api/personal-myth',body);expect(un.status).toBe(202);expect(un.body.status).toBe('uncertain');expect(s.myth).toHaveBeenCalledTimes(1);
+    }finally{s.close();}
+  });
+  it('without storage consent the result is wiped after payload_expires: re-POST is refused with 402, the list shows ready without myth',async()=>{
+    const s=await setup();try{
+      await s.consent();const body={request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS};
+      expect((await s.call('/api/personal-myth',body)).body.story_result.title).toBe(STORY_SAMPLE_MYTH.title);
+      expect((await s.call('/api/stories/status')).body.storage_accepted).toBe(false);
+      expect((await s.call('/api/stories')).body.orders[0].data.myth.title).toBe(STORY_SAMPLE_MYTH.title);
+      s.store.db.prepare('UPDATE orders SET payload_expires=?').run(Date.now()-1);
+      const again=await s.call('/api/personal-myth',body);expect(again.status).toBe(402);expect(again.body.code).toBe('free_story_already_issued');
+      const listed=(await s.call('/api/stories')).body.orders[0];expect(listed.state).toBe('ready');expect(listed.data.myth).toBeUndefined();expect(listed.data.answers).toBeUndefined();
+      expect(s.myth).toHaveBeenCalledTimes(1);
+    }finally{s.close();}
+  });
+  it('HAZARD documented: the same request_id without the session cookie is a NEW account and a SECOND generation',async()=>{
+    const s=await setup();try{
+      await s.consent();const body={request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS};
+      await s.call('/api/personal-myth',body);expect(s.myth).toHaveBeenCalledTimes(1);
+      s.clearCookies();await s.consent();
+      expect((await s.call('/api/stories')).status).toBe(401);
+      expect((await s.call('/api/personal-myth',body)).status).toBe(200);
+      expect(s.myth).toHaveBeenCalledTimes(2);
+    }finally{s.close();}
+  });
   it('expiry refuses only temporary continuation; archive/PDF and preexisting free route remain',async()=>{
     const s=await setup();try{const order=await s.issue();const window=JSON.parse((s.store.db.prepare("SELECT value FROM configuration WHERE key='free_preview_window'").get() as any).value);window.ends_at=Date.now()-1;s.store.db.prepare("UPDATE configuration SET value=? WHERE key='free_preview_window'").run(JSON.stringify(window));expect((await s.call(`/api/stories/${order.id}/albert`,{request_key:'preview_ended_01',message:'Вопрос после срока.'})).body.code).toBe('preview_ended');expect(s.albert).not.toHaveBeenCalled();expect((await s.call(`/api/stories/${order.id}/pdf`,{})).body.subarray(0,4).toString()).toBe('%PDF');expect((await s.call('/api/stories')).body.orders[0].data.myth.title).toBe(STORY_SAMPLE_MYTH.title);s.clearCookies();await s.consent();expect((await s.call('/api/personal-myth',{request_id:'after_preview_01',answers:STORY_SAMPLE_ANSWERS})).body.legacy_branch).toBe(true);}finally{s.close();}
   });

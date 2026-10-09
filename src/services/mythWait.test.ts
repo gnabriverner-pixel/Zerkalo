@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { waitForMyth, MYTH_POLL_INTERVAL_MS, MYTH_TOTAL_WAIT_MS } from './mythWait';
+import { waitForMyth, checkMythReadiness, readStorageAccepted, hasStoryAccount, MYTH_COPY, MYTH_POLL_INTERVAL_MS, MYTH_TOTAL_WAIT_MS } from './mythWait';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 const html504 = () => new Response('<html><body>504 Gateway Time-out</body></html>', { status: 504, headers: { 'Content-Type': 'text/html' } });
@@ -94,5 +94,75 @@ describe('waitForMyth (long Myth generation)', () => {
     const { send, promise } = run([() => null]);
     expect(await promise).toEqual({ kind: 'declined' });
     expect(send).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('re-send guard when the first reply was lost', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('stops with "unsafe" and sends nothing more when no story account is held', async () => {
+    const send = vi.fn(async () => { throw new TypeError('Failed to fetch'); });
+    const canResend = vi.fn(async () => false);
+    const promise = waitForMyth({ send, retry: true, signal: new AbortController().signal, canResend });
+    await vi.advanceTimersByTimeAsync(MYTH_POLL_INTERVAL_MS);
+    expect(await promise).toEqual({ kind: 'unsafe' });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(canResend).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-sends when the account exists, and does not probe once the server has answered with JSON', async () => {
+    const canResend = vi.fn(async () => true);
+    const replies = [() => html504(), () => json({ status: 'running' }, 202), () => json({ status: 'running' }, 202), () => json(story)];
+    let i = 0;
+    const send = vi.fn(async () => replies[i++]());
+    const promise = waitForMyth({ send, retry: true, signal: new AbortController().signal, canResend });
+    await vi.advanceTimersByTimeAsync(MYTH_POLL_INTERVAL_MS * 3);
+    expect((await promise).kind).toBe('data');
+    expect(send).toHaveBeenCalledTimes(4);
+    expect(canResend).toHaveBeenCalledTimes(1); // only before the 2nd send; the 202 JSON proves the cookie is held
+  });
+});
+
+describe('checkMythReadiness (read-only GET /api/stories)', () => {
+  const A = { q1: 'a b', q2: 'c', q3: 'd', q4: 'e' };
+  const get = (res: Response | null) => vi.fn(async () => res);
+  const orders = (o: any) => json({ orders: [o] });
+
+  it('only ever issues GET', async () => {
+    const g = get(orders({ kind: 'free', state: 'generating', data: {} }));
+    await checkMythReadiness(g, A);
+    expect(g).toHaveBeenCalledTimes(1);
+    expect(g.mock.calls[0]).toEqual(['/api/stories', { method: 'GET', cache: 'no-store' }]);
+  });
+  it('maps every server state', async () => {
+    expect((await checkMythReadiness(get(orders({ kind: 'free', state: 'ready', data: { answers: { ...A, q1: 'a  b ' }, myth: { title: 'T' } } })), A)).kind).toBe('ready');
+    expect((await checkMythReadiness(get(orders({ kind: 'free', state: 'ready', data: { answers: { ...A, q2: 'x' }, myth: { title: 'T' } } })), A)).kind).toBe('notFound');
+    expect((await checkMythReadiness(get(orders({ kind: 'free', state: 'ready', data: { messages: [], note: '' } })), A)).kind).toBe('expired');
+    expect((await checkMythReadiness(get(orders({ kind: 'free', state: 'generating', data: {} })), A)).kind).toBe('running');
+    expect((await checkMythReadiness(get(orders({ kind: 'free', state: 'generation_failed', data: {} })), A)).kind).toBe('failed');
+    expect((await checkMythReadiness(get(orders({ kind: 'free', state: 'answers_saved', data: {} })), A)).kind).toBe('notFound');
+    expect((await checkMythReadiness(get(json({ orders: [] })), A)).kind).toBe('notFound');
+    expect((await checkMythReadiness(get(json({ code: 'account_required' }, 401)), A)).kind).toBe('notFound');
+    expect((await checkMythReadiness(get(json({}, 500)), A)).kind).toBe('unavailable');
+    expect((await checkMythReadiness(get(null), A)).kind).toBe('unavailable');
+    expect((await checkMythReadiness(vi.fn(async () => { throw new TypeError('x'); }), A)).kind).toBe('unavailable');
+  });
+  it('storage and account probes default to false', async () => {
+    expect(await readStorageAccepted(get(json({ storage_accepted: true })))).toBe(true);
+    expect(await readStorageAccepted(get(json({ storage_accepted: false })))).toBe(false);
+    expect(await readStorageAccepted(get(json({}, 500)))).toBe(false);
+    expect(await hasStoryAccount(get(json({ orders: [] })))).toBe(true);
+    expect(await hasStoryAccount(get(json({}, 401)))).toBe(false);
+  });
+  it('agreed wording is verbatim', () => {
+    expect(MYTH_COPY.writing).toBe('Ваша история пишется.');
+    expect(MYTH_COPY.mayTakeMinutes).toBe('Это может занять несколько минут.');
+    expect(MYTH_COPY.elapsed(20)).toBe('Прошло 20 с. Обновлять страницу не нужно.');
+    expect(MYTH_COPY.unknown).toBe('Пока не удалось получить историю. Она ещё может быть в работе.');
+    expect(MYTH_COPY.check).toBe('Проверить готовность');
+    expect(MYTH_COPY.storageOn).toBe('Если история будет готова, она появится в сохранённых.');
+    expect(MYTH_COPY.storageOff).toBe('Сохранение историй выключено. Готовый результат доступен временно; не закрывайте страницу, пока мы проверяем готовность.');
+    expect(MYTH_COPY.expired).toBe('Время доступа к этой истории истекло.');
   });
 });
