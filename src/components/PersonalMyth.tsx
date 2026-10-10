@@ -9,6 +9,10 @@ import { isShortJuxtapositionEnabled } from '../services/albertOpenerState';
 import {useFreePreview,readFreePreview} from '../services/freePreview';
 import { waitForMyth, checkMythReadiness, readStorageAccepted, hasStoryAccount, MYTH_COPY, MYTH_SLOW_HINT_MS } from '../services/mythWait';
 
+/** Stories from the opt-in writer v4.1 carry only title and story; the mirror/question blocks would be empty. Old stories are unaffected. */
+const isTitleAndStoryOnly = (r: NonNullable<ApiResponse['story_result']>) =>
+  !r.one_step && !r.journal_question && !Object.values(r.mirror ?? {}).some(Boolean);
+
 interface PersonalMythProps {
   onOpenSavedStory?:()=>void;
   onSafetyBlocked?: (blocked:boolean) => void;
@@ -526,6 +530,7 @@ export default function PersonalMyth({
                 </div>
               </article>
 
+              {!isTitleAndStoryOnly(result) && (<>
               <div className="w-full max-w-2xl mx-auto space-y-4">
                 <div className="rounded-xs border border-white/[0.08] bg-[#0D121D]/80 p-6 sm:p-7">
                   <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]/80 block mb-2">
@@ -574,6 +579,7 @@ export default function PersonalMyth({
                   className="w-full max-w-xl mx-auto bg-transparent border-0 border-b border-white/20 focus:border-[var(--color-antique-gold)] text-sm text-center py-2 outline-none transition-colors text-stone-100 placeholder:text-stone-600 font-normal resize-none block"
                 />
               </div>
+              </>)}
 
               {/* CTA TO ALBERT SHORT JUXTAPOSITION / DIGITAL CODE / MEETING */}
               <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-10 rounded-xs text-center space-y-6">

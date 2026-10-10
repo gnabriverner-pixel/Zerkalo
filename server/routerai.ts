@@ -113,6 +113,8 @@ export class RouterAIClient implements ChatClient {
           ...(responseFormat ? {response_format:responseFormat} : {}),
           include_reasoning:false,
           ...providerPolicy,
+          ...(options.routing?.verbosity ? {verbosity:options.routing.verbosity} : {}),
+          ...(options.routing?.provider_only?.length ? {provider:{only:options.routing.provider_only,allow_fallbacks:false}} : {}),
         }),
       });
       if (!response.ok) throw new Error(`provider_http_${response.status}`);
@@ -141,6 +143,8 @@ export class RouterAIClient implements ChatClient {
       if (!validModels.includes(payload?.model)) throw new Error('provider_model_mismatch');
       event.responseModel = validModels.includes(payload?.model) ? payload.model : null;
       if(payload?.choices?.[0]?.finish_reason==='length')throw new Error('provider_truncated');
+      // Opt-in strict path (Myth writer v4.1): only a clean stop is a finished story. The call was billed.
+      if(options.routing?.strict_finish && payload?.choices?.[0]?.finish_reason!=='stop'){transportComplete=true;throw new Error('provider_not_finished');}
       const content = payload?.choices?.[0]?.message?.content;
       if (typeof content !== 'string' || !content.trim()) throw new Error('provider_empty_output');
       event.outcome = 'success';

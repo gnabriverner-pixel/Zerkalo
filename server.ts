@@ -11,6 +11,7 @@ import { buildPersonalMythPrompt } from "./src/services/mythPrompts";
 import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
 import { RouterAIClient, PRIMARY_MODEL, MEETING_FALLBACK_MODEL } from "./server/routerai";
+import { isWriterV41Enabled } from "./server/mythWriterV41";
 import {
   createRouterAIMythProvider,
   PERSONAL_MYTH_WRITER_VERSION,
@@ -87,7 +88,10 @@ export async function createApp(options: CreateAppOptions = {}) {
   app.set('trust proxy', 'loopback');
   const deepseekClient = new RouterAIClient(process.env);
   const meetingClient = deepseekClient.withFallback(MEETING_FALLBACK_MODEL);
-  const mythProvider = options.mythProvider || createRouterAIMythProvider(deepseekClient);
+  // Opt-in writer v4.1 may name its own model (must be one RouterAIClient already allows); otherwise the same client.
+  const writerV41Model = isWriterV41Enabled() ? String(process.env.PERSONAL_MYTH_V41_MODEL ?? '').trim() : '';
+  const mythProvider = options.mythProvider
+    || createRouterAIMythProvider(writerV41Model ? new RouterAIClient(process.env, writerV41Model) : deepseekClient);
   const isProviderConfigured = () =>
     options.isProviderReady
       ? options.isProviderReady()
@@ -131,7 +135,7 @@ export async function createApp(options: CreateAppOptions = {}) {
       const generated=await generatePersonalMyth(body,mythProvider,personalMythTimeoutMs);
       liveGeneration.personal_myth=true;
       return {mode:'story',status:'ok',provider:generated.provider,model:generated.model,
-        writer_version:PERSONAL_MYTH_WRITER_VERSION,story_result:generated.result,
+        writer_version:generated.writerVersion??PERSONAL_MYTH_WRITER_VERSION,story_result:generated.result,
         qa:{passed:generated.quality.passed,word_count:generated.quality.word_count,repaired:generated.repaired}};
     }),
     albert:options.storyCommerce?.albert||(async(body,receipt)=>{
@@ -431,7 +435,7 @@ export async function createApp(options: CreateAppOptions = {}) {
         status: "ok",
         provider: generated.provider,
         model: generated.model,
-        writer_version: PERSONAL_MYTH_WRITER_VERSION,
+        writer_version: generated.writerVersion ?? PERSONAL_MYTH_WRITER_VERSION,
         story_result: generated.result,
         qa: {
           passed: generated.quality.passed,

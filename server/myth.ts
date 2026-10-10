@@ -1,6 +1,10 @@
 import type { StoryInputs } from "../src/types";
 import { type ChatClient, RouterAIClient, fallbackEligible } from './routerai';
 import { MYTH_SCHEMA, strictFormat } from './structuredOutput';
+import {
+  PERSONAL_MYTH_WRITER_V41_VERSION, buildWriterV41UserMessage, isWriterV41Enabled, parseWriterV41Response,
+  writerV41MaxTokens, writerV41Routing, writerV41SystemMessage,
+} from './mythWriterV41';
 
 export const PERSONAL_MYTH_WRITER_VERSION = "personal-myth-v1.5-emergent-possibility";
 
@@ -29,7 +33,8 @@ export interface PersonalMythProvider {
   readonly name: string;
   readonly model: string;
   isReady(): boolean;
-  generate(prompt: string, timeoutMs: number): Promise<string>;
+  /** `mode: 'v41'` (opt-in writer path): `prompt` is the finished user message; system message and call parameters differ. */
+  generate(prompt: string, timeoutMs: number, mode?: 'v41'): Promise<string>;
   fallback?(): PersonalMythProvider | undefined;
 }
 
@@ -991,7 +996,21 @@ export class DeepSeekMythProvider implements PersonalMythProvider {
     return this.client.isReady() && this.model.length >= 3;
   }
 
-  async generate(prompt: string, timeoutMs: number): Promise<string> {
+  async generate(prompt: string, timeoutMs: number, mode?: 'v41'): Promise<string> {
+    if (mode === 'v41') {
+      // Writer v4.1: reviewed brief as system message, no json_schema response_format (the {title, story}
+      // contract is not MYTH_SCHEMA and is enforced by the strict local parser), bounded output budget.
+      return await this.client.call({
+        model: this.model,
+        messages: [
+          { role: "system", content: writerV41SystemMessage() },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: writerV41MaxTokens(),
+        routing: writerV41Routing(),
+        timeoutMs,
+      });
+    }
     return await this.client.call({
       model: this.model,
       messages: [
@@ -1022,6 +1041,43 @@ export interface PersonalMythGenerationResult {
   initialPassed: boolean;
   initialBlockers: string[];
   repairAttempted: boolean;
+  /** Set only by the opt-in writer v4.1 path; callers fall back to PERSONAL_MYTH_WRITER_VERSION. */
+  writerVersion?: string;
+}
+
+/**
+ * Writer v4.1 (PERSONAL_MYTH_WRITER=v41): exactly one model call, strict {title, story} parse, no repair,
+ * no editor, no fallback model. The result keeps the stored PersonalMythResult shape with the mirror/meaning/
+ * one_step/journal_question fields empty, so saved stories and old readers keep working.
+ */
+async function generatePersonalMythWriterV41(
+  request: PersonalMythRequest, provider: PersonalMythProvider, timeoutMs: number,
+): Promise<PersonalMythGenerationResult> {
+  if (!provider.isReady()) throw new Error("personal_myth_provider_not_ready");
+  const raw = await provider.generate(buildWriterV41UserMessage(request.answers), timeoutMs, 'v41');
+  const parsed = parseWriterV41Response(raw);
+  const story = cleanProse(parsed.story);
+  const paragraphs = story.split(/\n\n/u).filter(Boolean).length;
+  return {
+    provider: provider.name,
+    model: provider.model,
+    writerVersion: PERSONAL_MYTH_WRITER_V41_VERSION,
+    result: {
+      title: clean(parsed.title),
+      story,
+      mirror: { mainImage: "", innerTension: "", hiddenResource: "", newView: "" },
+      meaning: [],
+      one_step: "",
+      journal_question: "",
+      disclaimer: "Образный формат для саморефлексии. Не диагностика и не инструкция к действию.",
+    },
+    // Only the strict output contract was checked; none of the v1.x prose quality gates apply to this path.
+    quality: { passed: true, blockers: [], word_count: story.split(/\s+/u).filter(Boolean).length, paragraph_count: paragraphs },
+    repaired: false,
+    initialPassed: true,
+    initialBlockers: [],
+    repairAttempted: false,
+  };
 }
 
 export async function generatePersonalMyth(
@@ -1029,6 +1085,7 @@ export async function generatePersonalMyth(
   provider: PersonalMythProvider,
   timeoutMs: number,
 ): Promise<PersonalMythGenerationResult> {
+  if (isWriterV41Enabled()) return await generatePersonalMythWriterV41(request, provider, timeoutMs);
   // Preserve the original two-attempt wall-clock envelope, including fallback.
   const deadline = Date.now() + timeoutMs * 2;
   const bounded = (source:PersonalMythProvider):PersonalMythProvider => ({

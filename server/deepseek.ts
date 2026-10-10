@@ -16,6 +16,8 @@ export interface DeepSeekRequestOptions {
   response_format?: { type: "json_object" | "text" } | { type: "json_schema"; json_schema: {name:string; strict:true; schema:Record<string,unknown>} };
   timeoutMs?: number;
   retryContext?: RequestRetryContext;
+  /** RouterAI-only, used by the opt-in Myth writer v4.1 path; ignored elsewhere. */
+  routing?: { verbosity?: 'low' | 'medium' | 'high'; provider_only?: string[]; strict_finish?: boolean };
 }
 
 export class DeepSeekClient {
