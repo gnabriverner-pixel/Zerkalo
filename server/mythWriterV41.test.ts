@@ -1,5 +1,8 @@
 // @vitest-environment node
 import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { once } from "node:events";
 import express from "express";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -22,8 +25,10 @@ import {
   writerV41Routing, writerV41SystemMessage,
 } from "./mythWriterV41";
 import { WRITER_BRIEF_V41, WRITER_BRIEF_V41_SHA256 } from "./mythWriterV41Brief";
+import { WRITER_BRIEF_V42, WRITER_BRIEF_V42_SHA256 } from "./mythWriterV42Brief";
 
 afterEach(() => vi.unstubAllEnvs());
+const OPUS = "anthropic/claude-opus-5.5";
 
 // Synthetic answers: each one is recognisable by its own marker so the mapping is checkable.
 const answers = { q1: "СИТУАЦИЯ-один", q2: "ОБРАЗ-два", q3: "ЖИВОСТЬ-три", q4: "КАЧЕСТВО-четыре" };
@@ -40,7 +45,17 @@ describe("writer v4.1 brief and message template", () => {
   it("the brief is the reviewed text: SHA-256 of the text before .strip()", () => {
     expect(crypto.createHash("sha256").update(WRITER_BRIEF_V41, "utf8").digest("hex")).toBe(WRITER_BRIEF_V41_SHA256);
     expect(WRITER_BRIEF_V41_SHA256).toBe("b68d27b8ab926b2bbc49b819c937fadb75bd8f5b0f915f223cb7966faaab73a5");
-    expect(writerV41SystemMessage()).toBe(WRITER_BRIEF_V41.trim());
+  });
+
+  it("v4.2 = v4.1 + exactly the Astra paragraph before the JSON paragraph; v4.1 is unchanged; the path uses v4.2", () => {
+    const sha = (t: string) => crypto.createHash("sha256").update(t, "utf8").digest("hex");
+    expect(sha(WRITER_BRIEF_V41)).toBe("b68d27b8ab926b2bbc49b819c937fadb75bd8f5b0f915f223cb7966faaab73a5");
+    expect(sha(WRITER_BRIEF_V42)).toBe(WRITER_BRIEF_V42_SHA256);
+    expect(WRITER_BRIEF_V42_SHA256).toBe("9e2b222501c17eceb7eeb491c92c9c7fe77d0daa48d92c7aa14ae742cbc44967");
+    const para = "Признавай переживание героя, но не подтверждай автоматически его обобщения о других людях. Не делай окружающих карикатурно пустыми ради его правоты; поворот может проявиться в его собственном конкретном действии или договорённости, без морали и принудительного примирения.";
+    const marker = "Верни один JSON-объект с двумя полями";
+    expect(WRITER_BRIEF_V42).toBe(WRITER_BRIEF_V41.replace(marker, para + "\n\n" + marker));
+    expect(writerV41SystemMessage()).toBe(WRITER_BRIEF_V42.trim());
   });
 
   it("builds the exact user message; template items 3 and 4 map to site q4 and q3", () => {
@@ -134,7 +149,7 @@ describe("opt-in generation path", () => {
     expect(generate).toHaveBeenCalledTimes(1);
     expect(generate.mock.calls[0][0]).toBe(buildWriterV41UserMessage(answers));
     expect(generate.mock.calls[0][2]).toBe("v41");
-    expect(out.writerVersion).toBe("personal-myth-writer-v4.1");
+    expect(out.writerVersion).toBe("personal-myth-writer-v4.2");
     expect(out.result).toMatchObject({
       title: "Синтетическое название", story, mirror: { mainImage: "", innerTension: "", hiddenResource: "", newView: "" },
       meaning: [], one_step: "", journal_question: "",
@@ -200,7 +215,6 @@ describe("RouterAI transport for the opt-in path (fake transport, no network)", 
 });
 
 describe("writer v4.1 model: accepted control-call parameters, tariff and reserve", () => {
-  const OPUS = "anthropic/claude-opus-5.5";
   const reply = (finish = "stop") => ({
     ok: true, status: 200,
     json: async () => ({ provider: "Anthropic", model: OPUS, choices: [{ finish_reason: finish, message: { content: okJson } }], usage: {} }),
@@ -294,15 +308,18 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
     FREE_PREVIEW_ENABLED: "true", FREE_PREVIEW_SUPPORT_URL: "https://t.me/synthetic_help", COMMERCE_BUDGET_APPROVED: "true",
     COMMERCE_FREE_BUDGET_RUB: "1000", COMMERCE_FREE_ATTEMPT_MAX: "8", COMMERCE_PAYMENT_MODE: "disabled", LOCAL_STORY_SETUP: "true",
   };
-  async function commerceApp(generate: (p: string, ms: number, m?: "v41") => Promise<string>) {
+  const asProvider = (generate: (p: string, ms: number, m?: "v41") => Promise<string>): PersonalMythProvider =>
+    ({ name: "routerai", model: "synthetic/model", isReady: () => true, generate });
+  async function commerceApp(modelProvider: PersonalMythProvider, opts: { filename?: string; cookies?: string } = {}) {
     for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
     vi.stubEnv("PERSONAL_MYTH_WRITER", "v41");
     // Same fixture clock as the other commerce tests (tests/setup.ts): the tariff snapshot must be fresh.
     const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse(tariffs.captured_at) + 3600000);
-    const modelProvider: PersonalMythProvider = { name: "routerai", model: "synthetic/model", isReady: () => true, generate };
-    const store = new CommerceStore(":memory:", key), app = express();
+    const store = new CommerceStore(opts.filename ?? ":memory:", key), app = express();
     app.use(express.json()); installConsentRoutes(app);
-    new AIBudget(() => store, env).db(); new FreePreview(() => store, env).activate();
+    new AIBudget(() => store, env).db();
+    { const preview = new FreePreview(() => store, env); if (preview.status().phase === "not_started") preview.activate(); }
+    registerAIBudget(new AIBudget(() => store, env, fetch, () => Date.parse(tariffs.captured_at) + 3600000));
     installStoryCommerce(app, {
       store, ready: () => true,
       myth: async (body: any) => { const g = await generatePersonalMyth(body, modelProvider, 5000); return { status: "ok", story_result: g.result, writer_version: g.writerVersion }; },
@@ -310,9 +327,9 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
     });
     const server = app.listen(0, "127.0.0.1"); await once(server, "listening");
     const origin = `http://127.0.0.1:${(server.address() as any).port}`;
-    let cookies = "";
-    const call = async (url: string, body?: any) => {
-      const r = await fetch(origin + url, { method: body === undefined ? "GET" : "POST", headers: { Origin: origin, Cookie: cookies, "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    let cookies = opts.cookies ?? "";
+    const call = async (url: string, body?: any, signal?: AbortSignal) => {
+      const r = await fetch(origin + url, { method: body === undefined ? "GET" : "POST", signal, headers: { Origin: origin, Cookie: cookies, "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
       for (const value of r.headers.getSetCookie()) {
         const pair = value.split(";")[0], name = pair.split("=")[0];
         cookies = cookies.split("; ").filter(v => v && !v.startsWith(name + "=")).concat(pair).join("; ");
@@ -320,14 +337,14 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
       return { status: r.status, body: await r.json() as any };
     };
     await call("/api/consent", { accepted: true, adult: true, version: CONSENT_VERSION, scope: "core" });
-    await call("/api/stories/account", { storage_accepted: true, storage_version: "personal-history-storage-v1" });
-    return { call, close: () => { clock.mockRestore(); server.close(); server.closeAllConnections(); store.close(); } };
+    if (!opts.cookies) await call("/api/stories/account", { storage_accepted: true, storage_version: "personal-history-storage-v1" });
+    return { call, store, cookies: () => cookies, close: () => { registerAIBudget(undefined); clock.mockRestore(); server.close(); server.closeAllConnections(); store.close(); } };
   }
 
   it("same request_id while running -> 202 and one model call; afterwards a replay, still one call", async () => {
     let finish: ((value: string) => void) | undefined;
     const generate = vi.fn((_p: string, _ms: number, _m?: "v41") => new Promise<string>(resolve => { finish = resolve; }));
-    const s = await commerceApp(generate);
+    const s = await commerceApp(asProvider(generate));
     try {
       const body = { request_id: "writer_v41_req_001", answers: STORY_SAMPLE_ANSWERS };
       const pending = s.call("/api/personal-myth", body);
@@ -352,7 +369,7 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
 
   it("crisis wording in the input is still caught before any model call", async () => {
     const generate = vi.fn(async () => okJson);
-    const s = await commerceApp(generate);
+    const s = await commerceApp(asProvider(generate));
     try {
       const crisis = { ...STORY_SAMPLE_ANSWERS, q1: "Я больше не могу жить так дальше" };
       const r = await s.call("/api/personal-myth", { request_id: "writer_v41_crisis_01", answers: crisis });
@@ -365,12 +382,100 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
   it("a rejected format (help menu) leaves the order retryable and shows no raw model text", async () => {
     const menu = "Чем могу помочь?\n1. Написать сказку\n2. Объяснить задание";
     const generate = vi.fn(async () => menu);
-    const s = await commerceApp(generate);
+    const s = await commerceApp(asProvider(generate));
     try {
       const r = await s.call("/api/personal-myth", { request_id: "writer_v41_menu_001", answers: STORY_SAMPLE_ANSWERS });
       expect(r.status).toBeGreaterThanOrEqual(400);
       expect(JSON.stringify(r.body)).not.toContain("Написать сказку");
       expect(r.body.story_result).toBeUndefined();
+    } finally { s.close(); }
+  });
+
+  const input = { request_id: "writer_v41_cut_0001", answers: STORY_SAMPLE_ANSWERS };
+  for (const code of ["provider_call_timeout", "provider_unavailable"]) {
+    it(`${code}: the order becomes uncertain, same request_id only reads state, a new id starts no model call`, async () => {
+      const generate = vi.fn(async () => { throw new Error(code); });
+      const s = await commerceApp(asProvider(generate));
+      try {
+        const first = await s.call("/api/personal-myth", input);
+        expect(first.status).toBe(202);
+        expect(first.body.status).toBe("uncertain");
+        expect(first.body.story_result).toBeUndefined();
+        const again = await s.call("/api/personal-myth", input);
+        expect(again.status).toBe(202);
+        expect(again.body.status).toBe("uncertain");
+        const other = await s.call("/api/personal-myth", { ...input, request_id: "writer_v41_cut_0002" });
+        expect(other.body.code).toBe("myth_not_available");
+        expect(generate).toHaveBeenCalledTimes(1);
+        const order = (await s.call("/api/stories")).body.orders[0];
+        expect(order.state).toBe("generating");
+        expect(s.store.db.prepare("SELECT state FROM operations").all()).toEqual([{ state: "uncertain" }]);
+      } finally { s.close(); }
+    });
+  }
+
+  it("a definite provider error (HTTP 503 from the gateway) is a failed attempt, not uncertain", async () => {
+    const generate = vi.fn(async () => { throw new Error("provider_http_503"); });
+    const s = await commerceApp(asProvider(generate));
+    try {
+      const first = await s.call("/api/personal-myth", input);
+      expect(first.status).toBe(502);
+      expect(s.store.db.prepare("SELECT state FROM operations").all()).toEqual([{ state: "failed" }]);
+    } finally { s.close(); }
+  });
+
+  it("server restart after uncertain: same state, no model call, the AI reservation stays 'uncertain'; diagnostics carry no answers", async () => {
+    const events: any[] = [];
+    const transport = vi.fn(async () => { const e: any = new TypeError("fetch failed"); e.cause = Object.assign(new Error("socket hang up"), { code: "UND_ERR_SOCKET" }); throw e; });
+    const client = new RouterAIClient({ ROUTERAI_API_KEY: "synthetic-test-key" } as any, OPUS, transport as any, e => events.push(e));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "v41-restart-"));
+    const filename = path.join(dir, "c.sqlite");
+    const first = await commerceApp(new DeepSeekMythProvider({}, client), { filename });
+    let cookies = "";
+    try {
+      const r = await first.call("/api/personal-myth", input);
+      expect(r.status, JSON.stringify(r.body)).toBe(202);
+      expect(r.body.status).toBe("uncertain");
+      expect(transport).toHaveBeenCalledTimes(1);
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({ outcome: "provider_unavailable", errorName: "TypeError", causeCode: "UND_ERR_SOCKET", stage: "before_headers" });
+      expect(JSON.stringify(events[0])).not.toContain("СИТУАЦИЯ");
+      expect(JSON.stringify(events[0])).not.toContain(STORY_SAMPLE_ANSWERS.q1);
+      cookies = first.cookies();
+    } finally { first.close(); }
+    const generate = vi.fn(async () => okJson);
+    const second = await commerceApp(asProvider(generate), { filename, cookies });
+    try {
+      const again = await second.call("/api/personal-myth", input);
+      expect(again.status).toBe(202);
+      expect(again.body.status).toBe("uncertain");
+      const other = await second.call("/api/personal-myth", { ...input, request_id: "writer_v41_cut_0009" });
+      expect(other.body.code).toBe("myth_not_available");
+      expect(generate).not.toHaveBeenCalled();
+      expect(transport).toHaveBeenCalledTimes(1);
+      expect(second.store.db.prepare("SELECT model, state FROM ai_budget_attempts").all()).toEqual([{ model: OPUS, state: "uncertain" }]);
+    } finally { second.close(); }
+  });
+
+  it("a closed tab does not cancel the work: the result is saved when the provider answer arrives; a new request_id then only replays", async () => {
+    let finish: ((value: string) => void) | undefined;
+    const generate = vi.fn((_p: string, _ms: number, _m?: "v41") => new Promise<string>(resolve => { finish = resolve; }));
+    const s = await commerceApp(asProvider(generate));
+    try {
+      const controller = new AbortController();
+      const pending = s.call("/api/personal-myth", input, controller.signal).catch(() => "aborted");
+      await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
+      controller.abort();
+      expect(await pending).toBe("aborted");
+      finish!(okJson);
+      await vi.waitFor(async () => {
+        const order = (await s.call("/api/stories")).body.orders[0];
+        expect(order.data.myth?.title).toBe("Синтетическое название");
+      });
+      const refreshed = await s.call("/api/personal-myth", { ...input, request_id: "writer_v41_cut_0003" });
+      expect(refreshed.body.replayed).toBe(true);
+      expect(refreshed.body.story_result.title).toBe("Синтетическое название");
+      expect(generate).toHaveBeenCalledTimes(1);
     } finally { s.close(); }
   });
 });

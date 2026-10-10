@@ -16,6 +16,9 @@ export const MYTH_COPY = {
   mayTakeMinutes: 'Это может занять несколько минут.',
   elapsed: (sec: number) => `Прошло ${sec} с. Обновлять страницу не нужно.`,
   unknown: 'Пока не удалось получить историю. Она ещё может быть в работе.',
+  // Honest wording for an unconfirmed result (no promise of recovery); the support link is shown only when the preview provides one.
+  unconfirmed: 'Результат не подтверждён. Если история не появится, обратитесь в поддержку.',
+  supportLink: 'Написать в поддержку',
   check: 'Проверить готовность',
   storageOn: 'Если история будет готова, она появится в сохранённых.',
   storageOff: 'Сохранение историй выключено. Готовый результат доступен временно; не закрывайте страницу, пока мы проверяем готовность.',

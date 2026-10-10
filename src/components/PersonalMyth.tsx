@@ -416,6 +416,12 @@ export default function PersonalMyth({
                   {waitState === 'unknown' && (
                     <p className="mb-3 text-xs sm:text-sm font-normal">{storageOn ? MYTH_COPY.storageOn : MYTH_COPY.storageOff}</p>
                   )}
+                  {waitState === 'unknown' && (
+                    <p className="mb-3 text-xs sm:text-sm font-normal">
+                      {MYTH_COPY.unconfirmed}
+                      {freePreview?.support_url && (<> <a className="underline" href={freePreview.support_url} target="_blank" rel="noreferrer">{MYTH_COPY.supportLink}</a></>)}
+                    </p>
+                  )}
                   {(waitState === 'unknown' || waitState === 'notFound') && (
                     <button type="button" disabled={checking} onClick={handleCheck}
                       className="px-4 py-2 bg-red-900/60 hover:bg-red-800 text-xs font-mono uppercase tracking-wider text-red-100 rounded-xs transition-colors cursor-pointer mr-2">

@@ -15,7 +15,13 @@ export interface ProviderEvent {
   inputTokens: number | null; outputTokens: number | null;
   /** Bounded gateway error code when the transport refused without an upstream answer. */
   gatewayCode: number | null;
+  /** Failure diagnostics, never user content: error name, undici/node cause code, stage reached, provider response id. */
+  errorName?: string | null;
+  causeCode?: string | null;
+  stage?: 'before_headers' | 'reading_body' | 'complete';
+  responseId?: string | null;
 }
+const safeToken = (value: unknown): string | null => typeof value === 'string' && /^[A-Za-z0-9_.:-]{1,80}$/.test(value) ? value : null;
 export interface ChatClient {
   readonly name?: string;
   readonly defaultModel?: string;
@@ -110,6 +116,7 @@ export class RouterAIClient implements ChatClient {
     const responseFormat = transportResponseFormat(options.response_format, this.defaultModel);
     const budget=await reserveProviderAttempt(this.defaultModel,{...options,response_format:responseFormat});
     let transportComplete=false;
+    event.stage='before_headers';
     try {
       const response = await this.transport(`${ROUTERAI_URL}/chat/completions`, {
         method:'POST', headers:{Authorization:`Bearer ${this.env.ROUTERAI_API_KEY!.trim()}`,'Content-Type':'application/json'},
@@ -125,9 +132,11 @@ export class RouterAIClient implements ChatClient {
           ...(options.routing?.provider_only?.length ? {provider:{only:options.routing.provider_only,allow_fallbacks:false}} : {}),
         }),
       });
+      event.stage='reading_body';event.responseId=safeToken(response.headers?.get?.('x-generation-id'));
       if (!response.ok) throw new Error(`provider_http_${response.status}`);
       let payload: any;
       try { payload = await response.json(); } catch { throw new Error('provider_invalid_json'); }
+      event.stage='complete';event.responseId=event.responseId??safeToken(payload?.id);
       const usage = payload?.usage;
       event.usageCost = typeof usage?.cost === 'number' ? usage.cost : null;
       event.inputTokens = typeof usage?.prompt_tokens === 'number' ? usage.prompt_tokens : null;
@@ -164,6 +173,7 @@ export class RouterAIClient implements ChatClient {
       const code = /^(provider_|routerai_)[a-z0-9_]+$/.test(raw.message) ? raw.message
         : /timeout|abort/i.test(raw.name) ? 'provider_call_timeout' : 'provider_unavailable';
       event.outcome = code;
+      event.errorName = safeToken(raw.name);event.causeCode = safeToken((raw as any).cause?.code);
       throw new Error(code);
     } finally {
       event.latencyMs = Date.now() - started;

@@ -384,6 +384,18 @@ export class CommerceStore {
       this.event('delivery_error',order);
     });
   }
+  /** Connection lost after the request may have reached the provider: the attempt is neither delivered nor released.
+   * The operation stays 'uncertain' (blocks any new model call for this order until an operator acknowledges it)
+   * and the AI budget reservation is kept as 'uncertain' too. */
+  markUncertain(account:string,id:string,key:string){
+    return this.tx(()=>{
+      const order=this.order(account,id);
+      const op=this.db.prepare('SELECT kind,state FROM operations WHERE order_id=? AND request_key=?').get(id,key) as any;
+      if(op?.state!=='running')return;
+      this.db.prepare("UPDATE operations SET state='uncertain' WHERE order_id=? AND request_key=?").run(id,key);
+      this.event('delivery_error',order);
+    });
+  }
   acknowledgeUncertain(account:string,id:string){
     return this.tx(()=>{
       this.order(account,id);

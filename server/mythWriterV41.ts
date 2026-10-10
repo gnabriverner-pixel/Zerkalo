@@ -1,20 +1,20 @@
 import type { StoryInputs } from "../src/types";
-import { WRITER_BRIEF_V41 } from "./mythWriterV41Brief";
+import { WRITER_BRIEF_V42 } from "./mythWriterV42Brief";
 export { WRITER_V41_MODEL } from "./routerai";
 
 /**
  * Personal Myth writer v4.1 ("title + story" only). Off by default: the site keeps the old path unless
  * PERSONAL_MYTH_WRITER=v41 is set. No editor, no automatic regeneration, no fallback model on this path.
  */
-export const PERSONAL_MYTH_WRITER_V41_VERSION = "personal-myth-writer-v4.1";
+export const PERSONAL_MYTH_WRITER_V41_VERSION = "personal-myth-writer-v4.2";
 export const WRITER_V41_FAILURE_PREFIX = "personal_myth_quality_failed:writer_v41_";
 
 export function isWriterV41Enabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return String(env.PERSONAL_MYTH_WRITER ?? "").trim() === "v41";
 }
 
-/** The system message is the reviewed brief, sent as `.strip()`ped text (as in the control call). */
-export const writerV41SystemMessage = (): string => WRITER_BRIEF_V41.trim();
+/** The system message of the opt-in path is brief v4.2 (v4.1 + one paragraph), sent as `.strip()`ped text. */
+export const writerV41SystemMessage = (): string => WRITER_BRIEF_V42.trim();
 
 /**
  * Site questions: q1 situation, q2 image of the state, q3 point of aliveness, q4 sought quality.

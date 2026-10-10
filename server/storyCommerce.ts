@@ -255,6 +255,12 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
       const updated=db.complete(id,order.id,requestKey,result,kind==='albert'?input.message:undefined);
       return res.json({...result,order:publicOrder(updated)});
     }catch(error:any){
+      // The request may have reached the provider (timeout / lost socket / unreadable body): do not mark it failed and do
+      // not offer a new call. Keep the reservation, answer 202 'uncertain'; the same request_id only reads this state.
+      if(/^(provider_call_timeout|provider_unavailable|provider_invalid_json)$/.test(String(error?.message||''))){
+        try{db.markUncertain(id,order.id,requestKey);}catch{/* Deletion/revocation wins over a delayed response. */}
+        return res.status(202).json({status:'uncertain',order:publicOrder(db.order(id,order.id))});
+      }
       const code=error?.canonical_error;
       if(['paid_service_waiting','free_budget_exhausted','ai_budget_unconfigured','ai_budget_recovery_waiting','ai_tariffs_stale','ai_concurrency_limit'].includes(code))error=new CommerceError(code,code==='ai_concurrency_limit'?429:503);
       try{db.fail(id,order.id,requestKey);Object.assign(error,{operation_failed:true});}catch{/* Deletion/revocation wins over a delayed response. */}throw error;
