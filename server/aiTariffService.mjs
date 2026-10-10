@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import policy from './aiBudgetPolicy.json' with {type:'json'};
-const MODELS=['deepseek/deepseek-v4.1-flash','anthropic/claude-sonnet-5','openai/gpt-5.4-mini'];
+const MODELS=['deepseek/deepseek-v4.1-flash','anthropic/claude-sonnet-5','openai/gpt-5.4-mini','anthropic/claude-opus-5.5'];
 const TTL=86400000, REFRESH=43200000;
 export const budgetPolicy=policy;
 const positive=x=>typeof x==='number'&&Number.isFinite(x)&&x>0;

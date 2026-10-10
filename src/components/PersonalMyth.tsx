@@ -76,6 +76,19 @@ export default function PersonalMyth({
   const setWait = (value: typeof waitState) => { waitRef.current = value; setWaitState(value); };
   const [checking, setChecking] = useState(false);
   const [storageOn, setStorageOn] = useState(false);
+  // Opt-in writer v4.1: the server reports it; then the four control-check questions are asked in template order.
+  const [writerV41, setWriterV41] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    // Plain fetch on purpose: a config read must not open the consent dialog. Any failure keeps the default questions.
+    try {
+      fetch('/api/personal-myth/config', { cache: 'no-store' })
+        .then(r => (r.ok ? r.json() : null))
+        .then(c => { if (alive && c?.writer === 'v41') setWriterV41(true); })
+        .catch(() => { /* default questions */ });
+    } catch { /* default questions */ }
+    return () => { alive = false; };
+  }, []);
 
   // Stop waiting/re-sending when the component goes away.
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -128,7 +141,7 @@ export default function PersonalMyth({
     }
   }, [initialInputs, userQuestion]);
 
-  const stepMeta = [
+  const defaultStepMeta = [
     {
       id: 'q1',
       tag: '01 / 04 · Ситуация',
@@ -158,6 +171,19 @@ export default function PersonalMyth({
       placeholder: 'Назови качество или состояние своими словами. Не правильный ответ, а то, чего действительно ищешь.'
     }
   ];
+
+  // Answer fields keep their meaning (q3 = alive moment, q4 = what is missing); only the asking order and wording differ.
+  const v41StepMeta = [
+    { id: 'q1', tag: '01 / 04 · Тяжесть', orbNumber: 4, title: 'Что сейчас тяжелее всего',
+      placeholder: 'Один-два предложения. Если ничего не тяготит — так и напиши; выдумывать проблему не нужно.' },
+    { id: 'q2', tag: '02 / 04 · Образ', orbNumber: 8, title: 'Если бы это состояние было стихией или существом — как бы оно выглядело, звучало, пахло',
+      placeholder: 'Подойдёт любой образ. Не приходит — так и напиши.' },
+    { id: 'q4', tag: '03 / 04 · Чего не хватает', orbNumber: 6, title: 'Чего сейчас не хватает больше всего',
+      placeholder: 'Своими словами, коротко.' },
+    { id: 'q3', tag: '04 / 04 · Живой момент', orbNumber: 5, title: 'Момент, когда чувствовал себя по-настоящему живым или нужным',
+      placeholder: 'Один небольшой эпизод. Если не вспоминается — так и напиши.' },
+  ];
+  const stepMeta = writerV41 ? v41StepMeta : defaultStepMeta;
 
   const handleNext = () => {
     if (step < 4) {

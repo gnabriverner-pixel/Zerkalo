@@ -1,5 +1,6 @@
 import type { StoryInputs } from "../src/types";
 import { WRITER_BRIEF_V41 } from "./mythWriterV41Brief";
+export { WRITER_V41_MODEL } from "./routerai";
 
 /**
  * Personal Myth writer v4.1 ("title + story" only). Off by default: the site keeps the old path unless

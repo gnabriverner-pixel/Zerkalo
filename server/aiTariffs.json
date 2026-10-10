@@ -1603,6 +1603,31 @@
           "variable_pricings": []
         }
       ]
+    },
+    {
+      "model": "anthropic/claude-opus-5.5",
+      "source": "https://routerai.ru/api/v1/models/anthropic/claude-opus-5.5/endpoints",
+      "input_rate": 0.00044150496,
+      "output_rate": 0.0022075248,
+      "endpoints": [
+        {
+          "name": "Anthropic | anthropic/claude-opus-5.5",
+          "provider_name": "Anthropic",
+          "tag": "anthropic",
+          "country": "us",
+          "context_length": 1000000,
+          "max_completion_tokens": 128000,
+          "pricing": {
+            "prompt": 0.00044150496,
+            "completion": 0.0022075248
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token"
+          },
+          "variable_pricings": []
+        }
+      ]
     }
   ]
 }

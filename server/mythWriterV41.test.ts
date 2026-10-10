@@ -11,7 +11,9 @@ import { AIBudget } from "./aiBudget";
 import { CONSENT_VERSION } from "../src/services/consent";
 import { STORY_SAMPLE_ANSWERS } from "./storySample";
 import tariffs from "./aiTariffs.json";
-import { RouterAIClient, FALLBACK_MODEL } from "./routerai";
+import { RouterAIClient, FALLBACK_MODEL, PRIMARY_MODEL, WRITER_V41_MODEL } from "./routerai";
+import { registerAIBudget } from "./aiBudget";
+import { estimateAttempt } from "./aiTariffService.mjs";
 import {
   DeepSeekMythProvider, generatePersonalMyth, parsePersonalMythRequest, type PersonalMythProvider,
 } from "./myth";
@@ -197,20 +199,106 @@ describe("RouterAI transport for the opt-in path (fake transport, no network)", 
   });
 });
 
+describe("writer v4.1 model: accepted control-call parameters, tariff and reserve", () => {
+  const OPUS = "anthropic/claude-opus-5.5";
+  const reply = (finish = "stop") => ({
+    ok: true, status: 200,
+    json: async () => ({ provider: "Anthropic", model: OPUS, choices: [{ finish_reason: finish, message: { content: okJson } }], usage: {} }),
+  });
+  const messages = [{ role: "system" as const, content: writerV41SystemMessage() }, { role: "user" as const, content: buildWriterV41UserMessage(answers) }];
+  const fixtureNow = Date.parse(tariffs.captured_at) + 3600000;
+
+  it("is allowed; an unknown model is still refused by the client and by the tariff table", () => {
+    expect(WRITER_V41_MODEL).toBe(OPUS);
+    expect(() => new RouterAIClient({} as any, OPUS)).not.toThrow();
+    expect(() => new RouterAIClient({} as any, "anthropic/claude-opus-9")).toThrow("routerai_model_not_allowed");
+    expect(() => estimateAttempt(tariffs, "anthropic/claude-opus-9", messages, 5000, fixtureNow)).toThrow("ai_price_bound_unknown");
+  });
+
+  it("tariff row is per TOKEN in RUB, equal to the checked catalog values", () => {
+    const row = tariffs.rows.find(r => r.model === OPUS)!;
+    expect([row.input_rate, row.output_rate]).toEqual([0.00044150496, 0.0022075248]);
+    expect(row.endpoints[0].pricing_units).toEqual({ prompt: "token", completion: "token" });
+    const e = estimateAttempt(tariffs, OPUS, messages, 6000, fixtureNow);
+    expect(e.cost_micro).toBe(Math.ceil((e.input_bytes * 0.00044150496 + 6000 * 0.0022075248) * 1.25 * 1e6));
+  });
+
+  it("request body reproduces the control call for the v41 path (and only there)", async () => {
+    const transport = vi.fn(async () => reply());
+    const c = new RouterAIClient({ ROUTERAI_API_KEY: "synthetic-test-key" } as any, OPUS, transport as any, () => undefined);
+    const provider = new DeepSeekMythProvider({}, c);
+    expect(provider.model).toBe(OPUS);
+    vi.stubEnv("PERSONAL_MYTH_WRITER", "v41");
+    await provider.generate(buildWriterV41UserMessage(answers), 1000, "v41");
+    const body = JSON.parse((transport.mock.calls[0] as any[])[1].body);
+    expect(body).toEqual({
+      model: OPUS,
+      messages,
+      max_tokens: 6000,
+      stream: false,
+      include_reasoning: false,
+      verbosity: "low",
+      provider: { only: ["anthropic"], allow_fallbacks: false },
+    });
+    expect("temperature" in body || "response_format" in body || "reasoning" in body || "thinking" in body).toBe(false);
+  });
+
+  it("the old path request body is unchanged for the primary model", async () => {
+    const transport = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ provider: "DeepSeek", model: PRIMARY_MODEL, choices: [{ finish_reason: "stop", message: { content: okJson } }] }) }));
+    const c = new RouterAIClient({ ROUTERAI_API_KEY: "synthetic-test-key" } as any, PRIMARY_MODEL, transport as any, () => undefined);
+    await c.call({ messages, temperature: 0.6, max_tokens: 100 });
+    const body = JSON.parse((transport.mock.calls[0] as any[])[1].body);
+    expect(body).toMatchObject({ temperature: 0.6, thinking: { type: "disabled" }, provider: { only: ["deepseek"], allow_fallbacks: false } });
+    expect(body.stream).toBeUndefined();
+    expect(body.verbosity).toBeUndefined();
+  });
+
+  describe("budget guard", () => {
+    const key = "f".repeat(64);
+    const run = async (freeBudgetRub: string) => {
+      const env = {
+        FREE_PREVIEW_ENABLED: "true", COMMERCE_BUDGET_APPROVED: "true", COMMERCE_DATA_KEY: key,
+        COMMERCE_FREE_BUDGET_RUB: freeBudgetRub, COMMERCE_FREE_ATTEMPT_MAX: "8",
+      };
+      for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
+      const clock = vi.spyOn(Date, "now").mockReturnValue(fixtureNow);
+      const store = new CommerceStore(":memory:", key);
+      registerAIBudget(new AIBudget(() => store, env, fetch, () => fixtureNow));
+      const transport = vi.fn(async () => reply());
+      const c = new RouterAIClient({ ROUTERAI_API_KEY: "synthetic-test-key" } as any, OPUS, transport as any, () => undefined);
+      const outcome = await c.call({ messages, max_tokens: 6000 }).then(() => "sent", e => (e as Error).message);
+      const rows = store.db.prepare("SELECT model, state FROM ai_budget_attempts").all();
+      registerAIBudget(undefined); clock.mockRestore(); store.close();
+      return { outcome, transport, rows };
+    };
+
+    it("reserves before sending; with enough budget the call goes out", async () => {
+      const r = await run("1000");
+      expect(r.outcome).toBe("sent");
+      expect(r.transport).toHaveBeenCalledTimes(1);
+      expect(r.rows).toEqual([expect.objectContaining({ model: OPUS })]);
+    });
+
+    it("refuses before any network I/O when the free budget cannot cover the reserve", async () => {
+      const r = await run("5");
+      expect(r.outcome).toBe("free_budget_exhausted");
+      expect(r.transport).not.toHaveBeenCalled();
+      expect(r.rows).toEqual([]);
+    });
+  });
+});
+
 describe("waiting: the opt-in path shares the existing request_id replay", () => {
   const key = "f".repeat(64);
   const env = {
     FREE_PREVIEW_ENABLED: "true", FREE_PREVIEW_SUPPORT_URL: "https://t.me/synthetic_help", COMMERCE_BUDGET_APPROVED: "true",
     COMMERCE_FREE_BUDGET_RUB: "1000", COMMERCE_FREE_ATTEMPT_MAX: "8", COMMERCE_PAYMENT_MODE: "disabled", LOCAL_STORY_SETUP: "true",
   };
-
-  it("same request_id while running -> 202 and one model call; afterwards a replay, still one call", async () => {
+  async function commerceApp(generate: (p: string, ms: number, m?: "v41") => Promise<string>) {
     for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
     vi.stubEnv("PERSONAL_MYTH_WRITER", "v41");
     // Same fixture clock as the other commerce tests (tests/setup.ts): the tariff snapshot must be fresh.
     const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse(tariffs.captured_at) + 3600000);
-    let finish: ((value: string) => void) | undefined;
-    const generate = vi.fn((_p: string, _ms: number, _m?: "v41") => new Promise<string>(resolve => { finish = resolve; }));
     const modelProvider: PersonalMythProvider = { name: "routerai", model: "synthetic/model", isReady: () => true, generate };
     const store = new CommerceStore(":memory:", key), app = express();
     app.use(express.json()); installConsentRoutes(app);
@@ -231,14 +319,21 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
       }
       return { status: r.status, body: await r.json() as any };
     };
+    await call("/api/consent", { accepted: true, adult: true, version: CONSENT_VERSION, scope: "core" });
+    await call("/api/stories/account", { storage_accepted: true, storage_version: "personal-history-storage-v1" });
+    return { call, close: () => { clock.mockRestore(); server.close(); server.closeAllConnections(); store.close(); } };
+  }
+
+  it("same request_id while running -> 202 and one model call; afterwards a replay, still one call", async () => {
+    let finish: ((value: string) => void) | undefined;
+    const generate = vi.fn((_p: string, _ms: number, _m?: "v41") => new Promise<string>(resolve => { finish = resolve; }));
+    const s = await commerceApp(generate);
     try {
-      await call("/api/consent", { accepted: true, adult: true, version: CONSENT_VERSION, scope: "core" });
-      await call("/api/stories/account", { storage_accepted: true, storage_version: "personal-history-storage-v1" });
       const body = { request_id: "writer_v41_req_001", answers: STORY_SAMPLE_ANSWERS };
-      const pending = call("/api/personal-myth", body);
+      const pending = s.call("/api/personal-myth", body);
       await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
       for (let i = 0; i < 3; i++) {
-        const again = await call("/api/personal-myth", body);
+        const again = await s.call("/api/personal-myth", body);
         expect(again.status).toBe(202);
         expect(again.body.story_result).toBeUndefined();
       }
@@ -246,12 +341,36 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
       finish!("```json\n" + okJson + "\n```");
       const done = await pending;
       expect(done.body.story_result.title).toBe("Синтетическое название");
-      const replay = await call("/api/personal-myth", body);
+      const replay = await s.call("/api/personal-myth", body);
       expect(replay.body.replayed).toBe(true);
       expect(replay.body.story_result.story).toBe(story);
       expect(generate).toHaveBeenCalledTimes(1);
-      const saved = (await call("/api/stories")).body.orders[0];
+      const saved = (await s.call("/api/stories")).body.orders[0];
       expect(saved.data.myth).toMatchObject({ title: "Синтетическое название", story, one_step: "" });
-    } finally { clock.mockRestore(); server.close(); server.closeAllConnections(); store.close(); }
+    } finally { s.close(); }
+  });
+
+  it("crisis wording in the input is still caught before any model call", async () => {
+    const generate = vi.fn(async () => okJson);
+    const s = await commerceApp(generate);
+    try {
+      const crisis = { ...STORY_SAMPLE_ANSWERS, q1: "Я больше не могу жить так дальше" };
+      const r = await s.call("/api/personal-myth", { request_id: "writer_v41_crisis_01", answers: crisis });
+      expect(r.body.status).toBe("crisis");
+      expect(r.body.story_result).toBeUndefined();
+      expect(generate).not.toHaveBeenCalled();
+    } finally { s.close(); }
+  });
+
+  it("a rejected format (help menu) leaves the order retryable and shows no raw model text", async () => {
+    const menu = "Чем могу помочь?\n1. Написать сказку\n2. Объяснить задание";
+    const generate = vi.fn(async () => menu);
+    const s = await commerceApp(generate);
+    try {
+      const r = await s.call("/api/personal-myth", { request_id: "writer_v41_menu_001", answers: STORY_SAMPLE_ANSWERS });
+      expect(r.status).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(r.body)).not.toContain("Написать сказку");
+      expect(r.body.story_result).toBeUndefined();
+    } finally { s.close(); }
   });
 });

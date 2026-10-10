@@ -5,6 +5,8 @@ export const ROUTERAI_URL = 'https://routerai.ru/api/v1';
 export const PRIMARY_MODEL = 'deepseek/deepseek-v4.1-flash';
 export const FALLBACK_MODEL = 'anthropic/claude-sonnet-5';
 export const MEETING_FALLBACK_MODEL = 'openai/gpt-5.4-mini';
+/** Opt-in Myth writer v4.1 only (PERSONAL_MYTH_WRITER=v41); never a fallback of another path. */
+export const WRITER_V41_MODEL = 'anthropic/claude-opus-5.5';
 export interface ProviderEvent {
   gateway: 'routerai'; model: string; upstream: string | null;
   responseModel: string | null;
@@ -76,7 +78,7 @@ export class RouterAIClient implements ChatClient {
     private readonly observe: (event: ProviderEvent) => void = event => console.info('provider_completion', JSON.stringify(event)),
     private readonly fallbackModel: string = FALLBACK_MODEL,
   ) {
-    if (![PRIMARY_MODEL, FALLBACK_MODEL, MEETING_FALLBACK_MODEL].includes(defaultModel)) throw new Error('routerai_model_not_allowed');
+    if (![PRIMARY_MODEL, FALLBACK_MODEL, MEETING_FALLBACK_MODEL, WRITER_V41_MODEL].includes(defaultModel)) throw new Error('routerai_model_not_allowed');
     if (![FALLBACK_MODEL, MEETING_FALLBACK_MODEL].includes(fallbackModel)) throw new Error('routerai_fallback_model_not_allowed');
   }
   isReady(): boolean { return Boolean(this.env.ROUTERAI_API_KEY?.trim()); }
@@ -94,8 +96,12 @@ export class RouterAIClient implements ChatClient {
     const timeout = Math.min(options.timeoutMs ?? 45_000, remaining);
     if (timeout <= 0) throw new Error('provider_call_timeout');
     const secondary = this.defaultModel !== PRIMARY_MODEL;
+    // Writer v4.1 defaults reproduce the accepted control call: no reasoning effort, low verbosity, Anthropic only.
+    const writer = this.defaultModel === WRITER_V41_MODEL;
     const providerPolicy = !secondary
       ? {thinking:{type:'disabled'},provider:{only:['deepseek'],allow_fallbacks:false}}
+      : writer
+      ? {verbosity:'low',provider:{only:['anthropic'],allow_fallbacks:false}}
       : this.defaultModel === MEETING_FALLBACK_MODEL
         ? {reasoning:{effort:'low'},provider:{only:['openai'],allow_fallbacks:false}}
         : {reasoning:{effort:'low'},provider:{order:['claude-on-aws'],allow_fallbacks:false}};
@@ -109,7 +115,9 @@ export class RouterAIClient implements ChatClient {
         method:'POST', headers:{Authorization:`Bearer ${this.env.ROUTERAI_API_KEY!.trim()}`,'Content-Type':'application/json'},
         signal:AbortSignal.timeout(timeout),
         body:JSON.stringify({model:this.defaultModel,messages:options.messages,
-          temperature:options.temperature ?? 0.7,max_tokens:options.max_tokens ?? 4000,
+          ...(writer && options.temperature === undefined ? {} : {temperature:options.temperature ?? 0.7}),
+          max_tokens:options.max_tokens ?? 4000,
+          ...(writer ? {stream:false} : {}),
           ...(responseFormat ? {response_format:responseFormat} : {}),
           include_reasoning:false,
           ...providerPolicy,
@@ -137,6 +145,7 @@ export class RouterAIClient implements ChatClient {
       const routedUpstream = normalizeUpstreamLabel(event.upstream ?? '');
       if (!secondary && routedUpstream !== 'deepseek') throw new Error('provider_upstream_mismatch');
       if (this.defaultModel === FALLBACK_MODEL && !['anthropic', 'claude-on-aws'].includes(routedUpstream)) throw new Error('provider_upstream_mismatch');
+      if (writer && routedUpstream !== 'anthropic') throw new Error('provider_upstream_mismatch');
       if (this.defaultModel === MEETING_FALLBACK_MODEL && routedUpstream !== 'openai') throw new Error('provider_upstream_mismatch');
       // Official DeepSeek returns upstream alias deepseek-flash in the proven transport.
       const validModels = !secondary ? [PRIMARY_MODEL, 'deepseek-flash'] : [this.defaultModel];

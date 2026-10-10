@@ -11,7 +11,7 @@ import { buildPersonalMythPrompt } from "./src/services/mythPrompts";
 import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
 import { RouterAIClient, PRIMARY_MODEL, MEETING_FALLBACK_MODEL } from "./server/routerai";
-import { isWriterV41Enabled } from "./server/mythWriterV41";
+import { isWriterV41Enabled, WRITER_V41_MODEL } from "./server/mythWriterV41";
 import {
   createRouterAIMythProvider,
   PERSONAL_MYTH_WRITER_VERSION,
@@ -89,7 +89,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   const deepseekClient = new RouterAIClient(process.env);
   const meetingClient = deepseekClient.withFallback(MEETING_FALLBACK_MODEL);
   // Opt-in writer v4.1 may name its own model (must be one RouterAIClient already allows); otherwise the same client.
-  const writerV41Model = isWriterV41Enabled() ? String(process.env.PERSONAL_MYTH_V41_MODEL ?? '').trim() : '';
+  const writerV41Model = isWriterV41Enabled() ? String(process.env.PERSONAL_MYTH_V41_MODEL ?? '').trim() || WRITER_V41_MODEL : '';
   const mythProvider = options.mythProvider
     || createRouterAIMythProvider(writerV41Model ? new RouterAIClient(process.env, writerV41Model) : deepseekClient);
   const isProviderConfigured = () =>
@@ -360,6 +360,11 @@ export async function createApp(options: CreateAppOptions = {}) {
         ui: { safe_message: "Не удалось сохранить отзыв. Ваши результаты сессии остаются доступны." }
       });
     }
+  });
+
+  // Tells the client which question set to ask: the opt-in writer v4.1 asks the control-check questions.
+  app.get("/api/personal-myth/config", (_req, res) => {
+    res.set("Cache-Control", "no-store").json({ writer: isWriterV41Enabled() ? "v41" : "default" });
   });
 
   // Dedicated Production Endpoint for Personal Myth
