@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import policy from './aiBudgetPolicy.json' with {type:'json'};
+import seed from './aiTariffs.json' with {type:'json'};
 const MODELS=['deepseek/deepseek-v4.1-flash','anthropic/claude-sonnet-5','openai/gpt-5.4-mini','anthropic/claude-opus-5.5'];
 const TTL=86400000, REFRESH=43200000;
 export const budgetPolicy=policy;
@@ -41,7 +42,9 @@ export function estimateAttempt(snapshot,model,messages,maxTokens,now=Date.now()
   const bytes=Buffer.byteLength(JSON.stringify({messages,...(responseFormat?{response_format:responseFormat}:{})}),'utf8');if(bytes>policy.max_input_bytes)throw Error('ai_input_bound_exceeded');
   return {cost_micro:Math.ceil((bytes*row.input_rate+maxTokens*row.output_rate)*policy.margin_numerator/policy.margin_denominator*1e6),input_bytes:bytes,output_tokens:maxTokens,estimate_version:snapshot.version,policy_version:policy.version,strict_invoice_ceiling_verified:false};
 }
-export function maxAttempt(snapshot){return Math.max(...snapshot.rows.map(r=>Math.ceil((policy.max_input_bytes*r.input_rate+policy.max_output_tokens*r.output_rate)*policy.margin_numerator/policy.margin_denominator*1e6)));}
+// The opt-in writer model raises the ceiling only when that path is switched on (PERSONAL_MYTH_WRITER=v41).
+const ceilingRows=snapshot=>snapshot.rows.filter(r=>r.model!=='anthropic/claude-opus-5.5'||process.env.PERSONAL_MYTH_WRITER==='v41');
+export function maxAttempt(snapshot){return Math.max(...ceilingRows(snapshot).map(r=>Math.ceil((policy.max_input_bytes*r.input_rate+policy.max_output_tokens*r.output_rate)*policy.margin_numerator/policy.margin_denominator*1e6)));}
 export function tariffVersion(snapshot){return crypto.createHash('sha256').update(JSON.stringify({captured_at:snapshot.captured_at,currency:snapshot.currency,rows:snapshot.rows.map(({model,input_rate,output_rate})=>({model,input_rate,output_rate}))})).digest('hex');}
 export function initialiseTariffs(db,seed){
   db.exec('CREATE TABLE IF NOT EXISTS ai_tariff_versions(version TEXT PRIMARY KEY,snapshot TEXT NOT NULL,captured_at INTEGER NOT NULL);');
@@ -56,9 +59,27 @@ export function acceptTariffs(db,snapshot,now=Date.now()){
     db.exec('COMMIT');return currentTariffs(db);
   }catch(e){db.exec('ROLLBACK');throw e;}
 }
+// The opt-in writer model must never take the whole catalog refresh down: if its row cannot be read, the previous
+// accepted row (or the bundled static row) stays and a warning is logged; the other models still refresh.
+const OPTIONAL_MODELS=new Set(['anthropic/claude-opus-5.5']);
 export async function refreshTariffs(db,transport=fetch,now=Date.now()){
   const rows=[];
-  for(const model of MODELS){const source=`https://routerai.ru/api/v1/models/${model}/endpoints`;const response=await transport(source,{signal:AbortSignal.timeout(5000)});if(!response.ok)throw Error('ai_tariff_source_unavailable');const data=await response.json();if(data?.data?.id!==model)throw Error('ai_tariff_model_changed');if(data.currency!==undefined&&data.currency!=='RUB')throw Error('ai_tariff_currency_changed');const endpoints=data.data.endpoints;rows.push({model,source,...endpointRates(endpoints),endpoints});}
+  for(const model of MODELS){
+    const source=`https://routerai.ru/api/v1/models/${model}/endpoints`;
+    try{
+      const response=await transport(source,{signal:AbortSignal.timeout(5000)});if(!response.ok)throw Error('ai_tariff_source_unavailable');
+      const data=await response.json();if(data?.data?.id!==model)throw Error('ai_tariff_model_changed');
+      if(data.currency!==undefined&&data.currency!=='RUB')throw Error('ai_tariff_currency_changed');
+      const endpoints=data.data.endpoints;rows.push({model,source,...endpointRates(endpoints),endpoints});
+    }catch(e){
+      if(!OPTIONAL_MODELS.has(model))throw e;
+      let kept;try{kept=currentTariffs(db).rows.find(r=>r.model===model);}catch{}
+      kept=kept||seed.rows.find(r=>r.model===model);
+      if(!kept)throw e;
+      console.warn('ai_tariff_optional_model_kept_static',JSON.stringify({model,reason:String(e?.message||e).slice(0,80)}));
+      rows.push(kept);
+    }
+  }
   return acceptTariffs(db,{captured_at:new Date(now).toISOString(),currency:'RUB',valid_for_ms:TTL,rows},now);
 }
 const pending=new WeakMap();

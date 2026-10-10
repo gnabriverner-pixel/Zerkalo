@@ -27,7 +27,7 @@ it('request components and response schema obey exact UTF-8 boundary; output lim
  expect(()=>estimateAttempt(s,seed.rows[0].model,[{role:'user',content:'ok'}],8001,base)).toThrow();
  expect(()=>estimateAttempt(s,seed.rows[0].model,[{role:'user',content:'\ud800'}],100,base)).toThrow();
  expect(estimateAttempt(s,seed.rows[1].model,[{role:'user',content:'ok'}],100,base).cost_micro).toBeGreaterThan(estimateAttempt(s,seed.rows[0].model,[{role:'user',content:'ok'}],100,base).cost_micro);
- expect(budgetPolicy.strict_invoice_ceiling_verified).toBe(false);expect(MAX_ATTEMPT_MICRO).toBeLessThan(60e6);
+ expect(budgetPolicy.strict_invoice_ceiling_verified).toBe(false);expect(MAX_ATTEMPT_MICRO).toBeLessThan(40e6);
 });
 it('Python and Web use identical formula and boundary for ASCII, Russian, emoji, controls and response schema',()=>{
  const file=path.join(fs.mkdtempSync(path.join(os.tmpdir(),'tariff-parity-')),'data.sqlite'),db=new CommerceStore(file,key);initialiseTariffs(db.db,seed);const s=currentTariffs(db.db);
@@ -58,4 +58,45 @@ it('bad currency, model, unit, unknown charged feature and incomplete capture ne
  expect(()=>validateTariffs({...seed,currency:'USD'},base)).toThrow();const changed=structuredClone(seed);changed.rows[0].endpoints[0].pricing_units.prompt='request';expect(()=>validateTariffs(changed,base)).toThrow();
  const unknown:any=structuredClone(seed);unknown.rows[0].endpoints[0].pricing.reasoning=1;unknown.rows[0].endpoints[0].pricing_units.reasoning='token';expect(()=>validateTariffs(unknown,base)).toThrow();
  await expect(refreshTariffs(db.db,(async()=>new Response(JSON.stringify({data:{id:'different',endpoints:[]}}))) as typeof fetch,base)).rejects.toThrow('ai_tariff_model_changed');expect(currentTariffs(db.db).version).toBe(version);db.close();
+});
+
+const OPUS='anthropic/claude-opus-5.5';
+const catalog=(opus:'ok'|'http500'|'network'|'bad_schema'|'wrong_id',multiplier=1)=>(async(url:any)=>{
+  const row=seed.rows.find(r=>String(url)===r.source)!;
+  if(row.model===OPUS){
+    if(opus==='http500')return new Response('{}',{status:500});
+    if(opus==='network')throw new TypeError('fetch failed');
+    if(opus==='bad_schema')return new Response(JSON.stringify({data:{id:OPUS,endpoints:[{pricing:{prompt:'x'}}]}}));
+    if(opus==='wrong_id')return new Response(JSON.stringify({data:{id:'other',endpoints:row.endpoints}}));
+  }
+  const endpoints=structuredClone(row.endpoints);for(const e of endpoints)for(const k of Object.keys(e.pricing))(e.pricing as any)[k]*=multiplier;
+  return new Response(JSON.stringify({data:{id:row.model,endpoints}}));
+}) as typeof fetch;
+it('an unavailable or malformed Opus row is not fatal: other models refresh, Opus keeps the static row, a warning is logged',async()=>{
+  const warn=vi.spyOn(console,'warn').mockImplementation(()=>{});
+  try{
+    for(const mode of ['http500','network','bad_schema','wrong_id'] as const){
+      const db=new CommerceStore(':memory:',key);
+      try{
+        initialiseTariffs(db.db,seed);
+        const snapshot=await refreshTariffs(db.db,catalog(mode,2),base+3600000);
+        expect(snapshot.rows.map((r:any)=>r.model)).toEqual(seed.rows.map(r=>r.model));
+        const opus=snapshot.rows.find((r:any)=>r.model===OPUS),flash=snapshot.rows[0];
+        expect(opus).toEqual(seed.rows.find(r=>r.model===OPUS));
+        expect(flash.input_rate).toBeCloseTo(seed.rows[0].input_rate*2,12);
+      }finally{db.close();}
+    }
+    expect(warn.mock.calls.filter(c=>c[0]==='ai_tariff_optional_model_kept_static')).toHaveLength(4);
+  }finally{warn.mockRestore();}
+});
+it('a failing non-optional model still fails the whole refresh',async()=>{
+  const db=new CommerceStore(':memory:',key);initialiseTariffs(db.db,seed);
+  const broken=(async(url:any)=>String(url).includes('claude-sonnet-5')?new Response('{}',{status:503}):catalog('ok')(url)) as typeof fetch;
+  try{await expect(refreshTariffs(db.db,broken,base+3600000)).rejects.toThrow('ai_tariff_source_unavailable');}finally{db.close();}
+});
+it('the attempt ceiling counts Opus only when PERSONAL_MYTH_WRITER=v41',()=>{
+  const withoutFlag=maxAttempt(seed);
+  vi.stubEnv('PERSONAL_MYTH_WRITER','v41');const withFlag=maxAttempt(seed);vi.unstubAllEnvs();
+  expect(withoutFlag).toBe(MAX_ATTEMPT_MICRO);expect(withoutFlag).toBeLessThan(40e6);
+  expect(withFlag).toBeGreaterThan(withoutFlag);expect(withFlag).toBe(Math.ceil((65536*0.00044150496+8000*0.0022075248)*1.25*1e6));
 });
