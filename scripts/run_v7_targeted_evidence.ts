@@ -2426,7 +2426,7 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const yearInput = await page.waitForSelector('input[placeholder="ГГГГ"]', { timeout: 5000 });
       await yearInput.fill("1990");
 
-      const calcBtn = await page.waitForSelector('button:has-text("Рассчитать код")', { timeout: 5000 });
+      const calcBtn = await page.waitForSelector('button:has-text("Посмотреть описание")', { timeout: 5000 });
       await calcBtn.click();
 
       const openCodeBtn = await page.waitForSelector('button:has-text("Открыть мой Код")', { timeout: 10000 });
@@ -2805,7 +2805,7 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const yearInput = await page.waitForSelector('input[placeholder="ГГГГ"]', { timeout: 5000 });
       await yearInput.fill("1990");
 
-      const calcBtn = await page.waitForSelector('button:has-text("Рассчитать код")', { timeout: 5000 });
+      const calcBtn = await page.waitForSelector('button:has-text("Посмотреть описание")', { timeout: 5000 });
       await calcBtn.click();
 
       trackingRefusalPosts = true;
@@ -2975,7 +2975,7 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       await monthInput.fill("05");
       const yearInput = await page.waitForSelector('input[placeholder="ГГГГ"]', { timeout: 5000 });
       await yearInput.fill("1990");
-      const calcBtn = await page.waitForSelector('button:has-text("Рассчитать код")', { timeout: 5000 });
+      const calcBtn = await page.waitForSelector('button:has-text("Посмотреть описание")', { timeout: 5000 });
       await calcBtn.click();
       const openCodeBtn = await page.waitForSelector('button:has-text("Открыть мой Код")', { timeout: 10000 });
       await openCodeBtn.click();
@@ -3092,7 +3092,7 @@ async function run7PlaywrightJourneys(browser: Browser): Promise<Record<string, 
       const yearInput = await page.waitForSelector('input[placeholder="ГГГГ"]', { timeout: 5000 });
       await yearInput.fill("1990");
 
-      const calcBtn = await page.waitForSelector('button:has-text("Рассчитать код")', { timeout: 5000 });
+      const calcBtn = await page.waitForSelector('button:has-text("Посмотреть описание")', { timeout: 5000 });
       const calcBox = await calcBtn.boundingBox();
 
       await calcBtn.click();

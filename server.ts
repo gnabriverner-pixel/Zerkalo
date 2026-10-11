@@ -367,7 +367,13 @@ export async function createApp(options: CreateAppOptions = {}) {
 
   // Tells the client which question set to ask: the opt-in writer v4.1 asks the control-check questions.
   app.get("/api/personal-myth/config", (_req, res) => {
-    res.set("Cache-Control", "no-store").json({ writer: isWriterV41Enabled() ? "v41" : "default" });
+    // example_url: a public example to read, shown on the site only when configured (PERSONAL_MYTH_EXAMPLE_URL: https URL or /path).
+    const example = String(process.env.PERSONAL_MYTH_EXAMPLE_URL ?? "").trim();
+    res.set("Cache-Control", "no-store").json({
+      writer: isWriterV41Enabled() ? "v41" : "default",
+      generation_available: isProviderConfigured(),
+      example_url: /^(https:\/\/|\/(?!\/))[^\s"'<>]{1,300}$/.test(example) ? example : null,
+    });
   });
 
   // Dedicated Production Endpoint for Personal Myth

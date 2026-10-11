@@ -136,11 +136,11 @@ async function runSuite() {
   await saveDual(page, "02_two_lenses_choice_live.png");
 
   // 3. Open Personal Myth
-  const mythCard = page.locator('button:has-text("Войти через образы")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Войти через образы →'));
+  const mythCard = page.locator('button:has-text("Создать мою историю")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Создать мою историю →'));
   await mythCard.first().click();
   await page.waitForTimeout(600);
 
-  const startMythBtn = page.locator('button:has-text("Войти через образы")');
+  const startMythBtn = page.locator('button:has-text("Создать мою историю")');
   if (await startMythBtn.isVisible()) {
     await startMythBtn.click();
     await page.waitForTimeout(500);
@@ -179,7 +179,7 @@ async function runSuite() {
   await monthInput.fill("08");
   await yearInput.fill("1990");
   
-  const calcBtn = page.locator('button:has-text("Открыть свой код")').or(page.locator('button:has-text("Рассчитать код")'));
+  const calcBtn = page.locator('button:has-text("Посмотреть описание")').or(page.locator('button:has-text("Посмотреть описание")'));
   await calcBtn.first().click();
 
   console.log("  Waiting for Alabaster Sanctuary Code reveal...");
@@ -265,7 +265,7 @@ async function runSuite() {
   await monthInputB.fill("05");
   await yearInputB.fill("1986");
   
-  const calcBtnB = page.locator('button:has-text("Рассчитать код")').or(page.locator('button:has-text("Открыть свой код")'));
+  const calcBtnB = page.locator('button:has-text("Посмотреть описание")').or(page.locator('button:has-text("Посмотреть описание")'));
   await calcBtnB.first().click();
 
   await page.waitForSelector('text=Число души', { timeout: 30000 });
@@ -277,7 +277,7 @@ async function runSuite() {
   await toMythFromCodeBtn.first().click();
   await page.waitForTimeout(600);
 
-  const startMythBBtn = page.locator('button:has-text("Войти через образы")');
+  const startMythBBtn = page.locator('button:has-text("Создать мою историю")');
   if (await startMythBBtn.isVisible()) {
     await startMythBBtn.click();
     await page.waitForTimeout(400);
@@ -363,11 +363,11 @@ async function runSuite() {
   await page.setViewportSize({ width: 390, height: 500 });
   await page.goto("http://localhost:3005", { waitUntil: "networkidle" });
   
-  const mythCardSmall = page.locator('button:has-text("Войти через образы")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Войти через образы →'));
+  const mythCardSmall = page.locator('button:has-text("Создать мою историю")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Создать мою историю →'));
   await mythCardSmall.first().click();
   await page.waitForTimeout(500);
 
-  const startMythSmallBtn = page.locator('button:has-text("Войти через образы")');
+  const startMythSmallBtn = page.locator('button:has-text("Создать мою историю")');
   if (await startMythSmallBtn.isVisible()) {
     await startMythSmallBtn.click();
     await page.waitForTimeout(500);
@@ -394,7 +394,7 @@ async function runSuite() {
   await dIn.fill("31");
   await mIn.fill("02");
   await yIn.fill("1990");
-  const subBtn = page.locator('button:has-text("Рассчитать код")').or(page.locator('button:has-text("Открыть свой код")'));
+  const subBtn = page.locator('button:has-text("Посмотреть описание")').or(page.locator('button:has-text("Посмотреть описание")'));
   await subBtn.first().click();
   await page.waitForTimeout(400);
   await saveDual(page, "14-invalid-impossible-date-390x844.png", "11_invalid_impossible_date.png");
@@ -481,11 +481,11 @@ async function runSuite() {
 
   // 1b. Client Failure Injection (503 / Provider Not Ready) + Answers Preserved
   await page.goto("http://localhost:3005", { waitUntil: "networkidle" });
-  const mythEntry = page.locator('button:has-text("Войти через образы")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Войти через образы →'));
+  const mythEntry = page.locator('button:has-text("Создать мою историю")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Создать мою историю →'));
   await mythEntry.first().click();
   await page.waitForTimeout(400);
 
-  const startMythFail = page.locator('button:has-text("Войти через образы")');
+  const startMythFail = page.locator('button:has-text("Создать мою историю")');
   if (await startMythFail.isVisible()) {
     await startMythFail.click();
     await page.waitForTimeout(500);
@@ -587,11 +587,11 @@ async function runSuite() {
   // ========================================================
   console.log("\n>>> TEST 7: Crisis Safety Intercept");
   await page.goto("http://localhost:3005", { waitUntil: "networkidle" });
-  const mythEntryCrisis = page.locator('button:has-text("Войти через образы")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Войти через образы →'));
+  const mythEntryCrisis = page.locator('button:has-text("Создать мою историю")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Создать мою историю →'));
   await mythEntryCrisis.first().click();
   await page.waitForTimeout(400);
 
-  const startMythCrisis = page.locator('button:has-text("Войти через образы")');
+  const startMythCrisis = page.locator('button:has-text("Создать мою историю")');
   if (await startMythCrisis.isVisible()) {
     await startMythCrisis.click();
     await page.waitForTimeout(500);
@@ -624,7 +624,7 @@ async function runSuite() {
   await toMythBtn3.first().click();
   await page.waitForTimeout(400);
 
-  const startMythZero = page.locator('button:has-text("Войти через образы")');
+  const startMythZero = page.locator('button:has-text("Создать мою историю")');
   if (await startMythZero.isVisible()) {
     await startMythZero.click();
     await page.waitForTimeout(500);

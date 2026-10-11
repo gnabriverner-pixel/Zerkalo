@@ -12,14 +12,14 @@ const GATEWAY_STATUSES = new Set([502, 503, 504]);
 
 // User-facing copy (owner-approved wording, ASTRA-PASS2-PREFLIGHT-AND-WAITING-COPY section 3).
 export const MYTH_COPY = {
-  writing: 'Ваша история пишется.',
+  writing: 'Пишем вашу историю.',
   mayTakeMinutes: 'Это может занять несколько минут.',
   elapsed: (sec: number) => `Прошло ${sec} с. Обновлять страницу не нужно.`,
-  unknown: 'Пока не удалось получить историю. Она ещё может быть в работе.',
+  unknown: 'Пока не удалось получить историю. Проверить, появилась ли она?',
   // Honest wording for an unconfirmed result (no promise of recovery); the support link is shown only when the preview provides one.
   unconfirmed: 'Результат не подтверждён. Если история не появится, обратитесь в поддержку.',
   supportLink: 'Написать в поддержку',
-  check: 'Проверить готовность',
+  check: 'Проверить результат',
   storageOn: 'Если история будет готова, она появится в сохранённых.',
   storageOff: 'Сохранение историй выключено. Готовый результат доступен временно; не закрывайте страницу, пока мы проверяем готовность.',
   expired: 'Время доступа к этой истории истекло.',
@@ -28,6 +28,12 @@ export const MYTH_COPY = {
   notFound: 'Мы не нашли запущенной истории по этому запросу.',
   failed: 'Историю создать не удалось.',
   newGeneration: 'Создать историю заново',
+  // New stories cannot be started now (server says so). No date is promised: none is known.
+  unavailable: 'Сейчас создать новую историю нельзя.',
+  unavailableWithExample: 'Сейчас создать новую историю нельзя. Можно прочитать пример или открыть свои сохранённые истории.',
+  unavailableNoExample: 'Сейчас создать новую историю нельзя. Можно открыть свои сохранённые истории.',
+  afterStory: 'Что в ней отозвалось?',
+  albertIntro: 'ИИ-собеседник: можно сказать, что тронуло, что не похоже на вас или осталось непонятным.',
 } as const;
 
 export type MythWaitResult =

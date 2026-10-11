@@ -156,11 +156,11 @@ describe('checkMythReadiness (read-only GET /api/stories)', () => {
     expect(await hasStoryAccount(get(json({}, 401)))).toBe(false);
   });
   it('agreed wording is verbatim', () => {
-    expect(MYTH_COPY.writing).toBe('Ваша история пишется.');
+    expect(MYTH_COPY.writing).toBe('Пишем вашу историю.');
     expect(MYTH_COPY.mayTakeMinutes).toBe('Это может занять несколько минут.');
     expect(MYTH_COPY.elapsed(20)).toBe('Прошло 20 с. Обновлять страницу не нужно.');
-    expect(MYTH_COPY.unknown).toBe('Пока не удалось получить историю. Она ещё может быть в работе.');
-    expect(MYTH_COPY.check).toBe('Проверить готовность');
+    expect(MYTH_COPY.unknown).toBe('Пока не удалось получить историю. Проверить, появилась ли она?');
+    expect(MYTH_COPY.check).toBe('Проверить результат');
     expect(MYTH_COPY.storageOn).toBe('Если история будет готова, она появится в сохранённых.');
     expect(MYTH_COPY.storageOff).toBe('Сохранение историй выключено. Готовый результат доступен временно; не закрывайте страницу, пока мы проверяем готовность.');
     expect(MYTH_COPY.expired).toBe('Время доступа к этой истории истекло.');

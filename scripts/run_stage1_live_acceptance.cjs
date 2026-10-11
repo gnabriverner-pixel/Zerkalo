@@ -496,7 +496,7 @@ async function main() {
     await page.getByPlaceholder("ДД", { exact: true }).fill(day);
     await page.getByPlaceholder("ММ", { exact: true }).fill(month);
     await page.getByPlaceholder("ГГГГ", { exact: true }).fill(year);
-    await page.getByRole("button", { name: "Рассчитать код", exact: true }).click();
+    await page.getByRole("button", { name: "Посмотреть описание", exact: true }).click();
     await page.getByRole("button", { name: "Открыть мой Код", exact: true }).waitFor();
     if (protectedPostsBeforeConsent.length > 0) throw new Error("auto_post_before_consent_modal");
 
@@ -619,7 +619,7 @@ async function main() {
     // 4. Live Personal Myth
     stage = "personal_myth";
     await page.getByRole("button", { name: "Перейти к Личному мифу" }).click();
-    await page.getByRole("button", { name: "Войти через образы", exact: true }).click();
+    await page.getByRole("button", { name: "Создать мою историю", exact: true }).click();
     const tags = [
       "01 / 04 · Ситуация",
       "02 / 04 · Образ состояния",

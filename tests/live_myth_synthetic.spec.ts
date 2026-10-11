@@ -64,7 +64,7 @@ test.describe('Live Personal Myth Generation (synthetic fixture)', () => {
     await monthInput.fill(DOB_MONTH);
     await yearInput.fill(DOB_YEAR);
 
-    const calcBtn = page.getByRole('button', { name: 'Рассчитать код', exact: true });
+    const calcBtn = page.getByRole('button', { name: 'Посмотреть описание', exact: true });
     await calcBtn.click();
 
     // Wait for code calculation
@@ -76,7 +76,7 @@ test.describe('Live Personal Myth Generation (synthetic fixture)', () => {
 
     // 3. Enter Personal Myth
     console.log('Entering Personal Myth...');
-    const startMythBtn = page.getByRole('button', { name: 'Войти через образы', exact: true });
+    const startMythBtn = page.getByRole('button', { name: 'Создать мою историю', exact: true });
     if (await startMythBtn.isVisible()) {
       await startMythBtn.click();
       await page.waitForTimeout(500);

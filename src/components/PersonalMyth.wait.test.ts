@@ -39,7 +39,7 @@ async function click(label: string) {
 /** Opens the form with prefilled answers and presses "Соткать историю". */
 async function start() {
   await act(async () => { root.render(React.createElement(PersonalMyth, { initialInputs: ANSWERS, onMythCompleted } as any)); });
-  await click('Войти через образы');
+  await click('Создать мою историю');
   for (let i = 0; i < 3; i++) await click('Далее');
   await click('Соткать историю');
 }
@@ -71,7 +71,7 @@ describe('PersonalMyth waiting copy', () => {
   it('shows the agreed lines at once and the elapsed line only after 20 s', async () => {
     h.fetchMock.mockImplementation(() => new Promise(() => {}));
     await start();
-    expect(text()).toContain('Ваша история пишется.');
+    expect(text()).toContain('Пишем вашу историю.');
     expect(text()).toContain('Это может занять несколько минут.');
     expect(text()).not.toContain('Прошло');
     await flush(19_000);
@@ -84,10 +84,10 @@ describe('PersonalMyth waiting copy', () => {
 
   it('unknown state, storage off: agreed lines, check button, no advice to press "Соткать историю"', async () => {
     unknownRoutes(); await reachUnknown();
-    expect(text()).toContain('Пока не удалось получить историю. Она ещё может быть в работе.');
+    expect(text()).toContain('Пока не удалось получить историю. Проверить, появилась ли она?');
     expect(text()).toContain(MYTH_COPY.storageOff);
     expect(text()).not.toContain(MYTH_COPY.storageOn);
-    expect(button('Проверить готовность')).toBeDefined();
+    expect(button('Проверить результат')).toBeDefined();
     expect(button('Создать историю заново')).toBeUndefined();
     expect(text()).not.toContain('нажмите «Соткать историю»');
     expect((button('Соткать историю') as HTMLButtonElement).disabled).toBe(true);
@@ -103,7 +103,7 @@ describe('PersonalMyth waiting copy', () => {
     h.fetchMock.mockImplementation(async (url: string) => url === '/api/personal-myth' ? json({ status: 'running' }, 202) : json({}));
     await start(); await flush(4 * 60_000);
     expect(text()).toContain(MYTH_COPY.unknown);
-    expect(button('Проверить готовность')).toBeDefined();
+    expect(button('Проверить результат')).toBeDefined();
   });
 });
 
@@ -113,9 +113,9 @@ describe('«Проверить готовность»', () => {
     const postsBefore = posts().length;
     unknownRoutes(u => u === '/api/stories' ? json({ orders: [{ kind: 'free', state: 'generating', data: {} }] }) : undefined);
     const getsBefore = gets().length;
-    await click('Проверить готовность');
+    await click('Проверить результат');
     expect(gets().length - getsBefore).toBe(1);
-    await click('Проверить готовность');
+    await click('Проверить результат');
     expect(gets().length - getsBefore).toBe(2);
     expect(posts().length).toBe(postsBefore);
     expect(text()).toContain(MYTH_COPY.unknown); // still running: same honest text
@@ -124,7 +124,7 @@ describe('«Проверить готовность»', () => {
   it('shows the finished story when the saved order is ready for these answers', async () => {
     unknownRoutes(); await reachUnknown();
     unknownRoutes(u => u === '/api/stories' ? json({ orders: [{ kind: 'free', state: 'ready', data: { answers: ANSWERS, myth: STORY } }] }) : undefined);
-    await click('Проверить готовность');
+    await click('Проверить результат');
     expect(onMythCompleted).toHaveBeenCalledWith(ANSWERS, STORY);
     expect(text()).toContain('Готовая история');
   });
@@ -132,7 +132,7 @@ describe('«Проверить готовность»', () => {
   it('does not show another story that was issued for different answers', async () => {
     unknownRoutes(); await reachUnknown();
     unknownRoutes(u => u === '/api/stories' ? json({ orders: [{ kind: 'free', state: 'ready', data: { answers: { ...ANSWERS, q1: 'другое' }, myth: STORY } }] }) : undefined);
-    await click('Проверить готовность');
+    await click('Проверить результат');
     expect(onMythCompleted).not.toHaveBeenCalled();
     expect(text()).toContain(MYTH_COPY.notFound);
   });
@@ -140,16 +140,16 @@ describe('«Проверить готовность»', () => {
   it('expired temporary result: agreed message, no check and no new-generation button', async () => {
     unknownRoutes(); await reachUnknown();
     unknownRoutes(u => u === '/api/stories' ? json({ orders: [{ kind: 'free', state: 'ready', data: { messages: [], note: '' } }] }) : undefined);
-    await click('Проверить готовность');
+    await click('Проверить результат');
     expect(text()).toContain('Время доступа к этой истории истекло.');
-    expect(button('Проверить готовность')).toBeUndefined();
+    expect(button('Проверить результат')).toBeUndefined();
     expect(button('Создать историю заново')).toBeUndefined();
   });
 
   it('nothing found (401): separate explicit NEW generation with a fresh request_id, sent once', async () => {
     unknownRoutes(); await reachUnknown();
     const firstId = JSON.parse(posts()[0][1].body).request_id;
-    await click('Проверить готовность');
+    await click('Проверить результат');
     expect(text()).toContain(MYTH_COPY.notFound);
     const before = posts().length;
     unknownRoutes(u => u === '/api/personal-myth' ? new Promise(() => {}) as any : undefined);
@@ -165,7 +165,7 @@ describe('«Проверить готовность»', () => {
     expect(posts().length).toBe(1);
     expect(text()).toContain(MYTH_COPY.failed);
     expect(button('Создать историю заново')).toBeDefined();
-    expect(button('Проверить готовность')).toBeUndefined();
+    expect(button('Проверить результат')).toBeUndefined();
   });
 });
 
@@ -176,7 +176,7 @@ describe('legacy path (no idempotency)', () => {
     await start(); await flush(60_000);
     expect(posts().length).toBe(1);
     expect(gets().length).toBe(0);
-    expect(button('Проверить готовность')).toBeUndefined();
+    expect(button('Проверить результат')).toBeUndefined();
     expect(button('Создать историю заново')).toBeUndefined();
   });
 });

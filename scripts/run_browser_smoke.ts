@@ -56,7 +56,7 @@ async function runBrowserSmoke() {
     await desktopPage.locator('input[placeholder="ММ"]').first().fill(DOB_MONTH);
     await desktopPage.locator('input[placeholder="ГГГГ"]').first().fill(DOB_YEAR);
     await desktopPage.waitForTimeout(300);
-    await desktopPage.locator('button:has-text("Открыть свой код"), form button[type="submit"]').first().click();
+    await desktopPage.locator('button:has-text("Посмотреть описание"), form button[type="submit"]').first().click();
     await desktopPage.waitForTimeout(1500);
 
     // Capture Code Desktop Screenshot
@@ -81,8 +81,8 @@ async function runBrowserSmoke() {
     await desktopPage.locator('nav button:has-text("Миф")').first().click();
     await desktopPage.waitForTimeout(500);
 
-    // Click "Войти через образы"
-    await desktopPage.locator('button:has-text("Войти через образы")').first().click();
+    // Click "Создать мою историю"
+    await desktopPage.locator('button:has-text("Создать мою историю")').first().click();
     await desktopPage.waitForTimeout(500);
 
     for (let stepIdx = 0; stepIdx < 4; stepIdx++) {
@@ -224,7 +224,7 @@ async function runBrowserSmoke() {
     await mobilePage.locator('nav button:has-text("Миф")').first().click();
     await mobilePage.waitForTimeout(500);
 
-    await mobilePage.locator('button:has-text("Войти через образы")').first().click();
+    await mobilePage.locator('button:has-text("Создать мою историю")').first().click();
     await mobilePage.waitForTimeout(500);
 
     const mobileAnswers = [
@@ -272,7 +272,7 @@ async function runBrowserSmoke() {
     await mobilePage.locator('input[placeholder="ММ"]').first().fill(DOB_MONTH);
     await mobilePage.locator('input[placeholder="ГГГГ"]').first().fill(DOB_YEAR);
     await mobilePage.waitForTimeout(300);
-    await mobilePage.locator('button:has-text("Открыть свой код"), form button[type="submit"]').first().click();
+    await mobilePage.locator('button:has-text("Посмотреть описание"), form button[type="submit"]').first().click();
     await mobilePage.waitForTimeout(1200);
 
     // Capture Code Mobile Screenshot

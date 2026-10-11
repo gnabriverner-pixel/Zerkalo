@@ -573,3 +573,24 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
     } finally { s.close(); }
   });
 });
+
+describe("config read used by the screens (no model call)", () => {
+  const cfg = async (env: Record<string, string>, options: any) => {
+    for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
+    const { createApp } = await import("../server");
+    const { app } = await createApp({ skipVite: true, ...options });
+    const server = app.listen(0, "127.0.0.1"); await once(server, "listening");
+    try {
+      const r = await fetch(`http://127.0.0.1:${(server.address() as any).port}/api/personal-myth/config`);
+      return await r.json() as any;
+    } finally { server.close(); (server as any).closeAllConnections?.(); }
+  };
+  it("reports v41, availability and a configured example only", async () => {
+    const provider = { name: "x", model: "x", isReady: () => true, generate: async () => "" };
+    expect(await cfg({ PERSONAL_MYTH_WRITER: "v41", PERSONAL_MYTH_EXAMPLE_URL: "" }, { mythProvider: provider, isProviderReady: () => false }))
+      .toEqual({ writer: "v41", generation_available: false, example_url: null });
+    expect(await cfg({ PERSONAL_MYTH_WRITER: "", PERSONAL_MYTH_EXAMPLE_URL: "https://example.test/read" }, { mythProvider: provider, isProviderReady: () => true }))
+      .toEqual({ writer: "default", generation_available: true, example_url: "https://example.test/read" });
+    expect((await cfg({ PERSONAL_MYTH_EXAMPLE_URL: "javascript:alert(1)" }, { mythProvider: provider, isProviderReady: () => true })).example_url).toBeNull();
+  });
+});

@@ -1,3 +1,6 @@
+import { useMythConfig } from '../services/mythAvailability';
+import { useFreePreview } from '../services/freePreview';
+import { MYTH_COPY } from '../services/mythWait';
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Bookmark, Trash2, ChevronRight } from 'lucide-react';
@@ -55,6 +58,11 @@ export function LabEntryView({
   onRestoreDraft,
   onClearDraft,
 }: LabEntryViewProps) {
+  // Generation availability and the optional public example come from one cheap server read (no model call).
+  const mythConfig = useMythConfig();
+  const homePreview = useFreePreview();
+  const exampleUrl = mythConfig?.example_url ?? null;
+  const generationBlocked = mythConfig?.generation_available === false || Boolean(homePreview?.enabled && !homePreview.can_start_myth);
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
@@ -164,22 +172,28 @@ export function LabEntryView({
           transition={{ duration: 0.9 }}
           className="min-h-[78svh] flex flex-col items-center justify-center space-y-6 max-w-3xl mx-auto pt-12"
         >
-          <span className="text-[13px] uppercase tracking-[0.35em] text-[var(--color-antique-gold)] font-mono block opacity-90">
-            Посмотреть на себя с неожиданной стороны
-          </span>
-
           <h1 className="font-serif text-6xl sm:text-7xl lg:text-[88px] text-[var(--color-text-primary)] font-light tracking-tight leading-[0.95]">
             Зеркало себя
           </h1>
+          <h2 className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light">
+            Посмотрите на себя через историю.
+          </h2>
 
           <p className="text-[var(--color-text-secondary)] font-normal text-[17px] sm:text-[18px] max-w-2xl mx-auto leading-[1.7] pt-2">
-            Два независимых взгляда: язык Цифрового Кода и история из ваших собственных образов. Сопоставьте их, отметьте, что попало точно и с чем вы не согласны, и продолжите разговор с Альбертом о том, что важно вам сейчас.
+            Ответьте на четыре вопроса о том, что с вами сейчас происходит. ИИ напишет для вас сказку. Возможно, в её герое или событиях вы узнаете что-то своё.
           </p>
 
-          <a href="#collection" className="mt-7 inline-flex min-h-12 items-center justify-center border border-[var(--color-border-gold)] bg-[#111723]/80 px-9 py-3 text-[13px] uppercase tracking-[0.28em] text-[var(--color-antique-gold)] transition-colors hover:bg-[#18202e]">
-            Выбрать зеркало
-          </a>
-          <p className="text-[13px] text-[var(--color-text-muted)]">{meetingAvailable?'Начните с любого зеркала. Встреча откроется только после обоих.':'Начните с любого зеркала. Затем можно обсудить историю с Альбертом.'}</p>
+          {generationBlocked ? (
+            <p role="status" data-testid="home-myth-unavailable" className="mt-7 max-w-xl text-[15px] text-[var(--color-text-secondary)]">{exampleUrl ? MYTH_COPY.unavailableWithExample : MYTH_COPY.unavailableNoExample}</p>
+          ) : (
+            <button type="button" onClick={handleMyth} className="mt-7 inline-flex min-h-12 items-center justify-center border border-[var(--color-border-gold)] bg-[#111723]/80 px-9 py-3 text-[13px] uppercase tracking-[0.28em] text-[var(--color-antique-gold)] transition-colors hover:bg-[#18202e]">
+              Создать мою историю
+            </button>
+          )}
+          {exampleUrl && (
+            <a href={exampleUrl} target="_blank" rel="noreferrer" className="text-[14px] text-[var(--color-antique-gold)] underline">Прочитать пример</a>
+          )}
+          <p className="text-[13px] text-[var(--color-text-muted)]">Можно попробовать другой способ — <a href="#collection" className="underline">символический портрет по дате рождения</a>.</p>
         </motion.div>
 
         {/* ========================================================= */}
@@ -187,9 +201,9 @@ export function LabEntryView({
         {/* ========================================================= */}
         <section id="collection" className="w-full max-w-4xl mx-auto scroll-mt-24">
           <div className="mx-auto mb-12 max-w-2xl text-center">
-            <span className="text-[13px] uppercase tracking-[0.32em] text-[var(--color-antique-gold)] font-mono">Коллекция зеркал</span>
-            <h2 className="mt-5 font-serif text-4xl sm:text-5xl font-light">Два самостоятельных взгляда</h2>
-            <p className="mt-4 text-sm leading-relaxed text-[var(--color-text-secondary)]">Система не смешивает дату с ответами и не придумывает сходство заранее.</p>
+            <span className="text-[13px] uppercase tracking-[0.32em] text-[var(--color-antique-gold)] font-mono">Два способа</span>
+            <h2 className="mt-5 font-serif text-4xl sm:text-5xl font-light">С чего начать</h2>
+            <p className="mt-4 text-sm leading-relaxed text-[var(--color-text-secondary)]">История — по вашим ответам. Символический портрет — по дате рождения. Дата и ответы не смешиваются.</p>
           </div>
 
           {/* ========================================================= */}
@@ -322,7 +336,7 @@ export function LabEntryView({
           >
             <div className="flex flex-col items-center w-full">
               <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
-                Независимое зеркало · Личный миф
+                Первый способ
               </span>
 
               <div className="my-3 transition-transform duration-700 group-hover:scale-105">
@@ -330,17 +344,17 @@ export function LabEntryView({
               </div>
 
               <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-8 mb-3">
-                Сказка про вас
+                История по вашим ответам
               </h2>
 
               <p className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xs mb-8">
-                Через 4 вопроса о вашем восприятии. Внутреннее состояние превращается в живую метафорическую историю.
+                Четыре вопроса, затем — сказка для вас. Можно отвечать коротко. Правильных ответов нет.
               </p>
             </div>
 
             <div className="w-full pt-4 border-t border-[var(--color-border-subtle)]">
               <span className="text-[13px] uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono group-hover:tracking-[0.3em] transition-all">
-                {hasMyth ? 'Открыть созданную сказку →' : 'Войти через образы →'}
+                {hasMyth ? 'Открыть мою историю →' : 'Создать историю →'}
               </span>
             </div>
           </motion.div>
@@ -354,7 +368,7 @@ export function LabEntryView({
           >
             <div className="flex flex-col items-center w-full">
               <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
-                Независимое зеркало · Цифровой код
+                Второй способ
               </span>
 
               <div className="my-3 transition-transform duration-700 group-hover:scale-105">
@@ -362,11 +376,11 @@ export function LabEntryView({
               </div>
 
               <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-8 mb-3">
-                Архитектура природы
+                Другой взгляд на себя — по дате рождения
               </h2>
 
               <p className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xs mb-6">
-                Через дату рождения. Пять математических ключей и пошаговый разворот вашей карты.
+                Введите дату рождения. Вы получите символическое описание по системе нумерологии. Прочитайте его и отметьте, что похоже на вас, а что нет. Это не научная оценка личности и не предсказание.
               </p>
 
               {/* THREE CLEAN DATE FIELDS: [ ДД ] [ ММ ] [ ГГГГ ] */}
@@ -423,7 +437,7 @@ export function LabEntryView({
                   type="submit"
                   className="min-h-11 px-6 py-2.5 mt-2 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-[13px] font-medium transition-all cursor-pointer inline-flex items-center justify-center"
                 >
-                  Рассчитать код
+                  Посмотреть описание
                 </button>
               </form>
             </div>
@@ -433,7 +447,7 @@ export function LabEntryView({
                 onClick={handleCodeSubmit}
                 className="text-[13px] uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono group-hover:tracking-[0.3em] transition-all cursor-pointer"
               >
-                {hasCode ? 'Открыть карту кода →' : 'Развернуть ключи →'}
+                {hasCode ? 'Открыть описание →' : 'Подробнее →'}
               </span>
             </div>
           </motion.div>
@@ -497,7 +511,7 @@ export function LabEntryView({
                 Канон Вяземского
               </span>
               <h3 className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light">
-                Пантеон девяти архетипов
+                Что означают числа
               </h3>
             </div>
 
@@ -505,7 +519,7 @@ export function LabEntryView({
               onClick={handlePantheon}
               className="text-[13px] uppercase font-mono tracking-[0.2em] text-[var(--color-antique-gold)] hover:underline transition-colors cursor-pointer"
             >
-              Смотреть все девять →
+              Открыть раздел →
             </button>
           </div>
 

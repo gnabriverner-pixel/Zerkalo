@@ -49,12 +49,12 @@ test.describe('G2 Live Acceptance Pass', () => {
 
     // 3. Journey 1: Open Personal Myth
     console.log('[Playwright] Step 3: Open Personal Myth');
-    const mythCard = page.locator('text=Сказка про вас').first();
+    const mythCard = page.locator('text=История по вашим ответам').first();
     await mythCard.click();
     await page.waitForTimeout(500);
 
     // Intro to Myth
-    const startMythBtn = page.locator('button:has-text("Войти через образы")');
+    const startMythBtn = page.locator('button:has-text("Создать мою историю")');
     if (await startMythBtn.isVisible()) {
       await startMythBtn.click();
       await page.waitForTimeout(500);
@@ -89,7 +89,7 @@ test.describe('G2 Live Acceptance Pass', () => {
       await dayInput.fill('15');
       await monthInput.fill('08');
       await yearInput.fill('1990');
-      const calcBtn = page.locator('button:has-text("Открыть свой код")').or(page.locator('button:has-text("Рассчитать код")'));
+      const calcBtn = page.locator('button:has-text("Посмотреть описание")').or(page.locator('button:has-text("Посмотреть описание")'));
       await calcBtn.first().click();
     }
 
@@ -156,7 +156,7 @@ test.describe('G2 Live Acceptance Pass', () => {
     await dayInput.fill('06');
     await monthInput.fill('05');
     await yearInput.fill('1986');
-    await page.locator('button:has-text("Рассчитать код")').click();
+    await page.locator('button:has-text("Посмотреть описание")').click();
 
     // Verify Alabaster Code Room opens
     await page.waitForSelector('text=Число души', { timeout: 30000 });
@@ -170,7 +170,7 @@ test.describe('G2 Live Acceptance Pass', () => {
     await page.waitForTimeout(600);
 
     // Intro to Myth
-    const startMythBtn = page.locator('button:has-text("Войти через образы")');
+    const startMythBtn = page.locator('button:has-text("Создать мою историю")');
     if (await startMythBtn.isVisible()) {
       await startMythBtn.click();
       await page.waitForTimeout(500);
@@ -206,11 +206,11 @@ test.describe('G2 Live Acceptance Pass', () => {
     await page.goto('http://localhost:3005', { waitUntil: 'networkidle' });
     
     // Go to Myth
-    const mythEntryCrisis = page.locator('button:has-text("Войти через образы")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Войти через образы →')).or(page.locator('text=Сказка про вас'));
+    const mythEntryCrisis = page.locator('button:has-text("Создать мою историю")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Создать мою историю →')).or(page.locator('text=История по вашим ответам'));
     await mythEntryCrisis.first().click();
     await page.waitForTimeout(400);
 
-    const startMythCrisis = page.locator('button:has-text("Войти через образы")');
+    const startMythCrisis = page.locator('button:has-text("Создать мою историю")');
     if (await startMythCrisis.isVisible()) {
       await startMythCrisis.click();
       await page.waitForTimeout(500);

@@ -10,7 +10,7 @@ const port = 3030;
 
 async function completeMythStepper(page, answers) {
   console.log("  [Myth Stepper] Starting questionnaire...");
-  const introBtn = page.locator('button:has-text("Войти через образы")');
+  const introBtn = page.locator('button:has-text("Создать мою историю")');
   await introBtn.waitFor({ state: "visible", timeout: 8000 }).catch(() => {});
   if (await introBtn.isVisible()) {
     await introBtn.click();
@@ -68,7 +68,7 @@ async function fillCode(page, d, m, y) {
   await monthInput.fill(m);
   await yearInput.fill(y);
 
-  const submitBtn = page.locator('button:has-text("Открыть свой код")').first();
+  const submitBtn = page.locator('button:has-text("Посмотреть описание")').first();
   await submitBtn.click();
   await page.waitForSelector('text=Акт I · Личная формула', { timeout: 15000 });
   await page.waitForTimeout(600);

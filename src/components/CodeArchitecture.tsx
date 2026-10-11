@@ -209,11 +209,11 @@ export default function CodeArchitecture({
           </span>
 
           <h1 className="font-serif text-5xl sm:text-6xl text-[var(--color-text-primary)] mb-4 font-light tracking-tight leading-tight">
-            Архитектура природы
+            Другой взгляд на себя — по дате рождения
           </h1>
 
           <p className="text-[17px] text-[var(--color-text-secondary)] leading-relaxed mb-10 max-w-md mx-auto font-light">
-            Введите дату рождения. Система рассчитает пять главных ключей и развернет их в непрерывном цифровом свитке.
+            Введите дату рождения. Вы получите символическое описание по системе нумерологии. Прочитайте его и отметьте, что похоже на вас, а что нет. Это не научная оценка личности и не предсказание.
           </p>
 
           {/* THREE CLEAN DATE FIELDS: [ ДД ] [ ММ ] [ ГГГГ ] */}
@@ -279,7 +279,7 @@ export default function CodeArchitecture({
                 </>
               ) : (
                 <>
-                  <span>Рассчитать код</span>
+                  <span>Посмотреть описание</span>
                   <ArrowRight size={14} />
                 </>
               )}

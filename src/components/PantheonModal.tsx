@@ -60,7 +60,7 @@ export function PantheonModal({ isOpen, onClose, initialSelectedNumber = 1 }: Pa
           transition={{ duration: 0.3, ease: "easeOut" }}
           role="dialog"
           aria-modal="true"
-          aria-label="Пантеон девяти архетипов"
+          aria-label="Что означают числа"
           className="relative w-full max-w-5xl bg-[#0D121D] border border-[var(--color-antique-gold)]/30 rounded-xs shadow-[0_24px_80px_rgba(0,0,0,0.8)] text-[#EAEAEA] p-6 sm:p-10 my-auto overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
@@ -69,7 +69,7 @@ export function PantheonModal({ isOpen, onClose, initialSelectedNumber = 1 }: Pa
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-antique-gold)]/30 text-[var(--color-antique-gold)] text-[10px] tracking-widest uppercase mb-2">
                 <Sparkles size={11} />
-                <span>Пантеон девяти архетипов</span>
+                <span>Что означают числа</span>
               </div>
               <h2 className="font-serif text-2xl sm:text-4xl text-stone-100 font-light tracking-wide">
                 Девять Ключей Природы

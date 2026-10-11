@@ -11,7 +11,7 @@ fs.mkdirSync(screenshotDir, { recursive: true });
 
 async function completeMythStepper(page, answers) {
   console.log("  [Myth Stepper] Starting questionnaire...");
-  const introBtn = page.locator('button:has-text("Войти через образы")');
+  const introBtn = page.locator('button:has-text("Создать мою историю")');
   await introBtn.waitFor({ state: "visible", timeout: 8000 }).catch(() => {});
   if (await introBtn.isVisible()) {
     await introBtn.click();
@@ -68,7 +68,7 @@ async function fillCodeDate(page, d, m, y) {
   await yearInput.fill(y);
   await page.waitForTimeout(300);
 
-  const calcBtn = page.locator('button:has-text("Открыть свой код"), button:has-text("Рассчитать код")').first();
+  const calcBtn = page.locator('button:has-text("Посмотреть описание"), button:has-text("Посмотреть описание")').first();
   await calcBtn.click();
   await page.waitForSelector('text=Число души', { timeout: 30000 });
   await page.waitForTimeout(600);

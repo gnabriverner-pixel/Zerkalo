@@ -61,7 +61,7 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   await page.getByPlaceholder('ДД',{exact:true}).fill(day);
   await page.getByPlaceholder('ММ',{exact:true}).fill(month);
   await page.getByPlaceholder('ГГГГ',{exact:true}).fill(year);
-  await page.getByRole('button',{name:'Рассчитать код',exact:true}).click();
+  await page.getByRole('button',{name:'Посмотреть описание',exact:true}).click();
   await page.getByRole('button',{name:'Открыть мой Код',exact:true}).waitFor();
   expect(personalPosts).toHaveLength(0);
   await page.getByRole('button',{name:'Открыть мой Код',exact:true}).click();
@@ -80,7 +80,7 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   await page.getByRole('button',{name:'Перейти к Личному мифу'}).waitFor();
   await page.evaluate(()=>scrollTo(0,0));await shot('code');
   await page.getByRole('button',{name:'Перейти к Личному мифу'}).click();
-  await page.getByRole('button',{name:'Войти через образы',exact:true}).click();
+  await page.getByRole('button',{name:'Создать мою историю',exact:true}).click();
   const tags=['01 / 04 · Ситуация','02 / 04 · Образ состояния','03 / 04 · Точка живости','04 / 04 · Искомое качество'];
   for(const [i,answer]of Object.values(persona.answers).entries()){
     await page.getByText(tags[i]).waitFor();
@@ -147,7 +147,7 @@ test('direct Code link sanitizes ?dob= and prefilled date does not auto-send bef
   await page.getByPlaceholder('ДД',{exact:true}).fill('06');
   await page.getByPlaceholder('ММ',{exact:true}).fill('05');
   await page.getByPlaceholder('ГГГГ',{exact:true}).fill('1986');
-  await page.getByRole('button',{name:'Рассчитать код',exact:true}).click();
+  await page.getByRole('button',{name:'Посмотреть описание',exact:true}).click();
   await expect(page.getByPlaceholder('ДД',{exact:true})).toHaveValue('06');
   await expect(page.getByPlaceholder('ММ',{exact:true})).toHaveValue('05');
   await expect(page.getByPlaceholder('ГГГГ',{exact:true})).toHaveValue('1986');

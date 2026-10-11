@@ -530,7 +530,7 @@ async function runRouteACheck(browser: Browser): Promise<boolean> {
     const yearInput = await uiPage.waitForSelector('input[placeholder="ГГГГ"]', { timeout: 5000 });
     await yearInput.fill("1990");
 
-    const calcBtn = await uiPage.waitForSelector('button:has-text("Рассчитать код")', { timeout: 5000 });
+    const calcBtn = await uiPage.waitForSelector('button:has-text("Посмотреть описание")', { timeout: 5000 });
     await calcBtn.click();
 
     // Click "Открыть мой Код"

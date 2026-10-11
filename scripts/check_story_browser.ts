@@ -72,10 +72,10 @@ try{
   await shot(page,'00-local-setup-390');mark('local_configuration_screen_read_only_no_credentials_entered');
   await page.goto(origin,{waitUntil:'networkidle'});
   await page.getByPlaceholder('ДД',{exact:true}).fill('01');await page.getByPlaceholder('ММ',{exact:true}).fill('07');await page.getByPlaceholder('ГГГГ',{exact:true}).fill('1990');
-  await page.getByRole('button',{name:'Рассчитать код',exact:true}).click();await page.waitForTimeout(500);
+  await page.getByRole('button',{name:'Посмотреть описание',exact:true}).click();await page.waitForTimeout(500);
   await page.getByRole('button',{name:'Открыть мой Код',exact:true}).click();await consent(page);
   await page.getByRole('button',{name:'Перейти к Личному мифу',exact:true}).click();
-  await page.getByRole('button',{name:'Войти через образы',exact:true}).click();
+  await page.getByRole('button',{name:'Создать мою историю',exact:true}).click();
   const prompts=['В какой ситуации тебе сейчас хочется лучше понять себя?','Какой предмет, место или образ точнее всего передаёт это состояние?','Когда за последнее время ты почувствовал: «вот здесь я на своём месте»?','Чего тебе хочется больше в этой ситуации?'];
   for(let i=0;i<4;i++){
     await page.getByText(prompts[i],{exact:true}).waitFor({state:'visible'});

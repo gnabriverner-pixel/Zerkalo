@@ -7,6 +7,7 @@ import { Orb } from './Orb';
 import { useProtectedFetch } from './ConsentBoundary';
 import { isShortJuxtapositionEnabled } from '../services/albertOpenerState';
 import {useFreePreview,readFreePreview} from '../services/freePreview';
+import { useMythConfig } from '../services/mythAvailability';
 import { waitForMyth, checkMythReadiness, readStorageAccepted, hasStoryAccount, MYTH_COPY, MYTH_SLOW_HINT_MS } from '../services/mythWait';
 
 /** Stories from the opt-in writer v4.1 carry only title and story; the mirror/question blocks would be empty. Old stories are unaffected. */
@@ -77,18 +78,11 @@ export default function PersonalMyth({
   const [checking, setChecking] = useState(false);
   const [storageOn, setStorageOn] = useState(false);
   // Opt-in writer v4.1: the server reports it; then the four control-check questions are asked in template order.
-  const [writerV41, setWriterV41] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    // Plain fetch on purpose: a config read must not open the consent dialog. Any failure keeps the default questions.
-    try {
-      fetch('/api/personal-myth/config', { cache: 'no-store' })
-        .then(r => (r.ok ? r.json() : null))
-        .then(c => { if (alive && c?.writer === 'v41') setWriterV41(true); })
-        .catch(() => { /* default questions */ });
-    } catch { /* default questions */ }
-    return () => { alive = false; };
-  }, []);
+  // The same cheap read says whether generation is available at all and whether a public example is configured.
+  const mythConfig = useMythConfig();
+  const writerV41 = mythConfig?.writer === 'v41';
+  const exampleUrl = mythConfig?.example_url ?? null;
+  const generationBlocked = mythConfig?.generation_available === false || Boolean(freePreview?.enabled && !freePreview.can_start_myth);
 
   // Stop waiting/re-sending when the component goes away.
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -311,30 +305,28 @@ export default function PersonalMyth({
                 <EmblemPlate planet={7} variant="alabaster" size={140} showNumber={false} showLabel={false} />
               </div>
 
-              <span className="text-[13px] uppercase tracking-[0.3em] text-purple-300/80 font-mono block mb-3">
-                Независимое зеркало · Личный миф
-              </span>
-
               <h1 className="font-serif text-4xl sm:text-6xl text-stone-100 mb-4 font-normal tracking-tight leading-tight">
-                Личный миф
+                История по вашим ответам
               </h1>
 
               <p className="text-base sm:text-lg text-stone-300/80 leading-relaxed mb-10 max-w-lg mx-auto font-normal">
-                Четыре образных вопроса. Никаких анкет и дат рождения — только живая история, рождающаяся из твоих собственных метафор.
+                Четыре вопроса, затем — сказка для вас. Можно отвечать коротко. Правильных ответов нет.
               </p>
               
               {freePreview?.enabled&&<p role="status">Пробный доступ — бесплатно. История создаётся ИИ; её можно принять, уточнить или отвергнуть.{!freePreview.can_start_myth&&' '+freePreview.pause_message}</p>}
+              {generationBlocked&&<p role="status" data-testid="myth-unavailable" className="mb-4 text-sm text-stone-300">{exampleUrl?MYTH_COPY.unavailableWithExample:MYTH_COPY.unavailableNoExample}{exampleUrl&&<> <a className="underline" href={exampleUrl} target="_blank" rel="noreferrer">Прочитать пример</a></>}</p>}
               <button 
+                disabled={generationBlocked}
                 onClick={async()=>{try{const access=await readFreePreview();if(access.enabled&&!access.can_start_myth){setErrorText(access.pause_message);return;}setStep(1);}catch(e:any){setErrorText(e.message);}}}
                 className="px-8 py-4 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] shadow-[0_0_30px_rgba(200,164,93,0.25)] transition-all cursor-pointer inline-flex items-center gap-2"
               >
-                <span>Войти через образы</span>
+                <span>Создать мою историю</span>
                 <ArrowRight size={14} />
               </button>
               {errorText&&<p role="alert">{errorText}</p>}
               
               <div className="mt-14 text-xs text-stone-400/60 font-normal tracking-wide flex items-center justify-center gap-2">
-                 <span>Образный формат для внутренней тишины и саморефлексии.</span>
+                 <span>Историю пишет ИИ. Это вымысел, а не заключение о вас. Вы сами решаете, что откликается.</span>
                  {onOpenAbout && (
                    <button type="button" onClick={onOpenAbout} className="text-[var(--color-antique-gold)] hover:underline ml-1">
                      О методе
@@ -482,7 +474,7 @@ export default function PersonalMyth({
               <EmblemPlate planet={7} variant="alabaster" size={140} showNumber={false} showLabel={false} className="mb-8" />
               <Loader2 className="w-6 h-6 text-[var(--color-antique-gold)] animate-spin mb-6" />
               <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 mb-3 font-light">
-                Собираем метафорическую историю...
+                История создаётся
               </h3>
               <p className="text-xs text-stone-400 font-normal max-w-sm leading-relaxed">
                 {MYTH_COPY.writing}
@@ -562,6 +554,11 @@ export default function PersonalMyth({
                 </div>
               </article>
 
+              {isTitleAndStoryOnly(result) && (
+                <div className="w-full max-w-2xl mx-auto text-center">
+                  <p className="font-serif text-xl sm:text-2xl text-stone-100">{MYTH_COPY.afterStory}</p>
+                </div>
+              )}
               {!isTitleAndStoryOnly(result) && (<>
               <div className="w-full max-w-2xl mx-auto space-y-4">
                 <div className="rounded-xs border border-white/[0.08] bg-[#0D121D]/80 p-6 sm:p-7">
@@ -615,7 +612,7 @@ export default function PersonalMyth({
 
               {/* CTA TO ALBERT SHORT JUXTAPOSITION / DIGITAL CODE / MEETING */}
               <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-10 rounded-xs text-center space-y-6">
-                {freePreview?.active&&onOpenSavedStory?<><p>До пяти успешно выданных ответов Альберта, сохранение и PDF — бесплатно в пробный период.</p><button onClick={onOpenSavedStory}>Обсудить с Альбертом и сохранить</button><p>Встреча — дополнительный раздел; она не обязательна и не входит в проверенный пробный опыт.</p></>:shortJuxtapositionEnabled && onOpenAlbertJuxtaposition ? (
+                {freePreview?.active&&onOpenSavedStory?<><p>{MYTH_COPY.albertIntro} До пяти успешно выданных ответов Альберта, сохранение и PDF — бесплатно в пробный период.</p><button onClick={onOpenSavedStory}>Обсудить с Альбертом и сохранить</button><p>Встреча — дополнительный раздел; она не обязательна и не входит в проверенный пробный опыт.</p></>:shortJuxtapositionEnabled && onOpenAlbertJuxtaposition ? (
                   <>
                     <div>
                       <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
