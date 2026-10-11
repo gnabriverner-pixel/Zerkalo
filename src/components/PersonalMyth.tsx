@@ -313,12 +313,12 @@ export default function PersonalMyth({
                 Четыре вопроса, затем — сказка для вас. Можно отвечать коротко. Правильных ответов нет.
               </p>
               
-              {freePreview?.enabled&&<p role="status">Пробный доступ — бесплатно. История создаётся ИИ; её можно принять, уточнить или отвергнуть.{!freePreview.can_start_myth&&' '+freePreview.pause_message}</p>}
+              {freePreview?.enabled&&<p role="status">Пробный доступ — бесплатно. История создаётся ИИ; её можно принять, уточнить или отвергнуть.</p>}
               {generationBlocked&&<p role="status" data-testid="myth-unavailable" className="mb-4 text-sm text-stone-300">{exampleUrl?MYTH_COPY.unavailableWithExample:MYTH_COPY.unavailableNoExample}{exampleUrl&&<> <a className="underline" href={exampleUrl} target="_blank" rel="noreferrer">Прочитать пример</a></>}</p>}
               <button 
                 disabled={generationBlocked}
                 onClick={async()=>{try{const access=await readFreePreview();if(access.enabled&&!access.can_start_myth){setErrorText(access.pause_message);return;}setStep(1);}catch(e:any){setErrorText(e.message);}}}
-                className="px-8 py-4 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] shadow-[0_0_30px_rgba(200,164,93,0.25)] transition-all cursor-pointer inline-flex items-center gap-2"
+                className="px-8 py-4 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] shadow-[0_0_30px_rgba(200,164,93,0.25)] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none inline-flex items-center gap-2"
               >
                 <span>Создать мою историю</span>
                 <ArrowRight size={14} />
@@ -506,9 +506,9 @@ export default function PersonalMyth({
                 <span className="text-[13px] tracking-[0.3em] uppercase text-purple-300/80 font-mono block mb-2">
                   Личный Миф · Художественная сцена
                 </span>
-                <p className="text-xs text-stone-400 font-normal mb-4">
+                {!isTitleAndStoryOnly(result) && (<p className="text-xs text-stone-400 font-normal mb-4">
                   В художественной сцене герой — «ты», а в пояснениях ниже мы обращаемся прямо к вам и вашим ответам.
-                </p>
+                </p>)}
                 
                 <h1 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-4 font-light tracking-tight">
                   {result.title}

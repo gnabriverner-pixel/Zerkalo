@@ -47,7 +47,8 @@ describe('actual V2 journey', () => {
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/consent' ? {accepted:true} : {status:'ok', payload}), {status:200}));
     vi.stubGlobal('fetch', fetchMock);
     await act(async () => { root.render(React.createElement(App)); });
-    expect(fetchMock.mock.calls.filter(call=>call[0]!=='/api/free-preview')).toHaveLength(0);
+    // Cheap status reads (free-preview, personal-myth/config) are allowed; nothing else may be requested here.
+    expect(fetchMock.mock.calls.filter(call=>call[0]!=='/api/free-preview'&&call[0]!=='/api/personal-myth/config')).toHaveLength(0);
     await enterSyntheticDob();
     expect(container.textContent).toContain(payload.central_motif);
     expect(loadTransientDraft()?.codeResult).toEqual(payload.calculation.canonical_result);
@@ -77,7 +78,8 @@ describe('actual V2 journey', () => {
     await click('Готовый тестовый миф');
     const before = loadTransientDraft();
     expect(before?.codeResult).toBeNull();
-    expect(fetchMock.mock.calls.filter(call=>call[0]!=='/api/free-preview')).toHaveLength(0);
+    // Cheap status reads (free-preview, personal-myth/config) are allowed; nothing else may be requested here.
+    expect(fetchMock.mock.calls.filter(call=>call[0]!=='/api/free-preview'&&call[0]!=='/api/personal-myth/config')).toHaveLength(0);
     await click('Продолжить тестовую встречу');
     // Enter the synthetic date using React input events, as the browser would.
     await enterSyntheticDob();
