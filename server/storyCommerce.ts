@@ -257,7 +257,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     }catch(error:any){
       // The request may have reached the provider (timeout / lost socket / unreadable body): do not mark it failed and do
       // not offer a new call. Keep the reservation, answer 202 'uncertain'; the same request_id only reads this state.
-      if(/^(provider_call_timeout|provider_unavailable|provider_invalid_json)$/.test(String(error?.message||''))){
+      if(/^(provider_call_timeout|provider_unavailable|provider_invalid_json|provider_http_(?:408|5\d\d))$/.test(String(error?.message||''))){
         try{db.markUncertain(id,order.id,requestKey);}catch{/* Deletion/revocation wins over a delayed response. */}
         return res.status(202).json({status:'uncertain',order:publicOrder(db.order(id,order.id))});
       }

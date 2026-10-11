@@ -1,8 +1,9 @@
 import type { StoryInputs } from "../src/types";
 import { type ChatClient, RouterAIClient, fallbackEligible } from './routerai';
 import { MYTH_SCHEMA, strictFormat } from './structuredOutput';
+import { createHash } from 'node:crypto';
 import {
-  PERSONAL_MYTH_WRITER_V41_VERSION, buildWriterV41UserMessage, isWriterV41Enabled, parseWriterV41Response,
+  PERSONAL_MYTH_WRITER_V41_VERSION, WRITER_V42_SENT_SHA256, buildWriterV41UserMessage, isWriterV41Enabled, parseWriterV41Response,
   writerV41MaxTokens, writerV41Routing, writerV41SystemMessage,
 } from './mythWriterV41';
 
@@ -998,6 +999,8 @@ export class DeepSeekMythProvider implements PersonalMythProvider {
 
   async generate(prompt: string, timeoutMs: number, mode?: 'v41'): Promise<string> {
     if (mode === 'v41') {
+      // Checked before any reservation: a mismatch refuses locally, sends nothing and costs nothing.
+      if (createHash('sha256').update(writerV41SystemMessage(), 'utf8').digest('hex') !== WRITER_V42_SENT_SHA256) throw new Error('provider_local_refusal');
       // Writer v4.1: reviewed brief as system message, no json_schema response_format (the {title, story}
       // contract is not MYTH_SCHEMA and is enforced by the strict local parser), bounded output budget.
       return await this.client.call({

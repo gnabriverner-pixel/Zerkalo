@@ -41,6 +41,12 @@ export function fallbackEligible(error: unknown): boolean {
   return /^(provider_(?:http_(?:408|429|5\d\d)|call_timeout|unavailable|empty_output|invalid_json|truncated|gateway_error)|meeting_(?:timeout|malformed_response)|personal_myth_quality_failed:repair_parse_error)(?::|$)/.test(code);
 }
 
+/** Thrown (by our own checks or an injected transport) when it is PROVEN that nothing was handed to the network.
+ * Such an attempt is released from the budget; it is never 'uncertain'. */
+export class LocalSendRefusal extends Error {
+  constructor(message = 'provider_local_refusal') { super(message); this.name = 'LocalSendRefusal'; }
+}
+
 type RequestedResponseFormat = NonNullable<DeepSeekRequestOptions['response_format']>;
 
 // RouterAI reports the routed provider as a human-readable label. Only the confirmed aliases of
@@ -114,24 +120,35 @@ export class RouterAIClient implements ChatClient {
     const event: ProviderEvent = {gateway:'routerai',model:this.defaultModel,upstream:null,responseModel:null,
       outcome:'provider_unavailable',latencyMs:0,costRub:null,usageCost:null,usageCostCurrency:'UNKNOWN',inputTokens:null,outputTokens:null,gatewayCode:null};
     const responseFormat = transportResponseFormat(options.response_format, this.defaultModel);
+    // The final body is built and checked BEFORE the budget reservation: a refusal here costs nothing and sends nothing.
+    const requestBody:Record<string,unknown>={model:this.defaultModel,messages:options.messages,
+      ...(writer && options.temperature === undefined ? {} : {temperature:options.temperature ?? 0.7}),
+      max_tokens:options.max_tokens ?? 4000,
+      ...(writer ? {stream:false} : {}),
+      ...(responseFormat ? {response_format:responseFormat} : {}),
+      include_reasoning:false,
+      ...providerPolicy,
+      ...(options.routing?.verbosity ? {verbosity:options.routing.verbosity} : {}),
+      ...(options.routing?.provider_only?.length ? {provider:{only:options.routing.provider_only,allow_fallbacks:false}} : {}),
+    };
+    if (writer) {
+      const p:any = requestBody.provider;
+      const ok = p?.only?.length===1 && p.only[0]==='anthropic' && p.allow_fallbacks===false && requestBody.stream===false
+        && requestBody.include_reasoning===false && requestBody.verbosity==='low' && !('temperature' in requestBody)
+        && !('response_format' in requestBody) && !('reasoning' in requestBody) && !('thinking' in requestBody)
+        && typeof requestBody.max_tokens==='number' && requestBody.max_tokens>=5000;
+      if (!ok) throw new Error('provider_local_refusal');
+    }
     const budget=await reserveProviderAttempt(this.defaultModel,{...options,response_format:responseFormat});
-    let transportComplete=false;
+    let transportComplete=false, handedToTransport=false, localRefusal=false;
     event.stage='before_headers';
     try {
-      const response = await this.transport(`${ROUTERAI_URL}/chat/completions`, {
-        method:'POST', headers:{Authorization:`Bearer ${this.env.ROUTERAI_API_KEY!.trim()}`,'Content-Type':'application/json'},
-        signal:AbortSignal.timeout(timeout),
-        body:JSON.stringify({model:this.defaultModel,messages:options.messages,
-          ...(writer && options.temperature === undefined ? {} : {temperature:options.temperature ?? 0.7}),
-          max_tokens:options.max_tokens ?? 4000,
-          ...(writer ? {stream:false} : {}),
-          ...(responseFormat ? {response_format:responseFormat} : {}),
-          include_reasoning:false,
-          ...providerPolicy,
-          ...(options.routing?.verbosity ? {verbosity:options.routing.verbosity} : {}),
-          ...(options.routing?.provider_only?.length ? {provider:{only:options.routing.provider_only,allow_fallbacks:false}} : {}),
-        }),
-      });
+      const serialized = JSON.stringify(requestBody);
+      const init = {method:'POST', headers:{Authorization:`Bearer ${this.env.ROUTERAI_API_KEY!.trim()}`,'Content-Type':'application/json'},
+        signal:AbortSignal.timeout(timeout), body:serialized};
+      // From here on the request may have left the process: nothing below proves otherwise except LocalSendRefusal.
+      handedToTransport=true;
+      const response = await this.transport(`${ROUTERAI_URL}/chat/completions`, init);
       event.stage='reading_body';event.responseId=safeToken(response.headers?.get?.('x-generation-id'));
       if (!response.ok) throw new Error(`provider_http_${response.status}`);
       let payload: any;
@@ -148,6 +165,9 @@ export class RouterAIClient implements ChatClient {
         event.gatewayCode = Number.isFinite(gatewayCode) ? gatewayCode : null;
         throw new Error('provider_gateway_error');
       }
+      // A complete provider answer exists (it may have been billed): from here the attempt is a finished one, whatever
+      // its content turns out to be; its reservation is replaced by the recorded usage.
+      transportComplete=true;
       // Only bounded metadata, never raw responses, prompts, keys or reasoning.
       const upstream = String(payload?.provider ?? payload?.provider_name ?? '').toLowerCase();
       event.upstream = /^[a-z][a-z0-9 -]{0,40}$/.test(upstream) ? upstream : null;
@@ -170,7 +190,8 @@ export class RouterAIClient implements ChatClient {
       return content;
     } catch (error) {
       const raw = error instanceof Error ? error : new Error('provider_unavailable');
-      const code = /^(provider_|routerai_)[a-z0-9_]+$/.test(raw.message) ? raw.message
+      localRefusal = raw instanceof LocalSendRefusal || !handedToTransport;
+      const code = localRefusal ? 'provider_local_refusal' : /^(provider_|routerai_)[a-z0-9_]+$/.test(raw.message) ? raw.message
         : /timeout|abort/i.test(raw.name) ? 'provider_call_timeout' : 'provider_unavailable';
       event.outcome = code;
       event.errorName = safeToken(raw.name);event.causeCode = safeToken((raw as any).cause?.code);
@@ -178,7 +199,10 @@ export class RouterAIClient implements ChatClient {
     } finally {
       event.latencyMs = Date.now() - started;
       this.observe(event);
-      if(budget)budget.db.finishAI(budget.id,transportComplete,event);
+      if(budget){
+        if(localRefusal&&!transportComplete)budget.db.releaseUnsentAI(budget.id);
+        else budget.db.finishAI(budget.id,transportComplete,event);
+      }
     }
   }
 }

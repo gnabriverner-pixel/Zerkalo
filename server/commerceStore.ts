@@ -186,11 +186,21 @@ export class CommerceStore {
         this.db.prepare('UPDATE ai_budget_commitments SET spent_micro=spent_micro+?,attempts=attempts+1 WHERE order_id=?').run(cost,orderId!);
       }else{
         const p=this.db.prepare("SELECT * FROM ai_budget_limits WHERE pool='free'").get() as any;
-        const used=this.db.prepare("SELECT COUNT(*) AS attempts,COALESCE(SUM(cost_micro),0) AS cost FROM ai_budget_attempts WHERE pool='free'").get() as any;
+        const used=this.db.prepare("SELECT COUNT(*) AS attempts,COALESCE(SUM(cost_micro),0) AS cost FROM ai_budget_attempts WHERE pool='free' AND state<>'released'").get() as any;
         if(!p||used.attempts>=p.attempt_limit||used.cost+cost>p.limit_micro)throw new CommerceError('free_budget_exhausted',429);
       }
       const id=crypto.randomUUID();this.db.prepare("INSERT INTO ai_budget_attempts(id,pool,order_id,model,cost_micro,state,created_at,finished_at,estimate_version,policy_version) VALUES (?,?,?,?,?,'reserved',?,NULL,?,?)").run(id,pool,orderId||null,model,cost,Date.now(),version,policyVersion);
       this.db.prepare("UPDATE ai_budget_incidents SET state='resolved' WHERE order_id=?").run(orderId||'service');if(pool==='free')this.freeBudgetAvailable(0);return id;
+    });
+  }
+  /** Only for an attempt PROVEN not to have been handed to the network: this attempt's reservation is released and it no
+   * longer counts. Reservations of other attempts (including 'uncertain' ones) are never touched. */
+  releaseUnsentAI(id:string){
+    this.tx(()=>{
+      const row=this.db.prepare('SELECT pool,order_id,cost_micro,state FROM ai_budget_attempts WHERE id=?').get(id) as any;
+      if(!row||row.state!=='reserved')return;
+      if(row.pool==='paid')this.db.prepare('UPDATE ai_budget_commitments SET spent_micro=MAX(0,spent_micro-?),attempts=MAX(0,attempts-1) WHERE order_id=?').run(row.cost_micro,row.order_id);
+      this.db.prepare("UPDATE ai_budget_attempts SET state='released',cost_micro=0,finished_at=?,outcome='local_refusal_not_sent' WHERE id=?").run(Date.now(),id);
     });
   }
   finishAI(id:string,success:boolean,usage?:{inputTokens?:number|null;outputTokens?:number|null;usageCost?:number|null;usageCostCurrency?:string;latencyMs?:number;outcome?:string}){
@@ -201,7 +211,7 @@ export class CommerceStore {
   freeBudgetAvailable(maximum:number){
     const locked=Boolean(this.db.prepare("SELECT 1 FROM configuration WHERE key='ai_budget_recovery_locked'").get());
     const limit=this.db.prepare("SELECT * FROM ai_budget_limits WHERE pool='free'").get() as any;
-    const used=this.db.prepare("SELECT COUNT(*) AS attempts,COALESCE(SUM(cost_micro),0) AS cost FROM ai_budget_attempts WHERE pool='free'").get() as any;
+    const used=this.db.prepare("SELECT COUNT(*) AS attempts,COALESCE(SUM(cost_micro),0) AS cost FROM ai_budget_attempts WHERE pool='free' AND state<>'released'").get() as any;
     const warning=Boolean(limit&&used.cost>=Math.floor(limit.limit_micro*0.7));
     if(warning)this.recordBudgetIncident(undefined,'free_budget_warning_70_percent');
     return {available:Boolean(!locked&&limit&&used.attempts<limit.attempt_limit&&used.cost+maximum<=limit.limit_micro),warning,

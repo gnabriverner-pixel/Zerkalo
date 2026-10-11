@@ -7,6 +7,8 @@ export { WRITER_V41_MODEL } from "./routerai";
  * PERSONAL_MYTH_WRITER=v41 is set. No editor, no automatic regeneration, no fallback model on this path.
  */
 export const PERSONAL_MYTH_WRITER_V41_VERSION = "personal-myth-writer-v4.2";
+/** SHA-256 of the system message as SENT (brief v4.2 after .strip()); before .strip() it is WRITER_BRIEF_V42_SHA256. */
+export const WRITER_V42_SENT_SHA256 = "20b4ee34dc634a8a86d55b3e344c84f87d494a96f3b37d5249523384e3a1a09a";
 export const WRITER_V41_FAILURE_PREFIX = "personal_myth_quality_failed:writer_v41_";
 
 export function isWriterV41Enabled(env: NodeJS.ProcessEnv = process.env): boolean {

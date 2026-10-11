@@ -14,7 +14,7 @@ import { AIBudget } from "./aiBudget";
 import { CONSENT_VERSION } from "../src/services/consent";
 import { STORY_SAMPLE_ANSWERS } from "./storySample";
 import tariffs from "./aiTariffs.json";
-import { RouterAIClient, FALLBACK_MODEL, PRIMARY_MODEL, WRITER_V41_MODEL } from "./routerai";
+import { RouterAIClient, FALLBACK_MODEL, PRIMARY_MODEL, WRITER_V41_MODEL, LocalSendRefusal } from "./routerai";
 import { registerAIBudget } from "./aiBudget";
 import { estimateAttempt } from "./aiTariffService.mjs";
 import {
@@ -310,7 +310,7 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
   };
   const asProvider = (generate: (p: string, ms: number, m?: "v41") => Promise<string>): PersonalMythProvider =>
     ({ name: "routerai", model: "synthetic/model", isReady: () => true, generate });
-  async function commerceApp(modelProvider: PersonalMythProvider, opts: { filename?: string; cookies?: string } = {}) {
+  async function commerceApp(modelProvider: PersonalMythProvider, opts: { filename?: string; cookies?: string; timeoutMs?: number } = {}) {
     for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
     vi.stubEnv("PERSONAL_MYTH_WRITER", "v41");
     // Same fixture clock as the other commerce tests (tests/setup.ts): the tariff snapshot must be fresh.
@@ -322,7 +322,7 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
     registerAIBudget(new AIBudget(() => store, env, fetch, () => Date.parse(tariffs.captured_at) + 3600000));
     installStoryCommerce(app, {
       store, ready: () => true,
-      myth: async (body: any) => { const g = await generatePersonalMyth(body, modelProvider, 5000); return { status: "ok", story_result: g.result, writer_version: g.writerVersion }; },
+      myth: async (body: any) => { const g = await generatePersonalMyth(body, modelProvider, opts.timeoutMs ?? 5000); return { status: "ok", story_result: g.result, writer_version: g.writerVersion }; },
       albert: async () => ({ status: "ok", response: "x" }),
     });
     const server = app.listen(0, "127.0.0.1"); await once(server, "listening");
@@ -414,16 +414,6 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
     });
   }
 
-  it("a definite provider error (HTTP 503 from the gateway) is a failed attempt, not uncertain", async () => {
-    const generate = vi.fn(async () => { throw new Error("provider_http_503"); });
-    const s = await commerceApp(asProvider(generate));
-    try {
-      const first = await s.call("/api/personal-myth", input);
-      expect(first.status).toBe(502);
-      expect(s.store.db.prepare("SELECT state FROM operations").all()).toEqual([{ state: "failed" }]);
-    } finally { s.close(); }
-  });
-
   it("server restart after uncertain: same state, no model call, the AI reservation stays 'uncertain'; diagnostics carry no answers", async () => {
     const events: any[] = [];
     const transport = vi.fn(async () => { const e: any = new TypeError("fetch failed"); e.cause = Object.assign(new Error("socket hang up"), { code: "UND_ERR_SOCKET" }); throw e; });
@@ -476,6 +466,110 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
       expect(refreshed.body.replayed).toBe(true);
       expect(refreshed.body.story_result.title).toBe("Синтетическое название");
       expect(generate).toHaveBeenCalledTimes(1);
+    } finally { s.close(); }
+  });
+
+  // ---- outcome matrix: every row checks order state, operation state, attempt state/reserve and number of wire sends ----
+  const okResponse = (content = okJson, finish = "stop") => ({
+    ok: true, status: 200, headers: { get: (h: string) => (h === "x-generation-id" ? "rai-test-0001" : null) },
+    json: async () => ({ id: "rai-test-0001", provider: "Anthropic", model: OPUS, choices: [{ finish_reason: finish, message: { content } }], usage: { prompt_tokens: 100, completion_tokens: 50, cost: 0.5 } }),
+  });
+  type Row = { name: string; env?: Record<string, string>; timeoutMs?: number;
+    transport: (url: any, init: any, wire: { sends: number }) => Promise<any>;
+    expect: { http: number; status?: string; op: string | null; order: string; attempts: Array<{ state: string; cost_zero?: boolean; tokens?: boolean }>; sends: number; replayStatus: number; replayBodyStatus?: string } };
+  const rows: Row[] = [
+    { name: "local refusal BEFORE reservation (bad routing in the final body)", env: { PERSONAL_MYTH_V41_PROVIDER_ONLY: "openai" },
+      transport: async () => okResponse(),
+      expect: { http: 502, op: "failed", order: "generation_failed", attempts: [], sends: 0, replayStatus: 202, replayBodyStatus: "failed" } },
+    { name: "local refusal AFTER reservation, nothing handed to the network (LocalSendRefusal)",
+      transport: async () => { throw new LocalSendRefusal(); },
+      expect: { http: 502, op: "failed", order: "generation_failed", attempts: [{ state: "released", cost_zero: true }], sends: 0, replayStatus: 202, replayBodyStatus: "failed" } },
+    { name: "cut before headers (socket lost, request may have left)",
+      transport: async (_u, _i, w) => { w.sends++; const e: any = new TypeError("fetch failed"); e.cause = { code: "UND_ERR_SOCKET" }; throw e; },
+      expect: { http: 202, status: "uncertain", op: "uncertain", order: "generating", attempts: [{ state: "uncertain" }], sends: 1, replayStatus: 202, replayBodyStatus: "uncertain" } },
+    { name: "cut while reading the body",
+      transport: async (_u, _i, w) => { w.sends++; return { ok: true, status: 200, headers: { get: () => null }, json: async () => { throw new TypeError("terminated"); } }; },
+      expect: { http: 202, status: "uncertain", op: "uncertain", order: "generating", attempts: [{ state: "uncertain" }], sends: 1, replayStatus: 202, replayBodyStatus: "uncertain" } },
+    ...[502, 503, 504, 500].map((status): Row => ({ name: `HTTP ${status} from the gateway (work may have started)`,
+      transport: async (_u, _i, w) => { w.sends++; return { ok: false, status, headers: { get: () => null }, json: async () => ({}) }; },
+      expect: { http: 202, status: "uncertain", op: "uncertain", order: "generating", attempts: [{ state: "uncertain" }], sends: 1, replayStatus: 202, replayBodyStatus: "uncertain" } })),
+    ...[400, 401, 422, 429].map((status): Row => ({ name: `HTTP ${status}: confirmed refusal, reservation still held (never released by an HTTP code alone)`,
+      transport: async (_u, _i, w) => { w.sends++; return { ok: false, status, headers: { get: () => null }, json: async () => ({ error: { message: "x" } }) }; },
+      expect: { http: 502, op: "failed", order: "generation_failed", attempts: [{ state: "uncertain" }], sends: 1, replayStatus: 202, replayBodyStatus: "failed" } })),
+    { name: "client timeout (request aborted)", timeoutMs: 60,
+      transport: (_u, init, w) => { w.sends++; return new Promise((_res, rej) => init.signal.addEventListener("abort", () => rej(Object.assign(new Error("timeout"), { name: "TimeoutError" })))); },
+      expect: { http: 202, status: "uncertain", op: "uncertain", order: "generating", attempts: [{ state: "uncertain" }], sends: 1, replayStatus: 202, replayBodyStatus: "uncertain" } },
+    { name: "complete answer, format rejected (help menu): finished attempt with recorded usage",
+      transport: async (_u, _i, w) => { w.sends++; return okResponse("Чем могу помочь?\n1. Сказку\n2. Вопрос"); },
+      expect: { http: 502, op: "failed", order: "generation_failed", attempts: [{ state: "complete", tokens: true }], sends: 1, replayStatus: 202, replayBodyStatus: "failed" } },
+    { name: "complete answer, finish_reason=length: finished attempt with recorded usage",
+      transport: async (_u, _i, w) => { w.sends++; return okResponse(okJson, "length"); },
+      expect: { http: 502, op: "failed", order: "generation_failed", attempts: [{ state: "complete", tokens: true }], sends: 1, replayStatus: 202, replayBodyStatus: "failed" } },
+    { name: "success",
+      transport: async (_u, _i, w) => { w.sends++; return okResponse(); },
+      expect: { http: 200, status: "ok", op: "complete", order: "ready", attempts: [{ state: "complete", tokens: true }], sends: 1, replayStatus: 200 } },
+  ];
+  for (const row of rows) {
+    it(`outcome: ${row.name}; same request_id and a server restart never send again`, async () => {
+      for (const [k, v] of Object.entries(row.env ?? {})) vi.stubEnv(k, v);
+      const wire = { sends: 0 };
+      const mk = () => new DeepSeekMythProvider({}, new RouterAIClient({ ROUTERAI_API_KEY: "synthetic-test-key" } as any, OPUS, ((u: any, i: any) => row.transport(u, i, wire)) as any, () => undefined));
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "v41-matrix-"));
+      const filename = path.join(dir, "c.sqlite");
+      const read = (store: any) => ({
+        op: (store.db.prepare("SELECT state FROM operations").all()[0] as any)?.state ?? null,
+        order: (store.db.prepare("SELECT state FROM orders").all()[0] as any)?.state,
+        attempts: store.db.prepare("SELECT state,cost_micro,input_tokens FROM ai_budget_attempts").all() as any[],
+      });
+      const check = (store: any) => {
+        const r = read(store);
+        expect(r.op).toBe(row.expect.op);
+        expect(r.order).toBe(row.expect.order);
+        expect(r.attempts.map(a => a.state)).toEqual(row.expect.attempts.map(a => a.state));
+        row.expect.attempts.forEach((a, n) => {
+          if (a.cost_zero) expect(r.attempts[n].cost_micro).toBe(0); else expect(r.attempts[n].cost_micro).toBeGreaterThan(0);
+          if (a.tokens) expect(r.attempts[n].input_tokens).toBe(100);
+        });
+        expect(wire.sends).toBe(row.expect.sends);
+      };
+      const first = await commerceApp(mk(), { filename, timeoutMs: row.timeoutMs });
+      let cookies = "";
+      try {
+        const r = await first.call("/api/personal-myth", input);
+        expect(r.status, JSON.stringify(r.body)).toBe(row.expect.http);
+        if (row.expect.status) expect(r.body.status).toBe(row.expect.status);
+        check(first.store);
+        const again = await first.call("/api/personal-myth", input);
+        expect(again.status).toBe(row.expect.replayStatus);
+        if (row.expect.replayBodyStatus) expect(again.body.status).toBe(row.expect.replayBodyStatus);
+        check(first.store);
+        cookies = first.cookies();
+      } finally { first.close(); }
+      const second = await commerceApp(mk(), { filename, cookies, timeoutMs: row.timeoutMs });
+      try {
+        check(second.store);
+        const again = await second.call("/api/personal-myth", input);
+        expect(again.status).toBe(row.expect.replayStatus);
+        check(second.store);
+      } finally { second.close(); }
+    });
+  }
+
+  it("a late answer to the still-open request is accepted exactly once; polling in between sends nothing", async () => {
+    const wire = { sends: 0 };
+    const transport = (async () => { wire.sends++; await new Promise(r => setTimeout(r, 250)); return okResponse(); }) as any;
+    const s = await commerceApp(new DeepSeekMythProvider({}, new RouterAIClient({ ROUTERAI_API_KEY: "synthetic-test-key" } as any, OPUS, transport, () => undefined)), { timeoutMs: 60 });
+    try {
+      const pending = s.call("/api/personal-myth", input);
+      await vi.waitFor(() => expect(wire.sends).toBe(1));
+      const mid = await s.call("/api/personal-myth", input);
+      expect(mid.status).toBe(202);
+      const done = await pending;
+      expect(done.body.story_result.title).toBe("Синтетическое название");
+      const replay = await s.call("/api/personal-myth", input);
+      expect(replay.body.replayed).toBe(true);
+      expect(wire.sends).toBe(1);
+      expect(s.store.db.prepare("SELECT state FROM ai_budget_attempts").all()).toEqual([{ state: "complete" }]);
     } finally { s.close(); }
   });
 });
