@@ -314,7 +314,7 @@ export default function PersonalMyth({
               </p>
               
               {freePreview?.enabled&&<p role="status">Пробный доступ — бесплатно. История создаётся ИИ; её можно принять, уточнить или отвергнуть.</p>}
-              {generationBlocked&&<p role="status" data-testid="myth-unavailable" className="mb-4 text-sm text-stone-300">{exampleUrl?MYTH_COPY.unavailableWithExample:MYTH_COPY.unavailableNoExample}{exampleUrl&&<> <a className="underline" href={exampleUrl} target="_blank" rel="noreferrer">Прочитать пример</a></>}</p>}
+              {generationBlocked&&<p role="status" data-testid="myth-unavailable" className="mb-4 text-sm text-stone-300">{exampleUrl?MYTH_COPY.unavailableWithExample:MYTH_COPY.unavailableNoExample}{exampleUrl&&<> <a className="underline" href={exampleUrl} target="_blank" rel="noreferrer">Прочитать пример истории</a></>}</p>}
               <button 
                 disabled={generationBlocked}
                 onClick={async()=>{try{const access=await readFreePreview();if(access.enabled&&!access.can_start_myth){setErrorText(access.pause_message);return;}setStep(1);}catch(e:any){setErrorText(e.message);}}}

@@ -191,7 +191,7 @@ export function LabEntryView({
             </button>
           )}
           {exampleUrl && (
-            <a href={exampleUrl} target="_blank" rel="noreferrer" className="text-[14px] text-[var(--color-antique-gold)] underline">Прочитать пример</a>
+            <a href={exampleUrl} target="_blank" rel="noreferrer" className="text-[14px] text-[var(--color-antique-gold)] underline">Прочитать пример истории</a>
           )}
           <p className="text-[13px] text-[var(--color-text-muted)]">Можно попробовать другой способ — <a href="#collection" className="underline">символический портрет по дате рождения</a>.</p>
         </motion.div>
