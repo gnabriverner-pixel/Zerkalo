@@ -1,13 +1,13 @@
 {
   "manifest_version": 1,
-  "stage": "free-preview-internal-staging-candidate",
+  "stage": "free-preview-soft-launch-candidate",
   "verified_at": "2026-10-06T23:02:07Z",
-  "verification_status": "LOCAL_STRICT_VERIFIER_PASS_INTERNAL_STAGING_ONLY",
+  "verification_status": "CANDIDATE_PIN_NOT_YET_VERIFIED",
   "production_authorized": false,
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
-    "branch": "codex/free-preview-internal-staging-2026-10-07",
-    "pinned_sha": "ac90097e407248a57b6ab9ac2d20bfe379b5eb77"
+    "branch": "feat/myth-v41-writer",
+    "pinned_sha": "0c10c61c529438b5df017952405e28cc646ff985"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
