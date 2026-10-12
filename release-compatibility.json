@@ -1,18 +1,18 @@
 {
   "manifest_version": 1,
   "stage": "free-preview-internal-staging-candidate",
-  "verified_at": "2026-10-06T23:02:07Z",
-  "verification_status": "LOCAL_STRICT_VERIFIER_PASS_INTERNAL_STAGING_ONLY",
+  "verified_at": "2026-10-12T16:50:00Z",
+  "verification_status": "LOCAL_STRICT_VERIFIER_PASS_NUMERIC_HOUSES",
   "production_authorized": false,
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
-    "branch": "codex/free-preview-internal-staging-2026-10-07",
-    "pinned_sha": "ac90097e407248a57b6ab9ac2d20bfe379b5eb77"
+    "branch": "release/numeric-houses-2026-10-12",
+    "pinned_sha": "70c63f90b0edd20f1317eceb4794681c42c49266"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
-    "branch": null,
-    "pinned_sha": "de78eb346a32da5b9f2fe6b5d40e10c85309c93f"
+    "branch": "release/numeric-houses-2026-10-12",
+    "pinned_sha": "1d354c86cc9ef89450c9dab27da4c4f3f410eb8d"
   },
   "contracts": {
     "dcs_service_http": {
