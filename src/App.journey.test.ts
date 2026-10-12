@@ -30,7 +30,7 @@ async function enterSyntheticDob(values = ['18', '12', '1989']) {
       field.dispatchEvent(new Event('input', { bubbles: true }));
     });
   });
-  await click('Открыть мой Код');
+  await click('Посмотреть свой разбор');
 }
 beforeEach(() => {
   localStorage.clear(); sessionStorage.clear();

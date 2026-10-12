@@ -359,7 +359,6 @@ export function CodeV2Experience({
               </div>
               <h1 className="font-serif text-3xl sm:text-5xl font-light text-stone-100 tracking-tight mb-4">
                 Ваши пять чисел
-                <span className="sr-only"> · Ваш Цифровой Код</span>
               </h1>
               <div className="text-sm sm:text-base text-stone-300 font-normal leading-relaxed max-w-lg mx-auto space-y-3">
                 <p>
@@ -455,7 +454,7 @@ export function CodeV2Experience({
                     </>
                   ) : (
                     <>
-                      <span>Открыть мой Код</span>
+                      <span>Посмотреть свой разбор</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -516,20 +515,20 @@ export function CodeV2Experience({
               <div className="text-center max-w-xl mx-auto mb-8 relative z-10">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-antique-gold)]/25 text-[13px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] mb-3">
                   <Sparkles className="w-3 h-3" />
-                  <span>Символический язык карты</span>
+                  <span>Как читать</span>
                 </div>
                 <h1 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-2">
-                  Девять светил и пять координат
+                  Пять чисел, пять ролей
                 </h1>
                 <p className="text-xs sm:text-sm text-stone-300 font-normal leading-relaxed">
-                  В языке ведической нумерологии числа связаны с девятью светилами. Дата преобразуется в пять координат карты — это символические гипотезы о внутреннем запросе, способе действия и зрелой сборке. Проверьте их по своему опыту: совпадение не предполагается заранее.
+                  Каждое число — образ светила со своим характером. Роль подсказывает, куда смотреть: Душа — чего вам хочется внутренне; Выражение — что другие замечают в ваших делах; Путь — как вы учитесь действовать; Направление — среди каких людей, в каком ритме и при каких условиях вам легче; Результат — что может вырасти из ваших качеств и поступков.
                 </p>
               </div>
 
               {/* A. Five Numbers Visually (Editorial Typographic Strip) */}
               <div className="flex flex-col items-center text-center mb-7 relative z-10">
                 <div className="text-[13px] sm:text-sm font-mono tracking-widest uppercase text-[var(--color-antique-gold)]/80 mb-3">
-                  Пять позиций вашей карты
+                  Ваши пять чисел и их роли
                 </div>
 
                 <div className="flex items-center justify-center gap-2 sm:gap-6 flex-wrap py-2">
@@ -590,34 +589,12 @@ export function CodeV2Experience({
                     .split('\n\n')
                     .map((p) => p.trim())
                     .filter(Boolean);
-                  const visibleParagraphs = showHeroMotifDetails ? motifParagraphs : motifParagraphs.slice(0, 1);
                   return (
                     <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-base sm:text-[17px] text-stone-200 leading-relaxed font-normal mb-6 space-y-3">
-                      <p className="text-stone-400 text-sm">
-                        Гипотеза для проверки, а не вывод о вашей личности.
-                      </p>
-                      {visibleParagraphs.map((paragraph, pIdx) => (
+                      <p className="text-stone-400 text-sm">Сравните это описание со своей жизнью. Оно может не совпасть.</p>
+                      {motifParagraphs.map((paragraph, pIdx) => (
                         <p key={pIdx}>{paragraph}</p>
                       ))}
-                      {motifParagraphs.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => setShowHeroMotifDetails((prev) => !prev)}
-                          className="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)] hover:text-amber-200 transition-colors"
-                        >
-                          {showHeroMotifDetails ? (
-                            <>
-                              <span>Свернуть</span>
-                              <ChevronUp className="w-3.5 h-3.5" />
-                            </>
-                          ) : (
-                            <>
-                              <span>Читать дальше</span>
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </>
-                          )}
-                        </button>
-                      )}
                     </div>
                   );
                 })()}
@@ -841,23 +818,17 @@ export function CodeV2Experience({
 
                       {story && albertLead(pos.position, pos.energy) && (
                         <p className="mb-3 border-l-2 border-[var(--color-antique-gold)]/50 pl-3 text-sm text-stone-300">
-                          <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90">Альберт</span>
+                          <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90">Альберт · ИИ-проводник</span>
                           {albertLead(pos.position, pos.energy)}
                         </p>
                       )}
                       {story && (
                         <div className="mb-4">
-                          {pos.position === 'soul' && <span className="sr-only">О чём это число</span>}
                           {story.title && <h4 className="text-lg text-stone-100 mb-2">{story.title}</h4>}
-                          {(isExpanded ? story.paragraphs : story.paragraphs.slice(0, 1)).map((para, i) => (
+                          {story.paragraphs.map((para, i) => (
                             <p key={i} className="text-base sm:text-[17px] text-stone-200 leading-relaxed mb-3">{para}</p>
                           ))}
                         </div>
-                      )}
-                      {pos.position === 'path' && (
-                        <p className="mb-3 rounded-xl border border-[var(--color-antique-gold)]/20 bg-[var(--color-antique-gold)]/5 px-4 py-3 text-base text-stone-300 font-normal leading-relaxed">
-                          Это не готовая черта характера, а направление практики.
-                        </p>
                       )}
                       {/* 1. О чём это число (человеческий смысл) */}
                       {!story && (<>
@@ -865,6 +836,11 @@ export function CodeV2Experience({
                         <div className="text-xs font-medium text-stone-400 mb-2">
                           О чём это число ({pos.public_name}, {pos.energy})
                         </div>
+                        {pos.position === 'path' && (
+                          <p className="mb-3 rounded-xl border border-[var(--color-antique-gold)]/20 bg-[var(--color-antique-gold)]/5 px-4 py-3 text-base text-stone-300 font-normal leading-relaxed">
+                            Это не готовая черта характера, а направление практики.
+                          </p>
+                        )}
                         <p className="text-base sm:text-[17px] text-stone-200 font-normal leading-relaxed">
                           {isExpanded ? publicEssence : getFirstSentence(publicEssence)}
                         </p>
@@ -1022,7 +998,7 @@ export function CodeV2Experience({
                             Проверьте на себе:
                           </span>
                           <p className="text-base text-stone-200 font-serif italic leading-relaxed">
-                            «{pos.verification_question}»
+                            «{story ? story.question : pos.verification_question}»
                           </p>
                         </div>
                       </div>

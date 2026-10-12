@@ -64,8 +64,8 @@ describe('Release Hygiene Frontend Suite', () => {
     });
 
     // 3. Must not have triggered auto-calculation
-    expect(container.textContent).toContain('Ваш Цифровой Код');
-    expect(container.textContent).toContain('Открыть мой Код');
+    expect(container.textContent).toContain('Ваши пять чисел');
+    expect(container.textContent).toContain('Посмотреть свой разбор');
   });
 
   it('ignores ?qa=1 in simulated production environment', async () => {

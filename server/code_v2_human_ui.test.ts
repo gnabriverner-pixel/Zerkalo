@@ -38,8 +38,8 @@ describe('Code V2 Human Product Experience UI Contract', () => {
 
     // Must contain human entry copy
     expect(html).toContain('ЗЕРКАЛО СЕБЯ');
-    expect(html).toContain('Ваш Цифровой Код');
-    expect(html).toContain('Открыть мой Код');
+    expect(html).toContain('Ваши пять чисел');
+    expect(html).toContain('Посмотреть свой разбор');
     expect(html).not.toContain('qa=1');
   });
 
@@ -66,20 +66,32 @@ describe('Code V2 Human Product Experience UI Contract', () => {
       expect(html).not.toContain(tax);
     }
 
-    // Visible text budget: 450-860 Russian words (allowing for celestial intro and enriched central motif)
+    // Artistic content words (central motif + mini-stories or fallback essences)
+    const artisticWords = [
+      payload.central_motif || '',
+      ...payload.positions.flatMap((p) => {
+        const s = (p as any).mini_story;
+        return s ? [s.title, ...s.paragraphs, s.question] : [p.essence, p.verification_question];
+      }),
+    ].join(' ').match(/[а-яА-ЯёЁ]+/g) || [];
+
+    // All visible Russian words
     const textOnly = html.replace(/<[^>]*>/g, ' ');
     const ruWords = textOnly.match(/[а-яА-ЯёЁ]+/g) || [];
-    expect(ruWords.length).toBeGreaterThanOrEqual(450);
-    expect(ruWords.length).toBeLessThanOrEqual(860);
+
+    // Navigation and framing copy counted separately from full literary content
+    const navWordsCount = ruWords.length - artisticWords.length;
+    expect(navWordsCount).toBeGreaterThanOrEqual(100);
+    expect(navWordsCount).toBeLessThanOrEqual(700);
 
     // Sequence verification: symbolic framing, 5 numbers visually, central motif with planetary badge, quiet Albert link, expandable calculation
-    expect(html).toContain('Символический язык карты');
-    expect(html).toContain('Девять светил и пять координат');
-    expect(html).toContain('совпадение не предполагается заранее');
-    expect(html).toContain('Пять позиций вашей карты');
+    expect(html).toContain('Как читать');
+    expect(html).toContain('Пять чисел, пять ролей');
+    expect(html).toContain('Роль подсказывает, куда смотреть: Душа — чего вам хочется внутренне');
+    expect(html).toContain('Ваши пять чисел и их роли');
     expect(html).toContain('Венера (6) ⟷ Сатурн (8)');
     expect(html).toContain('Покой сердца и строгий закон формы');
-    expect(html).toContain('Гипотеза для проверки, а не вывод о вашей личности');
+    expect(html).toContain('Сравните это описание со своей жизнью. Оно может не совпасть.');
     expect(html).toContain('Хотите проверить это на себе?');
     for (const paragraph of (payload.central_motif || '').split('\n\n')) {
       expect(html).toContain(paragraph);
@@ -87,14 +99,24 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(html).not.toContain('Раскрыть эту связь');
     expect(html).toContain('Вот откуда это взялось');
 
+    // Full mini-stories with all paragraphs and story question visible immediately without expanding
+    for (const position of payload.positions) {
+      if (position.mini_story) {
+        expect(html).toContain(position.mini_story.title);
+        for (const paragraph of position.mini_story.paragraphs) {
+          expect(html).toContain(paragraph);
+        }
+        expect(html).toContain(position.mini_story.question);
+      } else {
+        expect(html.split(position.verification_question).length - 1).toBe(1);
+      }
+    }
+
     // Must contain human labels
-    expect(html).toContain('Как это читать');
-    expect(html).toContain('О чём это число');
+    expect(html).toContain('Как читать');
     expect(html).toContain('Проверьте на себе');
     expect(html).not.toContain('Вопросы для проверки карты');
-    for (const position of payload.positions) {
-      expect(html.split(position.verification_question).length - 1).toBe(1);
-    }
+    expect(html).toContain('Альберт · ИИ-проводник');
     expect(html).toContain('Альберт — собеседник по вашей карте');
     expect(html).toContain('Поговорить с Альбертом');
 
@@ -140,7 +162,7 @@ describe('Code V2 Human Product Experience UI Contract', () => {
 
   it('frames Path as a capability learned through life rather than a finished trait', async () => {
     const payload = await calculateCanonicalCodeV2('06.05.1986');
-    const html = renderToString(
+    const htmlWithStory = renderToString(
       React.createElement(CodeV2Experience, {
         initialDate: '06.05.1986',
         initialPayload: payload,
@@ -149,8 +171,27 @@ describe('Code V2 Human Product Experience UI Contract', () => {
       })
     );
 
-    expect(html).toContain('Осваиваемый способ действия');
-    expect(html).toContain('Это не готовая черта характера, а направление практики');
+    expect(htmlWithStory).toContain('Осваиваемый способ действия');
+    // Mini-story is rendered without duplicating the fallback trait plaque
+    expect(htmlWithStory).not.toContain('Это не готовая черта характера, а направление практики');
+
+    // Fallback mode without mini_story retains the explanatory plaque
+    const fallbackPayload = {
+      ...payload,
+      positions: payload.positions.map((p) => ({ ...p, mini_story: undefined }))
+    };
+    const htmlFallback = renderToString(
+      React.createElement(CodeV2Experience, {
+        initialDate: '06.05.1986',
+        initialPayload: fallbackPayload,
+        isQaMode: false,
+        onOpenAlbert: () => {}
+      })
+    );
+
+    expect(htmlFallback).toContain('Осваиваемый способ действия');
+    expect(htmlFallback).toContain('Это не готовая черта характера, а направление практики');
+    expect(htmlFallback).toContain('О чём это число');
   });
 
   // Release hygiene: the QA surface (top bar + preset dates) moved to the dev-only
