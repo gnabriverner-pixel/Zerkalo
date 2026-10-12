@@ -180,7 +180,7 @@ export function LabEntryView({
           </h2>
 
           <p className="text-[var(--color-text-secondary)] font-normal text-[17px] sm:text-[18px] max-w-2xl mx-auto leading-[1.7] pt-2">
-            Ответьте на четыре вопроса о том, что с вами сейчас происходит. ИИ напишет для вас сказку. Возможно, в её герое или событиях вы узнаете что-то своё.
+            Ответьте на четыре вопроса о том, что с вами происходит. Из ваших ответов сложится личная история — о ситуации, на которую хочется взглянуть иначе.
           </p>
 
           {generationBlocked ? (
@@ -378,7 +378,7 @@ export function LabEntryView({
               <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-8 mb-3">
                 Какой свет горит в ваших комнатах?
               </h2>
-              <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-antique-gold)] mb-2">Альберт · ИИ-проводник</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-antique-gold)] mb-2">Альберт · проводник</p>
 
               <div className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-md mb-6 space-y-3 text-left">
                 <p>Давайте заглянем в этот дом вместе.</p>
@@ -551,6 +551,13 @@ export function LabEntryView({
             ))}
           </div>
         </motion.div>
+
+        {/* Project Footer Disclaimer */}
+        <footer className="w-full pt-16 pb-4 border-t border-[var(--color-border-subtle)] text-center">
+          <p className="text-xs sm:text-sm text-[var(--color-text-muted)] max-w-2xl mx-auto leading-relaxed">
+            Информационно-развлекательный проект для самопознания. Личные истории и ответы Альберта создаются с помощью ИИ. Разборы и истории не являются консультацией или прогнозом.
+          </p>
+        </footer>
 
       </div>
 

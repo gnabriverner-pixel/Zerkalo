@@ -818,7 +818,7 @@ export function CodeV2Experience({
 
                       {story && albertLead(pos.position, pos.energy) && (
                         <p className="mb-3 border-l-2 border-[var(--color-antique-gold)]/50 pl-3 text-sm text-stone-300">
-                          <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90">Альберт · ИИ-проводник</span>
+                          <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90">Альберт · проводник</span>
                           {albertLead(pos.position, pos.energy)}
                         </p>
                       )}

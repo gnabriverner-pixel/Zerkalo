@@ -313,7 +313,7 @@ export default function PersonalMyth({
                 Четыре вопроса, затем — сказка для вас. Можно отвечать коротко. Правильных ответов нет.
               </p>
               
-              {freePreview?.enabled&&<p role="status">Пробный доступ — бесплатно. История создаётся ИИ; её можно принять, уточнить или отвергнуть.</p>}
+              {freePreview?.enabled&&<p role="status">Пробный доступ — бесплатно. Историю можно принять, уточнить или отвергнуть.</p>}
               {generationBlocked&&<p role="status" data-testid="myth-unavailable" className="mb-4 text-sm text-stone-300">{exampleUrl?MYTH_COPY.unavailableWithExample:MYTH_COPY.unavailableNoExample}{exampleUrl&&<> <a className="underline" href={exampleUrl} target="_blank" rel="noreferrer">Прочитать пример истории</a></>}</p>}
               <button 
                 disabled={generationBlocked}
@@ -325,10 +325,10 @@ export default function PersonalMyth({
               </button>
               {errorText&&<p role="alert">{errorText}</p>}
               
-              <div className="mt-14 text-xs text-stone-400/60 font-normal tracking-wide flex items-center justify-center gap-2">
-                 <span>Историю пишет ИИ. Это вымысел, а не заключение о вас. Вы сами решаете, что откликается.</span>
+              <div className="mt-14 text-xs text-stone-300 font-normal tracking-wide flex flex-wrap items-center justify-center gap-2 px-4 text-center">
+                 <span>Это художественный образ, а не заключение о вас. Вы сами решаете, что откликается.</span>
                  {onOpenAbout && (
-                   <button type="button" onClick={onOpenAbout} className="text-[var(--color-antique-gold)] hover:underline ml-1">
+                   <button type="button" onClick={onOpenAbout} className="text-[var(--color-antique-gold)] hover:underline">
                      О методе
                    </button>
                  )}

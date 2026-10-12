@@ -110,6 +110,7 @@ export interface AlbertDialogueProps {
   codeV2Payload?: CodeV2Payload | null;
   codeV2Context?: CodeV2AlbertContext | null;
   codeReactions?: Record<string, 'confirmed' | 'rejected'>;
+  freePreviewEnabled?: boolean;
 }
 
 const PRESET_QUESTIONS = [
@@ -159,6 +160,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   codeV2Payload: propCodeV2Payload = null,
   codeV2Context: propCodeV2Context = null,
   codeReactions = {},
+  freePreviewEnabled = true,
 }) => {
   const protectedFetch = useProtectedFetch();
 
@@ -1056,7 +1058,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           role="dialog"
           aria-modal="true"
-          aria-label="Диалог с Альбертом · ИИ-собеседником"
+          aria-label="Диалог с Альбертом · проводником"
           className={`relative w-full max-w-3xl h-[100dvh] sm:h-[88vh] max-h-[100dvh] flex flex-col sm:rounded-sm shadow-2xl z-10 max-w-full overflow-x-hidden border ${
             isDark
               ? 'bg-[#0F1412] text-[#EAEAEA] border-[#2A3B33]'
@@ -1081,7 +1083,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                   data-testid="albert-header-title"
                   className="font-serif text-lg sm:text-xl font-normal truncate"
                 >
-                  Альберт · ИИ-собеседник
+                  Альберт · проводник
                 </h3>
               </div>
             </div>
@@ -1199,18 +1201,6 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
 
           {/* Messages & Conclusion Scrollable Container (A3: overflow-y-auto overscroll-contain) */}
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain max-w-full overflow-x-hidden px-4 py-5 sm:p-6 space-y-5">
-            {/* Section 4: AI Persona Disclosure shown before the first message near the start of the dialogue */}
-            <div
-              data-testid="albert-ai-disclosure"
-              className={`px-4 py-3 rounded-lg border text-xs sm:text-sm leading-relaxed ${
-                isDark
-                  ? 'bg-[#121916] border-[#2A3B33] text-[#B8C7BF]'
-                  : 'bg-[#F7F3EA] border-[#E8DFC8] text-[#4A463F]'
-              }`}
-            >
-              Альберт — ИИ-собеседник «Зеркала». Имя и образ вымышлены; ваши смыслы остаются вашими.
-            </div>
-
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -1220,7 +1210,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
               >
                 <div className="flex items-center gap-2 mb-1.5 px-1 text-xs font-mono uppercase tracking-wider opacity-70">
                   {msg.sender === 'albert' ? (
-                    <span className="text-[var(--color-antique-gold)]">Альберт · ИИ-собеседник</span>
+                    <span className="text-[var(--color-antique-gold)]">Альберт · проводник</span>
                   ) : (
                     <span className="flex items-center gap-1">
                       <User className="w-3 h-3" />
@@ -1429,7 +1419,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                     className="px-5 py-2.5 rounded-xs bg-[var(--color-antique-gold)] text-gray-950 font-sans text-xs font-semibold uppercase tracking-wider hover:bg-[#D9B770] transition-colors flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none"
                   >
                     <BookOpen className="w-4 h-4" />
-                    <span>Мои истории · новая история за 790 ₽</span>
+                    <span>{freePreviewEnabled ? 'Мои истории · бесплатно' : 'Мои истории · 790 ₽'}</span>
                   </button>
                 </div>
               </section>
@@ -1494,6 +1484,14 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
               isDark ? 'border-[#2A3B33] bg-[#141B18]' : 'border-[#EAE3D2] bg-[#F7F3EA]'
             }`}
           >
+            <div
+              data-testid="albert-ai-disclosure"
+              className={`text-xs pb-2 font-sans opacity-70 ${
+                isDark ? 'text-stone-300' : 'text-stone-600'
+              }`}
+            >
+              Альберт — ИИ-собеседник
+            </div>
             <form
               onSubmit={(e) => {
                 e.preventDefault();

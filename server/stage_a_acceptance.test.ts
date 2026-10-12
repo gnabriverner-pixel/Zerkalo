@@ -392,10 +392,10 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       expect(albertComponentSource).toContain("fontSize: msg.sender === 'albert' ? '20px'");
       expect(albertComponentSource).toContain("lineHeight: msg.sender === 'albert' ? 1.6");
       expect(albertComponentSource).toContain('data-testid="albert-header-title"');
-      expect(albertComponentSource).toContain("Альберт · ИИ-собеседник");
+      expect(albertComponentSource).toContain("Альберт · проводник");
       expect(albertComponentSource).toContain('data-testid="albert-ai-disclosure"');
       expect(albertComponentSource).toContain(
-        "Альберт — ИИ-собеседник «Зеркала». Имя и образ вымышлены; ваши смыслы остаются вашими."
+        "Альберт — ИИ-собеседник"
       );
       expect(albertComponentSource).toContain('data-testid="albert-stale-state-banner"');
       expect(albertComponentSource).toContain('data-testid="albert-refresh-stale-opener-btn"');
@@ -417,9 +417,9 @@ describe("Stage A Acceptance Gate (A1-A5)", () => {
       });
       const headerTitle = container.querySelector('[data-testid="albert-header-title"]');
       const aiDisclosure = container.querySelector('[data-testid="albert-ai-disclosure"]');
-      expect(headerTitle?.textContent).toContain("Альберт · ИИ-собеседник");
+      expect(headerTitle?.textContent).toContain("Альберт · проводник");
       expect(aiDisclosure?.textContent).toContain(
-        "Альберт — ИИ-собеседник «Зеркала». Имя и образ вымышлены; ваши смыслы остаются вашими."
+        "Альберт — ИИ-собеседник"
       );
       await act(async () => {
         root.unmount();

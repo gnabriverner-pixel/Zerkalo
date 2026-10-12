@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { cleanPositionEssence, CodeV2Experience } from '../src/components/CodeV2/CodeV2Experience';
+import { LabEntryView } from '../src/components/LabEntryView';
 import { QaPresetPicker, QaTopBar } from '../src/components/CodeV2/qaPanel';
 import { calculateCanonicalCodeV2 } from './dcsBridge';
 
@@ -116,7 +117,8 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(html).toContain('Как читать');
     expect(html).toContain('Проверьте на себе');
     expect(html).not.toContain('Вопросы для проверки карты');
-    expect(html).toContain('Альберт · ИИ-проводник');
+    expect(html).toContain('Альберт · проводник');
+    expect(html).not.toContain('Альберт · ИИ-проводник');
     expect(html).toContain('Альберт — собеседник по вашей карте');
     expect(html).toContain('Поговорить с Альбертом');
 
@@ -226,5 +228,28 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(componentHtml).not.toContain('QA Режим');
     expect(componentHtml).not.toContain('Контрольные даты для проверки');
     expect(componentHtml).not.toContain('06.05.1986');
+  });
+
+  it('Release 3 contract: showcase has no visible AI labels on first screen, Albert badge is проводник, and single disclaimer is in footer', () => {
+    const entryHtml = renderToString(
+      React.createElement(LabEntryView, {
+        onSelectMyth: () => {},
+        onSelectCode: () => {},
+      })
+    );
+
+    // Hero contains Astra's copy verbatim
+    expect(entryHtml).toContain('Ответьте на четыре вопроса о том, что с вами происходит. Из ваших ответов сложится личная история — о ситуации, на которую хочется взглянуть иначе.');
+    expect(entryHtml).not.toContain('ИИ напишет для вас сказку');
+
+    // Split at footer to test that hero/first screen has NO "ИИ" at all
+    const [aboveFooter, footer] = entryHtml.split('<footer');
+    expect(aboveFooter).not.toContain('ИИ');
+    expect(aboveFooter).not.toContain('AI');
+    expect(aboveFooter).toContain('Альберт · проводник');
+    expect(aboveFooter).not.toContain('Альберт · ИИ-проводник');
+
+    // Footer contains project disclaimer
+    expect(footer).toContain('Информационно-развлекательный проект для самопознания. Личные истории и ответы Альберта создаются с помощью ИИ. Разборы и истории не являются консультацией или прогнозом.');
   });
 });

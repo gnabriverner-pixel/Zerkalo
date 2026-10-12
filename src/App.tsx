@@ -356,6 +356,16 @@ function AppContent() {
             <span>Встреча</span>
             {hasBoth && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />}
           </button>}
+          {/* Mobile Stories Button in Header Nav */}
+          {!commerceSafetyBlocked && (
+            <button
+              onClick={() => setIsChapterOfferOpen(true)}
+              className="sm:hidden min-h-[40px] px-3 py-2 rounded-full text-[12px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1 cursor-pointer text-[var(--color-antique-gold)] border border-[var(--color-antique-gold)]/40 bg-[var(--color-antique-gold)]/10"
+              title={freePreview?.enabled !== false ? 'Мои истории · бесплатно' : 'Мои истории · 790 ₽'}
+            >
+              <span>Истории</span>
+            </button>
+          )}
         </nav>
 
         {/* Right: Quiet About / Notes Links (Desktop & Mobile Accessible) */}
@@ -383,7 +393,15 @@ function AppContent() {
         </div>
         <details className="sm:hidden pointer-events-auto relative shrink-0">
           <summary aria-label="Дополнительно" className="list-none flex min-w-11 min-h-11 cursor-pointer items-center justify-center text-stone-200 text-xl">···</summary>
-          <div className="absolute right-0 top-full w-44 rounded-xl bg-[#111827] border border-white/20 shadow-xl p-2">
+          <div className="absolute right-0 top-full w-48 rounded-xl bg-[#111827] border border-white/20 shadow-xl p-2 z-50">
+            {!commerceSafetyBlocked && (
+              <button
+                className="w-full text-left px-3 py-3 text-sm text-[var(--color-antique-gold)] font-medium border-b border-white/10"
+                onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setIsChapterOfferOpen(true); }}
+              >
+                {freePreview?.enabled !== false ? 'Мои истории · бесплатно' : 'Мои истории · 790 ₽'}
+              </button>
+            )}
             <button className="w-full text-left px-3 py-3 text-sm text-stone-100" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setShowAbout(true); }}>О методе</button>
             <button className="w-full text-left px-3 py-3 text-sm text-stone-100" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setShowLibrary(true); }}>Мои заметки</button>
           </div>
@@ -635,6 +653,7 @@ function AppContent() {
         calc={codeResult}
         codeV2Payload={codeV2Payload}
         codeV2Context={codeV2Payload?.albert_context}
+        freePreviewEnabled={freePreview?.enabled !== false}
         onReturnToCode={hasCode ? () => {
           setIsAlbertV2Open(false);
           setMode('alabaster');
@@ -653,7 +672,14 @@ function AppContent() {
         theme="dark"
       />
 
-      {!commerceSafetyBlocked&&<button className="fixed bottom-4 right-4 z-40 px-5 py-3 rounded-full bg-[#111c2c] text-[#e0c693] border border-[#bd9d65]/40" onClick={()=>setIsChapterOfferOpen(true)}>{freePreview?.enabled?'Мои истории · бесплатно':'Мои истории · 790 ₽'}</button>}
+      {!commerceSafetyBlocked && (
+        <button
+          className="hidden sm:block fixed bottom-4 right-4 z-40 px-5 py-3 rounded-full bg-[#111c2c] text-[#e0c693] border border-[#bd9d65]/40 hover:border-[#bd9d65] transition-colors shadow-lg cursor-pointer"
+          onClick={() => setIsChapterOfferOpen(true)}
+        >
+          {freePreview?.enabled !== false ? 'Мои истории · бесплатно' : 'Мои истории · 790 ₽'}
+        </button>
+      )}
       <PersonalStoryLibrary
         isOpen={isChapterOfferOpen}
         onClose={() => setIsChapterOfferOpen(false)}

@@ -559,8 +559,8 @@ export const AboutMethod: React.FC<AboutMethodProps> = ({ isOpen, onClose, theme
           <div className={`p-4 sm:p-6 border-t flex flex-col sm:flex-row items-center justify-between gap-4 ${
             isDark ? 'border-[#2A3B33] bg-[#141B18]' : 'border-[#EAE3D2] bg-[#F7F3EA]'
           }`}>
-            <span className="font-sans text-xs opacity-70 text-center sm:text-left">
-              «Зеркало себя» • Интеллектуальное самоисследование через ведическую традицию
+            <span className="font-sans text-xs text-stone-300 text-center sm:text-left max-w-xl">
+              Информационно-развлекательный проект для самопознания. Личные истории и ответы Альберта создаются с помощью ИИ. Разборы и истории не являются консультацией или прогнозом.
             </span>
             <button
               onClick={onClose}
