@@ -376,12 +376,18 @@ export function LabEntryView({
               </div>
 
               <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-8 mb-3">
-                Другой взгляд на себя — по дате рождения
+                Какой свет горит в ваших комнатах?
               </h2>
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-antique-gold)] mb-2">Альберт · ИИ-проводник</p>
 
-              <p className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xs mb-6">
-                Введите дату рождения. Вы получите символическое описание по системе нумерологии. Прочитайте его и отметьте, что похоже на вас, а что нет. Это не научная оценка личности и не предсказание.
-              </p>
+              <div className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-md mb-6 space-y-3 text-left">
+                <p>Давайте заглянем в этот дом вместе.</p>
+                <p>Одну и ту же комнату при солнце и при свече видно по-разному. Вещи те же, замечаешь другое.</p>
+                <p>В «Зеркале» мы смотрим на себя через образы чисел, вдохновлённые ведической традицией. Представьте, что каждый образ даёт свой свет. Например, Восьмёрка связана с Сатурном: в нашем доме её свет помогает заметить, что держится на терпении и порядке.</p>
+                <p>Из вашей даты по принятым здесь правилам получаются пять чисел. Они освещают разные стороны жизни: чего вам хочется, как вы проявляетесь, как учитесь действовать, какая среда вам подходит и что вы можете создать.</p>
+                <p>Я покажу это на жизненных историях. Посмотрим, что окажется знакомым.</p>
+                <p className="text-xs opacity-80">Авторский информационно-развлекательный разбор для самопознания: образы для размышления, не научная оценка личности и не предсказание.</p>
+              </div>
 
               {/* THREE CLEAN DATE FIELDS: [ ДД ] [ ММ ] [ ГГГГ ] */}
               <form onSubmit={handleCodeSubmit} className="w-full flex flex-col items-center space-y-4 mb-4">
@@ -437,7 +443,7 @@ export function LabEntryView({
                   type="submit"
                   className="min-h-11 px-6 py-2.5 mt-2 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-[13px] font-medium transition-all cursor-pointer inline-flex items-center justify-center"
                 >
-                  Посмотреть описание
+                  Посмотреть свой разбор
                 </button>
               </form>
             </div>

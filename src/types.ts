@@ -238,8 +238,16 @@ export interface CodeV2Position {
   verification_question: string;
   all_verification_questions?: string[];
   albert_hook: string;
+  mini_story?: CodeV2MiniStory | null;
   environment_parameters?: Record<string, string>;
   direction_compound?: CodeV2DirectionCompound;
+}
+
+export interface CodeV2MiniStory {
+  title?: string;
+  version?: string;
+  paragraphs: string[];
+  question?: string;
 }
 
 export interface CodeV2Interaction {
