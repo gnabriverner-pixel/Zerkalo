@@ -1,24 +1,20 @@
-import { useMythConfig } from '../services/mythAvailability';
-import { useFreePreview } from '../services/freePreview';
-import { MYTH_COPY } from '../services/mythWait';
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Bookmark, Trash2, ChevronRight } from 'lucide-react';
+import { Bookmark, RotateCcw, ChevronRight, Trash2 } from 'lucide-react';
 import { Orb } from './Orb';
 import { PantheonModal } from './PantheonModal';
+import { SampleStoryModal } from './SampleStoryModal';
 import { CalculationResult, ApiResponse } from '../types';
-import { validateBirthDate } from '../services/birthDate';
 import { MyMirrorSnapshotV1, TransientDraftV1 } from '../services/myMirrorStorage';
-import { RotateCcw } from 'lucide-react';
 import mirrorHero from '../assets/mirror-hero.jpg';
 
-interface LabEntryViewProps {
-  meetingAvailable?:boolean;
+export interface LabEntryViewProps {
+  meetingAvailable?: boolean;
   onSelectMyth?: () => void;
-  onSelectCode?: (initialDate?: string) => void;
+  onSelectCode?: (initialDate?: string, options?: { autoCalculate?: boolean }) => void;
   onSelectMeeting?: () => void;
   onOpenPantheon?: () => void;
-  onSelectMode?: (mode: 'entry' | 'code' | 'myth' | 'meeting' | 'ab-test', initialDate?: string) => void;
+  onSelectMode?: (mode: 'entry' | 'code' | 'myth' | 'meeting' | 'ab-test', initialDate?: string, options?: { autoCalculate?: boolean }) => void;
   hasCodeResult?: boolean;
   hasMythResult?: boolean;
   codeResult?: CalculationResult | null;
@@ -31,17 +27,8 @@ interface LabEntryViewProps {
   onClearDraft?: () => void;
 }
 
-function pluralRu(value: number, one: string, few: string, many: string) {
-  const mod100 = value % 100;
-  const mod10 = value % 10;
-  if (mod100 >= 11 && mod100 <= 14) return many;
-  if (mod10 === 1) return one;
-  if (mod10 >= 2 && mod10 <= 4) return few;
-  return many;
-}
-
 export function LabEntryView({
-  meetingAvailable=true,
+  meetingAvailable = true,
   onSelectMyth,
   onSelectCode,
   onSelectMeeting,
@@ -58,88 +45,26 @@ export function LabEntryView({
   onRestoreDraft,
   onClearDraft,
 }: LabEntryViewProps) {
-  // Generation availability and the optional public example come from one cheap server read (no model call).
-  const mythConfig = useMythConfig();
-  const homePreview = useFreePreview();
-  const exampleUrl = mythConfig?.example_url ?? null;
-  const generationBlocked = mythConfig?.generation_available === false || Boolean(homePreview?.enabled && !homePreview.can_start_myth);
-  const [day, setDay] = useState('');
-  const [month, setMonth] = useState('');
-  const [year, setYear] = useState('');
-  const [dateError, setDateError] = useState('');
   const [isPantheonOpen, setIsPantheonOpen] = useState(false);
-
-  const dayRef = useRef<HTMLInputElement>(null);
-  const monthRef = useRef<HTMLInputElement>(null);
-  const yearRef = useRef<HTMLInputElement>(null);
+  const [isSampleStoryOpen, setIsSampleStoryOpen] = useState(false);
 
   const hasCode = hasCodeResult !== undefined ? hasCodeResult : !!codeResult;
   const hasMyth = hasMythResult !== undefined ? hasMythResult : !!storyResult;
   const isMeetingReady = hasCode && hasMyth;
 
-  const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 2);
-    setDay(val);
-    setDateError('');
-    if (val.length === 2 && monthRef.current) {
-      monthRef.current.focus();
-    }
-  };
-
-  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 2);
-    setMonth(val);
-    setDateError('');
-    if (val.length === 2 && yearRef.current) {
-      yearRef.current.focus();
-    }
-  };
-
-  const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
-    setYear(val);
-    setDateError('');
-  };
-
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    field: 'day' | 'month' | 'year'
-  ) => {
-    if (e.key === 'Backspace') {
-      if (field === 'year' && year.length === 0 && monthRef.current) {
-        monthRef.current.focus();
-      } else if (field === 'month' && month.length === 0 && dayRef.current) {
-        dayRef.current.focus();
-      }
-    } else if (e.key === 'Enter') {
-      handleCodeSubmit();
-    }
-  };
-
-  const handleCodeSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const validation = validateBirthDate(day, month, year);
-
-    if (validation.valid) {
-      if (onSelectCode) {
-        onSelectCode(validation.formatted);
-      } else if (onSelectMode) {
-        onSelectMode('code', validation.formatted);
-      }
-    } else {
-      if (!day || !month || !year) {
-        // If empty, just open code tab directly
-        if (onSelectCode) onSelectCode();
-        else if (onSelectMode) onSelectMode('code');
-      } else {
-        setDateError('message' in validation ? validation.message : 'Проверьте дату рождения');
-      }
-    }
-  };
-
-  const handleMyth = () => {
+  const handleStartMyth = () => {
     if (onSelectMyth) onSelectMyth();
     else if (onSelectMode) onSelectMode('myth');
+  };
+
+  const handleSelectCode = () => {
+    if (onSelectCode) onSelectCode();
+    else if (onSelectMode) onSelectMode('code');
+  };
+
+  const handleSelectCodeSample = () => {
+    if (onSelectCode) onSelectCode('14.03.1987', { autoCalculate: true });
+    else if (onSelectMode) onSelectMode('code', '14.03.1987', { autoCalculate: true });
   };
 
   const handleMeeting = () => {
@@ -153,367 +78,304 @@ export function LabEntryView({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4 sm:px-6 lg:px-8 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
-      <div className="absolute inset-x-0 top-0 h-[900px] overflow-hidden pointer-events-none" aria-hidden="true">
-        <img src={mirrorHero} alt="" className="h-full w-full object-cover opacity-55" />
-        <div className="absolute inset-0 bg-[radial-gradient(70%_58%_at_50%_38%,transparent_0%,rgba(9,13,21,0.3)_48%,#090D15_92%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-[#090D15]" />
+    <div className="flex flex-col items-center justify-start min-h-[calc(100vh-64px)] px-3.5 sm:px-6 lg:px-8 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
+      {/* Background Moon & Sacred Geometry with Readability Vignette (Contrast >= 4.5:1) */}
+      <div className="absolute inset-x-0 top-0 h-[680px] sm:h-[840px] pointer-events-none overflow-hidden select-none" aria-hidden="true">
+        <img
+          src={mirrorHero}
+          alt=""
+          className="w-full h-full object-cover object-center opacity-40 sm:opacity-50 mix-blend-screen"
+        />
+        {/* Soft Vignette Overlay ensuring text readability */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_75%_65%_at_50%_35%,rgba(9,13,21,0.45)_0%,rgba(9,13,21,0.88)_65%,#090D15_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#090D15]" />
       </div>
-      
-      {/* Central Content */}
-      <div className="w-full max-w-5xl flex flex-col items-center relative z-10 my-auto text-center space-y-24 pb-24">
+
+      {/* Main Container */}
+      <div className="w-full max-w-4xl flex flex-col items-center relative z-10 text-center pt-4 sm:pt-10 pb-20">
         
         {/* ========================================================= */}
-        {/* 1. HERO HEADER */}
+        {/* 1. HERO HEADER (Astra copy verbatim) */}
         {/* ========================================================= */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9 }}
-          className="min-h-[78svh] flex flex-col items-center justify-center space-y-6 max-w-3xl mx-auto pt-12"
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col items-center justify-center space-y-2.5 max-w-2xl mx-auto mb-6 sm:mb-10 text-center"
         >
-          <h1 className="font-serif text-6xl sm:text-7xl lg:text-[88px] text-[var(--color-text-primary)] font-light tracking-tight leading-[0.95]">
+          <h1 className="font-serif text-[40px] sm:text-6xl lg:text-[72px] text-[#F2EFE9] font-light tracking-[-0.02em] leading-[1.04]">
             Зеркало себя
           </h1>
-          <h2 className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light">
-            Посмотрите на себя через историю.
-          </h2>
-
-          <p className="text-[var(--color-text-secondary)] font-normal text-[17px] sm:text-[18px] max-w-2xl mx-auto leading-[1.7] pt-2">
-            Ответьте на четыре вопроса о том, что с вами происходит. Из ваших ответов сложится личная история — о ситуации, на которую хочется взглянуть иначе.
+          <p className="font-serif text-lg sm:text-2xl lg:text-[25px] text-[#E0C693] font-light tracking-[0.01em]">
+            Посмотреть на знакомое иначе.
           </p>
-
-          {generationBlocked ? (
-            <p role="status" data-testid="home-myth-unavailable" className="mt-7 max-w-xl text-[15px] text-[var(--color-text-secondary)]">{exampleUrl ? MYTH_COPY.unavailableWithExample : MYTH_COPY.unavailableNoExample}</p>
-          ) : (
-            <button type="button" onClick={handleMyth} className="mt-7 inline-flex min-h-12 items-center justify-center border border-[var(--color-border-gold)] bg-[#111723]/80 px-9 py-3 text-[13px] uppercase tracking-[0.28em] text-[var(--color-antique-gold)] transition-colors hover:bg-[#18202e]">
-              Создать мою историю
-            </button>
-          )}
-          {exampleUrl && (
-            <a href={exampleUrl} target="_blank" rel="noreferrer" className="text-[14px] text-[var(--color-antique-gold)] underline">Прочитать пример истории</a>
-          )}
-          <p className="text-[13px] text-[var(--color-text-muted)]">Можно попробовать другой способ — <a href="#collection" className="underline">символический портрет по дате рождения</a>.</p>
         </motion.div>
 
         {/* ========================================================= */}
-        {/* 2. THE TWO GATES (ДВЕ НЕЗАВИСИМЫЕ ДВЕРИ) */}
+        {/* 2. THE TWO GATES (ДВЕ НЕЗАВИСИМЫЕ ДВЕРИ — ПЕРВЫЙ ЭКРАН) */}
         {/* ========================================================= */}
-        <section id="collection" className="w-full max-w-4xl mx-auto scroll-mt-24">
-          <div className="mx-auto mb-12 max-w-2xl text-center">
-            <span className="text-[13px] uppercase tracking-[0.32em] text-[var(--color-antique-gold)] font-mono">Два способа</span>
-            <h2 className="mt-5 font-serif text-4xl sm:text-5xl font-light">С чего начать</h2>
-            <p className="mt-4 text-sm leading-relaxed text-[var(--color-text-secondary)]">История — по вашим ответам. Символический портрет — по дате рождения. Дата и ответы не смешиваются.</p>
-          </div>
-
-          {/* ========================================================= */}
-          {/* TRANSIENT UNFINISHED DRAFT RECOVERY */}
-          {/* ========================================================= */}
-          {transientDraft && (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-              className="w-full mb-10 p-6 sm:p-8 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)]/60 shadow-[0_0_24px_rgba(200,164,93,0.08)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
-            >
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)]/50 shrink-0 mt-0.5">
-                  <RotateCcw size={20} className="text-[var(--color-antique-gold)]" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
-                      Черновик сессии · В процессе
-                    </span>
-                    <span className="text-[13px] font-mono text-stone-400">
-                      ({new Date(transientDraft.updatedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })})
-                    </span>
-                  </div>
-                  <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
-                    Найдено незавершённое зеркало
-                  </h3>
-                  <p className="text-[13px] text-stone-300 font-normal leading-relaxed max-w-lg">
-                    {transientDraft.codeDate ? `Код: ${transientDraft.codeDate}` : ''}
-                    {transientDraft.codeDate && (transientDraft.storyResult || transientDraft.storyInputs?.q1) ? ' · ' : ''}
-                    {transientDraft.storyResult ? `Миф: «${transientDraft.storyResult.title}»` : (transientDraft.storyInputs?.q1 ? 'Ответы на вопросы мифа сохранены' : '')}
-                    {transientDraft.meetingResult ? ' · Встреча зеркал готова' : ''}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
-                <button
-                  onClick={onRestoreDraft}
-                  className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
-                >
-                  <span>Продолжить</span>
-                  <ChevronRight size={14} />
-                </button>
-                {onClearDraft && (
-                  <button
-                    onClick={onClearDraft}
-                    title="Сбросить незавершённый черновик"
-                    className="px-4 py-3 text-stone-400 hover:text-stone-200 uppercase tracking-widest text-[13px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <span>Начать заново</span>
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-          {savedSnapshot && (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-              className="w-full mb-10 p-6 sm:p-8 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)] shadow-[0_0_30px_rgba(200,164,93,0.1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
-            >
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)] shrink-0 mt-0.5">
-                  <Bookmark size={20} className="text-[var(--color-antique-gold)]" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
-                      Моё зеркало · Сохранено локально
-                    </span>
-                    <span className="text-[13px] font-mono text-stone-400">
-                      ({new Date(savedSnapshot.savedAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })})
-                    </span>
-                  </div>
-                  <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
-                    Продолжить с того места
-                  </h3>
-                  <p className="text-[13px] text-stone-300 font-normal leading-relaxed max-w-lg">
-                    {savedSnapshot.meetingUserNote
-                      ? `Ваша заметка: «${savedSnapshot.meetingUserNote}»`
-                      : savedSnapshot.storyResult?.title
-                        ? `В Мифе остался образ «${savedSnapshot.storyResult.title}»`
-                        : `Код ${savedSnapshot.codeDate}`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
-                <button
-                  onClick={onRestoreSavedMirror}
-                  className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
-                >
-                  <span>Продолжить с того места</span>
-                  <ChevronRight size={14} />
-                </button>
-                {onDeleteSavedMirror && (
-                  <button
-                    onClick={onDeleteSavedMirror}
-                    title="Удалить сохранённое зеркало из браузера"
-                    className="px-3 py-3 text-stone-400 hover:text-red-300 uppercase tracking-widest text-[13px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Trash2 size={13} />
-                    <span className="sm:hidden">Удалить сохранённое</span>
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-12 sm:mb-16">
           
           {/* DOOR 1: PERSONAL MYTH */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
+          <motion.article
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.15 }}
-            onClick={handleMyth}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                handleMyth();
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            className="group relative flex flex-col items-center justify-between p-10 sm:p-12 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 cursor-pointer text-center"
+            transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="relative flex flex-col justify-between p-5 sm:p-7 lg:p-8 rounded-sm bg-[#0D121D]/80 backdrop-blur-md border border-[rgba(200,164,93,0.25)] hover:border-[rgba(200,164,93,0.6)] transition-all duration-300 text-left group shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.7),0_0_24px_rgba(200,164,93,0.12)]"
           >
-            <div className="flex flex-col items-center w-full">
-              <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
-                Первый способ
-              </span>
-
-              <div className="my-3 transition-transform duration-700 group-hover:scale-105">
-                <Orb number={7} size={150} showNumber={false} glow={true} />
+            {/* Top decorative hairline */}
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#C8A45D]/40 to-transparent" />
+            
+            <div className="flex flex-col flex-grow">
+              <div className="text-[11px] sm:text-xs uppercase font-sans tracking-[0.24em] text-[var(--color-antique-gold)] font-medium flex items-center gap-2 mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-antique-gold)] shadow-[0_0_6px_rgba(200,164,93,0.6)]" />
+                <span>Первый путь</span>
+                <span className="flex-1 h-[1px] bg-white/10" />
               </div>
 
-              <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-8 mb-3">
-                История по вашим ответам
+              <h2 className="font-serif text-2xl sm:text-[27px] text-[#F2EFE9] font-normal leading-[1.2] mb-2.5 group-hover:text-white transition-colors">
+                История по вашей ситуации
               </h2>
 
-              <p className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xs mb-8">
-                Четыре вопроса, затем — сказка для вас. Можно отвечать коротко. Правильных ответов нет.
+              <p className="text-[14px] sm:text-[15px] text-[#B8C2CC] font-normal leading-[1.6] mb-6 flex-grow">
+                Четыре вопроса о том, что происходит сейчас. Затем — личная история, в которой можно узнать знакомое переживание.
               </p>
             </div>
 
-            <div className="w-full pt-4 border-t border-[var(--color-border-subtle)]">
-              <span className="text-[13px] uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono group-hover:tracking-[0.3em] transition-all">
-                {hasMyth ? 'Открыть мою историю →' : 'Создать историю →'}
-              </span>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-4 border-t border-white/[0.08]">
+              <button
+                type="button"
+                onClick={handleStartMyth}
+                className="min-h-[44px] px-5 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] text-[12px] font-semibold tracking-[0.16em] uppercase rounded-xs transition-all duration-200 inline-flex items-center justify-center text-center shadow-[0_2px_12px_rgba(200,164,93,0.25)] hover:shadow-[0_4px_20px_rgba(200,164,93,0.45)] cursor-pointer"
+              >
+                Начать историю
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSampleStoryOpen(true)}
+                className="min-h-[44px] px-3 py-2 text-[13px] text-[#E0C693] hover:text-white underline underline-offset-4 decoration-[rgba(200,164,93,0.4)] hover:decoration-[rgba(200,164,93,0.9)] transition-colors duration-200 inline-flex items-center justify-center text-center cursor-pointer"
+              >
+                Прочитать пример
+              </button>
             </div>
-          </motion.div>
+          </motion.article>
 
           {/* DOOR 2: DIGITAL CODE */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
+          <motion.article
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.25 }}
-            className="group relative flex flex-col items-center justify-between p-10 sm:p-12 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 text-center"
+            transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="relative flex flex-col justify-between p-5 sm:p-7 lg:p-8 rounded-sm bg-[#0D121D]/80 backdrop-blur-md border border-[rgba(200,164,93,0.25)] hover:border-[rgba(200,164,93,0.6)] transition-all duration-300 text-left group shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.7),0_0_24px_rgba(200,164,93,0.12)]"
           >
-            <div className="flex flex-col items-center w-full">
-              <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
-                Второй способ
-              </span>
-
-              <div className="my-3 transition-transform duration-700 group-hover:scale-105">
-                <Orb number={1} size={150} glow={true} />
+            {/* Top decorative hairline */}
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#C8A45D]/40 to-transparent" />
+            
+            <div className="flex flex-col flex-grow">
+              <div className="text-[11px] sm:text-xs uppercase font-sans tracking-[0.24em] text-[var(--color-antique-gold)] font-medium flex items-center gap-2 mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-antique-gold)] shadow-[0_0_6px_rgba(200,164,93,0.6)]" />
+                <span>Второй путь</span>
+                <span className="flex-1 h-[1px] bg-white/10" />
               </div>
 
-              <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-8 mb-3">
-                Какой свет горит в ваших комнатах?
+              <h2 className="font-serif text-2xl sm:text-[27px] text-[#F2EFE9] font-normal leading-[1.2] mb-2.5 group-hover:text-white transition-colors">
+                Разбор по дате рождения
               </h2>
-              <p className="text-xs uppercase tracking-[0.18em] text-[var(--color-antique-gold)] mb-2">Альберт · проводник</p>
 
-              <div className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-md mb-6 space-y-3 text-left">
-                <p>Давайте заглянем в этот дом вместе.</p>
-                <p>Одну и ту же комнату при солнце и при свече видно по-разному. Вещи те же, замечаешь другое.</p>
-                <p>В «Зеркале» мы смотрим на себя через образы чисел, вдохновлённые ведической традицией. Представьте, что каждый образ даёт свой свет. Например, Восьмёрка связана с Сатурном: в нашем доме её свет помогает заметить, что держится на терпении и порядке.</p>
-                <p>Из вашей даты по принятым здесь правилам получаются пять чисел. Они освещают разные стороны жизни: чего вам хочется, как вы проявляетесь, как учитесь действовать, какая среда вам подходит и что вы можете создать.</p>
-                <p>Я покажу это на жизненных историях. Посмотрим, что окажется знакомым.</p>
-                <p className="text-xs opacity-80">Авторский информационно-развлекательный разбор для самопознания: образы для размышления, не научная оценка личности и не предсказание.</p>
-              </div>
-
-              {/* THREE CLEAN DATE FIELDS: [ ДД ] [ ММ ] [ ГГГГ ] */}
-              <form onSubmit={handleCodeSubmit} className="w-full flex flex-col items-center space-y-4 mb-4">
-                <div className="flex items-center justify-center gap-2 sm:gap-3">
-                  <div className="relative">
-                    <input
-                      ref={dayRef}
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="ДД"
-                      maxLength={2}
-                      value={day}
-                      onChange={handleDayChange}
-                      onKeyDown={(e) => handleKeyDown(e, 'day')}
-                      className="w-14 sm:w-16 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl sm:text-[26px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
-                    />
-                  </div>
-                  <span className="text-[var(--color-text-muted)] font-serif text-xl">·</span>
-                  <div className="relative">
-                    <input
-                      ref={monthRef}
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="ММ"
-                      maxLength={2}
-                      value={month}
-                      onChange={handleMonthChange}
-                      onKeyDown={(e) => handleKeyDown(e, 'month')}
-                      className="w-14 sm:w-16 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl sm:text-[26px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
-                    />
-                  </div>
-                  <span className="text-[var(--color-text-muted)] font-serif text-xl">·</span>
-                  <div className="relative">
-                    <input
-                      ref={yearRef}
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="ГГГГ"
-                      maxLength={4}
-                      value={year}
-                      onChange={handleYearChange}
-                      onKeyDown={(e) => handleKeyDown(e, 'year')}
-                      className="w-20 sm:w-24 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl sm:text-[26px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
-                    />
-                  </div>
-                </div>
-
-                {dateError && (
-                  <span className="text-[13px] text-red-300 font-light block">{dateError}</span>
-                )}
-
-                <button
-                  type="submit"
-                  className="min-h-11 px-6 py-2.5 mt-2 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-[13px] font-medium transition-all cursor-pointer inline-flex items-center justify-center"
-                >
-                  Посмотреть свой разбор
-                </button>
-              </form>
-            </div>
-
-            <div className="w-full pt-4 border-t border-[var(--color-border-subtle)]">
-              <span 
-                onClick={handleCodeSubmit}
-                className="text-[13px] uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono group-hover:tracking-[0.3em] transition-all cursor-pointer"
-              >
-                {hasCode ? 'Открыть описание →' : 'Подробнее →'}
-              </span>
-            </div>
-          </motion.div>
-
-          </div>
-        </section>
-
-        {/* ========================================================= */}
-        {/* 3. SYNTHESIS BANNER (MEETING OF MIRRORS) */}
-        {/* ========================================================= */}
-        {meetingAvailable&&<motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.35 }}
-          onClick={handleMeeting}
-          className={`w-full max-w-4xl p-8 sm:p-10 rounded-xs border transition-all duration-700 flex flex-col sm:flex-row items-center justify-between gap-6 text-left ${
-            isMeetingReady
-              ? 'bg-[var(--color-bg-surface)] border-[var(--color-border-gold)] shadow-[0_0_30px_rgba(200,164,93,0.1)] cursor-pointer hover:border-[var(--color-antique-gold)]'
-              : 'bg-[var(--color-bg-surface)]/50 border-[var(--color-border-subtle)] cursor-pointer hover:border-[var(--color-border-gold)]'
-          }`}
-        >
-          <div className="flex items-center gap-6">
-            <div className="flex -space-x-3 shrink-0">
-              <Orb number={codeResult?.soul || 1} size={44} glow={false} />
-              <Orb number={7} size={44} glow={false} />
-            </div>
-            <div>
-              <div className="flex items-center gap-3">
-                <span className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light">
-                  Встреча Зеркал
-                </span>
-                {isMeetingReady && (
-                  <span className="text-[13px] uppercase font-mono px-2.5 py-0.5 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)] text-[var(--color-antique-gold)]">
-                    Готово к синтезу
-                  </span>
-                )}
-              </div>
-              <p className="text-[13px] sm:text-sm text-[var(--color-text-secondary)] font-normal mt-1 max-w-lg leading-relaxed">
-                Сопоставление двух независимых отражений: поиск параллелей, честное осмысление расхождений и синтез-вопрос.
+              <p className="text-[14px] sm:text-[15px] text-[#B8C2CC] font-normal leading-[1.6] mb-6 flex-grow">
+                Пять сторон жизни через образы чисел: желания, поступки, способ действовать, окружение и то, что вы создаёте.
               </p>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2 text-[13px] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] font-mono whitespace-nowrap shrink-0">
-            <span>{isMeetingReady ? 'Провести встречу →' : 'Узнать больше →'}</span>
-          </div>
-        </motion.div>}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-4 border-t border-white/[0.08]">
+              <button
+                type="button"
+                onClick={handleSelectCode}
+                className="min-h-[44px] px-5 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] text-[12px] font-semibold tracking-[0.16em] uppercase rounded-xs transition-all duration-200 inline-flex items-center justify-center text-center shadow-[0_2px_12px_rgba(200,164,93,0.25)] hover:shadow-[0_4px_20px_rgba(200,164,93,0.45)] cursor-pointer"
+              >
+                Посмотреть свой разбор
+              </button>
+              <button
+                type="button"
+                onClick={handleSelectCodeSample}
+                className="min-h-[44px] px-3 py-2 text-[13px] text-[#E0C693] hover:text-white underline underline-offset-4 decoration-[rgba(200,164,93,0.4)] hover:decoration-[rgba(200,164,93,0.9)] transition-colors duration-200 inline-flex items-center justify-center text-center cursor-pointer"
+              >
+                Посмотреть пример
+              </button>
+            </div>
+          </motion.article>
+
+        </div>
 
         {/* ========================================================= */}
-        {/* 4. PANTHEON TEASER */}
+        {/* 3. DRAFT & SAVED STATE RECOVERY */}
+        {/* ========================================================= */}
+        {transientDraft && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="w-full mb-8 p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)] shadow-[0_0_24px_rgba(200,164,93,0.08)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)]/50 shrink-0 mt-0.5">
+                <RotateCcw size={20} className="text-[var(--color-antique-gold)]" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
+                    Черновик сессии · В процессе
+                  </span>
+                  <span className="text-[12px] font-mono text-stone-400">
+                    ({new Date(transientDraft.updatedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })})
+                  </span>
+                </div>
+                <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
+                  Найдено незавершённое зеркало
+                </h3>
+                <p className="text-[13px] text-stone-300 font-normal leading-relaxed max-w-lg">
+                  {transientDraft.codeDate ? `Код: ${transientDraft.codeDate}` : ''}
+                  {transientDraft.codeDate && (transientDraft.storyResult || transientDraft.storyInputs?.q1) ? ' · ' : ''}
+                  {transientDraft.storyResult ? `Миф: «${transientDraft.storyResult.title}»` : (transientDraft.storyInputs?.q1 ? 'Ответы на вопросы мифа сохранены' : '')}
+                  {transientDraft.meetingResult ? ' · Встреча зеркал готова' : ''}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
+              <button
+                type="button"
+                onClick={onRestoreDraft}
+                className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+              >
+                <span>Продолжить</span>
+                <ChevronRight size={14} />
+              </button>
+              {onClearDraft && (
+                <button
+                  type="button"
+                  onClick={onClearDraft}
+                  title="Сбросить незавершённый черновик"
+                  className="px-4 py-3 text-stone-400 hover:text-stone-200 uppercase tracking-widest text-[12px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>Начать заново</span>
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {savedSnapshot && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="w-full mb-8 p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)] shadow-[0_0_30px_rgba(200,164,93,0.1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)] shrink-0 mt-0.5">
+                <Bookmark size={20} className="text-[var(--color-antique-gold)]" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
+                    Моё зеркало · Сохранено локально
+                  </span>
+                  <span className="text-[12px] font-mono text-stone-400">
+                    ({new Date(savedSnapshot.savedAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })})
+                  </span>
+                </div>
+                <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
+                  Продолжить с того места
+                </h3>
+                <p className="text-[13px] text-stone-300 font-normal leading-relaxed max-w-lg">
+                  {savedSnapshot.meetingUserNote
+                    ? `Ваша заметка: «${savedSnapshot.meetingUserNote}»`
+                    : savedSnapshot.storyResult?.title
+                      ? `В Мифе остался образ «${savedSnapshot.storyResult.title}»`
+                      : `Код ${savedSnapshot.codeDate}`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
+              <button
+                type="button"
+                onClick={onRestoreSavedMirror}
+                className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+              >
+                <span>Продолжить с того места</span>
+                <ChevronRight size={14} />
+              </button>
+              {onDeleteSavedMirror && (
+                <button
+                  type="button"
+                  onClick={onDeleteSavedMirror}
+                  title="Удалить сохранённое зеркало из браузера"
+                  className="px-3 py-3 text-stone-400 hover:text-red-300 uppercase tracking-widest text-[12px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 size={13} />
+                  <span className="sm:hidden">Удалить сохранённое</span>
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ========================================================= */}
+        {/* 4. SYNTHESIS BANNER (MEETING OF MIRRORS) */}
+        {/* ========================================================= */}
+        {meetingAvailable && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            onClick={handleMeeting}
+            className={`w-full p-6 sm:p-8 rounded-xs border transition-all duration-700 flex flex-col sm:flex-row items-center justify-between gap-6 text-left mb-8 ${
+              isMeetingReady
+                ? 'bg-[var(--color-bg-surface)] border-[var(--color-border-gold)] shadow-[0_0_30px_rgba(200,164,93,0.1)] cursor-pointer hover:border-[var(--color-antique-gold)]'
+                : 'bg-[var(--color-bg-surface)]/50 border-[var(--color-border-subtle)] cursor-pointer hover:border-[var(--color-border-gold)]'
+            }`}
+          >
+            <div className="flex items-center gap-5 sm:gap-6">
+              <div className="flex -space-x-3 shrink-0">
+                <Orb number={codeResult?.soul || 1} size={42} glow={false} />
+                <Orb number={7} size={42} glow={false} />
+              </div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <span className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light">
+                    Встреча Зеркал
+                  </span>
+                  {isMeetingReady && (
+                    <span className="text-[12px] uppercase font-mono px-2.5 py-0.5 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)] text-[var(--color-antique-gold)]">
+                      Готово к синтезу
+                    </span>
+                  )}
+                </div>
+                <p className="text-[13px] sm:text-sm text-[var(--color-text-secondary)] font-normal mt-1 max-w-lg leading-relaxed">
+                  Сопоставление двух независимых отражений: поиск параллелей, честное осмысление расхождений и синтез-вопрос.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-[12px] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] font-mono whitespace-nowrap shrink-0">
+              <span>{isMeetingReady ? 'Провести встречу →' : 'Узнать больше →'}</span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ========================================================= */}
+        {/* 5. PANTHEON TEASER */}
         {/* ========================================================= */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.45 }}
-          className="w-full max-w-4xl pt-12 border-t border-[var(--color-border-subtle)] flex flex-col items-center"
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="w-full pt-10 border-t border-[var(--color-border-subtle)] flex flex-col items-center mb-8"
         >
-          <div className="flex items-center justify-between w-full mb-8">
+          <div className="flex items-center justify-between w-full mb-6">
             <div className="text-left">
-              <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-1">
+              <span className="text-[12px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-1">
                 Канон Вяземского
               </span>
               <h3 className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light">
@@ -522,14 +384,15 @@ export function LabEntryView({
             </div>
 
             <button
+              type="button"
               onClick={handlePantheon}
-              className="text-[13px] uppercase font-mono tracking-[0.2em] text-[var(--color-antique-gold)] hover:underline transition-colors cursor-pointer"
+              className="text-[12px] uppercase font-mono tracking-[0.2em] text-[var(--color-antique-gold)] hover:underline transition-colors cursor-pointer"
             >
               Открыть раздел →
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 w-full text-left">
             {[
               { num: 1, name: 'Солнце · Сурья', desc: 'Единица. Первоисточник воли, прямое действие, авторство своей жизни.' },
               { num: 6, name: 'Венера · Шукра', desc: 'Шестёрка. Гармония, эстетическое мастерство, глубина формы и чувств.' },
@@ -538,10 +401,10 @@ export function LabEntryView({
               <div 
                 key={arch.num}
                 onClick={handlePantheon}
-                className="p-6 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 cursor-pointer flex flex-col justify-between"
+                className="p-5 sm:p-6 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-300 cursor-pointer flex flex-col justify-between"
               >
-                <div className="flex items-center gap-3 mb-4">
-                  <Orb number={arch.num} size={42} glow={false} />
+                <div className="flex items-center gap-3 mb-3">
+                  <Orb number={arch.num} size={38} glow={false} />
                   <span className="font-serif text-lg text-[var(--color-text-primary)]">{arch.name}</span>
                 </div>
                 <p className="text-[13px] text-[var(--color-text-secondary)] font-normal leading-relaxed">
@@ -553,7 +416,7 @@ export function LabEntryView({
         </motion.div>
 
         {/* Project Footer Disclaimer */}
-        <footer className="w-full pt-16 pb-4 border-t border-[var(--color-border-subtle)] text-center">
+        <footer className="w-full pt-12 pb-4 border-t border-[var(--color-border-subtle)] text-center">
           <p className="text-xs sm:text-sm text-[var(--color-text-muted)] max-w-2xl mx-auto leading-relaxed">
             Информационно-развлекательный проект для самопознания. Личные истории и ответы Альберта создаются с помощью ИИ. Разборы и истории не являются консультацией или прогнозом.
           </p>
@@ -561,10 +424,15 @@ export function LabEntryView({
 
       </div>
 
-      {/* Embedded Pantheon Modal */}
+      {/* Embedded Modals */}
       <PantheonModal
         isOpen={isPantheonOpen}
         onClose={() => setIsPantheonOpen(false)}
+      />
+
+      <SampleStoryModal
+        isOpen={isSampleStoryOpen}
+        onClose={() => setIsSampleStoryOpen(false)}
       />
 
     </div>

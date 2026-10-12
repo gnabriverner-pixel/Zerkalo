@@ -48,11 +48,13 @@ function AppContent() {
     if (typeof window === 'undefined') return 'entry';
     sanitizeUrlDob();
     const params = new URLSearchParams(window.location.search);
-    if (params.get('preview') === 'v2' || params.get('v') === '2') {
+    if (params.get('mode') === 'myth') return 'myth';
+    if (params.get('mode') === 'code' || params.get('preview') === 'v2' || params.get('v') === '2') {
       return 'alabaster';
     }
     return 'entry';
   });
+  const [autoCalculateCode, setAutoCalculateCode] = useState<boolean>(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [commerceSafetyBlocked,setCommerceSafetyBlocked]=useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -93,15 +95,21 @@ function AppContent() {
   const [userConclusionState, setUserConclusionState] = useState<UserConclusionStateV1 | null>(null);
   const [codeV2Payload, setCodeV2Payload] = useState<CodeV2Payload | null>(null);
 
-  // Auto-activate preview on direct landing with ?preview=v2 or ?v=2
+  // Auto-activate mode on direct landing with ?mode=..., ?preview=v2 or ?v=2
   useEffect(() => {
     if (typeof window === 'undefined') return;
     sanitizeUrlDob();
     const params = new URLSearchParams(window.location.search);
-    if (params.get('preview') === 'v2' || params.get('v') === '2') {
+    if (params.get('mode') === 'myth') {
+      setMode('myth');
+    } else if (params.get('mode') === 'code' || params.get('preview') === 'v2' || params.get('v') === '2') {
       setIsPreviewV2(true);
       if (import.meta.env.DEV) {
         setIsQaMode(params.get('qa') === '1');
+      }
+      if (params.get('sample') === '1') {
+        setCodeDate('14.03.1987');
+        setAutoCalculateCode(true);
       }
       setMode('alabaster');
     }
@@ -356,11 +364,11 @@ function AppContent() {
             <span>Встреча</span>
             {hasBoth && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />}
           </button>}
-          {/* Mobile Stories Button in Header Nav */}
+          {/* Stories Button in Header Nav */}
           {!commerceSafetyBlocked && (
             <button
               onClick={() => setIsChapterOfferOpen(true)}
-              className="sm:hidden min-h-[40px] px-3 py-2 rounded-full text-[12px] tracking-wider uppercase transition-all duration-300 flex items-center gap-1 cursor-pointer text-[var(--color-antique-gold)] border border-[var(--color-antique-gold)]/40 bg-[var(--color-antique-gold)]/10"
+              className="min-h-[40px] px-2.5 sm:px-3.5 py-2 rounded-full text-[12px] sm:text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-1 cursor-pointer text-[var(--color-antique-gold)] border border-[var(--color-antique-gold)]/40 bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20"
               title={freePreview?.enabled !== false ? 'Мои истории · бесплатно' : 'Мои истории · 790 ₽'}
             >
               <span>Истории</span>
@@ -425,6 +433,8 @@ function AppContent() {
                 <CodeV2Experience
                   initialDate={codeDate || ''}
                   initialPayload={codeV2Payload || undefined}
+                  autoCalculate={autoCalculateCode}
+                  onAutoCalculateConsumed={() => setAutoCalculateCode(false)}
                   userQuestion={userQuestion}
                   onUserQuestionChange={setUserQuestion}
                   initialReactions={codeReactions}
@@ -515,7 +525,7 @@ function AppContent() {
                 transientDraft={transientDraft}
                 onRestoreDraft={handleRestoreDraft}
                 onClearDraft={handleClearDraft}
-                onSelectMode={(m, initialDate) => {
+                onSelectMode={(m, initialDate, options) => {
                   if (initialDate && initialDate !== codeDate) {
                     setCodeDate(initialDate);
                     setCodeV2Payload(null);
@@ -527,6 +537,9 @@ function AppContent() {
                     setMeetingUserNote('');
                   } else if (initialDate) {
                     setCodeDate(initialDate);
+                  }
+                  if (options?.autoCalculate) {
+                    setAutoCalculateCode(true);
                   }
                   if ((m as string) !== 'ab-test') {
                     if(m==='meeting'&&meetingBlocked)openOrdinaryAlbert();

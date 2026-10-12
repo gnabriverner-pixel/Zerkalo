@@ -49,6 +49,8 @@ interface CodeV2ExperienceProps {
   ) => void;
   onOpenAlbert: (payload: CodeV2Payload, options?: CodeV2AlbertOpenOptions) => void;
   onCalculated?: (payload: CodeV2Payload) => void;
+  autoCalculate?: boolean;
+  onAutoCalculateConsumed?: () => void;
   onChangeDate?: () => void;
   onContinue?: () => void;
   continueLabel?: string;
@@ -161,6 +163,8 @@ export function CodeV2Experience({
   onReactionChange,
   onOpenAlbert,
   onCalculated,
+  autoCalculate,
+  onAutoCalculateConsumed,
   onChangeDate,
   onContinue,
   continueLabel = 'Перейти к Личному мифу',
@@ -298,6 +302,25 @@ export function CodeV2Experience({
       setYear(y);
     }
   }, [initialDate]);
+
+  // Auto-calculate triggered explicitly (e.g. from "Посмотреть пример" with demo date 14.03.1987)
+  useEffect(() => {
+    if (!autoCalculate || !initialDate) return;
+    const parts = initialDate.split('.');
+    if (parts.length === 3) {
+      const d = parts[0].trim().padStart(2, '0');
+      const m = parts[1].trim().padStart(2, '0');
+      const y = parts[2].trim();
+      const validation = validateBirthDate(d, m, y);
+      if (validation.valid) {
+        setDay(d);
+        setMonth(m);
+        setYear(y);
+        fetchV2Calculation(validation.formatted);
+        onAutoCalculateConsumed?.();
+      }
+    }
+  }, [autoCalculate, initialDate]);
 
   const handleCalculate = (e?: React.FormEvent) => {
     if (e) e.preventDefault();

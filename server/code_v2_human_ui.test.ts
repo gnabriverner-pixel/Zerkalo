@@ -230,7 +230,7 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(componentHtml).not.toContain('06.05.1986');
   });
 
-  it('Release 3 contract: showcase has no visible AI labels on first screen, Albert badge is проводник, and single disclaimer is in footer', () => {
+  it('Release 4 contract: home has two gates with Astra copy and exact actions, and no visible AI outside footer', () => {
     const entryHtml = renderToString(
       React.createElement(LabEntryView, {
         onSelectMyth: () => {},
@@ -238,16 +238,27 @@ describe('Code V2 Human Product Experience UI Contract', () => {
       })
     );
 
-    // Hero contains Astra's copy verbatim
-    expect(entryHtml).toContain('Ответьте на четыре вопроса о том, что с вами происходит. Из ваших ответов сложится личная история — о ситуации, на которую хочется взглянуть иначе.');
+    // Hero title and subtitle verbatim from Astra
+    expect(entryHtml).toContain('Зеркало себя');
+    expect(entryHtml).toContain('Посмотреть на знакомое иначе.');
     expect(entryHtml).not.toContain('ИИ напишет для вас сказку');
 
-    // Split at footer to test that hero/first screen has NO "ИИ" at all
+    // Gate 1: Personal Myth
+    expect(entryHtml).toContain('История по вашей ситуации');
+    expect(entryHtml).toContain('Четыре вопроса о том, что происходит сейчас. Затем — личная история, в которой можно узнать знакомое переживание.');
+    expect(entryHtml).toContain('Начать историю');
+    expect(entryHtml).toContain('Прочитать пример');
+
+    // Gate 2: Digital Code
+    expect(entryHtml).toContain('Разбор по дате рождения');
+    expect(entryHtml).toContain('Пять сторон жизни через образы чисел: желания, поступки, способ действовать, окружение и то, что вы создаёте.');
+    expect(entryHtml).toContain('Посмотреть свой разбор');
+    expect(entryHtml).toContain('Посмотреть пример');
+
+    // Split at footer to test that hero and gates have NO "ИИ" at all
     const [aboveFooter, footer] = entryHtml.split('<footer');
     expect(aboveFooter).not.toContain('ИИ');
     expect(aboveFooter).not.toContain('AI');
-    expect(aboveFooter).toContain('Альберт · проводник');
-    expect(aboveFooter).not.toContain('Альберт · ИИ-проводник');
 
     // Footer contains project disclaimer
     expect(footer).toContain('Информационно-развлекательный проект для самопознания. Личные истории и ответы Альберта создаются с помощью ИИ. Разборы и истории не являются консультацией или прогнозом.');
