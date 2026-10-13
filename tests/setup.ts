@@ -42,10 +42,13 @@ if (typeof window !== 'undefined') {
 
 // Fail-closed DCS test environment resolution
 const canonicalWorktreeDcs = path.resolve(process.cwd(), "..", "dcs-canonical-732");
+const numericHousesDcs = path.resolve(process.cwd(), "..", "digital-code-system-numeric-houses");
 const canonicalSiblingDcs = path.resolve(process.cwd(), "..", "digital-code-system");
 if (!process.env.DCS_ROOT) {
   if (fs.existsSync(canonicalWorktreeDcs)) {
     process.env.DCS_ROOT = canonicalWorktreeDcs;
+  } else if (fs.existsSync(numericHousesDcs)) {
+    process.env.DCS_ROOT = numericHousesDcs;
   } else if (fs.existsSync(canonicalSiblingDcs)) {
     process.env.DCS_ROOT = canonicalSiblingDcs;
   } else {

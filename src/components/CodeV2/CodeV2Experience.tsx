@@ -4,6 +4,8 @@ import { CodeV2Payload, CodeV2Position, CodeV2Interaction, CodeV2PositionScene }
 import { TelegramContinuation } from '../TelegramContinuation';
 import { readerStory, albertLead } from './miniStory';
 import { EmblemPlate } from '../../art/emblem';
+import { Term, renderTextWithTerms } from '../Term';
+import { GLOSSARY_ROLES } from '../../data/glossary';
 import { hasCanonicalV2Result } from '../../services/codeV2Session';
 import { validateBirthDate } from '../../services/birthDate';
 import { loadQaPanel, type QaPanelModule } from './qaPanelLoader';
@@ -575,19 +577,9 @@ export function CodeV2Experience({
                   ))}
                 </div>
 
-                {/* Краткое объяснение пяти позиций простым языком */}
-                <div className="mt-4 w-full text-left grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {payload.positions.map((pos) => (
-                    <div
-                      key={`hero-summary-${pos.position}`}
-                      className="rounded-xl border border-white/10 bg-black/25 px-3.5 py-2.5 text-xs sm:text-sm text-stone-200 leading-relaxed"
-                    >
-                      <div className="font-medium text-amber-100/95">
-                        {pos.public_name} ({pos.energy}, {pos.energy_name}) — <span className="text-stone-300 font-normal">{pos.role}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <p className="mt-4 text-[13px] sm:text-sm text-stone-400 font-normal leading-relaxed max-w-xl text-center">
+                  У каждого числа здесь своя роль. Роль подсказывает, куда посмотреть, а число — при каком свете. Узнавать себя во всём не обязательно.
+                </p>
               </div>
 
               {/* B & C. Central Human Motif (Heading + Why It Matters) */}
@@ -608,14 +600,16 @@ export function CodeV2Experience({
                 </h2>
 
                 {(() => {
-                  const motifParagraphs = (payload.central_motif || payload.synthesis.strongest_motif || '')
+                  const rawMotif = typeof payload.central_motif === 'string'
+                    ? payload.central_motif
+                    : (payload.central_motif as any)?.text || payload.synthesis?.strongest_motif || '';
+                  const motifParagraphs = rawMotif
                     .split('\n\n')
-                    .map((p) => p.trim())
+                    .map((p: string) => p.trim())
                     .filter(Boolean);
                   return (
                     <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-base sm:text-[17px] text-stone-200 leading-relaxed font-normal mb-6 space-y-3">
-                      <p className="text-stone-400 text-sm">Сравните это описание со своей жизнью. Оно может не совпасть.</p>
-                      {motifParagraphs.map((paragraph, pIdx) => (
+                      {motifParagraphs.map((paragraph: string, pIdx: number) => (
                         <p key={pIdx}>{paragraph}</p>
                       ))}
                     </div>
@@ -817,25 +811,21 @@ export function CodeV2Experience({
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 pb-5 border-b border-white/5">
                         <div className="flex items-start gap-4">
                           <div className="flex-shrink-0 pt-0.5">
-                            <EmblemPlate planet={pos.energy} variant="obsidian" size={56} />
+                            <EmblemPlate planet={pos.energy} variant="obsidian" size={72} />
                           </div>
                           <div>
                             <div className="text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)] mb-1">
-                              {pos.public_name} · {pos.role}
+                              <Term role={pos.position}>
+                                {pos.public_name} · {pos.role} · {GLOSSARY_ROLES[pos.position]?.room || ''}
+                              </Term>
                             </div>
                             <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
-                              {pos.energy_name} · {pos.energy}
+                              <Term planet={pos.energy}>{pos.energy_name}</Term> · {pos.energy}
                             </h3>
                             <div className="text-base font-serif italic text-stone-300 mt-1 leading-relaxed">
                               «{pos.role_question}»
                             </div>
                           </div>
-                        </div>
-
-                        <div className="flex items-center self-start sm:self-auto">
-                          <span className="text-xs font-mono bg-white/5 text-stone-300 border border-white/10 px-3 py-1 rounded-lg">
-                            {pos.headline_mechanism}
-                          </span>
                         </div>
                       </div>
 
@@ -846,12 +836,23 @@ export function CodeV2Experience({
                         </p>
                       )}
                       {story && (
-                        <div className="mb-4">
-                          {story.title && <h4 className="text-lg text-stone-100 mb-2">{story.title}</h4>}
-                          {story.paragraphs.map((para, i) => (
-                            <p key={i} className="text-base sm:text-[17px] text-stone-200 leading-relaxed mb-3">{para}</p>
-                          ))}
-                        </div>
+                        (() => {
+                          const seenTermsInStory = new Set<string>();
+                          return (
+                            <div className="mb-4">
+                              {story.title && (
+                                <h4 className="font-serif text-2xl sm:text-[32px] text-stone-100 font-light mb-3 leading-snug">
+                                  {story.title}
+                                </h4>
+                              )}
+                              {story.paragraphs.map((para, i) => (
+                                <p key={i} className="text-base sm:text-[17px] text-stone-200 leading-relaxed mb-3">
+                                  {renderTextWithTerms(para, seenTermsInStory)}
+                                </p>
+                              ))}
+                            </div>
+                          );
+                        })()
                       )}
                       {/* 1. О чём это число (человеческий смысл) */}
                       {!story && (<>

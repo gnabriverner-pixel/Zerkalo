@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Bookmark, RotateCcw, ChevronRight, Trash2 } from 'lucide-react';
+import { Bookmark, RotateCcw, ChevronRight, ChevronDown, Trash2 } from 'lucide-react';
 import { Orb } from './Orb';
 import { PantheonModal } from './PantheonModal';
 import { SampleStoryModal } from './SampleStoryModal';
+import { Term } from './Term';
+import { GLOSSARY_PLANETS } from '../data/glossary';
 import { CalculationResult, ApiResponse } from '../types';
+import { validateBirthDate } from '../services/birthDate';
 import { MyMirrorSnapshotV1, TransientDraftV1 } from '../services/myMirrorStorage';
 import mirrorHero from '../assets/mirror-hero.jpg';
 import mirrorHeroWebp from '../assets/mirror-hero.webp';
@@ -48,8 +51,17 @@ export function LabEntryView({
   onRestoreDraft,
   onClearDraft,
 }: LabEntryViewProps) {
+  const [day, setDay] = useState('');
+  const [month, setMonth] = useState('');
+  const [year, setYear] = useState('');
+  const [dateError, setDateError] = useState('');
   const [isPantheonOpen, setIsPantheonOpen] = useState(false);
   const [isSampleStoryOpen, setIsSampleStoryOpen] = useState(false);
+
+  const dayRef = useRef<HTMLInputElement>(null);
+  const monthRef = useRef<HTMLInputElement>(null);
+  const yearRef = useRef<HTMLInputElement>(null);
+
   const shouldReduceMotion = usePrefersReducedMotion();
   const easeTransition = [0.16, 1, 0.3, 1] as const;
 
@@ -57,14 +69,67 @@ export function LabEntryView({
   const hasMyth = hasMythResult !== undefined ? hasMythResult : !!storyResult;
   const isMeetingReady = hasCode && hasMyth;
 
+  const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+    setDay(val);
+    setDateError('');
+    if (val.length === 2 && monthRef.current) {
+      monthRef.current.focus();
+    }
+  };
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+    setMonth(val);
+    setDateError('');
+    if (val.length === 2 && yearRef.current) {
+      yearRef.current.focus();
+    }
+  };
+
+  const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+    setYear(val);
+    setDateError('');
+  };
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    field: 'day' | 'month' | 'year'
+  ) => {
+    if (e.key === 'Backspace') {
+      if (field === 'year' && year.length === 0 && monthRef.current) {
+        monthRef.current.focus();
+      } else if (field === 'month' && month.length === 0 && dayRef.current) {
+        dayRef.current.focus();
+      }
+    } else if (e.key === 'Enter') {
+      handleCodeSubmit();
+    }
+  };
+
+  const handleCodeSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!day || !month || !year) {
+      setDateError('Введите полную дату рождения (ДД · ММ · ГГГГ)');
+      return;
+    }
+    const validation = validateBirthDate(day.padStart(2, '0'), month.padStart(2, '0'), year);
+    if (!validation.valid) {
+      setDateError('message' in validation ? validation.message : 'Проверьте правильность введённой даты');
+      return;
+    }
+    const formatted = validation.formatted;
+    if (onSelectCode) {
+      onSelectCode(formatted, { autoCalculate: true });
+    } else if (onSelectMode) {
+      onSelectMode('code', formatted, { autoCalculate: true });
+    }
+  };
+
   const handleStartMyth = () => {
     if (onSelectMyth) onSelectMyth();
     else if (onSelectMode) onSelectMode('myth');
-  };
-
-  const handleSelectCode = () => {
-    if (onSelectCode) onSelectCode();
-    else if (onSelectMode) onSelectMode('code');
   };
 
   const handleSelectCodeSample = () => {
@@ -84,7 +149,7 @@ export function LabEntryView({
 
   return (
     <div className="flex flex-col items-center justify-start min-h-[calc(100vh-64px)] min-h-[calc(100dvh-64px)] px-3.5 sm:px-6 lg:px-8 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
-      {/* Background Moon & Sacred Geometry with Radiant Warm Gold Glow */}
+      {/* Background Moon & Sacred Geometry restricted strictly to the first hero viewport */}
       <div className="absolute inset-x-0 top-0 h-[640px] sm:h-[760px] lg:h-[860px] pointer-events-none overflow-hidden select-none" aria-hidden="true">
         {/* Soft Golden Coronal Glow breathing behind the Moon */}
         <motion.div
@@ -141,20 +206,20 @@ export function LabEntryView({
         </svg>
 
         {/* Seamless bottom transition into deep dark canvas */}
-        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-b from-transparent via-[#090D15]/75 to-[#090D15]" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent via-[#090D15]/80 to-[#090D15]" />
       </div>
 
       {/* Main Container */}
-      <div className="w-full max-w-4xl flex flex-col items-center relative z-10 text-center pt-2 sm:pt-6 pb-20">
+      <div className="w-full max-w-4xl flex flex-col items-center relative z-10 text-center pt-2 sm:pt-4 pb-20">
         
         {/* ========================================================= */}
-        {/* 1. HERO HEADER (Astra copy verbatim) */}
+        {/* 1. HERO HEADER (FIRST SCREEN PROPORTIONS & ASTRA 058 TEXT) */}
         {/* ========================================================= */}
         <motion.div
-          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
+          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.7, ease: easeTransition }}
-          className="flex flex-col items-center justify-center space-y-2 max-w-2xl mx-auto mb-24 sm:mb-10 lg:mb-14 text-center relative"
+          transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.85, ease: easeTransition }}
+          className="min-h-[76vh] sm:min-h-[82vh] lg:min-h-[86vh] flex flex-col items-center justify-center space-y-4 max-w-3xl mx-auto pt-8 sm:pt-14 pb-12 text-center relative"
         >
           {/* Subtle localized dark glow behind title to preserve 4.5:1+ contrast on glowing moon crown */}
           <div 
@@ -162,120 +227,189 @@ export function LabEntryView({
             aria-hidden="true" 
           />
 
-          <h1 className="font-serif text-[38px] sm:text-6xl lg:text-[72px] text-[#F2EFE9] font-light tracking-[-0.02em] leading-[1.04] drop-shadow-[0_2px_12px_rgba(9,13,21,0.9)]">
+          <h1 className="font-serif text-[56px] sm:text-7xl lg:text-[88px] text-[var(--color-text-primary)] font-light tracking-tight leading-[0.96] drop-shadow-[0_2px_14px_rgba(9,13,21,0.95)]">
             Зеркало себя
           </h1>
-          <p className="font-serif text-lg sm:text-2xl lg:text-[25px] text-[#E0C693] font-light tracking-[0.01em] drop-shadow-[0_2px_8px_rgba(9,13,21,0.8)]">
+
+          <h2 className="font-serif text-2xl sm:text-3xl text-[var(--color-antique-gold)] font-light mt-1 drop-shadow-[0_2px_10px_rgba(9,13,21,0.9)]">
             Посмотреть на знакомое иначе.
+          </h2>
+
+          <p className="text-[var(--color-text-secondary)] font-normal text-[17px] sm:text-[18px] max-w-2xl mx-auto leading-[1.7] pt-2">
+            Две дороги: история о том, что с вами сейчас, и пять чисел вашей даты рождения — каждое со своим светом.
           </p>
+
+          <a
+            href="#gates"
+            className="mt-6 inline-flex items-center gap-2 text-[13px] uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono hover:text-white transition-colors cursor-pointer group"
+          >
+            <span>Выбрать, с чего начать</span>
+            <ChevronDown size={15} className="transition-transform group-hover:translate-y-0.5" />
+          </a>
         </motion.div>
 
         {/* ========================================================= */}
-        {/* 2. THE TWO GATES (ДВЕ НЕЗАВИСИМЫЕ ДВЕРИ — ПЕРВЫЙ ЭКРАН) */}
+        {/* 2. THE TWO GATES (ДВЕ НЕЗАВИСИМЫЕ ДВЕРИ — ПРЕЖНИЙ СВЕТ) */}
         {/* ========================================================= */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 mb-12 sm:mb-16">
-          
-          {/* DOOR 1: PERSONAL MYTH */}
-          <motion.article
-            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.7, delay: 0.1, ease: easeTransition }}
-            className="relative flex flex-col justify-between p-5 sm:p-7 rounded-sm bg-[#090D16]/45 backdrop-blur-md border border-[rgba(200,164,93,0.22)] hover:border-[rgba(200,164,93,0.5)] transition-all duration-300 text-left group shadow-[0_8px_32px_rgba(0,0,0,0.45)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.65),0_0_24px_rgba(200,164,93,0.12)]"
-          >
-            {/* Top decorative hairline */}
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#C8A45D]/40 to-transparent" />
-            
-            <div className="flex flex-col flex-grow relative">
-              {/* Local dark scrim under text ensuring contrast >= 4.5:1 against glowing moon background */}
-              <div 
-                className="absolute -inset-x-2 -inset-y-1.5 rounded-sm bg-[#060911]/75 backdrop-blur-sm -z-10 pointer-events-none border border-white/[0.03]" 
-                aria-hidden="true" 
-              />
+        <section id="gates" className="w-full max-w-4xl mx-auto scroll-mt-20 pt-4 sm:pt-8 mb-16">
+          {/* Albert lead before cards */}
+          <div className="max-w-2xl mx-auto mb-10 pl-5 border-l-2 border-[var(--color-antique-gold)]/60 text-left">
+            <span className="text-[13px] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] font-mono block mb-1 font-medium">
+              Альберт · проводник
+            </span>
+            <p className="font-serif italic text-lg sm:text-[20px] text-stone-200 leading-relaxed font-light">
+              Я покажу дорогу. Выбирайте ту, что ближе сегодня: вторую можно пройти потом.
+            </p>
+          </div>
 
-              <div className="text-[11px] sm:text-xs uppercase font-sans tracking-[0.24em] text-[var(--color-antique-gold)] font-medium flex items-center gap-2 mb-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-antique-gold)] shadow-[0_0_6px_rgba(200,164,93,0.6)]" />
-                <span>Первый путь</span>
-                <span className="flex-1 h-[1px] bg-white/10" />
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* DOOR 1: PERSONAL MYTH */}
+            <motion.article
+              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.15 }}
+              className="group relative flex flex-col items-center justify-between p-8 sm:p-10 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 text-center shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+            >
+              <div className="flex flex-col items-center w-full">
+                <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-6">
+                  Первый путь
+                </span>
+
+                <div className="my-2 transition-transform duration-700 group-hover:scale-105">
+                  <Orb number={7} size={150} showNumber={false} glow={true} />
+                </div>
+
+                <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-6 mb-3">
+                  История по вашей ситуации
+                </h2>
+
+                <p className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xs mb-8">
+                  Четыре вопроса о том, что происходит сейчас. Затем — личная история, в которой можно узнать знакомое переживание.
+                </p>
               </div>
 
-              <h2 className="font-serif text-2xl sm:text-[27px] text-[#F2EFE9] font-normal leading-[1.2] mb-2.5 group-hover:text-white transition-colors">
-                История по вашей ситуации
-              </h2>
-
-              <p className="text-[14px] sm:text-[15px] text-[#CBD5E1] font-normal leading-[1.6] mb-5 flex-grow">
-                Четыре вопроса о том, что происходит сейчас. Затем — личная история, в которой можно узнать знакомое переживание.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-4 border-t border-white/[0.08] relative z-10">
-              <button
-                type="button"
-                onClick={handleStartMyth}
-                className="min-h-[44px] px-5 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] text-[12px] font-semibold tracking-[0.16em] uppercase rounded-xs transition-all duration-200 inline-flex items-center justify-center text-center shadow-[0_2px_12px_rgba(200,164,93,0.25)] hover:shadow-[0_4px_20px_rgba(200,164,93,0.45)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-antique-gold)]"
-              >
-                Начать историю
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsSampleStoryOpen(true)}
-                className="min-h-[44px] px-3 py-2 text-[13px] text-[#E0C693] hover:text-white underline underline-offset-4 decoration-[rgba(200,164,93,0.4)] hover:decoration-[rgba(200,164,93,0.9)] transition-colors duration-200 inline-flex items-center justify-center text-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-antique-gold)]"
-              >
-                Прочитать пример
-              </button>
-            </div>
-          </motion.article>
-
-          {/* DOOR 2: DIGITAL CODE */}
-          <motion.article
-            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.7, delay: 0.2, ease: easeTransition }}
-            className="relative flex flex-col justify-between p-5 sm:p-7 rounded-sm bg-[#090D16]/45 backdrop-blur-md border border-[rgba(200,164,93,0.22)] hover:border-[rgba(200,164,93,0.5)] transition-all duration-300 text-left group shadow-[0_8px_32px_rgba(0,0,0,0.45)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.65),0_0_24px_rgba(200,164,93,0.12)]"
-          >
-            {/* Top decorative hairline */}
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#C8A45D]/40 to-transparent" />
-            
-            <div className="flex flex-col flex-grow relative">
-              {/* Local dark scrim under text ensuring contrast >= 4.5:1 against glowing moon background */}
-              <div 
-                className="absolute -inset-x-2 -inset-y-1.5 rounded-sm bg-[#060911]/75 backdrop-blur-sm -z-10 pointer-events-none border border-white/[0.03]" 
-                aria-hidden="true" 
-              />
-
-              <div className="text-[11px] sm:text-xs uppercase font-sans tracking-[0.24em] text-[var(--color-antique-gold)] font-medium flex items-center gap-2 mb-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-antique-gold)] shadow-[0_0_6px_rgba(200,164,93,0.6)]" />
-                <span>Второй путь</span>
-                <span className="flex-1 h-[1px] bg-white/10" />
+              <div className="w-full pt-6 border-t border-[var(--color-border-subtle)] flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleStartMyth}
+                  className="min-h-11 px-6 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] rounded-xs uppercase tracking-[0.18em] text-[13px] font-semibold transition-all cursor-pointer shadow-[0_2px_12px_rgba(200,164,93,0.2)]"
+                >
+                  {hasMyth ? 'Открыть историю' : 'Начать историю'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSampleStoryOpen(true)}
+                  className="min-h-11 px-5 py-2.5 border border-[var(--color-border-gold)] bg-transparent hover:bg-white/5 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.16em] text-[12px] font-medium transition-all cursor-pointer"
+                >
+                  Прочитать пример
+                </button>
               </div>
+            </motion.article>
 
-              <h2 className="font-serif text-2xl sm:text-[27px] text-[#F2EFE9] font-normal leading-[1.2] mb-2.5 group-hover:text-white transition-colors">
-                Разбор по дате рождения
-              </h2>
+            {/* DOOR 2: DIGITAL CODE */}
+            <motion.article
+              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.25 }}
+              className="group relative flex flex-col items-center justify-between p-8 sm:p-10 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 text-center shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+            >
+              <div className="flex flex-col items-center w-full">
+                <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-6">
+                  Второй путь
+                </span>
 
-              <p className="text-[14px] sm:text-[15px] text-[#CBD5E1] font-normal leading-[1.6] mb-5 flex-grow">
-                Пять сторон жизни через образы чисел: желания, поступки, способ действовать, окружение и то, что вы создаёте.
-              </p>
-            </div>
+                <div className="my-2 transition-transform duration-700 group-hover:scale-105">
+                  <Orb number={1} size={150} glow={true} />
+                </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-4 border-t border-white/[0.08] relative z-10">
-              <button
-                type="button"
-                onClick={handleSelectCode}
-                className="min-h-[44px] px-5 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] text-[12px] font-semibold tracking-[0.16em] uppercase rounded-xs transition-all duration-200 inline-flex items-center justify-center text-center shadow-[0_2px_12px_rgba(200,164,93,0.25)] hover:shadow-[0_4px_20px_rgba(200,164,93,0.45)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-antique-gold)]"
-              >
-                Посмотреть свой разбор
-              </button>
-              <button
-                type="button"
-                onClick={handleSelectCodeSample}
-                className="min-h-[44px] px-3 py-2 text-[13px] text-[#E0C693] hover:text-white underline underline-offset-4 decoration-[rgba(200,164,93,0.4)] hover:decoration-[rgba(200,164,93,0.9)] transition-colors duration-200 inline-flex items-center justify-center text-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-antique-gold)]"
-              >
-                Посмотреть пример
-              </button>
-            </div>
-          </motion.article>
+                <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-6 mb-3">
+                  Разбор по дате рождения
+                </h2>
 
-        </div>
+                <p className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xs mb-3">
+                  Пять сторон жизни через образы чисел: желания, поступки, способ действовать, окружение и то, что вы создаёте.
+                </p>
+
+                <p className="text-[13px] text-stone-300 font-normal leading-relaxed mb-5 max-w-xs mx-auto">
+                  Для разбора нужна дата рождения. По правилам проекта из неё получатся пять чисел — по одному для каждой роли.
+                </p>
+
+                {/* THREE CLEAN DATE FIELDS: [ ДД ] [ ММ ] [ ГГГГ ] */}
+                <form onSubmit={handleCodeSubmit} className="w-full flex flex-col items-center space-y-4 mb-2">
+                  <div className="flex items-center justify-center gap-2 sm:gap-3">
+                    <div className="relative">
+                      <input
+                        ref={dayRef}
+                        id="birth-day"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="ДД"
+                        maxLength={2}
+                        value={day}
+                        onChange={handleDayChange}
+                        onKeyDown={(e) => handleKeyDown(e, 'day')}
+                        className="w-16 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl sm:text-[26px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
+                        aria-label="День рождения"
+                      />
+                    </div>
+                    <span className="text-[var(--color-text-muted)] font-serif text-xl select-none">·</span>
+                    <div className="relative">
+                      <input
+                        ref={monthRef}
+                        id="birth-month"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="ММ"
+                        maxLength={2}
+                        value={month}
+                        onChange={handleMonthChange}
+                        onKeyDown={(e) => handleKeyDown(e, 'month')}
+                        className="w-16 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl sm:text-[26px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
+                        aria-label="Месяц рождения"
+                      />
+                    </div>
+                    <span className="text-[var(--color-text-muted)] font-serif text-xl select-none">·</span>
+                    <div className="relative">
+                      <input
+                        ref={yearRef}
+                        id="birth-year"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="ГГГГ"
+                        maxLength={4}
+                        value={year}
+                        onChange={handleYearChange}
+                        onKeyDown={(e) => handleKeyDown(e, 'year')}
+                        className="w-24 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl sm:text-[26px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
+                        aria-label="Год рождения"
+                      />
+                    </div>
+                  </div>
+
+                  {dateError && (
+                    <span className="text-[13px] text-red-300 font-light block">{dateError}</span>
+                  )}
+
+                  <div className="w-full pt-4 border-t border-[var(--color-border-subtle)] flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+                    <button
+                      type="submit"
+                      className="min-h-11 px-6 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] rounded-xs uppercase tracking-[0.18em] text-[13px] font-semibold transition-all cursor-pointer shadow-[0_2px_12px_rgba(200,164,93,0.2)]"
+                    >
+                      Посмотреть свой разбор
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSelectCodeSample}
+                      className="min-h-11 px-5 py-2.5 border border-[var(--color-border-gold)] bg-transparent hover:bg-white/5 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.16em] text-[12px] font-medium transition-all cursor-pointer"
+                    >
+                      Посмотреть пример
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.article>
+          </div>
+        </section>
 
         {/* ========================================================= */}
         {/* 3. DRAFT & SAVED STATE RECOVERY */}
@@ -436,55 +570,118 @@ export function LabEntryView({
         )}
 
         {/* ========================================================= */}
-        {/* 5. PANTHEON TEASER */}
+        {/* 5. WORLD OF NINE PLANETS (МИР ДЕВЯТИ СВЕТИЛ — ASTRA 058) */}
         {/* ========================================================= */}
-        <motion.div
+        <motion.section
           initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.4 }}
-          className="w-full pt-10 border-t border-[var(--color-border-subtle)] flex flex-col items-center mb-8"
+          transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.35 }}
+          className="w-full pt-10 border-t border-[var(--color-border-subtle)] flex flex-col items-center mb-12"
         >
-          <div className="flex items-center justify-between w-full mb-6">
-            <div className="text-left">
-              <span className="text-[12px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-1">
-                Канон Вяземского
-              </span>
-              <h3 className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light">
-                Что означают числа
-              </h3>
+          <div className="w-full text-center max-w-2xl mx-auto mb-10">
+            <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-2 font-medium">
+              Знакомство с миром
+            </span>
+            <h3 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light">
+              Мир девяти светил
+            </h3>
+          </div>
+
+          {/* Three Steps verbatim per Astra 058 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full text-left mb-10">
+            {/* Step I */}
+            <div className="p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] flex flex-col justify-between shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+              <div>
+                <span className="font-serif text-2xl text-[var(--color-antique-gold)] font-light block mb-2">I</span>
+                <h4 className="font-serif text-xl text-stone-100 font-normal mb-3">Небо, полное характеров.</h4>
+                <p className="text-sm text-stone-300 leading-relaxed font-normal">
+                  В мире «Зеркала» у света есть характер. <Term planet={1}>Солнце</Term> напоминает о первом шаге, <Term planet={2}>Луна</Term> — о близости, <Term planet={8}>Сатурн</Term> — о том, что требует времени. Эти образы помогают начать разговор о знакомых вещах: желаниях, поступках, отношениях.
+                </p>
+              </div>
             </div>
 
+            {/* Step II */}
+            <div className="p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] flex flex-col justify-between shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+              <div>
+                <span className="font-serif text-2xl text-[var(--color-antique-gold)] font-light block mb-2">II</span>
+                <h4 className="font-serif text-xl text-stone-100 font-normal mb-3">Свет и тень.</h4>
+                <p className="text-sm text-stone-300 leading-relaxed font-normal">
+                  Здесь девять образов. Среди них есть знакомые <Term planet={1}>Солнце</Term> и <Term planet={2}>Луна</Term>, а есть <Term planet={4}>Раху</Term> и <Term planet={7}>Кету</Term> — два непривычных имени. В нашем разборе Раху помогает говорить о тяге к новому, Кету — о тишине и внимании к сути. Нажмите на имя, чтобы познакомиться с образом.
+                </p>
+              </div>
+            </div>
+
+            {/* Step III */}
+            <div className="p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] flex flex-col justify-between shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+              <div>
+                <span className="font-serif text-2xl text-[var(--color-antique-gold)] font-light block mb-2">III</span>
+                <h4 className="font-serif text-xl text-stone-100 font-normal mb-3">Число как свет.</h4>
+                <p className="text-sm text-stone-300 leading-relaxed font-normal">
+                  По принятым в проекте правилам из даты рождения получаются пять чисел. Каждому соответствует образ: свет, при котором мы рассматриваем одну сторону жизни. Дальше — истории и вопросы. Что в них знакомо, решаете вы.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <button
               type="button"
-              onClick={handlePantheon}
-              className="text-[12px] uppercase font-mono tracking-[0.2em] text-[var(--color-antique-gold)] hover:underline transition-colors cursor-pointer"
+              onClick={() => {
+                const el = document.getElementById('gates');
+                el?.scrollIntoView({ behavior: 'smooth' });
+                dayRef.current?.focus();
+              }}
+              className="min-h-11 px-7 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] rounded-xs uppercase tracking-[0.18em] text-[13px] font-semibold transition-all cursor-pointer shadow-[0_2px_12px_rgba(200,164,93,0.2)]"
             >
-              Открыть раздел →
+              Посмотреть свои пять чисел
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 w-full text-left">
-            {[
-              { num: 1, name: 'Солнце · Сурья', desc: 'Единица. Первоисточник воли, прямое действие, авторство своей жизни.' },
-              { num: 6, name: 'Венера · Шукра', desc: 'Шестёрка. Гармония, эстетическое мастерство, глубина формы и чувств.' },
-              { num: 8, name: 'Сатурн · Шани', desc: 'Восьмёрка. Масштабные структуры, закон времени, терпение и весомость.' }
-            ].map((arch) => (
-              <div 
-                key={arch.num}
-                onClick={handlePantheon}
-                className="p-5 sm:p-6 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-300 cursor-pointer flex flex-col justify-between"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <Orb number={arch.num} size={38} glow={false} />
-                  <span className="font-serif text-lg text-[var(--color-text-primary)]">{arch.name}</span>
-                </div>
-                <p className="text-[13px] text-[var(--color-text-secondary)] font-normal leading-relaxed">
-                  {arch.desc}
-                </p>
+          {/* Ribbon of Nine Luminaries */}
+          <div className="w-full pt-8 border-t border-[var(--color-border-subtle)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+              <div className="text-left">
+                <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-1">
+                  Девять образов традиции
+                </span>
+                <h4 className="font-serif text-xl sm:text-2xl text-[var(--color-text-primary)] font-light">
+                  <Term term="светила (граха)">Светила</Term> и их свет
+                </h4>
               </div>
-            ))}
+
+              <button
+                type="button"
+                onClick={handlePantheon}
+                className="text-[12px] uppercase font-mono tracking-[0.2em] text-[var(--color-antique-gold)] hover:underline transition-colors cursor-pointer"
+              >
+                Открыть все 9 ключей →
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 sm:grid-cols-9 gap-2.5 sm:gap-3 w-full">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => {
+                const p = GLOSSARY_PLANETS[num];
+                return (
+                  <div
+                    key={num}
+                    className="p-3 sm:p-3.5 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all flex flex-col items-center text-center group cursor-pointer"
+                    onClick={handlePantheon}
+                  >
+                    <div className="mb-2 transition-transform duration-300 group-hover:scale-105">
+                      <Orb number={num} size={44} glow={false} />
+                    </div>
+                    <span className="font-serif text-[15px] sm:text-base text-stone-100 block leading-tight">
+                      <Term planet={num}>{p.title.split(' · ')[0]}</Term>
+                    </span>
+                    <span className="text-[11px] font-mono text-[var(--color-antique-gold)]/80 mt-1 block">
+                      {num}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </motion.div>
+        </motion.section>
 
         {/* Project Footer Disclaimer */}
         <footer className="w-full pt-12 pb-4 border-t border-[var(--color-border-subtle)] text-center">

@@ -93,22 +93,28 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(html).toContain('Ваши пять чисел и их роли');
     expect(html).toContain('Венера (6) ⟷ Сатурн (8)');
     expect(html).toContain('Покой сердца и строгий закон формы');
-    expect(html).toContain('Сравните это описание со своей жизнью. Оно может не совпасть.');
+    expect(html).not.toContain('Сравните это описание со своей жизнью. Оно может не совпасть.');
+    expect(html).toContain('Узнавать себя во всём не обязательно.');
+    expect(html).not.toContain('headline_mechanism');
     expect(html).toContain('Хотите проверить это на себе?');
-    for (const paragraph of (payload.central_motif || '').split('\n\n')) {
+    const rawMotif = typeof payload.central_motif === 'string'
+      ? payload.central_motif
+      : (payload.central_motif as any)?.text || payload.synthesis?.strongest_motif || '';
+    for (const paragraph of rawMotif.split('\n\n')) {
       expect(html).toContain(paragraph);
     }
     expect(html).not.toContain('Раскрыть эту связь');
     expect(html).toContain('Вот откуда это взялось');
 
     // Full mini-stories with all paragraphs and story question visible immediately without expanding
+    const textContent = html.replace(/<[^>]*>/g, ' ');
     for (const position of payload.positions) {
       if (position.mini_story) {
-        expect(html).toContain(position.mini_story.title);
+        expect(textContent).toContain(position.mini_story.title);
         for (const paragraph of position.mini_story.paragraphs) {
-          expect(html).toContain(paragraph);
+          expect(textContent).toContain(paragraph);
         }
-        expect(html).toContain(position.mini_story.question);
+        expect(textContent).toContain(position.mini_story.question);
       } else {
         expect(html.split(position.verification_question).length - 1).toBe(1);
       }
@@ -278,7 +284,7 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(modalHtml).toContain('href="/api/stories-sample/pdf"');
   });
 
-  it('Release 5 contract: moon hero visual composition, responsive webp sources, and two gates with examples', () => {
+  it('Release 6 contract: visual silence, solid cards with 150px emblems, 3 date fields, World of Nine Planets and term tooltips', () => {
     const entryHtml = renderToString(
       React.createElement(LabEntryView, {
         onSelectMyth: () => {},
@@ -291,7 +297,44 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(entryHtml).toContain('mirror-hero.webp');
     expect(entryHtml.toLowerCase()).toContain('fetchpriority="high"');
 
-    // Both gates and their specific sample actions
+    // Solid cards #0D121D without glassmorphism over the moon
+    expect(entryHtml).toContain('bg-[#0D121D]');
+    expect(entryHtml).not.toContain('bg-[#060911]/75');
+
+    // 150px luminary emblems on cards
+    expect(entryHtml).toContain('width:150px');
+    expect(entryHtml).toContain('height:150px');
+
+    // 3 date fields in Code card: DD, MM, YYYY
+    expect(entryHtml).toContain('id="birth-day"');
+    expect(entryHtml).toContain('id="birth-month"');
+    expect(entryHtml).toContain('id="birth-year"');
+    expect(entryHtml).toContain('placeholder="ДД"');
+    expect(entryHtml).toContain('placeholder="ММ"');
+    expect(entryHtml).toContain('placeholder="ГГГГ"');
+
+    // World of Nine Planets (Astra 058 copy)
+    expect(entryHtml).toContain('Мир девяти светил');
+    expect(entryHtml).toContain('Небо, полное характеров.');
+    expect(entryHtml).toContain('Свет и тень.');
+    expect(entryHtml).toContain('Число как свет.');
+    expect(entryHtml).toContain('Посмотреть свои пять чисел');
+
+    // No Vyazemsky Canon on the storefront homepage
+    expect(entryHtml).not.toContain('Канон Вяземского');
+
+    // Presence of tooltips for 9 luminaries
+    expect(entryHtml).toContain('Кету');
+    expect(entryHtml).toContain('Раху');
+    expect(entryHtml).toContain('Солнце');
+    expect(entryHtml).toContain('Луна');
+    expect(entryHtml).toContain('Марс');
+    expect(entryHtml).toContain('Меркурий');
+    expect(entryHtml).toContain('Юпитер');
+    expect(entryHtml).toContain('Венера');
+    expect(entryHtml).toContain('Сатурн');
+
+    // Both gates and their specific actions
     expect(entryHtml).toContain('История по вашей ситуации');
     expect(entryHtml).toContain('Начать историю');
     expect(entryHtml).toContain('Прочитать пример');
@@ -300,8 +343,10 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(entryHtml).toContain('Посмотреть свой разбор');
     expect(entryHtml).toContain('Посмотреть пример');
 
-    // Local dark underlay scrims present in both cards
-    expect(entryHtml).toContain('bg-[#060911]/75');
+    // No AI on storefront outside footer
+    const [aboveFooter, footer] = entryHtml.split('<footer');
+    expect(aboveFooter).not.toContain('ИИ');
+    expect(aboveFooter).not.toContain('AI');
   });
 });
 
