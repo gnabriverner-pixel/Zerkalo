@@ -277,5 +277,32 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(modalHtml).toContain('Подготовленный вымышленный образец состава услуги');
     expect(modalHtml).toContain('href="/api/stories-sample/pdf"');
   });
+
+  it('Release 5 contract: moon hero visual composition, responsive webp sources, and two gates with examples', () => {
+    const entryHtml = renderToString(
+      React.createElement(LabEntryView, {
+        onSelectMyth: () => {},
+        onSelectCode: () => {},
+      })
+    );
+
+    // Responsive webp sources and priority hero loading
+    expect(entryHtml).toContain('mirror-hero-mobile.webp');
+    expect(entryHtml).toContain('mirror-hero.webp');
+    expect(entryHtml.toLowerCase()).toContain('fetchpriority="high"');
+
+    // Both gates and their specific sample actions
+    expect(entryHtml).toContain('История по вашей ситуации');
+    expect(entryHtml).toContain('Начать историю');
+    expect(entryHtml).toContain('Прочитать пример');
+
+    expect(entryHtml).toContain('Разбор по дате рождения');
+    expect(entryHtml).toContain('Посмотреть свой разбор');
+    expect(entryHtml).toContain('Посмотреть пример');
+
+    // Local dark underlay scrims present in both cards
+    expect(entryHtml).toContain('bg-[#060911]/75');
+  });
 });
+
 
