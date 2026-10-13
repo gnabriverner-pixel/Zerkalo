@@ -609,6 +609,7 @@ export function CodeV2Experience({
                     .filter(Boolean);
                   return (
                     <div className="pl-4 border-l-2 border-[var(--color-antique-gold)]/60 text-base sm:text-[17px] text-stone-200 leading-relaxed font-normal mb-6 space-y-3">
+                      <p className="text-stone-400 text-sm">Сравните это описание со своей жизнью. Оно может не совпасть.</p>
                       {motifParagraphs.map((paragraph: string, pIdx: number) => (
                         <p key={pIdx}>{paragraph}</p>
                       ))}
