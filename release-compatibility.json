@@ -1,13 +1,13 @@
 {
   "manifest_version": 1,
   "stage": "free-preview-internal-staging-candidate",
-  "verified_at": "2026-10-13T02:52:00Z",
+  "verified_at": "2026-10-13T03:26:00Z",
   "verification_status": "LOCAL_STRICT_VERIFIER_PASS_NUMERIC_HOUSES",
   "production_authorized": false,
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
     "branch": "release/numeric-houses-4-2026-10-13",
-    "pinned_sha": "a64b8a2e2114ba3e6eb197891594be795fe11613"
+    "pinned_sha": "bec86026ada845c901b2b74a38f1e36abaaedbaf"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
