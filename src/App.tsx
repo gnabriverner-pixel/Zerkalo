@@ -55,6 +55,7 @@ function AppContent() {
     return 'entry';
   });
   const [autoCalculateCode, setAutoCalculateCode] = useState<boolean>(false);
+  const [isDemoCodeSample, setIsDemoCodeSample] = useState<boolean>(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [commerceSafetyBlocked,setCommerceSafetyBlocked]=useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -110,6 +111,7 @@ function AppContent() {
       if (params.get('sample') === '1') {
         setCodeDate('14.03.1987');
         setAutoCalculateCode(true);
+        setIsDemoCodeSample(true);
       }
       setMode('alabaster');
     }
@@ -442,6 +444,9 @@ function AppContent() {
                     setCodeReactions(prev => ({ ...prev, [key]: status }));
                   }}
                   onCalculated={(payload) => {
+                    if (!autoCalculateCode) {
+                      setIsDemoCodeSample(false);
+                    }
                     setCodeDate(payload.calculation.date);
                     setCodeResult(payload.calculation.canonical_result);
                     setFirstMirror(firstMirrorFromV2(payload));
@@ -450,6 +455,7 @@ function AppContent() {
                     setMeetingResult(null);
                   }}
                   onChangeDate={() => {
+                    setIsDemoCodeSample(false);
                     clearTransientDraft();
                     setTransientDraft(null);
                     setCodeDate('');
@@ -526,6 +532,23 @@ function AppContent() {
                 onRestoreDraft={handleRestoreDraft}
                 onClearDraft={handleClearDraft}
                 onSelectMode={(m, initialDate, options) => {
+                  if (options?.autoCalculate) {
+                    setIsDemoCodeSample(true);
+                    setAutoCalculateCode(true);
+                  } else if (m === 'code' && isDemoCodeSample) {
+                    // User explicitly chose "Посмотреть свой разбор" after viewing the sample:
+                    // Reset demo state so they get a fresh, empty form to enter their own date.
+                    setIsDemoCodeSample(false);
+                    setAutoCalculateCode(false);
+                    setCodeDate('');
+                    setCodeV2Payload(null);
+                    setCodeReactions({});
+                    setJourneyId(crypto.randomUUID());
+                    setCodeResult(null);
+                    setFirstMirror(null);
+                    setMeetingResult(null);
+                    setMeetingUserNote('');
+                  }
                   if (initialDate && initialDate !== codeDate) {
                     setCodeDate(initialDate);
                     setCodeV2Payload(null);
@@ -537,9 +560,6 @@ function AppContent() {
                     setMeetingUserNote('');
                   } else if (initialDate) {
                     setCodeDate(initialDate);
-                  }
-                  if (options?.autoCalculate) {
-                    setAutoCalculateCode(true);
                   }
                   if ((m as string) !== 'ab-test') {
                     if(m==='meeting'&&meetingBlocked)openOrdinaryAlbert();

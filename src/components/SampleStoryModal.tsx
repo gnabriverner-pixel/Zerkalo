@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, BookOpen } from 'lucide-react';
 import { SAMPLE_MYTH } from '../data/storySample';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 
 interface SampleStoryModalProps {
   isOpen: boolean;
@@ -9,25 +10,75 @@ interface SampleStoryModalProps {
 }
 
 export const SampleStoryModal: React.FC<SampleStoryModalProps> = ({ isOpen, onClose }) => {
+  const shouldReduceMotion = usePrefersReducedMotion();
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!isOpen) return;
+    previousActiveElementRef.current = document.activeElement as HTMLElement | null;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const timer = setTimeout(() => {
+      closeButtonRef.current?.focus();
+    }, 50);
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }
     };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+      previousActiveElementRef.current?.focus();
+    };
   }, [isOpen, onClose]);
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <div
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              onClose();
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+        >
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.25 }}
             onClick={onClose}
             className="fixed inset-0 bg-[#06090F]/85 backdrop-blur-md"
             aria-hidden="true"
@@ -35,20 +86,23 @@ export const SampleStoryModal: React.FC<SampleStoryModalProps> = ({ isOpen, onCl
 
           {/* Modal Container */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            ref={modalRef}
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 12 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 12 }}
+            transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             role="dialog"
             aria-modal="true"
             aria-labelledby="sample-modal-title"
+            onClick={(e) => e.stopPropagation()}
             className="relative w-full max-w-2xl bg-[#0D121D] border border-[var(--color-border-gold)] rounded-sm p-6 sm:p-9 text-left shadow-[0_24px_64px_rgba(0,0,0,0.85),0_0_24px_rgba(200,164,93,0.12)] max-h-[88vh] overflow-y-auto z-10 custom-scrollbar"
           >
             {/* Close Button */}
             <button
+              ref={closeButtonRef}
               onClick={onClose}
               aria-label="Закрыть образец"
-              className="absolute top-5 right-5 p-2 text-stone-400 hover:text-white transition-colors cursor-pointer rounded-full hover:bg-white/5"
+              className="absolute top-5 right-5 p-2 text-stone-400 hover:text-white transition-colors cursor-pointer rounded-full hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-antique-gold)]"
             >
               <X size={20} />
             </button>

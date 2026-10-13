@@ -99,12 +99,13 @@ async function main() {
       const readSampleBtn = page.getByRole('button', { name: 'Прочитать пример' });
       await readSampleBtn.click();
       await page.waitForSelector('text=Дверь у воды — вымышленный образец');
+      await page.waitForTimeout(400); // Wait for modal enter transition to finish completely
       await page.screenshot({ path: path.join(OUT_DIR, 'desktop-1440-sample-myth-modal.png') });
       console.log('Saved desktop-1440-sample-myth-modal.png');
       await context.close();
     }
 
-    // Test Opening "Посмотреть пример" (Code result for 14.03.1987)
+    // Test Opening "Посмотреть пример" (Code result for 14.03.1987) & Sticky Demo Regression Check
     {
       const context = await browser.newContext({
         viewport: { width: 1440, height: 900 },
@@ -115,9 +116,6 @@ async function main() {
       const viewCodeSampleBtn = page.getByRole('button', { name: 'Посмотреть пример' });
       await viewCodeSampleBtn.click();
       await page.waitForTimeout(2000);
-      await page.screenshot({ path: path.join(OUT_DIR, 'debug-after-code-sample-click.png') });
-      console.log('Current URL:', page.url());
-      console.log('Page body snippet:', await page.locator('body').innerText().then(t => t.slice(0, 300)));
 
       // Check if consent modal appears:
       const consentDialog = page.getByRole('dialog', { name: 'Ваш опыт остаётся вашим' });
@@ -126,7 +124,6 @@ async function main() {
         await page.getByRole('checkbox').check();
         await page.getByRole('button', { name: 'Согласиться и продолжить' }).click();
         await page.waitForTimeout(2000);
-        await page.screenshot({ path: path.join(OUT_DIR, 'debug-after-consent.png') });
       }
 
       // Wait for calculation result
@@ -134,6 +131,28 @@ async function main() {
       await page.waitForTimeout(1000);
       await page.screenshot({ path: path.join(OUT_DIR, 'desktop-1440-code-sample-result.png') });
       console.log('Saved desktop-1440-code-sample-result.png');
+
+      // Regression Test: Returning to Home and clicking "Посмотреть свой разбор" must NOT retain 14.03.1987!
+      console.log('Testing returning to Home and clicking "Посмотреть свой разбор" (sticky demo regression check)...');
+      await page.getByLabel('Главная страница Зеркало Себя').click();
+      await page.waitForSelector('h1:has-text("Зеркало себя")');
+      const viewOwnCodeBtn = page.getByRole('button', { name: 'Посмотреть свой разбор' });
+      await viewOwnCodeBtn.click();
+
+      // Check that the empty input form appears instead of the demo calculation result
+      const dayInput = page.getByPlaceholder('ДД');
+      await dayInput.waitFor({ timeout: 5000 });
+      const dayVal = await dayInput.inputValue();
+      if (dayVal !== '') {
+        throw new Error(`Regression: day input is stuck with value '${dayVal}' instead of empty!`);
+      }
+      const hasDemoDate = await page.getByText('14.03.1987').isVisible().catch(() => false);
+      if (hasDemoDate) {
+        throw new Error('Regression: demo calculation 14.03.1987 is still visible after clicking "Посмотреть свой разбор"!');
+      }
+      console.log('PASS: Sticky demo bug regression test passed! Empty form is ready.');
+      await page.screenshot({ path: path.join(OUT_DIR, 'desktop-1440-code-fresh-entry.png') });
+      console.log('Saved desktop-1440-code-fresh-entry.png');
       await context.close();
     }
 

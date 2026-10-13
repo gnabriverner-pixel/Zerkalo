@@ -7,6 +7,7 @@ import { SampleStoryModal } from './SampleStoryModal';
 import { CalculationResult, ApiResponse } from '../types';
 import { MyMirrorSnapshotV1, TransientDraftV1 } from '../services/myMirrorStorage';
 import mirrorHero from '../assets/mirror-hero.jpg';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 
 export interface LabEntryViewProps {
   meetingAvailable?: boolean;
@@ -47,6 +48,8 @@ export function LabEntryView({
 }: LabEntryViewProps) {
   const [isPantheonOpen, setIsPantheonOpen] = useState(false);
   const [isSampleStoryOpen, setIsSampleStoryOpen] = useState(false);
+  const shouldReduceMotion = usePrefersReducedMotion();
+  const easeTransition = [0.16, 1, 0.3, 1] as const;
 
   const hasCode = hasCodeResult !== undefined ? hasCodeResult : !!codeResult;
   const hasMyth = hasMythResult !== undefined ? hasMythResult : !!storyResult;
@@ -78,7 +81,7 @@ export function LabEntryView({
   };
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-[calc(100vh-64px)] px-3.5 sm:px-6 lg:px-8 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
+    <div className="flex flex-col items-center justify-start min-h-[calc(100vh-64px)] min-h-[calc(100dvh-64px)] px-3.5 sm:px-6 lg:px-8 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
       {/* Background Moon & Sacred Geometry with Readability Vignette (Contrast >= 4.5:1) */}
       <div className="absolute inset-x-0 top-0 h-[680px] sm:h-[840px] pointer-events-none overflow-hidden select-none" aria-hidden="true">
         <img
@@ -98,9 +101,9 @@ export function LabEntryView({
         {/* 1. HERO HEADER (Astra copy verbatim) */}
         {/* ========================================================= */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.7, ease: easeTransition }}
           className="flex flex-col items-center justify-center space-y-2.5 max-w-2xl mx-auto mb-6 sm:mb-10 text-center"
         >
           <h1 className="font-serif text-[40px] sm:text-6xl lg:text-[72px] text-[#F2EFE9] font-light tracking-[-0.02em] leading-[1.04]">
@@ -118,9 +121,9 @@ export function LabEntryView({
           
           {/* DOOR 1: PERSONAL MYTH */}
           <motion.article
-            initial={{ opacity: 0, y: 16 }}
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.7, delay: 0.1, ease: easeTransition }}
             className="relative flex flex-col justify-between p-5 sm:p-7 lg:p-8 rounded-sm bg-[#0D121D]/80 backdrop-blur-md border border-[rgba(200,164,93,0.25)] hover:border-[rgba(200,164,93,0.6)] transition-all duration-300 text-left group shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.7),0_0_24px_rgba(200,164,93,0.12)]"
           >
             {/* Top decorative hairline */}
@@ -146,14 +149,14 @@ export function LabEntryView({
               <button
                 type="button"
                 onClick={handleStartMyth}
-                className="min-h-[44px] px-5 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] text-[12px] font-semibold tracking-[0.16em] uppercase rounded-xs transition-all duration-200 inline-flex items-center justify-center text-center shadow-[0_2px_12px_rgba(200,164,93,0.25)] hover:shadow-[0_4px_20px_rgba(200,164,93,0.45)] cursor-pointer"
+                className="min-h-[44px] px-5 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] text-[12px] font-semibold tracking-[0.16em] uppercase rounded-xs transition-all duration-200 inline-flex items-center justify-center text-center shadow-[0_2px_12px_rgba(200,164,93,0.25)] hover:shadow-[0_4px_20px_rgba(200,164,93,0.45)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-antique-gold)]"
               >
                 Начать историю
               </button>
               <button
                 type="button"
                 onClick={() => setIsSampleStoryOpen(true)}
-                className="min-h-[44px] px-3 py-2 text-[13px] text-[#E0C693] hover:text-white underline underline-offset-4 decoration-[rgba(200,164,93,0.4)] hover:decoration-[rgba(200,164,93,0.9)] transition-colors duration-200 inline-flex items-center justify-center text-center cursor-pointer"
+                className="min-h-[44px] px-3 py-2 text-[13px] text-[#E0C693] hover:text-white underline underline-offset-4 decoration-[rgba(200,164,93,0.4)] hover:decoration-[rgba(200,164,93,0.9)] transition-colors duration-200 inline-flex items-center justify-center text-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-antique-gold)]"
               >
                 Прочитать пример
               </button>
@@ -162,9 +165,9 @@ export function LabEntryView({
 
           {/* DOOR 2: DIGITAL CODE */}
           <motion.article
-            initial={{ opacity: 0, y: 16 }}
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.7, delay: 0.2, ease: easeTransition }}
             className="relative flex flex-col justify-between p-5 sm:p-7 lg:p-8 rounded-sm bg-[#0D121D]/80 backdrop-blur-md border border-[rgba(200,164,93,0.25)] hover:border-[rgba(200,164,93,0.6)] transition-all duration-300 text-left group shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_16px_48px_rgba(0,0,0,0.7),0_0_24px_rgba(200,164,93,0.12)]"
           >
             {/* Top decorative hairline */}
@@ -190,14 +193,14 @@ export function LabEntryView({
               <button
                 type="button"
                 onClick={handleSelectCode}
-                className="min-h-[44px] px-5 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] text-[12px] font-semibold tracking-[0.16em] uppercase rounded-xs transition-all duration-200 inline-flex items-center justify-center text-center shadow-[0_2px_12px_rgba(200,164,93,0.25)] hover:shadow-[0_4px_20px_rgba(200,164,93,0.45)] cursor-pointer"
+                className="min-h-[44px] px-5 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] text-[12px] font-semibold tracking-[0.16em] uppercase rounded-xs transition-all duration-200 inline-flex items-center justify-center text-center shadow-[0_2px_12px_rgba(200,164,93,0.25)] hover:shadow-[0_4px_20px_rgba(200,164,93,0.45)] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-antique-gold)]"
               >
                 Посмотреть свой разбор
               </button>
               <button
                 type="button"
                 onClick={handleSelectCodeSample}
-                className="min-h-[44px] px-3 py-2 text-[13px] text-[#E0C693] hover:text-white underline underline-offset-4 decoration-[rgba(200,164,93,0.4)] hover:decoration-[rgba(200,164,93,0.9)] transition-colors duration-200 inline-flex items-center justify-center text-center cursor-pointer"
+                className="min-h-[44px] px-3 py-2 text-[13px] text-[#E0C693] hover:text-white underline underline-offset-4 decoration-[rgba(200,164,93,0.4)] hover:decoration-[rgba(200,164,93,0.9)] transition-colors duration-200 inline-flex items-center justify-center text-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-antique-gold)]"
               >
                 Посмотреть пример
               </button>
@@ -211,9 +214,9 @@ export function LabEntryView({
         {/* ========================================================= */}
         {transientDraft && (
           <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
+            transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.7 }}
             className="w-full mb-8 p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)] shadow-[0_0_24px_rgba(200,164,93,0.08)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
           >
             <div className="flex items-start gap-4">
@@ -266,9 +269,9 @@ export function LabEntryView({
 
         {savedSnapshot && (
           <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
+            transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.7 }}
             className="w-full mb-8 p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)] shadow-[0_0_30px_rgba(200,164,93,0.1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
           >
             <div className="flex items-start gap-4">
@@ -326,9 +329,9 @@ export function LabEntryView({
         {/* ========================================================= */}
         {meetingAvailable && (
           <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
+            transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.3 }}
             onClick={handleMeeting}
             className={`w-full p-6 sm:p-8 rounded-xs border transition-all duration-700 flex flex-col sm:flex-row items-center justify-between gap-6 text-left mb-8 ${
               isMeetingReady
@@ -368,9 +371,9 @@ export function LabEntryView({
         {/* 5. PANTHEON TEASER */}
         {/* ========================================================= */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
+          transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.4 }}
           className="w-full pt-10 border-t border-[var(--color-border-subtle)] flex flex-col items-center mb-8"
         >
           <div className="flex items-center justify-between w-full mb-6">

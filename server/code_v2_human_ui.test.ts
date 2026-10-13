@@ -3,6 +3,7 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { cleanPositionEssence, CodeV2Experience } from '../src/components/CodeV2/CodeV2Experience';
 import { LabEntryView } from '../src/components/LabEntryView';
+import { SampleStoryModal } from '../src/components/SampleStoryModal';
 import { QaPresetPicker, QaTopBar } from '../src/components/CodeV2/qaPanel';
 import { calculateCanonicalCodeV2 } from './dcsBridge';
 
@@ -263,4 +264,18 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     // Footer contains project disclaimer
     expect(footer).toContain('Информационно-развлекательный проект для самопознания. Личные истории и ответы Альберта создаются с помощью ИИ. Разборы и истории не являются консультацией или прогнозом.');
   });
+
+  it('Release 4 contract: SampleStoryModal renders synthetic sample and PDF download link', () => {
+    const modalHtml = renderToString(
+      React.createElement(SampleStoryModal, {
+        isOpen: true,
+        onClose: () => {},
+      })
+    );
+    expect(modalHtml).toContain('Дверь у воды — вымышленный образец');
+    expect(modalHtml).toContain('Вымышленный демонстрационный случай');
+    expect(modalHtml).toContain('Подготовленный вымышленный образец состава услуги');
+    expect(modalHtml).toContain('href="/api/stories-sample/pdf"');
+  });
 });
+
