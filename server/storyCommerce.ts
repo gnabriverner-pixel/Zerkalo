@@ -50,7 +50,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
   const availability=()=>{const state=preview.status(),funds=budget.freeAvailability();return {...state,
     can_start_myth:!state.enabled||Boolean(options.ready()&&funds.available&&state.phase!=='not_started'),
     new_generation_available:Boolean(state.active&&options.ready()&&funds.available),budget_warning:funds.warning,
-    pause_message:!options.ready()?'Истории временно недоступны. Полученные результаты сохранены.':!funds.available?'Новые генерации временно приостановлены: общий бюджет пробного доступа недоступен. Полученные истории и PDF остаются доступны.':state.phase==='not_started'?'Пробный доступ ещё не открыт.':state.active?'':'Пятидневный пробный доступ завершён. Сохранённые результаты доступны.'};};
+    pause_message:!options.ready()?'Личный миф временно недоступен. Полученные результаты сохранены.':!funds.available?'Новые генерации временно приостановлены: общий бюджет пробного доступа недоступен. Полученные мифы и PDF остаются доступны.':state.phase==='not_started'?'Пробный доступ ещё не открыт.':state.active?'':'Пятидневный пробный доступ завершён. Сохранённые результаты доступны.'};};
   const setAccess=(res:Response,access:string)=>res.cookie(COOKIE,access,{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production'||process.env.COMMERCE_PUBLIC_ORIGIN?.startsWith('https://'),path:'/',maxAge:365*86400000});
   const errors:Record<string,string>={
     checkout_not_connected:'Оплата ещё не подключена. Ваш бесплатный результат доступен.',

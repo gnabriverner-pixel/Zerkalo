@@ -71,7 +71,7 @@ describe('Release 10 — Личный миф (Acceptance Criteria)', () => {
       expect(getMythsAccessLabel(true)).toBe('Мои мифы · бесплатно');
     });
 
-    it('returns "Мои мифы · 790 ₽" when preview is disabled or inactive', () => {
+    it('returns "Мои мифы" without a price when preview is disabled or inactive (payment not live yet)', () => {
       const inactiveStatus: PreviewStatus = {
         enabled: true,
         active: false,
@@ -96,9 +96,9 @@ describe('Release 10 — Личный миф (Acceptance Criteria)', () => {
         ends_at: null,
         budget_warning: false,
       };
-      expect(getMythsAccessLabel(inactiveStatus)).toBe('Мои мифы · 790 ₽');
-      expect(getMythsAccessLabel(disabledStatus)).toBe('Мои мифы · 790 ₽');
-      expect(getMythsAccessLabel(false)).toBe('Мои мифы · 790 ₽');
+      expect(getMythsAccessLabel(inactiveStatus)).toBe('Мои мифы');
+      expect(getMythsAccessLabel(disabledStatus)).toBe('Мои мифы');
+      expect(getMythsAccessLabel(false)).toBe('Мои мифы');
     });
   });
 

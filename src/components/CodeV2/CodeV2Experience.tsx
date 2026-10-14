@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CodeV2Payload, CodeV2Position, CodeV2Interaction, CodeV2PositionScene } from '../../types';
-import { TelegramContinuation } from '../TelegramContinuation';
 import { readerStory, albertLead } from './miniStory';
 import { EmblemPlate } from '../../art/emblem';
 import { Term, renderTextWithTerms } from '../Term';
@@ -1189,16 +1188,6 @@ export function CodeV2Experience({
                     </button>
                     <span className="text-xs text-stone-400 mt-1.5">Разговор откроется на сайте</span>
                   </div>
-
-                  <TelegramContinuation
-                    codeResult={payload.calculation.canonical_result}
-                    journeyId={payload.calculation.date}
-                    onOpenAlbert={() =>
-                      onOpenAlbert(payload, {
-                        userQuestion: localQuestion.trim() || undefined
-                      })
-                    }
-                  />
 
                   <button
                     type="button"

@@ -13,7 +13,7 @@ export function getMythsAccessLabel(statusOrEnabled: PreviewStatus | boolean | n
     return 'Проверяем доступ…';
   }
   if (typeof statusOrEnabled === 'boolean') {
-    return statusOrEnabled ? 'Мои мифы · бесплатно' : 'Мои мифы · 790 ₽';
+    return statusOrEnabled ? 'Мои мифы · бесплатно' : 'Мои мифы';
   }
-  return statusOrEnabled.enabled && statusOrEnabled.active ? 'Мои мифы · бесплатно' : 'Мои мифы · 790 ₽';
+  return statusOrEnabled.enabled && statusOrEnabled.active ? 'Мои мифы · бесплатно' : 'Мои мифы';
 }

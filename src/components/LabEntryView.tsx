@@ -298,7 +298,7 @@ export function LabEntryView({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsSampleStoryOpen(true)}
+                  onClick={() => { window.location.href = '/primer-lichnogo-mifa'; }}
                   className="min-h-11 px-5 py-2.5 border border-[var(--color-border-gold)] bg-transparent hover:bg-white/5 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.16em] text-[12px] font-medium transition-all cursor-pointer"
                 >
                   Прочитать пример

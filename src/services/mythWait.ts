@@ -29,9 +29,9 @@ export const MYTH_COPY = {
   failed: 'Историю создать не удалось.',
   newGeneration: 'Создать историю заново',
   // New stories cannot be started now (server says so). No date is promised: none is known.
-  unavailable: 'Сейчас создать новую историю нельзя.',
-  unavailableWithExample: 'Сейчас создать новую историю нельзя. Можно прочитать пример или открыть свои сохранённые истории.',
-  unavailableNoExample: 'Сейчас создать новую историю нельзя. Можно открыть свои сохранённые истории.',
+  unavailable: 'Сейчас начать новый Личный миф нельзя.',
+  unavailableWithExample: 'Сейчас начать новый Личный миф нельзя. Можно прочитать пример или открыть свои мифы.',
+  unavailableNoExample: 'Сейчас начать новый Личный миф нельзя. Можно открыть свои мифы.',
   afterStory: 'Что в ней отозвалось?',
   albertIntro: 'Собеседник: можно сказать, что тронуло, что не похоже на вас или осталось непонятным.',
 } as const;

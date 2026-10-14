@@ -306,14 +306,14 @@ export default function PersonalMyth({
               </div>
 
               <h1 className="font-serif text-4xl sm:text-6xl text-stone-100 mb-4 font-normal tracking-tight leading-tight">
-                История по вашим ответам
+                Личный миф
               </h1>
 
               <p className="text-base sm:text-lg text-stone-300/80 leading-relaxed mb-10 max-w-lg mx-auto font-normal">
-                Четыре вопроса, затем — сказка для вас. Можно отвечать коротко. Правильных ответов нет.
+                Четыре вопроса о том, что происходит с вами сейчас. Затем — художественная история по вашим ответам. Можно отвечать коротко, правильных ответов нет.
               </p>
               
-              {freePreview?.enabled&&<p role="status">Пробный доступ — бесплатно. Историю можно принять, уточнить или отвергнуть.</p>}
+              {freePreview?.enabled&&<p role="status">Пробный доступ — бесплатно. Миф можно принять, уточнить или отвергнуть.</p>}
               {generationBlocked&&<p role="status" data-testid="myth-unavailable" className="mb-4 text-sm text-stone-300">{exampleUrl?MYTH_COPY.unavailableWithExample:MYTH_COPY.unavailableNoExample}{exampleUrl&&<> <a className="underline" href={exampleUrl} target="_blank" rel="noreferrer">Прочитать пример Личного мифа</a></>}</p>}
               <button 
                 disabled={generationBlocked}

@@ -1597,8 +1597,8 @@ describe('Owner Acceptance Iteration: Clear Path to Albert & Precise Content', (
     expect(primaryAlbertBtn?.className).toMatch(/py-3\.5|min-h-11/);
 
     const telegramBtn = buttons.find(b => b.textContent?.includes('Перенести разговор в Telegram'));
-    expect(telegramBtn).toBeTruthy();
-    expect(telegramBtn?.className).toMatch(/py-3\.5|min-h-11/);
+    // Release 11: Telegram continuation is hidden while the bot is postponed.
+    expect(telegramBtn).toBeUndefined();
 
     const flexContainer = primaryAlbertBtn?.parentElement?.parentElement;
     expect(flexContainer?.className).toMatch(/flex-col/);

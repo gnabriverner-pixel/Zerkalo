@@ -15,7 +15,6 @@ import {
 import { CalculationResult, CodeV2Payload, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, MeetingApiResponse } from '../types';
 import { EmblemPlate } from '../art/emblem';
 import { AlbertDialogue } from './AlbertDialogue';
-import { TelegramContinuation } from './TelegramContinuation';
 import { TesterFeedbackWidget } from './TesterFeedbackWidget';
 import { generateFirstMirror } from '../services/interpretation';
 import { firstMirrorFromV2 } from '../services/codeV2Session';
@@ -677,18 +676,6 @@ export function MeetingOfMirrors({
                     </button>
                     <span className="text-xs text-stone-400 mt-1.5">Разговор откроется на сайте</span>
                   </div>
-
-                  <TelegramContinuation
-                    codeResult={codeResult}
-                    storyResult={storyResult}
-                    meetingResult={meetingResult}
-                    journeyId={journeyId}
-                    onOpenAlbert={() => {
-                      if (onOpenAlbert) { onOpenAlbert(); return; }
-                      setAlbertTopic(userQuestion?.trim() || meetingResult?.reflectiveQuestion || meetingResult?.albertInsight || 'Продолжение исследования');
-                      setIsAlbertOpen(true);
-                    }}
-                  />
                 </div>
                 <p className="text-sm leading-relaxed text-stone-400 max-w-lg mx-auto">
                   Выберите: продолжить разговор здесь или перенести краткий контекст к Альберту в Telegram. Передача потребует отдельного согласия.

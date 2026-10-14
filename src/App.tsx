@@ -373,7 +373,7 @@ function AppContent() {
               className="min-h-[40px] px-2.5 sm:px-3.5 py-2 rounded-full text-[12px] sm:text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-1 cursor-pointer text-[var(--color-antique-gold)] border border-[var(--color-antique-gold)]/40 bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20"
               title={getMythsAccessLabel(freePreview)}
             >
-              <span>МИФЫ</span>
+              <span>МОИ МИФЫ</span>
             </button>
           )}
         </nav>
