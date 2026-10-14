@@ -112,7 +112,7 @@ test.describe('Live Personal Myth Generation (synthetic fixture)', () => {
 
       if (i === steps.length - 1) {
         console.log('Submitting myth generation...');
-        const submitBtn = page.getByRole('button', { name: 'Соткать историю', exact: true })
+        const submitBtn = page.getByRole('button', { name: 'Создать Личный миф', exact: true })
           .or(page.getByRole('button', { name: 'Сплести историю' }));
         await submitBtn.first().click();
       } else {

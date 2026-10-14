@@ -19,7 +19,7 @@ async function answerMythQuestion(page: any, stepTag: string, text: string, isLa
   await page.waitForTimeout(200);
 
   if (isLast) {
-    const submitBtn = page.locator('button:has-text("Соткать историю")').or(page.locator('button:has-text("Сплести историю")'));
+    const submitBtn = page.locator('button:has-text("Создать Личный миф")').or(page.locator('button:has-text("Сплести историю")'));
     await submitBtn.first().waitFor({ state: 'visible' });
     await submitBtn.first().click();
   } else {

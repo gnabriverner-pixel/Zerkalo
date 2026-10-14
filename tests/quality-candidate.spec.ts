@@ -87,7 +87,7 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   for(const [i,answer]of Object.values(persona.answers).entries()){
     await page.getByText(tags[i]).waitFor();
     await page.locator('textarea').fill(answer);
-    await page.getByRole('button',{name:i===3?'Соткать историю':'Далее',exact:true}).click();
+    await page.getByRole('button',{name:i===3?'Создать Личный миф':'Далее',exact:true}).click();
   }
   await page.locator('article').waitFor();await page.locator('article').scrollIntoViewIfNeeded();await shot('myth');
   expect(await page.locator('article p').first().evaluate(el=>Number.parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(18);

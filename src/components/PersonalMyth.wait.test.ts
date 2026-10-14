@@ -35,12 +35,12 @@ async function click(label: string) {
   expect(b, `button "${label}"`).toBeDefined();
   await act(async () => { b!.click(); await vi.advanceTimersByTimeAsync(0); });
 }
-/** Opens the form with prefilled answers and presses "Соткать историю". */
+/** Opens the form with prefilled answers and presses "Создать Личный миф". */
 async function start() {
   await act(async () => { root.render(React.createElement(PersonalMyth, { initialInputs: ANSWERS, onMythCompleted } as any)); });
   await click('Начать Личный миф');
   for (let i = 0; i < 3; i++) await click('Далее');
-  await click('Соткать историю');
+  await click('Создать Личный миф');
 }
 /** POST always lost (network error); account probe says "no account"; so waiting stops as unknown. */
 function unknownRoutes(extra: (url: string, init: any) => Response | undefined = () => undefined) {
@@ -81,15 +81,15 @@ describe('PersonalMyth waiting copy', () => {
     expect(text()).not.toContain('сохранится');
   });
 
-  it('unknown state, storage off: agreed lines, check button, no advice to press "Соткать историю"', async () => {
+  it('unknown state, storage off: agreed lines, check button, no advice to press "Создать Личный миф"', async () => {
     unknownRoutes(); await reachUnknown();
     expect(text()).toContain('Пока не удалось получить историю. Проверить, появилась ли она?');
     expect(text()).toContain(MYTH_COPY.storageOff);
     expect(text()).not.toContain(MYTH_COPY.storageOn);
     expect(button('Проверить результат')).toBeDefined();
     expect(button('Создать историю заново')).toBeUndefined();
-    expect(text()).not.toContain('нажмите «Соткать историю»');
-    expect((button('Соткать историю') as HTMLButtonElement).disabled).toBe(true);
+    expect(text()).not.toContain('нажмите «Создать Личный миф»');
+    expect((button('Создать Личный миф') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('unknown state, storage on: only the "появится в сохранённых" line', async () => {

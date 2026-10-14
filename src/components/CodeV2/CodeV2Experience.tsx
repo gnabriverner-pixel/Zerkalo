@@ -568,7 +568,7 @@ export function CodeV2Experience({
                           {pos.energy_name}
                         </span>
                         <span className="text-[13px] font-mono text-stone-300 uppercase tracking-wider mt-0.5">
-                          {pos.public_name.replace('Число ', '')}
+                          {GLOSSARY_ROLES[pos.position]?.title.split(' · ')[0] || pos.public_name.replace('Число ', '')}
                         </span>
                       </div>
                       {idx < payload.positions.length - 1 && (
@@ -686,38 +686,6 @@ export function CodeV2Experience({
                     </div>
                   </div>
 
-                  {/* Personal Question Block */}
-                  <div className="pt-4 border-t border-white/10">
-                    <label
-                      htmlFor="code-v2-user-question"
-                      className="block text-sm font-medium text-stone-200 mb-2"
-                    >
-                      В каком вопросе вы хотите разобраться?
-                    </label>
-                    <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-                      <input
-                        id="code-v2-user-question"
-                        type="text"
-                        maxLength={500}
-                        value={localQuestion}
-                        onChange={e => handleQuestionInput(e.target.value)}
-                        placeholder="Например: почему я откладываю запуск своего дела или решение в отношениях"
-                        className="flex-1 bg-black/40 border border-white/10 focus:border-[var(--color-antique-gold)] rounded-xl px-4 py-3 text-base text-stone-100 placeholder:text-stone-500 outline-none transition-colors"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onOpenAlbert(payload, {
-                            userQuestion: localQuestion.trim() || undefined
-                          })
-                        }
-                        className="min-h-[46px] px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-medium text-sm hover:brightness-110 transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Обсудить с Альбертом здесь</span>
-                      </button>
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -775,22 +743,11 @@ export function CodeV2Experience({
               </div>
             </section>
 
-            {/* 3. METHOD FRAME - ONE HUMAN BLOCK ONLY */}
-            <section className="w-full bg-[#0D1322]/50 border border-white/5 rounded-2xl p-5 sm:p-6 backdrop-blur-sm">
-              <div className="font-serif text-lg text-stone-200 font-light mb-2 flex items-center gap-2">
-                <Compass className="w-4 h-4 text-[var(--color-antique-gold)]" />
-                <span>Как это читать</span>
-              </div>
-              <p className="text-base text-stone-300 font-normal leading-relaxed max-w-2xl">
-                Пять чисел из даты рождения — гипотезы, а не факты биографии: уточняйте их по своему опыту.
-              </p>
-            </section>
-
             {/* 4. FIVE POSITIONS - EDITORIAL CHAPTERS */}
             <section className="w-full space-y-6">
               <div className="text-center max-w-xl mx-auto mb-2">
                 <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
-                  Пять позиций вашего кода
+                  Пять комнат вашего дома
                 </h2>
               </div>
 
@@ -818,15 +775,12 @@ export function CodeV2Experience({
                           <div>
                             <div className="text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)] mb-1">
                               <Term role={pos.position}>
-                                {pos.public_name} · {pos.role} · {GLOSSARY_ROLES[pos.position]?.room || ''}
+                                {GLOSSARY_ROLES[pos.position]?.title || `${pos.public_name} · ${pos.role}`}
                               </Term>
                             </div>
                             <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
                               <Term planet={pos.energy}>{pos.energy_name}</Term> · {pos.energy}
                             </h3>
-                            <div className="text-base font-serif italic text-stone-300 mt-1 leading-relaxed">
-                              «{pos.role_question}»
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -1164,11 +1118,6 @@ export function CodeV2Experience({
                   <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
                     Альберт — собеседник по вашей карте
                   </h3>
-                  {payload.albert_context?.opening_statement && (
-                    <p className="text-xs sm:text-sm text-stone-400 font-serif italic pl-3 border-l border-[var(--color-antique-gold)]/50 leading-relaxed">
-                      «{payload.albert_context.opening_statement}»
-                    </p>
-                  )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">

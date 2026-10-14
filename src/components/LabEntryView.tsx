@@ -69,23 +69,29 @@ export function LabEntryView({
   const hasMyth = hasMythResult !== undefined ? hasMythResult : !!storyResult;
   const isMeetingReady = hasCode && hasMyth;
 
-  const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 2);
-    setDay(val);
+  // Pasted or quickly typed dates ("14.03.1987", "14031987") overflow into the next fields instead of being cut off.
+  const fillDateFrom = (field: 'day' | 'month', raw: string) => {
+    const digits = raw.replace(/\D/g, '');
     setDateError('');
-    if (val.length === 2 && monthRef.current) {
-      monthRef.current.focus();
+    if (field === 'day') {
+      setDay(digits.slice(0, 2));
+      const rest = digits.slice(2);
+      if (rest) {
+        setMonth(rest.slice(0, 2));
+        if (rest.length > 2) setYear(rest.slice(2, 6));
+      }
+      if (digits.length > 4) yearRef.current?.focus();
+      else if (digits.length >= 2) monthRef.current?.focus();
+      return;
     }
+    setMonth(digits.slice(0, 2));
+    if (digits.length > 2) setYear(digits.slice(2, 6));
+    if (digits.length >= 2) yearRef.current?.focus();
   };
 
-  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 2);
-    setMonth(val);
-    setDateError('');
-    if (val.length === 2 && yearRef.current) {
-      yearRef.current.focus();
-    }
-  };
+  const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => fillDateFrom('day', e.target.value);
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => fillDateFrom('month', e.target.value);
 
   const handleYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/\D/g, '').slice(0, 4);
@@ -344,7 +350,6 @@ export function LabEntryView({
                         type="text"
                         inputMode="numeric"
                         placeholder="ДД"
-                        maxLength={2}
                         value={day}
                         onChange={handleDayChange}
                         onKeyDown={(e) => handleKeyDown(e, 'day')}
@@ -360,7 +365,6 @@ export function LabEntryView({
                         type="text"
                         inputMode="numeric"
                         placeholder="ММ"
-                        maxLength={2}
                         value={month}
                         onChange={handleMonthChange}
                         onKeyDown={(e) => handleKeyDown(e, 'month')}
