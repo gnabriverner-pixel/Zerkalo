@@ -542,6 +542,8 @@ function AppContent() {
                       setCodeV2Payload(options.samplePayload);
                     }
                     setMode('alabaster');
+                    // The sample has no calculation step that scrolls to the result: open it from the top.
+                    requestAnimationFrame(() => window.scrollTo({ top: 0 }));
                     return;
                   }
                   if (options?.autoCalculate) {

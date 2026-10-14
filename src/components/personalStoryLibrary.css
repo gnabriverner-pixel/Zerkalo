@@ -13,7 +13,7 @@
 .story-library textarea{min-height:100px;resize:vertical}
 .story-library input[type=checkbox]{margin-right:9px}
 .story-library p{white-space:pre-wrap;margin:14px 0;line-height:1.65;font-size:16px;color:#d6d3d1}
-.story-price{font-size:16px;color:#C8A45D;font-family:ui-monospace,monospace}
+.story-price{font-size:16px;color:#C8A45D;white-space:normal!important}
 .story-test{border-left:3px solid #C8A45D;padding-left:12px}
 .story-error{color:#ffb9ac}
 .story-muted{color:#a8a29e;font-size:15px}

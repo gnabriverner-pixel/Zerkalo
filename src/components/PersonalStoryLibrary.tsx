@@ -344,9 +344,11 @@ export function PersonalStoryLibrary({
             ? 'Проверяем доступ…'
             : preview.enabled && preview.active
             ? (preview.ends_at
-                ? `Пробный доступ — бесплатно до ${new Date(preview.ends_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })} по Москве.`
+                ? `Пробный доступ — бесплатно до ${new Date(preview.ends_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Europe/Moscow' })} включительно.`
                 : 'Пробный доступ — бесплатно.')
-            : '790 ₽ · одна покупка'}
+            : mode === 'live'
+            ? '790 ₽ · одна покупка'
+            : 'Пробный доступ завершён. Полученные мифы остаются у вас.'}
         </p>
 
         {/* 4. Всё остальное — под одним раскрывающимся заголовком «Хранение и доступ» (свёрнут по умолчанию) */}
