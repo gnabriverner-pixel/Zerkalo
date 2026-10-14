@@ -334,7 +334,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
       if(containsCrisisLanguage(parsed.answers))return res.json({mode:'story',status:'crisis',ui:{safe_message:SAFE_CRISIS_MESSAGE}});
       const db=store();let id=db.account(cookie(req,COOKIE));
       const existing=id?db.list(id).find(order=>order.kind==='free'):undefined;
-      if(preview.enabled()&&!existing?.data.myth&&!availability().can_start_myth)throw new CommerceError('free_budget_exhausted',503);
+      if(preview.enabled()&&!existing?.data.myth&&existing?.state!=='generating'&&!availability().can_start_myth)throw new CommerceError('free_budget_exhausted',503);
       if(!id){
         if(!checkAndIncrementRate('account:'+req.ip,10,Date.now(),600000,buckets).allowed)throw new CommerceError('account_rate_limit',429);
         const created=db.createAccount();id=created.id;setAccess(res,created.access);

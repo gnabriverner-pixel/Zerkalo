@@ -1101,7 +1101,7 @@ export function CodeV2Experience({
               </div>
             </section>
 
-            {onContinue && continueLabel === 'Открыть Встречу зеркал' && (
+            {onContinue && (
               <div className="rounded-2xl border border-white/10 p-6 space-y-3">
                 <button
                   type="button"

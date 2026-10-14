@@ -468,9 +468,9 @@ function AppContent() {
                     setMeetingUserNote('');
                     setJourneyId(crypto.randomUUID());
                   }}
-                  onContinue={() => hasMyth&&meetingBlocked?openOrdinaryAlbert():setMode(hasMyth ? 'meeting' : 'myth')}
-                  continueLabel={hasMyth ? 'Открыть Встречу зеркал' : 'Начать Личный миф'}
-                  onOpenMyth={() => setMode('myth')}
+                  onContinue={hasMyth ? () => (meetingBlocked ? openOrdinaryAlbert() : setMode('meeting')) : undefined}
+                  continueLabel={meetingBlocked ? 'Обсудить с Альбертом' : 'Открыть Встречу зеркал'}
+                  onOpenMyth={hasMyth ? undefined : () => setMode('myth')}
                   isQaMode={isQaMode && import.meta.env.DEV}
                   onOpenAlbert={(p, options) => {
                     setCodeV2Payload(p);
