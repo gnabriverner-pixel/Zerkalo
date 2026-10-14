@@ -17,10 +17,10 @@ import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion';
 export interface LabEntryViewProps {
   meetingAvailable?: boolean;
   onSelectMyth?: () => void;
-  onSelectCode?: (initialDate?: string, options?: { autoCalculate?: boolean }) => void;
+  onSelectCode?: (initialDate?: string, options?: { autoCalculate?: boolean; isExample?: boolean; samplePayload?: any }) => void;
   onSelectMeeting?: () => void;
   onOpenPantheon?: () => void;
-  onSelectMode?: (mode: 'entry' | 'code' | 'myth' | 'meeting' | 'ab-test', initialDate?: string, options?: { autoCalculate?: boolean }) => void;
+  onSelectMode?: (mode: 'entry' | 'code' | 'myth' | 'meeting' | 'ab-test', initialDate?: string, options?: { autoCalculate?: boolean; isExample?: boolean; samplePayload?: any }) => void;
   hasCodeResult?: boolean;
   hasMythResult?: boolean;
   codeResult?: CalculationResult | null;
@@ -31,6 +31,15 @@ export interface LabEntryViewProps {
   transientDraft?: TransientDraftV1 | null;
   onRestoreDraft?: () => void;
   onClearDraft?: () => void;
+}
+
+export function parsePastedDate(raw: string): { day: string; month: string; year: string } {
+  const digits = raw.replace(/\D/g, '');
+  const day = digits.slice(0, 2);
+  const rest = digits.slice(2);
+  const month = rest ? rest.slice(0, 2) : '';
+  const year = rest.length > 2 ? rest.slice(2, 6) : '';
+  return { day, month, year };
 }
 
 export function LabEntryView({
@@ -74,12 +83,10 @@ export function LabEntryView({
     const digits = raw.replace(/\D/g, '');
     setDateError('');
     if (field === 'day') {
-      setDay(digits.slice(0, 2));
-      const rest = digits.slice(2);
-      if (rest) {
-        setMonth(rest.slice(0, 2));
-        if (rest.length > 2) setYear(rest.slice(2, 6));
-      }
+      const parsed = parsePastedDate(raw);
+      setDay(parsed.day);
+      if (parsed.month) setMonth(parsed.month);
+      if (parsed.year) setYear(parsed.year);
       if (digits.length > 4) yearRef.current?.focus();
       else if (digits.length >= 2) monthRef.current?.focus();
       return;
@@ -87,6 +94,22 @@ export function LabEntryView({
     setMonth(digits.slice(0, 2));
     if (digits.length > 2) setYear(digits.slice(2, 6));
     if (digits.length >= 2) yearRef.current?.focus();
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData?.getData('text');
+    if (text) {
+      e.preventDefault();
+      fillDateFrom('day', text);
+    }
+  };
+
+  const handleMonthPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData?.getData('text');
+    if (text) {
+      e.preventDefault();
+      fillDateFrom('month', text);
+    }
   };
 
   const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => fillDateFrom('day', e.target.value);
@@ -138,9 +161,30 @@ export function LabEntryView({
     else if (onSelectMode) onSelectMode('myth');
   };
 
-  const handleSelectCodeSample = () => {
-    if (onSelectCode) onSelectCode('14.03.1987', { autoCalculate: true });
-    else if (onSelectMode) onSelectMode('code', '14.03.1987', { autoCalculate: true });
+  const handleSelectCodeSample = async () => {
+    let payload: any = null;
+    try {
+      const resp = await fetch('/examples/code-v2-14031987.json');
+      if (resp.ok) {
+        const data = await resp.json();
+        payload = data.payload || data;
+      }
+    } catch {
+      // fallback if fetch is not available
+    }
+    if (!payload) {
+      try {
+        const fallback = await import('../../public/examples/code-v2-14031987.json');
+        payload = (fallback as any).default?.payload || (fallback as any).payload || (fallback as any).default || fallback;
+      } catch {
+        // no-op
+      }
+    }
+    if (onSelectCode) {
+      onSelectCode('14.03.1987', { isExample: true, samplePayload: payload });
+    } else if (onSelectMode) {
+      onSelectMode('code', '14.03.1987', { isExample: true, samplePayload: payload });
+    }
   };
 
   const handleMeeting = () => {
@@ -242,11 +286,11 @@ export function LabEntryView({
           </h2>
 
           <p className="text-[var(--color-text-secondary)] font-normal text-[17px] sm:text-[18px] max-w-2xl mx-auto leading-[1.7] pt-2">
-            Две дороги: история о том, что с вами сейчас, и пять чисел вашей даты рождения — каждое со своим светом.
+            Начните с даты рождения: пять сторон жизни через истории и вопросы.
           </p>
 
           <a
-            href="#gates"
+            href="#date-gate"
             className="mt-6 inline-flex items-center gap-2 text-[13px] uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono hover:text-white transition-colors cursor-pointer group"
           >
             <span>Выбрать, с чего начать</span>
@@ -264,13 +308,14 @@ export function LabEntryView({
               Альберт · проводник
             </span>
             <p className="font-serif italic text-lg sm:text-[20px] text-stone-200 leading-relaxed font-light">
-              Я покажу дорогу. Выбирайте ту, что ближе сегодня: вторую можно пройти потом.
+              Начните с даты: так проще увидеть, как здесь всё устроено. Личный миф можно открыть и сразу.
             </p>
           </div>
 
           <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* DOOR 1: PERSONAL MYTH */}
+            {/* DOOR 1: DIGITAL CODE */}
             <motion.article
+              id="date-gate"
               initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.15 }}
@@ -279,49 +324,6 @@ export function LabEntryView({
               <div className="flex flex-col items-center w-full">
                 <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-6">
                   Первый путь
-                </span>
-
-                <div className="my-2 transition-transform duration-700 group-hover:scale-105">
-                  <Orb number={7} size={150} showNumber={false} glow={true} />
-                </div>
-
-                <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-6 mb-3">
-                  Личный миф
-                </h2>
-
-                <p className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xs mb-8">
-                  Художественная история по вашим ответам о том, что происходит с вами сейчас.
-                </p>
-              </div>
-
-              <div className="w-full pt-6 border-t border-[var(--color-border-subtle)] flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleStartMyth}
-                  className="min-h-11 px-6 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] rounded-xs uppercase tracking-[0.18em] text-[13px] font-semibold transition-all cursor-pointer shadow-[0_2px_12px_rgba(200,164,93,0.2)]"
-                >
-                  {hasMyth ? 'Открыть историю' : 'Начать Личный миф'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { window.location.href = '/primer-lichnogo-mifa'; }}
-                  className="min-h-11 px-5 py-2.5 border border-[var(--color-border-gold)] bg-transparent hover:bg-white/5 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.16em] text-[12px] font-medium transition-all cursor-pointer"
-                >
-                  Прочитать пример
-                </button>
-              </div>
-            </motion.article>
-
-            {/* DOOR 2: DIGITAL CODE */}
-            <motion.article
-              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.25 }}
-              className="group relative flex flex-col items-center justify-between p-8 sm:p-10 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 text-center shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
-            >
-              <div className="flex flex-col items-center w-full">
-                <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-6">
-                  Второй путь
                 </span>
 
                 <div className="my-2 transition-transform duration-700 group-hover:scale-105">
@@ -352,6 +354,7 @@ export function LabEntryView({
                         placeholder="ДД"
                         value={day}
                         onChange={handleDayChange}
+                        onPaste={handlePaste}
                         onKeyDown={(e) => handleKeyDown(e, 'day')}
                         className="w-16 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl sm:text-[26px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
                         aria-label="День рождения"
@@ -367,6 +370,7 @@ export function LabEntryView({
                         placeholder="ММ"
                         value={month}
                         onChange={handleMonthChange}
+                        onPaste={handleMonthPaste}
                         onKeyDown={(e) => handleKeyDown(e, 'month')}
                         className="w-16 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl sm:text-[26px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
                         aria-label="Месяц рождения"
@@ -412,6 +416,49 @@ export function LabEntryView({
                 </form>
               </div>
             </motion.article>
+
+            {/* DOOR 2: PERSONAL MYTH */}
+            <motion.article
+              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.25 }}
+              className="group relative flex flex-col items-center justify-between p-8 sm:p-10 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 text-center shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+            >
+              <div className="flex flex-col items-center w-full">
+                <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-6">
+                  Второй путь
+                </span>
+
+                <div className="my-2 transition-transform duration-700 group-hover:scale-105">
+                  <Orb number={7} size={150} showNumber={false} glow={true} />
+                </div>
+
+                <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-6 mb-3">
+                  Личный миф
+                </h2>
+
+                <p className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xs mb-8">
+                  Художественная история по вашим ответам о том, что происходит с вами сейчас.
+                </p>
+              </div>
+
+              <div className="w-full pt-6 border-t border-[var(--color-border-subtle)] flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleStartMyth}
+                  className="min-h-11 px-6 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] rounded-xs uppercase tracking-[0.18em] text-[13px] font-semibold transition-all cursor-pointer shadow-[0_2px_12px_rgba(200,164,93,0.2)]"
+                >
+                  {hasMyth ? 'Открыть историю' : 'Начать Личный миф'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { window.location.href = '/primer-lichnogo-mifa'; }}
+                  className="min-h-11 px-5 py-2.5 border border-[var(--color-border-gold)] bg-transparent hover:bg-white/5 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.16em] text-[12px] font-medium transition-all cursor-pointer"
+                >
+                  Прочитать пример
+                </button>
+              </div>
+            </motion.article>
           </div>
         </section>
 
@@ -432,14 +479,16 @@ export function LabEntryView({
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   <span className="text-[12px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
-                    Черновик сессии · В процессе
+                    Продолжить разбор
                   </span>
                   <span className="text-[12px] font-mono text-stone-400">
                     ({new Date(transientDraft.updatedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })})
                   </span>
                 </div>
                 <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
-                  Найдено незавершённое зеркало
+                  {transientDraft.codeDate 
+                    ? `Вы не закончили разбор от ${transientDraft.codeDate}. Продолжим?` 
+                    : 'Вы не закончили разбор. Продолжим?'}
                 </h3>
                 <p className="text-[13px] text-stone-300 font-normal leading-relaxed max-w-lg">
                   {transientDraft.codeDate ? `Код: ${transientDraft.codeDate}` : ''}

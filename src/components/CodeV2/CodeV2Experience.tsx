@@ -58,6 +58,7 @@ interface CodeV2ExperienceProps {
   onBackToCollection?: () => void;
   onSwitchToV1?: () => void;
   onOpenMyth?: () => void;
+  isExample?: boolean;
 }
 
 function getFirstSentence(text: string): string {
@@ -172,7 +173,8 @@ export function CodeV2Experience({
   continueLabel = 'Перейти к Личному мифу',
   onBackToCollection,
   onSwitchToV1,
-  onOpenMyth
+  onOpenMyth,
+  isExample = false
 }: CodeV2ExperienceProps) {
   const isQaEffective = Boolean(isQaMode && import.meta.env.DEV);
   const [qaPanel, setQaPanel] = useState<QaPanelModule | null>(null);
@@ -510,10 +512,18 @@ export function CodeV2Experience({
         {payload && (
           <div ref={resultsRef} className="w-full space-y-10 sm:space-y-14">
             
+            {isExample && (
+              <div className="w-full text-xs text-stone-400 font-serif italic pb-2 border-b border-white/5">
+                Пример разбора для вымышленной даты 14.03.1987.
+              </div>
+            )}
+
             {/* Minimal date indicator with edit link */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/5 text-xs text-stone-400">
               <div className="flex items-center gap-2">
-                <span className="font-serif text-stone-200 text-sm">Ваши пять чисел</span>
+                <span className="font-serif text-stone-200 text-sm">
+                  {isExample ? 'Пример пяти чисел' : 'Ваши пять чисел'}
+                </span>
                 <span>·</span>
                 <span className="font-mono text-stone-300">{payload.calculation.date}</span>
               </div>
@@ -529,7 +539,7 @@ export function CodeV2Experience({
                 }}
                 className="text-stone-400 hover:text-[var(--color-antique-gold)] transition-colors cursor-pointer text-xs"
               >
-                Изменить дату
+                {isExample ? 'Ввести свою дату' : 'Изменить дату'}
               </button>
             </div>
 
@@ -619,8 +629,9 @@ export function CodeV2Experience({
                 })()}
 
                 {/* Quiet Albert Invitation & Central Hypothesis Reaction */}
-                <div className="pt-5 border-t border-white/10 flex flex-col gap-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {!isExample && (
+                  <div className="pt-5 border-t border-white/10 flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <div className="text-sm text-stone-200 font-medium">
                         Хотите проверить это на себе?
@@ -685,8 +696,8 @@ export function CodeV2Experience({
                       </button>
                     </div>
                   </div>
-
                 </div>
+              )}
               </div>
 
               {/* D. Expandable Calculation: "Вот откуда это взялось" (Meaning first, calculation second) */}
@@ -999,54 +1010,56 @@ export function CodeV2Experience({
                           {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
 
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleMarkReaction(
-                                pos.position,
-                                'confirmed',
-                                `${pos.public_name} (${pos.energy}): ${getFirstSentence(publicEssence)}`
-                              )
-                            }
-                            className={`px-2.5 py-1 rounded-lg text-xs border transition-colors cursor-pointer ${
-                              posReaction === 'confirmed'
-                                ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
-                                : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
-                            }`}
-                          >
-                            Похоже
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleMarkReaction(
-                                pos.position,
-                                'rejected',
-                                `${pos.public_name} (${pos.energy}): ${getFirstSentence(publicEssence)}`
-                              )
-                            }
-                            className={`px-2.5 py-1 rounded-lg text-xs border transition-colors cursor-pointer ${
-                              posReaction === 'rejected'
-                                ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
-                                : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
-                            }`}
-                          >
-                            Не похоже
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onOpenAlbert(payload, {
-                                userQuestion: localQuestion.trim() || undefined,
-                                initialPrompt: `Хочу уточнить позицию «${pos.public_name}» (${pos.energy}): в моём опыте это проявляется иначе.`
-                              })
-                            }
-                            className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 hover:border-[var(--color-antique-gold)]/40 text-stone-300 text-xs transition-colors cursor-pointer"
-                          >
-                            Уточнить
-                          </button>
-                        </div>
+                        {!isExample && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleMarkReaction(
+                                  pos.position,
+                                  'confirmed',
+                                  `${pos.public_name} (${pos.energy}): ${getFirstSentence(publicEssence)}`
+                                )
+                              }
+                              className={`px-2.5 py-1 rounded-lg text-xs border transition-colors cursor-pointer ${
+                                posReaction === 'confirmed'
+                                  ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
+                                  : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
+                              }`}
+                            >
+                              Похоже
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleMarkReaction(
+                                  pos.position,
+                                  'rejected',
+                                  `${pos.public_name} (${pos.energy}): ${getFirstSentence(publicEssence)}`
+                                )
+                              }
+                              className={`px-2.5 py-1 rounded-lg text-xs border transition-colors cursor-pointer ${
+                                posReaction === 'rejected'
+                                  ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
+                                  : 'bg-white/5 border-white/10 text-stone-400 hover:text-stone-200'
+                              }`}
+                            >
+                              Не похоже
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onOpenAlbert(payload, {
+                                  userQuestion: localQuestion.trim() || undefined,
+                                  initialPrompt: `Хочу уточнить позицию «${pos.public_name}» (${pos.energy}): в моём опыте это проявляется иначе.`
+                                })
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 hover:border-[var(--color-antique-gold)]/40 text-stone-300 text-xs transition-colors cursor-pointer"
+                            >
+                              Уточнить
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1125,26 +1138,36 @@ export function CodeV2Experience({
                     <button
                       type="button"
                       aria-label="Поговорить с Альбертом"
-                      onClick={() =>
+                      onClick={() => {
+                        if (isExample) {
+                          onChangeDate?.();
+                          return;
+                        }
                         onOpenAlbert(payload, {
                           userQuestion: localQuestion.trim() || undefined
-                        })
-                      }
+                        });
+                      }}
                       className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-medium text-sm hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2.5 shadow-xl shadow-amber-950/30 whitespace-nowrap min-h-11"
                     >
                       <MessageSquare className="w-4 h-4" />
-                      <span>Обсудить с Альбертом здесь</span>
+                      <span>{isExample ? 'Ввести свою дату для беседы' : 'Обсудить с Альбертом здесь'}</span>
                     </button>
-                    <span className="text-xs text-stone-400 mt-1.5">Разговор откроется на сайте</span>
+                    <span className="text-xs text-stone-400 mt-1.5">
+                      {isExample ? 'Альберт обсудит карту вашей даты' : 'Разговор откроется на сайте'}
+                    </span>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      if (isExample) {
+                        onChangeDate?.();
+                        return;
+                      }
                       onOpenAlbert(payload, {
                         userQuestion: localQuestion.trim() || undefined
-                      })
-                    }
+                      });
+                    }}
                     className="w-full sm:w-auto px-4 py-3.5 rounded-xl border border-white/15 bg-white/[0.03] hover:bg-white/[0.08] text-stone-200 font-normal text-xs sm:text-sm transition-all duration-200 cursor-pointer whitespace-nowrap min-h-11"
                   >
                     Уточнить или не согласиться

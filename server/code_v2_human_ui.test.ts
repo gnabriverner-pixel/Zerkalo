@@ -180,7 +180,7 @@ describe('Code V2 Human Product Experience UI Contract', () => {
       })
     );
 
-    expect(htmlWithStory).toContain('Осваиваемый способ действия');
+    expect(htmlWithStory).toContain('Путь · мастерская');
     // Mini-story is rendered without duplicating the fallback trait plaque
     expect(htmlWithStory).not.toContain('Это не готовая черта характера, а направление практики');
 
@@ -198,7 +198,7 @@ describe('Code V2 Human Product Experience UI Contract', () => {
       })
     );
 
-    expect(htmlFallback).toContain('Осваиваемый способ действия');
+    expect(htmlFallback).toContain('Путь · мастерская');
     expect(htmlFallback).toContain('Это не готовая черта характера, а направление практики');
     expect(htmlFallback).toContain('О чём это число');
   });

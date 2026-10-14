@@ -50,7 +50,9 @@ describe('actual V2 journey', () => {
     // Cheap status reads (free-preview, personal-myth/config) are allowed; nothing else may be requested here.
     expect(fetchMock.mock.calls.filter(call=>call[0]!=='/api/free-preview'&&call[0]!=='/api/personal-myth/config')).toHaveLength(0);
     await enterSyntheticDob();
-    expect(container.textContent).toContain(payload.central_motif);
+    for (const paragraph of payload.central_motif.split('\n\n')) {
+      expect(container.textContent).toContain(paragraph.trim());
+    }
     expect(loadTransientDraft()?.codeResult).toEqual(payload.calculation.canonical_result);
     const journey = loadTransientDraft()?.journeyId;
     await click('Начать Личный миф');

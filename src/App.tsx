@@ -436,6 +436,7 @@ function AppContent() {
                   initialDate={codeDate || ''}
                   initialPayload={codeV2Payload || undefined}
                   autoCalculate={autoCalculateCode}
+                  isExample={isDemoCodeSample}
                   onAutoCalculateConsumed={() => setAutoCalculateCode(false)}
                   userQuestion={userQuestion}
                   onUserQuestionChange={setUserQuestion}
@@ -533,6 +534,16 @@ function AppContent() {
                 onRestoreDraft={handleRestoreDraft}
                 onClearDraft={handleClearDraft}
                 onSelectMode={(m, initialDate, options) => {
+                  if (options?.isExample) {
+                    setIsDemoCodeSample(true);
+                    setAutoCalculateCode(false);
+                    setCodeDate(initialDate || '14.03.1987');
+                    if (options.samplePayload) {
+                      setCodeV2Payload(options.samplePayload);
+                    }
+                    setMode('alabaster');
+                    return;
+                  }
                   if (options?.autoCalculate) {
                     setIsDemoCodeSample(true);
                     setAutoCalculateCode(true);
@@ -718,6 +729,10 @@ function AppContent() {
       <PersonalStoryLibrary
         isOpen={isChapterOfferOpen}
         onClose={() => setIsChapterOfferOpen(false)}
+        onStartMyth={() => {
+          setIsChapterOfferOpen(false);
+          setMode('myth');
+        }}
         previousAnswers={storyInputs}
         previousMyth={storyResult}
         onStoriesDeleted={()=>{handleDeleteSavedMirror();handleClearDraft();}}

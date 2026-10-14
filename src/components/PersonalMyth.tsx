@@ -174,7 +174,7 @@ export default function PersonalMyth({
       placeholder: 'Подойдёт любой образ. Не приходит — так и напишите.' },
     { id: 'q4', tag: '03 / 04 · Чего не хватает', orbNumber: 6, title: 'Чего сейчас не хватает больше всего?',
       placeholder: 'Своими словами, коротко.' },
-    { id: 'q3', tag: '04 / 04 · Живой момент', orbNumber: 5, title: 'Момент, когда вы чувствовали себя по-настоящему живым или нужным',
+    { id: 'q3', tag: '04 / 04 · Живой момент', orbNumber: 5, title: 'В какой момент вы чувствовали, что живёте по-настоящему или нужны кому-то?',
       placeholder: 'Один небольшой эпизод. Если не вспоминается — так и напишите.' },
   ];
   const stepMeta = writerV41 ? v41StepMeta : defaultStepMeta;
@@ -302,7 +302,7 @@ export default function PersonalMyth({
               className="text-center w-full max-w-2xl mx-auto py-8"
             >
               <div className="flex justify-center mb-8">
-                <EmblemPlate planet={7} variant="alabaster" size={140} showNumber={false} showLabel={false} />
+                <EmblemPlate planet={7} variant="obsidian" size={140} showNumber={false} showLabel={false} />
               </div>
 
               <h1 className="font-serif text-4xl sm:text-6xl text-stone-100 mb-4 font-normal tracking-tight leading-tight">
@@ -313,7 +313,11 @@ export default function PersonalMyth({
                 Четыре вопроса о том, что происходит с вами сейчас. Затем — художественная история по вашим ответам. Можно отвечать коротко, правильных ответов нет.
               </p>
               
-              {freePreview?.enabled&&<p role="status">Пробный доступ — бесплатно. Миф можно принять, уточнить или отвергнуть.</p>}
+              {freePreview === undefined || freePreview === null ? (
+                <p role="status" className="mb-6 text-xs sm:text-sm font-mono text-stone-400">Проверяем доступ…</p>
+              ) : freePreview?.enabled ? (
+                <p role="status" className="mb-6 text-xs sm:text-sm font-mono text-stone-300">Пробный доступ — бесплатно. Что в истории вам близко, решаете вы.</p>
+              ) : null}
               {generationBlocked&&<p role="status" data-testid="myth-unavailable" className="mb-4 text-sm text-stone-300">{exampleUrl?MYTH_COPY.unavailableWithExample:MYTH_COPY.unavailableNoExample}{exampleUrl&&<> <a className="underline" href={exampleUrl} target="_blank" rel="noreferrer">Прочитать пример Личного мифа</a></>}</p>}
               <button 
                 disabled={generationBlocked}
@@ -343,9 +347,9 @@ export default function PersonalMyth({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.6 }}
-              className="w-full flex flex-col items-center text-center max-w-2xl mx-auto py-6"
+              className="w-full flex flex-col items-center text-center max-w-2xl mx-auto py-2 sm:py-6"
             >
-              <div className="flex items-center justify-between w-full mb-10">
+              <div className="flex items-center justify-between w-full mb-3 sm:mb-8">
                 <span className="text-xs uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono">
                   {currentQuestion.tag}
                 </span>
@@ -362,15 +366,15 @@ export default function PersonalMyth({
                 )}
               </div>
 
-              <div className="mb-8">
-                <EmblemPlate planet={currentQuestion.orbNumber} variant="alabaster" size={100} showNumber={false} showLabel={false} />
+              <div className="mb-3 sm:mb-6">
+                <EmblemPlate planet={currentQuestion.orbNumber} variant="obsidian" size={72} showNumber={false} showLabel={false} />
               </div>
 
-              <h2 className="font-serif text-2xl sm:text-4xl text-stone-100 mb-10 leading-relaxed font-light max-w-xl">
+              <h2 className="font-serif text-xl sm:text-3xl text-stone-100 mb-5 sm:mb-8 leading-snug sm:leading-relaxed font-light max-w-xl">
                 {currentQuestion.title}
               </h2>
               
-              <div className="relative w-full mb-6">
+              <div className="relative w-full mb-5">
                 <textarea 
                   autoFocus
                   rows={3}
@@ -388,10 +392,10 @@ export default function PersonalMyth({
                     }
                   }}
                   placeholder={currentQuestion.placeholder}
-                  className="w-full bg-transparent border-b border-stone-600 focus:border-[var(--color-antique-gold)] px-2 py-3 text-lg sm:text-xl text-stone-100 placeholder:text-stone-600 focus:outline-none transition-colors resize-none font-serif leading-relaxed text-center"
+                  className="w-full bg-transparent border-b border-stone-500 focus:border-[var(--color-antique-gold)] px-2 py-2 sm:py-3 text-base sm:text-xl text-stone-100 placeholder:text-stone-300 placeholder:opacity-100 focus:outline-none transition-colors resize-none font-serif leading-relaxed text-center"
                 />
                 
-                <div className="flex justify-between items-center text-[13px] uppercase font-mono text-stone-400 mt-2 px-1">
+                <div className="flex justify-between items-center text-[12px] uppercase font-mono text-stone-300 mt-2 px-1">
                   <span>Минимум 3 символа</span>
                   <span>{currentInputValue.length} знаков</span>
                 </div>
@@ -471,7 +475,7 @@ export default function PersonalMyth({
               exit={{ opacity: 0 }}
               className="w-full flex flex-col items-center justify-center py-24 text-center max-w-lg mx-auto"
             >
-              <EmblemPlate planet={7} variant="alabaster" size={140} showNumber={false} showLabel={false} className="mb-8" />
+              <EmblemPlate planet={7} variant="obsidian" size={140} showNumber={false} showLabel={false} className="mb-8" />
               <Loader2 className="w-6 h-6 text-[var(--color-antique-gold)] animate-spin mb-6" />
               <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 mb-3 font-light">
                 История создаётся
@@ -501,7 +505,7 @@ export default function PersonalMyth({
             >
               {/* Header Title */}
               <div className="text-center w-full max-w-2xl mx-auto pt-4">
-                <EmblemPlate planet={7} variant="alabaster" size={64} showNumber={false} showLabel={false} className="mx-auto mb-6" />
+                <EmblemPlate planet={7} variant="obsidian" size={64} showNumber={false} showLabel={false} className="mx-auto mb-6" />
                 
                 <span className="text-[13px] tracking-[0.3em] uppercase text-purple-300/80 font-mono block mb-2">
                   Личный Миф · Художественная сцена
