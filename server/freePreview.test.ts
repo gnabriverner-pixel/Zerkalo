@@ -27,7 +27,7 @@ async function setup(){
     return {status:r.status,body:r.headers.get('content-type')?.includes('application/pdf')?Buffer.from(await r.arrayBuffer()):await r.json()};
   };
   const consent=()=>call('/api/consent',{accepted:true,adult:true,version:CONSENT_VERSION,scope:'core'});
-  const issue=async()=>{await consent();await call('/api/personal-myth',{request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS});await call('/api/stories/account',{storage_accepted:true,storage_version:'personal-history-storage-v1'});return (await call('/api/stories')).body.orders[0];};
+  const issue=async()=>{await consent();await call('/api/personal-myth',{request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS});await vi.waitFor(async()=>{const r=await call('/api/personal-myth',{request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS});expect(r.status).toBe(200);});await call('/api/stories/account',{storage_accepted:true,storage_version:'personal-history-storage-v1'});return (await call('/api/stories')).body.orders[0];};
   return {store,myth,albert,call,consent,issue,clearCookies:()=>{cookies='';},close:()=>{server.close();server.closeAllConnections();store.close();}};
 }
 describe('bounded free preview, synthetic only',()=>{
@@ -69,7 +69,7 @@ describe('bounded free preview, synthetic only',()=>{
     const s=await setup();let finish:any;s.myth.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));try{await s.consent();await s.call('/api/stories/account',{storage_accepted:true,storage_version:'personal-history-storage-v1'});const pending=s.call('/api/personal-myth',{request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS});await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));const second=await s.call('/api/personal-myth',{request_id:'preview_myth_002',answers:STORY_SAMPLE_ANSWERS});expect(second.status).toBe(409);expect(s.myth).toHaveBeenCalledTimes(1);finish({status:'ok',story_result:STORY_SAMPLE_MYTH});await pending;const order=(await s.call('/api/stories')).body.orders[0];for(let i=0;i<5;i++)expect((await s.call(`/api/stories/${order.id}/albert`,{request_key:'preview_reply_'+i,message:'Вымышленный вопрос.'})).body.order.remaining).toBe(4-i);expect((await s.call(`/api/stories/${order.id}/albert`,{request_key:'preview_sixth_01',message:'Ещё вопрос.'})).body.code).toBe('albert_limit');expect(s.albert).toHaveBeenCalledTimes(5);}finally{s.close();}
   });
   it('same request_id while running returns 202 without a second generation, then replays the finished story',async()=>{
-    const s=await setup();let finish:any;s.myth.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));try{await s.consent();await s.call('/api/stories/account',{storage_accepted:true,storage_version:'personal-history-storage-v1'});const body={request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS};const pending=s.call('/api/personal-myth',body);await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));for(let i=0;i<3;i++){const again=await s.call('/api/personal-myth',body);expect(again.status).toBe(202);expect(again.body.status).toBe('running');expect(again.body.story_result).toBeUndefined();}expect(s.myth).toHaveBeenCalledTimes(1);finish({status:'ok',story_result:STORY_SAMPLE_MYTH});expect((await pending).body.story_result.title).toBe(STORY_SAMPLE_MYTH.title);const replay=await s.call('/api/personal-myth',body);expect(replay.status).toBe(200);expect(replay.body.replayed).toBe(true);expect(replay.body.story_result.title).toBe(STORY_SAMPLE_MYTH.title);expect(s.myth).toHaveBeenCalledTimes(1);}finally{s.close();}
+    const s=await setup();let finish:any;s.myth.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));try{await s.consent();await s.call('/api/stories/account',{storage_accepted:true,storage_version:'personal-history-storage-v1'});const body={request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS};const pending=await s.call('/api/personal-myth',body);expect(pending.status).toBe(202);expect(pending.body.status).toBe('running');await vi.waitFor(()=>expect(finish).toBeTypeOf('function'));for(let i=0;i<3;i++){const again=await s.call('/api/personal-myth',body);expect(again.status).toBe(202);expect(again.body.status).toBe('running');expect(again.body.story_result).toBeUndefined();}expect(s.myth).toHaveBeenCalledTimes(1);finish({status:'ok',story_result:STORY_SAMPLE_MYTH});await vi.waitFor(async()=>{const r=await s.call('/api/personal-myth',body);expect(r.status).toBe(200);expect(r.body.story_result.title).toBe(STORY_SAMPLE_MYTH.title);});const replay=await s.call('/api/personal-myth',body);expect(replay.status).toBe(200);expect(replay.body.replayed).toBe(true);expect(replay.body.story_result.title).toBe(STORY_SAMPLE_MYTH.title);expect(s.myth).toHaveBeenCalledTimes(1);}finally{s.close();}
   });
   it('re-POST of the same request_id: failed/uncertain/expired never start a second call; a lost cookie does (why "check" is a GET)',async()=>{
     const s=await setup();try{
@@ -78,7 +78,8 @@ describe('bounded free preview, synthetic only',()=>{
       expect((await s.call('/api/stories')).status).toBe(401);
       // failed -> same key answers 202 failed, no new call
       s.myth.mockRejectedValueOnce(new Error('provider down'));
-      expect((await s.call('/api/personal-myth',body)).status).toBe(502);
+      const first=await s.call('/api/personal-myth',body);expect(first.status).toBe(202);expect(first.body.status).toBe('running');
+      await vi.waitFor(async()=>{const again=await s.call('/api/personal-myth',body);expect(again.status).toBe(202);expect(again.body.status).toBe('failed');});
       for(let i=0;i<2;i++){const again=await s.call('/api/personal-myth',body);expect(again.status).toBe(202);expect(again.body.status).toBe('failed');}
       expect(s.myth).toHaveBeenCalledTimes(1);
       // uncertain (server restart) -> 202 uncertain, no new call
@@ -89,7 +90,8 @@ describe('bounded free preview, synthetic only',()=>{
   it('without storage consent the result is wiped after payload_expires: re-POST is refused with 402, the list shows ready without myth',async()=>{
     const s=await setup();try{
       await s.consent();const body={request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS};
-      expect((await s.call('/api/personal-myth',body)).body.story_result.title).toBe(STORY_SAMPLE_MYTH.title);
+      const first=await s.call('/api/personal-myth',body);expect(first.status).toBe(202);
+      await vi.waitFor(async()=>{const res=await s.call('/api/personal-myth',body);expect(res.status).toBe(200);expect(res.body.story_result.title).toBe(STORY_SAMPLE_MYTH.title);});
       expect((await s.call('/api/stories/status')).body.storage_accepted).toBe(false);
       expect((await s.call('/api/stories')).body.orders[0].data.myth.title).toBe(STORY_SAMPLE_MYTH.title);
       s.store.db.prepare('UPDATE orders SET payload_expires=?').run(Date.now()-1);
@@ -101,11 +103,12 @@ describe('bounded free preview, synthetic only',()=>{
   it('HAZARD documented: the same request_id without the session cookie is a NEW account and a SECOND generation',async()=>{
     const s=await setup();try{
       await s.consent();const body={request_id:'preview_myth_001',answers:STORY_SAMPLE_ANSWERS};
-      await s.call('/api/personal-myth',body);expect(s.myth).toHaveBeenCalledTimes(1);
+      const first=await s.call('/api/personal-myth',body);expect(first.status).toBe(202);
+      await vi.waitFor(()=>expect(s.myth).toHaveBeenCalledTimes(1));
       s.clearCookies();await s.consent();
       expect((await s.call('/api/stories')).status).toBe(401);
-      expect((await s.call('/api/personal-myth',body)).status).toBe(200);
-      expect(s.myth).toHaveBeenCalledTimes(2);
+      const second=await s.call('/api/personal-myth',body);expect(second.status).toBe(202);
+      await vi.waitFor(()=>expect(s.myth).toHaveBeenCalledTimes(2));
     }finally{s.close();}
   });
   it('expiry refuses only temporary continuation; archive/PDF and preexisting free route remain',async()=>{

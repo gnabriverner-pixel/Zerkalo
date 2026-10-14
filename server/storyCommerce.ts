@@ -244,8 +244,26 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
         if(!options.ready())throw new CommerceError('provider_not_ready',503);
         if(!checkAndIncrementRate('generate:'+req.ip,30,Date.now(),600000,buckets).allowed)throw new CommerceError('rate_limit',429);
         if(order.kind==='free'&&!consumeDailyBudget().allowed)throw new CommerceError('daily_budget_reached',429);
-        if(kind==='myth')db.event('experience_started',order);
-        result=await withAIBudget({pool:order.kind==='paid'?'paid':'free',orderId:order.kind==='paid'?order.id:undefined},()=>kind==='myth'?options.myth(input):options.albert(input,res.locals.consent));
+        if(kind==='myth'){
+          db.event('experience_started',order);
+          res.status(202).json({status:'running',order:publicOrder(db.order(id,order.id))});
+          (async()=>{
+            try{
+              const asyncResult=await withAIBudget({pool:order.kind==='paid'?'paid':'free',orderId:order.kind==='paid'?order.id:undefined},()=>options.myth(input));
+              if(!['ok','crisis'].includes(asyncResult?.status))throw new CommerceError('generation_not_delivered',502);
+              db.complete(id,order.id,requestKey,asyncResult);
+            }catch(err:any){
+              if(/^(provider_call_timeout|provider_unavailable|provider_invalid_json|provider_http_(?:408|5\d\d))$/.test(String(err?.message||''))){
+                try{db.markUncertain(id,order.id,requestKey);}catch{}
+              }else{
+                try{db.fail(id,order.id,requestKey);}catch{}
+              }
+              console.error('[Async Myth] Background generation failed:', err?.message||err);
+            }
+          })();
+          return;
+        }
+        result=await withAIBudget({pool:order.kind==='paid'?'paid':'free',orderId:order.kind==='paid'?order.id:undefined},()=>options.albert(input,res.locals.consent));
       }
       if(result.status==='ok' && kind==='albert'){
         result={...result,reply:result.response||result.message};
@@ -325,7 +343,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
       if(preview.status().active&&order.created_at>=preview.status().started_at!)preview.mark(order.id);
       if(order.state==='ready'){
         if(JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('free_story_already_issued',402);
-        return res.json({status:'ok',mode:'story',story_result:order.data.myth,replayed:true});
+        return res.json({status:'ok',mode:'story',story_result:order.data.myth,order:publicOrder(order),replayed:true});
       }
       if(!order.data.answers)order=db.saveAnswers(id,order.id,parsed.answers,'');
       if(JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('saved_answers_differ',409);

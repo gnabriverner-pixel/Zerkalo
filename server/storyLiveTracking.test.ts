@@ -13,7 +13,8 @@ it('commercial native completion updates only its generator flags; crisis/reopen
     await call('/api/consent',{accepted:true,adult:true,version:CONSENT_VERSION,scope:'core'});
     expect(application.liveGeneration).toEqual({personal_myth:false,meeting:false,albert:false});
     await call('/api/personal-myth',{request_id:'tracking_crisis_001',answers:{...STORY_SAMPLE_ANSWERS,q1:'Я хочу покончить с собой'}});
-    expect(application.liveGeneration.personal_myth).toBe(false);expect(provider.generate).not.toHaveBeenCalled();
+    const init=await call('/api/personal-myth',{request_id:'tracking_myth_0001',answers:STORY_SAMPLE_ANSWERS});expect(init.status).toBe(202);
+    await vi.waitFor(()=>expect(provider.generate).toHaveBeenCalledTimes(1));
     const free=await call('/api/personal-myth',{request_id:'tracking_myth_0001',answers:STORY_SAMPLE_ANSWERS});expect(free.status).toBe(200);expect(free.data.status).toBe('ok');
     expect(application.liveGeneration.personal_myth).toBe(true);expect(application.liveGeneration.albert).toBe(false);
     await call('/api/stories/account',{storage_accepted:true,storage_version:'personal-history-storage-v1'});

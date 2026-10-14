@@ -82,7 +82,9 @@ describe('commerce HTTP contracts, synthetic transport only',()=>{
       expect((await s.call('/api/personal-myth',{request_id:'free_myth_00001',answers:STORY_SAMPLE_ANSWERS})).response.status).toBe(403);
       expect(s.myth).not.toHaveBeenCalled();expect(s.store.db.prepare('SELECT COUNT(*) AS n FROM accounts').get()).toMatchObject({n:0});
       await s.consent();const request={request_id:'free_myth_00001',answers:STORY_SAMPLE_ANSWERS};
-      expect((await s.call('/api/personal-myth',request)).response.status).toBe(200);await s.call('/api/personal-myth',request);
+      expect((await s.call('/api/personal-myth',request)).response.status).toBe(202);
+      await vi.waitFor(()=>expect(s.myth).toHaveBeenCalledTimes(1));
+      expect((await s.call('/api/personal-myth',request)).response.status).toBe(200);
       expect(s.myth).toHaveBeenCalledTimes(1);
       expect((await s.call('/api/personal-myth',{...request,answers:{...STORY_SAMPLE_ANSWERS,q1:'Новая ситуация'}})).response.status).toBe(402);
       expect(s.myth).toHaveBeenCalledTimes(1);
@@ -96,11 +98,13 @@ describe('commerce HTTP contracts, synthetic transport only',()=>{
     s.myth.mockImplementation(()=>new Promise(r=>{resolve=r;}));
     try{
       await s.consent();await s.call('/api/stories/account',{storage_accepted:true,storage_version:'personal-history-storage-v1'});
-      const pending=s.call('/api/personal-myth',{request_id:'delayed_myth_001',answers:STORY_SAMPLE_ANSWERS});
+      const pending=await s.call('/api/personal-myth',{request_id:'delayed_myth_001',answers:STORY_SAMPLE_ANSWERS});
+      expect(pending.response.status).toBe(202);
       await vi.waitFor(()=>expect(resolve).toBeTypeOf('function'));
       expect((await s.call('/api/stories/delete',{confirmed:true})).data.deleted).toBe(true);
       resolve({status:'ok',story_result:STORY_SAMPLE_MYTH});
-      expect((await pending).response.status).toBe(401);expect((await s.call('/api/stories')).response.status).toBe(401);
+      await vi.waitFor(()=>expect(s.myth).toHaveBeenCalledTimes(1));
+      expect((await s.call('/api/stories')).response.status).toBe(401);
       expect(s.store.db.prepare('SELECT payload FROM orders').get()).toMatchObject({payload:null});
     }finally{s.close();}
   });

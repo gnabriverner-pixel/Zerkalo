@@ -2,7 +2,7 @@ import type { ApiResponse } from '../types';
 
 // Long Myth generation: while the server keeps working, the client re-sends the SAME request_id.
 export const MYTH_POLL_INTERVAL_MS = 5_000;
-export const MYTH_TOTAL_WAIT_MS = 4 * 60_000;
+export const MYTH_TOTAL_WAIT_MS = 6 * 60_000;
 export const MYTH_SLOW_HINT_MS = 20_000;
 
 /** Server codes meaning "this operation is already running" (server/commerceStore.ts reserve()). */

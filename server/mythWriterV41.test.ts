@@ -347,7 +347,9 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
     const s = await commerceApp(asProvider(generate));
     try {
       const body = { request_id: "writer_v41_req_001", answers: STORY_SAMPLE_ANSWERS };
-      const pending = s.call("/api/personal-myth", body);
+      const pending = await s.call("/api/personal-myth", body);
+      expect(pending.status).toBe(202);
+      expect(pending.body.status).toBe("running");
       await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
       for (let i = 0; i < 3; i++) {
         const again = await s.call("/api/personal-myth", body);
@@ -356,11 +358,13 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
       }
       expect(generate).toHaveBeenCalledTimes(1);
       finish!("```json\n" + okJson + "\n```");
-      const done = await pending;
-      expect(done.body.story_result.title).toBe("Синтетическое название");
-      const replay = await s.call("/api/personal-myth", body);
-      expect(replay.body.replayed).toBe(true);
-      expect(replay.body.story_result.story).toBe(story);
+      await vi.waitFor(async () => {
+        const replay = await s.call("/api/personal-myth", body);
+        expect(replay.status).toBe(200);
+        expect(replay.body.replayed).toBe(true);
+        expect(replay.body.story_result.title).toBe("Синтетическое название");
+        expect(replay.body.story_result.story).toBe(story);
+      });
       expect(generate).toHaveBeenCalledTimes(1);
       const saved = (await s.call("/api/stories")).body.orders[0];
       expect(saved.data.myth).toMatchObject({ title: "Синтетическое название", story, one_step: "" });
@@ -385,9 +389,14 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
     const s = await commerceApp(asProvider(generate));
     try {
       const r = await s.call("/api/personal-myth", { request_id: "writer_v41_menu_001", answers: STORY_SAMPLE_ANSWERS });
-      expect(r.status).toBeGreaterThanOrEqual(400);
-      expect(JSON.stringify(r.body)).not.toContain("Написать сказку");
-      expect(r.body.story_result).toBeUndefined();
+      expect(r.status).toBe(202);
+      expect(r.body.status).toBe("running");
+      await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+      const again = await s.call("/api/personal-myth", { request_id: "writer_v41_menu_001", answers: STORY_SAMPLE_ANSWERS });
+      expect(again.status).toBe(202);
+      expect(again.body.status).toBe("failed");
+      expect(JSON.stringify(again.body)).not.toContain("Написать сказку");
+      expect(again.body.story_result).toBeUndefined();
     } finally { s.close(); }
   });
 
@@ -399,8 +408,11 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
       try {
         const first = await s.call("/api/personal-myth", input);
         expect(first.status).toBe(202);
-        expect(first.body.status).toBe("uncertain");
-        expect(first.body.story_result).toBeUndefined();
+        expect(first.body.status).toBe("running");
+        await vi.waitFor(() => {
+          expect(generate).toHaveBeenCalledTimes(1);
+          expect(s.store.db.prepare("SELECT state FROM operations").all()).toEqual([{ state: "uncertain" }]);
+        });
         const again = await s.call("/api/personal-myth", input);
         expect(again.status).toBe(202);
         expect(again.body.status).toBe("uncertain");
@@ -425,9 +437,14 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
     try {
       const r = await first.call("/api/personal-myth", input);
       expect(r.status, JSON.stringify(r.body)).toBe(202);
-      expect(r.body.status).toBe("uncertain");
-      expect(transport).toHaveBeenCalledTimes(1);
-      expect(events).toHaveLength(1);
+      expect(r.body.status).toBe("running");
+      await vi.waitFor(() => {
+        expect(transport).toHaveBeenCalledTimes(1);
+        expect(events).toHaveLength(1);
+      });
+      const again = await first.call("/api/personal-myth", input);
+      expect(again.status).toBe(202);
+      expect(again.body.status).toBe("uncertain");
       expect(events[0]).toMatchObject({ outcome: "provider_unavailable", errorName: "TypeError", causeCode: "UND_ERR_SOCKET", stage: "before_headers" });
       expect(JSON.stringify(events[0])).not.toContain("СИТУАЦИЯ");
       expect(JSON.stringify(events[0])).not.toContain(STORY_SAMPLE_ANSWERS.q1);
@@ -452,11 +469,10 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
     const generate = vi.fn((_p: string, _ms: number, _m?: "v41") => new Promise<string>(resolve => { finish = resolve; }));
     const s = await commerceApp(asProvider(generate));
     try {
-      const controller = new AbortController();
-      const pending = s.call("/api/personal-myth", input, controller.signal).catch(() => "aborted");
+      const init = await s.call("/api/personal-myth", input);
+      expect(init.status).toBe(202);
+      expect(init.body.status).toBe("running");
       await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
-      controller.abort();
-      expect(await pending).toBe("aborted");
       finish!(okJson);
       await vi.waitFor(async () => {
         const order = (await s.call("/api/stories")).body.orders[0];
@@ -536,9 +552,11 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
       let cookies = "";
       try {
         const r = await first.call("/api/personal-myth", input);
-        expect(r.status, JSON.stringify(r.body)).toBe(row.expect.http);
-        if (row.expect.status) expect(r.body.status).toBe(row.expect.status);
-        check(first.store);
+        expect(r.status, JSON.stringify(r.body)).toBe(202);
+        expect(r.body.status).toBe("running");
+        await vi.waitFor(() => {
+          check(first.store);
+        });
         const again = await first.call("/api/personal-myth", input);
         expect(again.status).toBe(row.expect.replayStatus);
         if (row.expect.replayBodyStatus) expect(again.body.status).toBe(row.expect.replayBodyStatus);
@@ -560,12 +578,18 @@ describe("waiting: the opt-in path shares the existing request_id replay", () =>
     const transport = (async () => { wire.sends++; await new Promise(r => setTimeout(r, 250)); return okResponse(); }) as any;
     const s = await commerceApp(new DeepSeekMythProvider({}, new RouterAIClient({ ROUTERAI_API_KEY: "synthetic-test-key" } as any, OPUS, transport, () => undefined)), { timeoutMs: 60 });
     try {
-      const pending = s.call("/api/personal-myth", input);
+      const pending = await s.call("/api/personal-myth", input);
+      expect(pending.status).toBe(202);
+      expect(pending.body.status).toBe("running");
       await vi.waitFor(() => expect(wire.sends).toBe(1));
       const mid = await s.call("/api/personal-myth", input);
       expect(mid.status).toBe(202);
-      const done = await pending;
-      expect(done.body.story_result.title).toBe("Синтетическое название");
+      expect(mid.body.status).toBe("running");
+      await vi.waitFor(async () => {
+        const done = await s.call("/api/personal-myth", input);
+        expect(done.status).toBe(200);
+        expect(done.body.story_result.title).toBe("Синтетическое название");
+      });
       const replay = await s.call("/api/personal-myth", input);
       expect(replay.body.replayed).toBe(true);
       expect(wire.sends).toBe(1);

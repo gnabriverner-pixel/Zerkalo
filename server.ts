@@ -98,9 +98,9 @@ export async function createApp(options: CreateAppOptions = {}) {
       : options.mythProvider
       ? true
       : deepseekClient.isReady();
-  // Old path: unchanged 90 s ceiling. Opt-in writer v4.1/v4.2: default 150 s, ceiling 180 s (PERSONAL_MYTH_V41_TIMEOUT_MS).
+  // Old path: unchanged 90 s ceiling. Opt-in writer v4.1/v4.2: default 240 s, ceiling 300 s (PERSONAL_MYTH_V41_TIMEOUT_MS).
   const personalMythTimeoutMs = isWriterV41Enabled()
-    ? Math.min(180_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_V41_TIMEOUT_MS) || 150_000))
+    ? Math.min(300_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_V41_TIMEOUT_MS) || 240_000))
     : Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 75_000));
   const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
 

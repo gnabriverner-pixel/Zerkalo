@@ -355,7 +355,8 @@ export class CommerceStore {
       if(kind==='albert' && order.state!=='ready')throw new CommerceError('story_not_ready');
       if(kind==='albert' && order.remaining-order.pending<=0)throw new CommerceError('albert_limit');
       if(this.db.prepare("SELECT 1 FROM operations WHERE order_id=? AND state IN ('running','uncertain')").get(id))throw new CommerceError('operation_in_progress');
-      if(process.env.FREE_PREVIEW_ENABLED==='true'&&(this.db.prepare("SELECT COUNT(*) AS count FROM operations WHERE state IN ('running','uncertain')").get() as any).count>=2)throw new CommerceError('service_busy',503);
+      const activeCutoff=Date.now()-15*60*1000;
+      if(process.env.FREE_PREVIEW_ENABLED==='true'&&(this.db.prepare("SELECT COUNT(*) AS count FROM operations WHERE state='running' OR (state='uncertain' AND created_at>=?)").get(activeCutoff) as any).count>=2)throw new CommerceError('service_busy',503);
       const attempts=(this.db.prepare('SELECT COUNT(*) AS n FROM operations WHERE order_id=? AND kind=?').get(id,kind) as any).n;
       if(attempts>=(kind==='myth'?3:10))throw new CommerceError('delivery_needs_support',503);
       const day=Math.floor(Date.now()/86400000)*86400000;

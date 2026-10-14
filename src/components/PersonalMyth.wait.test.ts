@@ -12,9 +12,8 @@ vi.mock('motion/react', () => ({
 }));
 vi.mock('./ConsentBoundary', () => ({ useProtectedFetch: () => h.fetchMock }));
 vi.mock('../services/freePreview', () => ({ useFreePreview: () => h.access, readFreePreview: async () => h.access }));
-
 import PersonalMyth from './PersonalMyth';
-import { MYTH_COPY } from '../services/mythWait';
+import { MYTH_COPY, MYTH_TOTAL_WAIT_MS } from '../services/mythWait';
 
 const ANSWERS = { q1: 'первый ответ', q2: 'второй ответ', q3: 'третий ответ', q4: 'четвёртый ответ' };
 const STORY = { title: 'Готовая история', story: 'Текст', mirror: {}, meaning: [], one_step: '', journal_question: '', disclaimer: '' } as any;
@@ -101,7 +100,7 @@ describe('PersonalMyth waiting copy', () => {
 
   it('after the whole wait window the state is unknown too (timeout)', async () => {
     h.fetchMock.mockImplementation(async (url: string) => url === '/api/personal-myth' ? json({ status: 'running' }, 202) : json({}));
-    await start(); await flush(4 * 60_000);
+    await start(); await flush(MYTH_TOTAL_WAIT_MS);
     expect(text()).toContain(MYTH_COPY.unknown);
     expect(button('Проверить результат')).toBeDefined();
   });
