@@ -53,7 +53,7 @@ describe('actual V2 journey', () => {
     expect(container.textContent).toContain(payload.central_motif);
     expect(loadTransientDraft()?.codeResult).toEqual(payload.calculation.canonical_result);
     const journey = loadTransientDraft()?.journeyId;
-    await click('Перейти к Личному мифу');
+    await click('Начать Личный миф');
     await click('Готовый тестовый миф');
     await click('Продолжить тестовую встречу');
     expect(container.textContent).not.toContain('Не рассчитано');
@@ -126,7 +126,7 @@ describe('actual V2 journey', () => {
     await ariaClick('Отправить сообщение');
     await fill('textarea[aria-label="Моя мысль после разговора"]', 'Я выбираю равноправие.');
     await ariaClick('Закрыть диалог');
-    await click('Перейти к Личному мифу');
+    await click('Начать Личный миф');
     await click('Готовый тестовый миф');
     await click('Продолжить тестовую встречу');
     // Return to Code; the same global conversation must survive both transitions.

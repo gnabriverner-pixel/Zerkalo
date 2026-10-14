@@ -26,7 +26,7 @@ import { isShortJuxtapositionEnabled } from './services/albertOpenerState';
 import { loadQaPanel, type QaPanelModule } from './components/CodeV2/qaPanelLoader';
 import { EmblemDefs } from './art/emblem';
 import { ConsentBoundary } from './components/ConsentBoundary';
-import {useFreePreview,meetingUnavailable} from './services/freePreview';
+import {useFreePreview,meetingUnavailable,getMythsAccessLabel} from './services/freePreview';
 
 function sanitizeUrlDob(): void {
   if (typeof window === 'undefined') return;
@@ -371,9 +371,9 @@ function AppContent() {
             <button
               onClick={() => setIsChapterOfferOpen(true)}
               className="min-h-[40px] px-2.5 sm:px-3.5 py-2 rounded-full text-[12px] sm:text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-1 cursor-pointer text-[var(--color-antique-gold)] border border-[var(--color-antique-gold)]/40 bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20"
-              title={freePreview?.enabled !== false ? 'Мои истории · бесплатно' : 'Мои истории · 790 ₽'}
+              title={getMythsAccessLabel(freePreview)}
             >
-              <span>Истории</span>
+              <span>МИФЫ</span>
             </button>
           )}
         </nav>
@@ -409,7 +409,7 @@ function AppContent() {
                 className="w-full text-left px-3 py-3 text-sm text-[var(--color-antique-gold)] font-medium border-b border-white/10"
                 onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setIsChapterOfferOpen(true); }}
               >
-                {freePreview?.enabled !== false ? 'Мои истории · бесплатно' : 'Мои истории · 790 ₽'}
+                {getMythsAccessLabel(freePreview)}
               </button>
             )}
             <button className="w-full text-left px-3 py-3 text-sm text-stone-100" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setShowAbout(true); }}>О методе</button>
@@ -469,7 +469,8 @@ function AppContent() {
                     setJourneyId(crypto.randomUUID());
                   }}
                   onContinue={() => hasMyth&&meetingBlocked?openOrdinaryAlbert():setMode(hasMyth ? 'meeting' : 'myth')}
-                  continueLabel={hasMyth ? meetingBlocked?'Обсудить с Альбертом':'Открыть Встречу зеркал' : 'Перейти к Личному мифу'}
+                  continueLabel={hasMyth ? 'Открыть Встречу зеркал' : 'Начать Личный миф'}
+                  onOpenMyth={() => setMode('myth')}
                   isQaMode={isQaMode && import.meta.env.DEV}
                   onOpenAlbert={(p, options) => {
                     setCodeV2Payload(p);
@@ -609,7 +610,7 @@ function AppContent() {
             <p>Сохранённые тексты и заметки остаются на месте. Можно продолжить разговор напрямую с Альбертом.</p>
             {meetingUserNote&&<p className="whitespace-pre-wrap">{meetingUserNote}</p>}
             <button className="px-5 py-3 rounded border border-amber-300/40" onClick={openOrdinaryAlbert}>Продолжить с Альбертом</button>
-            <button className="px-5 py-3 rounded border border-white/20" onClick={()=>setIsChapterOfferOpen(true)}>Мои истории</button>
+            <button className="px-5 py-3 rounded border border-white/20" onClick={()=>setIsChapterOfferOpen(true)}>Мои мифы</button>
           </motion.section>}
           {mode === 'meeting' && !meetingBlocked && (
             <motion.div
@@ -686,7 +687,8 @@ function AppContent() {
         calc={codeResult}
         codeV2Payload={codeV2Payload}
         codeV2Context={codeV2Payload?.albert_context}
-        freePreviewEnabled={freePreview?.enabled !== false}
+        freePreviewStatus={freePreview}
+        freePreviewEnabled={freePreview ? freePreview.enabled && freePreview.active : undefined}
         onReturnToCode={hasCode ? () => {
           setIsAlbertV2Open(false);
           setMode('alabaster');
@@ -710,7 +712,7 @@ function AppContent() {
           className="hidden sm:block fixed bottom-4 right-4 z-40 px-5 py-3 rounded-full bg-[#111c2c] text-[#e0c693] border border-[#bd9d65]/40 hover:border-[#bd9d65] transition-colors shadow-lg cursor-pointer"
           onClick={() => setIsChapterOfferOpen(true)}
         >
-          {freePreview?.enabled !== false ? 'Мои истории · бесплатно' : 'Мои истории · 790 ₽'}
+          {getMythsAccessLabel(freePreview)}
         </button>
       )}
       <PersonalStoryLibrary

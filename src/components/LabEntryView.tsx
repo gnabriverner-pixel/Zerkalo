@@ -280,11 +280,11 @@ export function LabEntryView({
                 </div>
 
                 <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-6 mb-3">
-                  История по вашей ситуации
+                  Личный миф
                 </h2>
 
                 <p className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xs mb-8">
-                  Четыре вопроса о том, что происходит сейчас. Затем — личная история, в которой можно узнать знакомое переживание.
+                  Художественная история по вашим ответам о том, что происходит с вами сейчас.
                 </p>
               </div>
 
@@ -294,7 +294,7 @@ export function LabEntryView({
                   onClick={handleStartMyth}
                   className="min-h-11 px-6 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] rounded-xs uppercase tracking-[0.18em] text-[13px] font-semibold transition-all cursor-pointer shadow-[0_2px_12px_rgba(200,164,93,0.2)]"
                 >
-                  {hasMyth ? 'Открыть историю' : 'Начать историю'}
+                  {hasMyth ? 'Открыть историю' : 'Начать Личный миф'}
                 </button>
                 <button
                   type="button"

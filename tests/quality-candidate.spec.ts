@@ -77,10 +77,12 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   await page.getByRole('button',{name:'Согласиться и продолжить'}).click();
   expect((await calculation).status()).toBe(200);
   await expect(page.getByRole('link',{name:'Открыть в Telegram',exact:true})).toHaveCount(0);
-  await page.getByRole('button',{name:'Перейти к Личному мифу'}).waitFor();
+  const mythTransitionBtn = page.getByRole('button',{name:'Начать Личный миф'}).or(page.getByRole('button',{name:'Перейти к Личному мифу'}));
+  await mythTransitionBtn.waitFor();
   await page.evaluate(()=>scrollTo(0,0));await shot('code');
-  await page.getByRole('button',{name:'Перейти к Личному мифу'}).click();
-  await page.getByRole('button',{name:'Создать мою историю',exact:true}).click();
+  await mythTransitionBtn.click();
+  const startMythBtn = page.getByRole('button',{name:'Начать Личный миф',exact:true}).or(page.getByRole('button',{name:'Создать мою историю',exact:true}));
+  await startMythBtn.click();
   const tags=['01 / 04 · Ситуация','02 / 04 · Образ состояния','03 / 04 · Точка живости','04 / 04 · Искомое качество'];
   for(const [i,answer]of Object.values(persona.answers).entries()){
     await page.getByText(tags[i]).waitFor();

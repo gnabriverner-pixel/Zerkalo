@@ -251,9 +251,9 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(entryHtml).not.toContain('ИИ напишет для вас сказку');
 
     // Gate 1: Personal Myth
-    expect(entryHtml).toContain('История по вашей ситуации');
-    expect(entryHtml).toContain('Четыре вопроса о том, что происходит сейчас. Затем — личная история, в которой можно узнать знакомое переживание.');
-    expect(entryHtml).toContain('Начать историю');
+    expect(entryHtml).toContain('Личный миф');
+    expect(entryHtml).toContain('Художественная история по вашим ответам о том, что происходит с вами сейчас.');
+    expect(entryHtml).toContain('Начать Личный миф');
     expect(entryHtml).toContain('Прочитать пример');
 
     // Gate 2: Digital Code
@@ -335,8 +335,8 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(entryHtml).toContain('Сатурн');
 
     // Both gates and their specific actions
-    expect(entryHtml).toContain('История по вашей ситуации');
-    expect(entryHtml).toContain('Начать историю');
+    expect(entryHtml).toContain('Личный миф');
+    expect(entryHtml).toContain('Начать Личный миф');
     expect(entryHtml).toContain('Прочитать пример');
 
     expect(entryHtml).toContain('Разбор по дате рождения');

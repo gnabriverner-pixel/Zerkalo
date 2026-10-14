@@ -12,7 +12,7 @@ const GATEWAY_STATUSES = new Set([502, 503, 504]);
 
 // User-facing copy (owner-approved wording, ASTRA-PASS2-PREFLIGHT-AND-WAITING-COPY section 3).
 export const MYTH_COPY = {
-  writing: 'Пишем вашу историю.',
+  writing: 'Пишем ваш Личный миф.',
   mayTakeMinutes: 'Это может занять несколько минут.',
   elapsed: (sec: number) => `Прошло ${sec} с. Обновлять страницу не нужно.`,
   unknown: 'Пока не удалось получить историю. Проверить, появилась ли она?',

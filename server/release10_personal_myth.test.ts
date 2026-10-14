@@ -1,0 +1,161 @@
+import { describe, it, expect, vi } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { getMythsAccessLabel, type PreviewStatus } from '../src/services/freePreview';
+import { MYTH_COPY } from '../src/services/mythWait';
+
+describe('Release 10 — Личный миф (Acceptance Criteria)', () => {
+  const exampleFilePath = '/Users/artemkrysin/Claude/astra-opus/evidence/release-0c10c61/example-velosiped.md';
+
+  describe('1. Absence of deprecated story naming on storefront / UI', () => {
+    it('verifies MYTH_COPY has updated writing string', () => {
+      expect(MYTH_COPY.writing).toBe('Пишем ваш Личный миф.');
+    });
+
+    it('verifies source files do not contain forbidden strings in visible UI copy', () => {
+      const filesToCheck = [
+        'src/App.tsx',
+        'src/components/AlbertDialogue.tsx',
+        'src/components/LabEntryView.tsx',
+        'src/components/PersonalMyth.tsx',
+        'src/components/PersonalStoryLibrary.tsx',
+        'server/storyCommerce.ts',
+        'server/storyPdf.ts',
+      ];
+
+      for (const relPath of filesToCheck) {
+        const fullPath = path.join(process.cwd(), relPath);
+        const content = fs.readFileSync(fullPath, 'utf-8');
+
+        // Forbidden strings in UI
+        expect(content, `${relPath} should not contain "История по вашей ситуации"`).not.toContain('История по вашей ситуации');
+        expect(content, `${relPath} should not contain "Начать историю"`).not.toContain('Начать историю');
+        expect(content, `${relPath} should not contain "Создать мою историю"`).not.toContain('Создать мою историю');
+        expect(content, `${relPath} should not contain "Прочитать пример истории"`).not.toContain('Прочитать пример истории');
+        expect(content, `${relPath} should not contain "Пишем вашу историю."`).not.toContain('Пишем вашу историю.');
+      }
+    });
+
+    it('verifies story texts in Code and knowledge still preserve the word история', () => {
+      const dcsPositionsDir = '/Users/artemkrysin/code/digital-code-system-numeric-houses/content/interpretation_v2/positions';
+      if (fs.existsSync(dcsPositionsDir)) {
+        const energy8 = fs.readFileSync(path.join(dcsPositionsDir, 'direction/energy_8.md'), 'utf-8');
+        expect(energy8).toContain('READER MINI-STORY');
+      }
+      const samplePath = path.join(process.cwd(), 'src/data/storySample.ts');
+      const sampleContent = fs.readFileSync(samplePath, 'utf-8');
+      expect(sampleContent.toLowerCase()).toContain('истори');
+    });
+  });
+
+  describe('2. Access rule (Astra)', () => {
+    it('returns "Проверяем доступ…" when access state is unknown (null or undefined)', () => {
+      expect(getMythsAccessLabel(null)).toBe('Проверяем доступ…');
+      expect(getMythsAccessLabel(undefined)).toBe('Проверяем доступ…');
+    });
+
+    it('returns "Мои мифы · бесплатно" when free preview is active', () => {
+      const activeStatus: PreviewStatus = {
+        enabled: true,
+        active: true,
+        phase: 'active',
+        can_start_myth: true,
+        new_generation_available: true,
+        pause_message: '',
+        support_url: null,
+        started_at: Date.now() - 1000,
+        ends_at: Date.now() + 100000,
+        budget_warning: false,
+      };
+      expect(getMythsAccessLabel(activeStatus)).toBe('Мои мифы · бесплатно');
+      expect(getMythsAccessLabel(true)).toBe('Мои мифы · бесплатно');
+    });
+
+    it('returns "Мои мифы · 790 ₽" when preview is disabled or inactive', () => {
+      const inactiveStatus: PreviewStatus = {
+        enabled: true,
+        active: false,
+        phase: 'ended',
+        can_start_myth: false,
+        new_generation_available: false,
+        pause_message: 'Завершено',
+        support_url: null,
+        started_at: Date.now() - 10000,
+        ends_at: Date.now() - 1000,
+        budget_warning: false,
+      };
+      const disabledStatus: PreviewStatus = {
+        enabled: false,
+        active: false,
+        phase: 'disabled',
+        can_start_myth: false,
+        new_generation_available: false,
+        pause_message: '',
+        support_url: null,
+        started_at: null,
+        ends_at: null,
+        budget_warning: false,
+      };
+      expect(getMythsAccessLabel(inactiveStatus)).toBe('Мои мифы · 790 ₽');
+      expect(getMythsAccessLabel(disabledStatus)).toBe('Мои мифы · 790 ₽');
+      expect(getMythsAccessLabel(false)).toBe('Мои мифы · 790 ₽');
+    });
+  });
+
+  describe('3. Bridge in Code V2 result', () => {
+    it('has exact verbatim bridge text and caption in CodeV2Experience.tsx', () => {
+      const codeV2File = path.join(process.cwd(), 'src/components/CodeV2/CodeV2Experience.tsx');
+      const content = fs.readFileSync(codeV2File, 'utf-8');
+
+      expect(content).toContain('Альберт · проводник');
+      expect(content).toContain(
+        'Мы посмотрели на пять сторон жизни через образы чисел. Что из этого вам знакомо — решаете вы. А если хочется обратиться к тому, что происходит сейчас, ответьте на четыре вопроса. По вашим ответам будет создан Личный миф.'
+      );
+      expect(content).toContain('Начать Личный миф');
+    });
+
+    it('verifies myth creation request payload does not contain birth date or numbers', () => {
+      const personalMythFile = path.join(process.cwd(), 'src/components/PersonalMyth.tsx');
+      const content = fs.readFileSync(personalMythFile, 'utf-8');
+
+      // The submit handler builds the payload from answers only
+      expect(content).toContain('answers');
+      expect(content).not.toContain('birth_date');
+      expect(content).not.toContain('birthDate');
+    });
+  });
+
+  describe('4. Static example page (/primer-lichnogo-mifa)', () => {
+    it('exists and matches example-velosiped.md symbol for symbol', () => {
+      expect(fs.existsSync(exampleFilePath), `Source file ${exampleFilePath} must exist`).toBe(true);
+      const rawMarkdown = fs.readFileSync(exampleFilePath, 'utf-8');
+
+      const lines = rawMarkdown.trim().split('\n');
+      const title = lines[0].replace('# ', '').trim();
+      const paras = lines.slice(4).map((l: string) => l.trim()).filter(Boolean);
+
+      expect(title).toBe('Велосипед в сером коридоре');
+      expect(paras.length).toBe(14);
+
+      const staticPagePath = path.join(process.cwd(), 'public/primer-lichnogo-mifa/index.html');
+      expect(fs.existsSync(staticPagePath), `Static page ${staticPagePath} must exist`).toBe(true);
+
+      const htmlContent = fs.readFileSync(staticPagePath, 'utf-8');
+
+      // Caption
+      expect(htmlContent).toContain('Пример Личного мифа по вымышленным ответам');
+      // Title
+      expect(htmlContent).toContain('data-testid="myth-example-title">Велосипед в сером коридоре</h1>');
+      // Max width ≤ 640px
+      expect(htmlContent).toContain('max-width: 640px');
+      // Dark background
+      expect(htmlContent).toContain('#0b0d14');
+
+      // Symbol for symbol paragraph check
+      for (let i = 0; i < paras.length; i++) {
+        const p = paras[i];
+        expect(htmlContent, `Paragraph ${i + 1} must match symbol-for-symbol`).toContain(`<p>${p}</p>`);
+      }
+    });
+  });
+});

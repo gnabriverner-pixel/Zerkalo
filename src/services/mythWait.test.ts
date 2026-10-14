@@ -156,7 +156,7 @@ describe('checkMythReadiness (read-only GET /api/stories)', () => {
     expect(await hasStoryAccount(get(json({}, 401)))).toBe(false);
   });
   it('agreed wording is verbatim', () => {
-    expect(MYTH_COPY.writing).toBe('Пишем вашу историю.');
+    expect(MYTH_COPY.writing).toBe('Пишем ваш Личный миф.');
     expect(MYTH_COPY.mayTakeMinutes).toBe('Это может занять несколько минут.');
     expect(MYTH_COPY.elapsed(20)).toBe('Прошло 20 с. Обновлять страницу не нужно.');
     expect(MYTH_COPY.unknown).toBe('Пока не удалось получить историю. Проверить, появилась ли она?');

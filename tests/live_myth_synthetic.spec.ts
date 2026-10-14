@@ -76,7 +76,7 @@ test.describe('Live Personal Myth Generation (synthetic fixture)', () => {
 
     // 3. Enter Personal Myth
     console.log('Entering Personal Myth...');
-    const startMythBtn = page.getByRole('button', { name: 'Создать мою историю', exact: true });
+    const startMythBtn = page.getByRole('button', { name: 'Начать Личный миф', exact: true }).or(page.getByRole('button', { name: 'Создать мою историю', exact: true }));
     if (await startMythBtn.isVisible()) {
       await startMythBtn.click();
       await page.waitForTimeout(500);

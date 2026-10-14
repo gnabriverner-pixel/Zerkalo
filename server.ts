@@ -376,6 +376,19 @@ export async function createApp(options: CreateAppOptions = {}) {
     });
   });
 
+  // Static page for the Personal Myth example: «Велосипед в сером коридоре»
+  app.get(["/primer-lichnogo-mifa", "/primer-lichnogo-mifa/"], (_req, res) => {
+    const staticFile = path.join(process.cwd(), "public", "primer-lichnogo-mifa", "index.html");
+    const distFile = path.join(process.cwd(), "dist", "primer-lichnogo-mifa", "index.html");
+    if (nodeFs.existsSync(staticFile)) {
+      return res.sendFile(staticFile);
+    }
+    if (nodeFs.existsSync(distFile)) {
+      return res.sendFile(distFile);
+    }
+    res.status(404).send("Not found");
+  });
+
   // Dedicated Production Endpoint for Personal Myth
   app.post("/api/personal-myth", async (req, res) => {
     try {

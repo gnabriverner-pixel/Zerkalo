@@ -31,6 +31,7 @@ import {
   isOpenerRequestInFlight,
   markOpenerRequestInFlight,
 } from '../services/albertOpenerState';
+import { getMythsAccessLabel, type PreviewStatus } from '../services/freePreview';
 import { useProtectedFetch } from './ConsentBoundary';
 import {
   X,
@@ -111,6 +112,7 @@ export interface AlbertDialogueProps {
   codeV2Context?: CodeV2AlbertContext | null;
   codeReactions?: Record<string, 'confirmed' | 'rejected'>;
   freePreviewEnabled?: boolean;
+  freePreviewStatus?: PreviewStatus | null;
 }
 
 const PRESET_QUESTIONS = [
@@ -160,7 +162,8 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
   codeV2Payload: propCodeV2Payload = null,
   codeV2Context: propCodeV2Context = null,
   codeReactions = {},
-  freePreviewEnabled = true,
+  freePreviewEnabled,
+  freePreviewStatus,
 }) => {
   const protectedFetch = useProtectedFetch();
 
@@ -1419,7 +1422,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                     className="px-5 py-2.5 rounded-xs bg-[var(--color-antique-gold)] text-gray-950 font-sans text-xs font-semibold uppercase tracking-wider hover:bg-[#D9B770] transition-colors flex items-center gap-2 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:outline-none"
                   >
                     <BookOpen className="w-4 h-4" />
-                    <span>{freePreviewEnabled ? 'Мои истории · бесплатно' : 'Мои истории · 790 ₽'}</span>
+                    <span>{getMythsAccessLabel(freePreviewStatus !== undefined ? freePreviewStatus : freePreviewEnabled)}</span>
                   </button>
                 </div>
               </section>

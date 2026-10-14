@@ -54,7 +54,7 @@ test.describe('G2 Live Acceptance Pass', () => {
     await page.waitForTimeout(500);
 
     // Intro to Myth
-    const startMythBtn = page.locator('button:has-text("Создать мою историю")');
+    const startMythBtn = page.locator('button:has-text("Начать Личный миф")').or(page.locator('button:has-text("Создать мою историю")'));
     if (await startMythBtn.isVisible()) {
       await startMythBtn.click();
       await page.waitForTimeout(500);
@@ -164,13 +164,13 @@ test.describe('G2 Live Acceptance Pass', () => {
     await page.screenshot({ path: path.join(screenshotDir, '08_route_b_code_first_live.png'), fullPage: false });
 
     // Continue to Myth
-    const toMythBtn = page.locator('button:has-text("Перейти к Личному мифу")').or(page.locator('nav button:has-text("Миф")'));
+    const toMythBtn = page.locator('button:has-text("Начать Личный миф")').or(page.locator('button:has-text("Перейти к Личному мифу")')).or(page.locator('nav button:has-text("Миф")'));
     await toMythBtn.first().scrollIntoViewIfNeeded();
     await toMythBtn.first().click();
     await page.waitForTimeout(600);
 
     // Intro to Myth
-    const startMythBtn = page.locator('button:has-text("Создать мою историю")');
+    const startMythBtn = page.locator('button:has-text("Начать Личный миф")').or(page.locator('button:has-text("Создать мою историю")'));
     if (await startMythBtn.isVisible()) {
       await startMythBtn.click();
       await page.waitForTimeout(500);
@@ -206,11 +206,11 @@ test.describe('G2 Live Acceptance Pass', () => {
     await page.goto('http://localhost:3005', { waitUntil: 'networkidle' });
     
     // Go to Myth
-    const mythEntryCrisis = page.locator('button:has-text("Создать мою историю")').or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Создать мою историю →')).or(page.locator('text=История по вашим ответам'));
+    const mythEntryCrisis = page.locator('button:has-text("Начать Личный миф")').or(page.locator('button:has-text("Создать мою историю")')).or(page.locator('text=Личный миф')).or(page.locator('text=Зеркало восприятия')).or(page.locator('text=Создать мою историю →')).or(page.locator('text=История по вашим ответам'));
     await mythEntryCrisis.first().click();
     await page.waitForTimeout(400);
 
-    const startMythCrisis = page.locator('button:has-text("Создать мою историю")');
+    const startMythCrisis = page.locator('button:has-text("Начать Личный миф")').or(page.locator('button:has-text("Создать мою историю")'));
     if (await startMythCrisis.isVisible()) {
       await startMythCrisis.click();
       await page.waitForTimeout(500);

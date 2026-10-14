@@ -38,7 +38,7 @@ async function click(label: string) {
 /** Opens the form with prefilled answers and presses "Соткать историю". */
 async function start() {
   await act(async () => { root.render(React.createElement(PersonalMyth, { initialInputs: ANSWERS, onMythCompleted } as any)); });
-  await click('Создать мою историю');
+  await click('Начать Личный миф');
   for (let i = 0; i < 3; i++) await click('Далее');
   await click('Соткать историю');
 }
@@ -70,7 +70,7 @@ describe('PersonalMyth waiting copy', () => {
   it('shows the agreed lines at once and the elapsed line only after 20 s', async () => {
     h.fetchMock.mockImplementation(() => new Promise(() => {}));
     await start();
-    expect(text()).toContain('Пишем вашу историю.');
+    expect(text()).toContain('Пишем ваш Личный миф.');
     expect(text()).toContain('Это может занять несколько минут.');
     expect(text()).not.toContain('Прошло');
     await flush(19_000);

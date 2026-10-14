@@ -58,6 +58,7 @@ interface CodeV2ExperienceProps {
   continueLabel?: string;
   onBackToCollection?: () => void;
   onSwitchToV1?: () => void;
+  onOpenMyth?: () => void;
 }
 
 function getFirstSentence(text: string): string {
@@ -171,7 +172,8 @@ export function CodeV2Experience({
   onContinue,
   continueLabel = 'Перейти к Личному мифу',
   onBackToCollection,
-  onSwitchToV1
+  onSwitchToV1,
+  onOpenMyth
 }: CodeV2ExperienceProps) {
   const isQaEffective = Boolean(isQaMode && import.meta.env.DEV);
   const [qaPanel, setQaPanel] = useState<QaPanelModule | null>(null);
@@ -1099,11 +1101,15 @@ export function CodeV2Experience({
               </div>
             </section>
 
-            {onContinue && (
+            {onContinue && continueLabel === 'Открыть Встречу зеркал' && (
               <div className="rounded-2xl border border-white/10 p-6 space-y-3">
-                <h2 className="font-serif text-2xl">Посмотреть с другой стороны</h2>
-                <p className="text-sm text-stone-300">Личный миф строится из ваших слов и не подстраивается под числа.</p>
-                <button type="button" onClick={onContinue} className="min-h-[44px] px-5 py-3 rounded-xl bg-[var(--color-antique-gold)] text-[#111622] cursor-pointer">{continueLabel}</button>
+                <button
+                  type="button"
+                  onClick={onContinue}
+                  className="min-h-[44px] px-5 py-3 rounded-xl bg-[var(--color-antique-gold)] text-[#111622] cursor-pointer font-medium"
+                >
+                  {continueLabel}
+                </button>
               </div>
             )}
 
@@ -1208,6 +1214,29 @@ export function CodeV2Experience({
                 </div>
               </div>
             </section>
+
+            {/* 9. ALBERT BRIDGE TO PERSONAL MYTH */}
+            {onOpenMyth && (
+              <section className="w-full bg-gradient-to-br from-[#121A2A] via-[#0E1524] to-[#0A0E18] border border-[var(--color-antique-gold)]/30 rounded-2xl p-6 sm:p-8 relative shadow-2xl overflow-hidden">
+                <div className="border-l-2 border-[var(--color-antique-gold)]/50 pl-4 space-y-3">
+                  <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90 font-mono">
+                    Альберт · проводник
+                  </span>
+                  <p className="text-sm sm:text-base text-stone-200 leading-relaxed font-serif">
+                    Мы посмотрели на пять сторон жизни через образы чисел. Что из этого вам знакомо — решаете вы. А если хочется обратиться к тому, что происходит сейчас, ответьте на четыре вопроса. По вашим ответам будет создан Личный миф.
+                  </p>
+                </div>
+                <div className="pt-5">
+                  <button
+                    type="button"
+                    onClick={onOpenMyth}
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-semibold text-sm hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 shadow-xl shadow-amber-950/30 whitespace-nowrap min-h-11"
+                  >
+                    <span>Начать Личный миф</span>
+                  </button>
+                </div>
+              </section>
+            )}
 
           </div>
         )}

@@ -314,13 +314,13 @@ export default function PersonalMyth({
               </p>
               
               {freePreview?.enabled&&<p role="status">Пробный доступ — бесплатно. Историю можно принять, уточнить или отвергнуть.</p>}
-              {generationBlocked&&<p role="status" data-testid="myth-unavailable" className="mb-4 text-sm text-stone-300">{exampleUrl?MYTH_COPY.unavailableWithExample:MYTH_COPY.unavailableNoExample}{exampleUrl&&<> <a className="underline" href={exampleUrl} target="_blank" rel="noreferrer">Прочитать пример истории</a></>}</p>}
+              {generationBlocked&&<p role="status" data-testid="myth-unavailable" className="mb-4 text-sm text-stone-300">{exampleUrl?MYTH_COPY.unavailableWithExample:MYTH_COPY.unavailableNoExample}{exampleUrl&&<> <a className="underline" href={exampleUrl} target="_blank" rel="noreferrer">Прочитать пример Личного мифа</a></>}</p>}
               <button 
                 disabled={generationBlocked}
                 onClick={async()=>{try{const access=await readFreePreview();if(access.enabled&&!access.can_start_myth){setErrorText(access.pause_message);return;}setStep(1);}catch(e:any){setErrorText(e.message);}}}
                 className="px-8 py-4 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] shadow-[0_0_30px_rgba(200,164,93,0.25)] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none inline-flex items-center gap-2"
               >
-                <span>Создать мою историю</span>
+                <span>Начать Личный миф</span>
                 <ArrowRight size={14} />
               </button>
               {errorText&&<p role="alert">{errorText}</p>}

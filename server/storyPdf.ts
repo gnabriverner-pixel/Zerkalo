@@ -8,7 +8,7 @@ export function storySections(order:StoryOrder):{title:string;body:string}[]{
   const d=order.data,m=d.myth;
   if(!m)throw new Error('story_not_issued');
   return [
-    {title:'Новая личная история',body:`${m.title}\n${order.test?'Тестовый экземпляр. ':''}История создана с помощью ИИ. Это образный взгляд, который можно принять, уточнить или отвергнуть.`},
+    {title:'Новый Личный миф',body:`${m.title}\n${order.test?'Тестовый экземпляр. ':''}История создана с помощью ИИ. Это образный взгляд, который можно принять, уточнить или отвергнуть.`},
     {title:'Ваши ответы',body:Object.entries(d.answers||{}).map(([key,value])=>`${({q1:'Ситуация',q2:'Образ состояния',q3:'Момент на своём месте',q4:'Желаемое качество'} as Record<string,string>)[key]||key}: ${value}`).join('\n\n')},
     ...(d.question?[{title:'Ваш вопрос Альберту',body:d.question}]:[]),
     {title:'Миф — текст истории',body:m.story},
@@ -23,7 +23,7 @@ export function makeStoryPdf(order:StoryOrder):Buffer{
   const doc=new jsPDF({unit:'mm',format:'a4'});
   const font=fs.readFileSync(fileURLToPath(new URL('./assets/fonts/Lora-Regular.ttf',import.meta.url))).toString('base64');
   doc.addFileToVFS('Lora.ttf',font);doc.addFont('Lora.ttf','Lora','normal');doc.setFont('Lora');
-  doc.setProperties({title:order.data.myth?.title||'Новая личная история',author:'Зеркало себя'});
+  doc.setProperties({title:order.data.myth?.title||'Новый Личный миф',author:'Зеркало себя'});
   let y=23;
   for(const section of storySections(order)){
     // Reserve a heading and at least two body lines to avoid an orphan heading/page.

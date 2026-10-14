@@ -7,3 +7,13 @@ export function useFreePreview(){
   useEffect(()=>{let mounted=true;const read=()=>readFreePreview().then(value=>{if(mounted)setStatus(value);}).catch(()=>{});void read();const timer=setInterval(read,30000);return()=>{mounted=false;clearInterval(timer);};},[]);
   return status;
 }
+
+export function getMythsAccessLabel(statusOrEnabled: PreviewStatus | boolean | null | undefined): string {
+  if (statusOrEnabled === null || statusOrEnabled === undefined) {
+    return 'Проверяем доступ…';
+  }
+  if (typeof statusOrEnabled === 'boolean') {
+    return statusOrEnabled ? 'Мои мифы · бесплатно' : 'Мои мифы · 790 ₽';
+  }
+  return statusOrEnabled.enabled && statusOrEnabled.active ? 'Мои мифы · бесплатно' : 'Мои мифы · 790 ₽';
+}

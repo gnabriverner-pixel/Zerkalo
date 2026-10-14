@@ -199,7 +199,7 @@ describe('Owner acceptance iteration: personal question, direct address, and loc
       );
     });
 
-    const startBtn = [...container.querySelectorAll('button')].find(b => b.textContent?.includes('Создать мою историю'));
+    const startBtn = [...container.querySelectorAll('button')].find(b => b.textContent?.includes('Начать Личный миф'));
     expect(startBtn).toBeTruthy();
     await act(async () => {
       startBtn!.click();
@@ -299,7 +299,7 @@ describe('Owner acceptance iteration: personal question, direct address, and loc
       );
     });
 
-    const startBtn = [...container.querySelectorAll('button')].find(b => b.textContent?.includes('Создать мою историю'));
+    const startBtn = [...container.querySelectorAll('button')].find(b => b.textContent?.includes('Начать Личный миф'));
     expect(startBtn).toBeTruthy();
     await act(async () => {
       startBtn!.click();

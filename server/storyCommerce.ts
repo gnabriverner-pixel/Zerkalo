@@ -118,7 +118,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     const configuredMode=preview.enabled()?'disabled':options.payment?.mode||process.env.COMMERCE_PAYMENT_MODE||'disabled';
     if(configuredMode==='live'&&budget.configured()){try{await budget.prepare();}catch{/* Rights remain available; capacity reports the pause. */}}
     const live=liveCheckoutConfigured(process.env)&&budget.capacity();
-    res.set('Cache-Control','no-store').json({enabled:enabled(),storage_accepted:Boolean(id&&database?.storageAccepted(id)),payment_mode:configuredMode==='live'&&!liveCheckoutConfigured(process.env)?'disabled':configuredMode,live_checkout:!preview.enabled()&&live,new_sales_paused:configuredMode==='live'&&!live,title:'Новая личная история',price_rub:790,support_email:process.env.COMMERCE_SUPPORT_EMAIL||null,preview:availability()});
+    res.set('Cache-Control','no-store').json({enabled:enabled(),storage_accepted:Boolean(id&&database?.storageAccepted(id)),payment_mode:configuredMode==='live'&&!liveCheckoutConfigured(process.env)?'disabled':configuredMode,live_checkout:!preview.enabled()&&live,new_sales_paused:configuredMode==='live'&&!live,title:'Новый Личный миф',price_rub:790,support_email:process.env.COMMERCE_SUPPORT_EMAIL||null,preview:availability()});
   });
   // A forged notification cannot issue rights. Retrieve the object under the merchant's credentials.
   app.post('/api/stories/payment-webhook',route(async(req,res)=>{
