@@ -7,7 +7,7 @@
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
     "branch": "fix/code-reading-064",
-    "pinned_sha": "63038f933c583d790ccca33cdad6b24bac316395"
+    "pinned_sha": "b3b4f51c7bb10bcbb46f425122bf636fdad654d6"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
