@@ -8,7 +8,7 @@
 .code-role-map > div {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
   align-items: center;
   gap: 1rem;
   padding: 1.25rem 0;
