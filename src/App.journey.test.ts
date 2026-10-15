@@ -42,6 +42,20 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
 describe('actual V2 journey', () => {
+  it('returns focus to the visible mobile menu after closing notes', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ enabled: false }))));
+    await act(async () => root.render(React.createElement(App)));
+    const menu = container.querySelector('header details') as HTMLDetailsElement;
+    const summary = menu.querySelector('summary')!;
+    const notes = [...menu.querySelectorAll('button')].find(b => b.textContent === 'Мои заметки')!;
+    menu.open = true;
+    notes.focus();
+    await act(async () => notes.click());
+    expect(menu.open).toBe(false);
+    expect(container.querySelector('[role="dialog"][aria-label="Мои заметки"]')).not.toBeNull();
+    await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
+    expect(document.activeElement).toBe(summary);
+  });
   it('Code → Myth → Meeting keeps the accepted Code and restores it after a reload', async () => {
     const payload = await calculateCanonicalCodeV2('18.12.1989');
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/consent' ? {accepted:true} : {status:'ok', payload}), {status:200}));
@@ -123,7 +137,7 @@ describe('actual V2 journey', () => {
     const ariaClick = async (label: string) => { await act(async () => (container.querySelector(`[aria-label="${label}"]`) as HTMLButtonElement).click()); };
     await act(async () => root.render(React.createElement(App)));
     await enterSyntheticDob();
-    await click('Уточнить или не согласиться');
+    await click('Обсудить с Альбертом здесь');
     await fill('input[placeholder^="Задайте"]', 'Это не про меня');
     await ariaClick('Отправить сообщение');
     await fill('textarea[aria-label="Моя мысль после разговора"]', 'Я выбираю равноправие.');
@@ -133,7 +147,7 @@ describe('actual V2 journey', () => {
     await click('Продолжить тестовую встречу');
     // Return to Code; the same global conversation must survive both transitions.
     await click('Код');
-    await click('Уточнить или не согласиться');
+    await click('Обсудить с Альбертом здесь');
     expect(container.textContent).toContain('Учитываю вашу поправку.');
     await fill('input[placeholder^="Задайте"]', 'Что я уточнил?');
     await ariaClick('Отправить сообщение');

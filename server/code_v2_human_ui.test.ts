@@ -89,7 +89,9 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     // Sequence verification: symbolic framing, 5 numbers visually, central motif with planetary badge, quiet Albert link, expandable calculation
     expect(html).toContain('Как читать');
     expect(html).toContain('Пять чисел, пять ролей');
-    expect(html).toContain('Роль подсказывает, куда смотреть: Душа — чего вам хочется внутренне');
+    expect(html).toContain('Что вам хочется внутренне');
+    expect(html).toContain('Что заметно в ваших поступках');
+    expect(html).toContain('В каком окружении вам легче');
     expect(html).toContain('Ваши пять чисел и их роли');
     expect(html).toContain('Венера (6) ⟷ Сатурн (8)');
     expect(html).toContain('Покой сердца и строгий закон формы');

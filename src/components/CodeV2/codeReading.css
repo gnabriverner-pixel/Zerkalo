@@ -1,0 +1,36 @@
+.code-role-map {
+  width: 100%;
+  display: grid;
+  gap: 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.code-role-map > div {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+.code-role-map dt { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.code-role-map dt > span { max-width: 100%; }
+.code-role-number { font-size: 2.5rem; line-height: 1; }
+.code-role-map dd { margin: 0; line-height: 1.55; overflow-wrap: anywhere; }
+.code-room { max-width: 44rem; margin-inline: auto; overflow-wrap: anywhere; }
+.code-room-lead { margin-bottom: 1.75rem; line-height: 1.55; }
+.code-room-story { font-size: 1.0625rem; line-height: 1.65; }
+.code-room-story > p + p { margin-top: 1em; }
+.code-room-question { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgb(255 255 255 / 0.1); }
+.code-room-question p { font-size: 1.375rem; line-height: 1.45; }
+.code-room-actions { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgb(255 255 255 / 0.06); }
+.code-room-actions button { min-height: 44px; }
+@media (min-width: 768px) {
+  .code-role-map { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; text-align: center; }
+  .code-role-map > div { display: block; border-bottom: 0; }
+  .code-role-map dt { align-items: center; }
+  .code-role-map dd { margin-top: 0.75rem; }
+  .code-role-number { font-size: 3rem; }
+  .code-room-story { font-size: 1.125rem; }
+}

@@ -9,6 +9,7 @@ import { hasCanonicalV2Result } from '../../services/codeV2Session';
 import { validateBirthDate } from '../../services/birthDate';
 import { loadQaPanel, type QaPanelModule } from './qaPanelLoader';
 import { useProtectedFetch } from '../ConsentBoundary';
+import './codeReading.css';
 import {
   Calculator,
   ChevronDown,
@@ -23,6 +24,14 @@ import {
 } from 'lucide-react';
 
 export type CodeV2ReactionStatus = 'confirmed' | 'rejected';
+
+const ROLE_READING_HINTS: Record<string, string> = {
+  soul: 'Что вам хочется внутренне',
+  expression: 'Что заметно в ваших поступках',
+  path: 'Как вы учитесь действовать',
+  direction: 'В каком окружении вам легче',
+  result: 'Что вы создаёте своими действиями'
+};
 
 export interface CodeV2AlbertOpenOptions {
   userQuestion?: string;
@@ -557,7 +566,7 @@ export function CodeV2Experience({
                   Пять чисел, пять ролей
                 </h1>
                 <p className="text-xs sm:text-sm text-stone-300 font-normal leading-relaxed">
-                  Каждое число — образ светила со своим характером. Роль подсказывает, куда смотреть: Душа — чего вам хочется внутренне; Выражение — что другие замечают в ваших делах; Путь — как вы учитесь действовать; Направление — среди каких людей, в каком ритме и при каких условиях вам легче; Результат — что может вырасти из ваших качеств и поступков.
+                  Каждое число здесь связано с образом светила. Рядом — сторона жизни, о которой пойдёт речь.
                 </p>
               </div>
 
@@ -567,29 +576,27 @@ export function CodeV2Experience({
                   Ваши пять чисел и их роли
                 </div>
 
-                <div className="flex items-center justify-center gap-2 sm:gap-6 flex-wrap py-2">
-                  {payload.positions.map((pos, idx) => (
-                    <React.Fragment key={pos.position}>
-                      <div className="flex flex-col items-center px-1.5 sm:px-3">
-                        <span className="font-serif text-3xl sm:text-5xl text-amber-100 font-light leading-none">
+                <dl className="code-role-map">
+                  {payload.positions.map((pos) => (
+                    <div key={pos.position}>
+                      <dt>
+                        <span className="code-role-number font-serif text-amber-100">
                           {pos.energy}
                         </span>
-                        <span className="text-[13px] sm:text-sm text-[var(--color-antique-gold)] font-medium mt-1.5">
+                        <span className="text-sm text-[var(--color-antique-gold)] mt-1.5">
                           {pos.energy_name}
                         </span>
-                        <span className="text-[13px] font-mono text-stone-300 uppercase tracking-wider mt-0.5">
+                        <span className="text-sm text-stone-100 mt-1">
                           {GLOSSARY_ROLES[pos.position]?.title.split(' · ')[0] || pos.public_name.replace('Число ', '')}
                         </span>
-                      </div>
-                      {idx < payload.positions.length - 1 && (
-                        <span className="text-stone-600 text-lg sm:text-2xl font-normal select-none pb-4 sm:pb-5">·</span>
-                      )}
-                    </React.Fragment>
+                      </dt>
+                      <dd className="text-sm text-stone-300">{ROLE_READING_HINTS[pos.position]}</dd>
+                    </div>
                   ))}
-                </div>
+                </dl>
 
                 <p className="mt-4 text-[13px] sm:text-sm text-stone-400 font-normal leading-relaxed max-w-xl text-center">
-                  У каждого числа здесь своя роль. Роль подсказывает, куда посмотреть, а число — при каком свете. Узнавать себя во всём не обязательно.
+                  Узнавать себя во всём не обязательно.
                 </p>
               </div>
 
@@ -775,7 +782,7 @@ export function CodeV2Experience({
                   return (
                     <div
                       key={pos.position}
-                      className="w-full bg-[#0D1322]/80 border border-white/5 hover:border-white/10 rounded-2xl p-6 sm:p-8 backdrop-blur-md transition-all shadow-lg"
+                      className="code-room w-full bg-[#0D1322]/80 border border-white/5 rounded-2xl p-6 sm:p-8"
                     >
                       {/* Position Header */}
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 pb-5 border-b border-white/5">
@@ -792,12 +799,13 @@ export function CodeV2Experience({
                             <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
                               <Term planet={pos.energy}>{pos.energy_name}</Term> · {pos.energy}
                             </h3>
+                            <p className="mt-2 text-base text-stone-300">{ROLE_READING_HINTS[pos.position]}</p>
                           </div>
                         </div>
                       </div>
 
                       {story && albertLead(pos.position, pos.energy) && (
-                        <p className="mb-3 border-l-2 border-[var(--color-antique-gold)]/50 pl-3 text-sm text-stone-300">
+                        <p className="code-room-lead border-l-2 border-[var(--color-antique-gold)]/50 pl-3 text-base text-stone-300">
                           <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90">Альберт · проводник</span>
                           {albertLead(pos.position, pos.energy)}
                         </p>
@@ -806,14 +814,14 @@ export function CodeV2Experience({
                         (() => {
                           const seenTermsInStory = new Set<string>();
                           return (
-                            <div className="mb-4">
+                            <div className="code-room-story">
                               {story.title && (
                                 <h4 className="font-serif text-2xl sm:text-[32px] text-stone-100 font-light mb-3 leading-snug">
                                   {story.title}
                                 </h4>
                               )}
                               {story.paragraphs.map((para, i) => (
-                                <p key={i} className="text-base sm:text-[17px] text-stone-200 leading-relaxed mb-3">
+                                <p key={i} className="text-stone-200">
                                   {renderTextWithTerms(para, seenTermsInStory)}
                                 </p>
                               ))}
@@ -848,10 +856,19 @@ export function CodeV2Experience({
                         </div>
                       )}
 
+                      <div className="code-room-question flex items-start gap-3">
+                        <Compass className="w-4 h-4 text-[var(--color-antique-gold)] flex-shrink-0 mt-1" />
+                        <div className="min-w-0">
+                          <span className="text-sm text-stone-300 block mb-2">Проверьте на себе:</span>
+                          <p className="text-stone-100 font-serif italic">«{story ? story.question : pos.verification_question}»</p>
+                        </div>
+                      </div>
+
                       {/* Progressive disclosure: Dynamic Forces & Life Scenes */}
                       <AnimatePresence>
                         {isExpanded && (
                           <motion.div
+                            id={`code-details-${pos.position}`}
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
@@ -981,25 +998,14 @@ export function CodeV2Experience({
                         )}
                       </AnimatePresence>
 
-                      {/* 3. Проверьте на себе (вопрос для проверки) */}
-                      <div className="p-4 bg-black/30 rounded-xl border border-white/5 flex items-start gap-3 mb-3">
-                        <Compass className="w-4 h-4 text-[var(--color-antique-gold)] flex-shrink-0 mt-0.5" />
-                        <div>
-                          <span className="text-[13px] font-medium text-stone-400 block mb-1">
-                            Проверьте на себе:
-                          </span>
-                          <p className="text-base text-stone-200 font-serif italic leading-relaxed">
-                            «{story ? story.question : pos.verification_question}»
-                          </p>
-                        </div>
-                      </div>
-
                       {/* Progressive disclosure & position reaction controls */}
-                      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="code-room-actions flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <button
                           type="button"
                           onClick={() => toggleDetails(pos.position)}
-                          className="text-xs text-stone-400 hover:text-[var(--color-antique-gold)] flex items-center gap-1.5 cursor-pointer transition-colors"
+                          aria-expanded={isExpanded}
+                          aria-controls={`code-details-${pos.position}`}
+                          className="min-h-11 text-sm text-stone-300 hover:text-[var(--color-antique-gold)] flex items-center gap-1.5 cursor-pointer transition-colors"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>
@@ -1126,7 +1132,7 @@ export function CodeV2Experience({
             <section className="w-full bg-gradient-to-br from-[#121A2A] via-[#0E1524] to-[#0A0E18] border border-[var(--color-antique-gold)]/30 rounded-2xl p-6 sm:p-8 relative shadow-2xl overflow-hidden">
               <div className="absolute top-0 right-0 w-80 h-80 bg-[radial-gradient(circle_at_top_right,rgba(200,164,93,0.12),transparent_70%)] pointer-events-none" />
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative z-10">
+              <div className="flex flex-col items-start gap-5 relative z-10">
                 <div className="max-w-xl">
                   <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
                     Альберт — собеседник по вашей карте
@@ -1147,7 +1153,7 @@ export function CodeV2Experience({
                           userQuestion: localQuestion.trim() || undefined
                         });
                       }}
-                      className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[var(--color-antique-gold)] to-[#D4B26F] text-[#111622] font-medium text-sm hover:brightness-110 active:scale-[0.98] transition-all duration-200 cursor-pointer flex items-center justify-center gap-2.5 shadow-xl shadow-amber-950/30 whitespace-nowrap min-h-11"
+                      className="w-full sm:w-auto px-5 py-3 rounded-xl border border-[var(--color-antique-gold)]/40 text-stone-200 text-sm hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center gap-2.5 min-h-11"
                     >
                       <MessageSquare className="w-4 h-4" />
                       <span>{isExample ? 'Ввести свою дату для беседы' : 'Обсудить с Альбертом здесь'}</span>
@@ -1157,21 +1163,6 @@ export function CodeV2Experience({
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isExample) {
-                        onChangeDate?.();
-                        return;
-                      }
-                      onOpenAlbert(payload, {
-                        userQuestion: localQuestion.trim() || undefined
-                      });
-                    }}
-                    className="w-full sm:w-auto px-4 py-3.5 rounded-xl border border-white/15 bg-white/[0.03] hover:bg-white/[0.08] text-stone-200 font-normal text-xs sm:text-sm transition-all duration-200 cursor-pointer whitespace-nowrap min-h-11"
-                  >
-                    Уточнить или не согласиться
-                  </button>
                 </div>
               </div>
             </section>

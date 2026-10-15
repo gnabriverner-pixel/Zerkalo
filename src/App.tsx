@@ -57,6 +57,14 @@ function AppContent() {
   const [autoCalculateCode, setAutoCalculateCode] = useState<boolean>(false);
   const [isDemoCodeSample, setIsDemoCodeSample] = useState<boolean>(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const libraryTriggerRef = React.useRef<HTMLElement | null>(null);
+  const openLibrary = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const trigger = event.currentTarget;
+    const menu = trigger.closest('details');
+    libraryTriggerRef.current = menu?.querySelector('summary') || trigger;
+    menu?.removeAttribute('open');
+    setShowLibrary(true);
+  };
   const [commerceSafetyBlocked,setCommerceSafetyBlocked]=useState(false);
   const [showAbout, setShowAbout] = useState(false);
 
@@ -392,7 +400,7 @@ function AppContent() {
           </button>
 
           <button
-            onClick={() => setShowLibrary(true)}
+            onClick={openLibrary}
             className={`min-h-[44px] px-2 py-2 tracking-wider uppercase text-[13px] sm:text-sm transition-colors cursor-pointer font-light ${
               mode === 'alabaster' && !isPreviewV2 ? 'hover:text-[#1A1A1C]' : 'hover:text-[var(--color-antique-gold)]'
             }`}
@@ -413,7 +421,7 @@ function AppContent() {
               </button>
             )}
             <button className="w-full text-left px-3 py-3 text-sm text-stone-100" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setShowAbout(true); }}>О методе</button>
-            <button className="w-full text-left px-3 py-3 text-sm text-stone-100" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setShowLibrary(true); }}>Мои заметки</button>
+            <button className="w-full text-left px-3 py-3 text-sm text-stone-100" onClick={openLibrary}>Мои заметки</button>
           </div>
         </details>
       </header>
@@ -673,7 +681,7 @@ function AppContent() {
       </main>
 
       {/* Global Modals */}
-      <MetaphorLibrary isOpen={showLibrary} onClose={() => setShowLibrary(false)} />
+      <MetaphorLibrary isOpen={showLibrary} onClose={() => setShowLibrary(false)} returnFocusTo={libraryTriggerRef.current} />
       <AboutMethod isOpen={showAbout} onClose={() => setShowAbout(false)} theme={mode === 'alabaster' && !isPreviewV2 ? 'light' : 'dark'} />
 
       {/* Albert Dialogue Modal for Code V2 Preview & Stage A Short Juxtaposition */}
