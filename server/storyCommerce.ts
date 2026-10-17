@@ -76,6 +76,9 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
   const route=(fn:(req:Request,res:Response)=>Promise<any>|any)=>(req:Request,res:Response)=>{
     Promise.resolve().then(()=>fn(req,res)).catch(error=>{
       const known=error instanceof CommerceError,code=known?error.code:'story_delivery_failed';
+      // Code and status only: no answers, no account/order identifiers, no IP. Makes the reason visible in the journal.
+      const path=String(req.route?.path||'');
+      if(known&&(path.startsWith('/api/personal-myth')||path.startsWith('/api/stories/')))console.warn('commerce_error',{route:path,code,status:error.status});
       // Never log provider bodies, customer texts, keys or a raw stack containing them.
       res.status(known?error.status:502).json({status:'error',code,operation_failed:error?.operation_failed===true,ui:{safe_message:errors[code]||'Не удалось завершить действие. Ваш ввод остаётся в форме; проверьте историю перед повтором.'}});
     });
@@ -346,6 +349,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
         return res.json({status:'ok',mode:'story',story_result:order.data.myth,order:publicOrder(order),replayed:true});
       }
       if(!order.data.answers)order=db.saveAnswers(id,order.id,parsed.answers,'');
+      else if(order.state==='generation_failed'&&JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))order=db.restartFailedFree(id,order.id,parsed.answers);
       if(JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('saved_answers_differ',409);
       return generate(req,res,order,requestKey,'myth',parsed,id);
     })(req,res);

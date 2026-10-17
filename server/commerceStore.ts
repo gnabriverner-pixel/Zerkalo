@@ -292,6 +292,16 @@ export class CommerceStore {
       return this.order(account,id);
     });
   }
+  /** A free order whose generation failed and issued no Myth may take new answers and run again (same one-free-order rule). */
+  restartFailedFree(account:string,id:string,answers:SavedStory['answers']){
+    return this.tx(()=>{
+      const order=this.order(account,id);
+      if(order.kind!=='free'||order.state!=='generation_failed'||order.data.myth)throw new CommerceError('answers_locked');
+      if(this.db.prepare("SELECT 1 FROM operations WHERE order_id=? AND state IN ('running','uncertain','complete')").get(id))throw new CommerceError('operation_in_progress');
+      this.db.prepare("UPDATE orders SET state='answers_saved',payload=? WHERE id=?").run(this.encrypt({...order.data,answers}),id);
+      return this.order(account,id);
+    });
+  }
   importFree(account:string,answers:SavedStory['answers'],myth:any){
     if(!this.storageAccepted(account))throw new CommerceError('storage_consent_required',403);
     const order=this.createOrder(account,'legacy-import','free',true);

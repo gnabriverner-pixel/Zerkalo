@@ -90,6 +90,45 @@ describe('commerce HTTP contracts, synthetic transport only',()=>{
       expect(s.myth).toHaveBeenCalledTimes(1);
     }finally{s.close();}
   });
+  it('failed free generation allows a retry with changed answers (13.1); ready one stays locked; same request_id is idempotent',async()=>{
+    const s=await setup();const warn=vi.spyOn(console,'warn').mockImplementation(()=>{});vi.spyOn(console,'error').mockImplementation(()=>{});
+    const SECRET='Секретный ответ пользователя номер один';
+    try{
+      await s.consent();
+      s.myth.mockRejectedValueOnce(new Error('provider_bad_output'));
+      const first={request_id:'retry_free_0001',answers:STORY_SAMPLE_ANSWERS};
+      expect((await s.call('/api/personal-myth',first)).response.status).toBe(202);
+      await vi.waitFor(()=>expect(s.store.db.prepare("SELECT state FROM orders WHERE kind='free'").get()).toMatchObject({state:'generation_failed'}));
+      const changed={request_id:'retry_free_0002',answers:{...STORY_SAMPLE_ANSWERS,q1:SECRET}};
+      const second=await s.call('/api/personal-myth',changed);
+      expect(second.response.status).toBe(202);
+      await vi.waitFor(()=>expect(s.store.db.prepare("SELECT state FROM orders WHERE kind='free'").get()).toMatchObject({state:'ready'}));
+      expect(s.myth).toHaveBeenCalledTimes(2);
+      expect((s.myth.mock.calls[1] as any)[0].answers.q1).toBe(SECRET);
+      expect(s.store.db.prepare("SELECT COUNT(*) AS n FROM orders").get()).toMatchObject({n:1});
+      // same request_id + same answers: idempotent replay, no new generation
+      const replay=await s.call('/api/personal-myth',changed);
+      expect(replay.response.status).toBe(200);expect(s.myth).toHaveBeenCalledTimes(2);
+      // ready + other answers: still refused
+      const other=await s.call('/api/personal-myth',{request_id:'retry_free_0003',answers:{...STORY_SAMPLE_ANSWERS,q1:'Совсем другое'}});
+      expect(other.response.status).toBe(402);expect(other.data.code).toBe('free_story_already_issued');expect(s.myth).toHaveBeenCalledTimes(2);
+      expect(JSON.stringify(warn.mock.calls)).toContain('free_story_already_issued');
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('Секретный');
+      expect(warn.mock.calls.every(c=>c[0]==='commerce_error'&&Object.keys(c[1] as object).sort().join()==='code,route,status')).toBe(true);
+    }finally{vi.restoreAllMocks();s.close();}
+  });
+  it('failed free order is not restarted while another operation is running or uncertain',async()=>{
+    const s=await setup();vi.spyOn(console,'error').mockImplementation(()=>{});
+    try{
+      await s.consent();
+      s.myth.mockRejectedValueOnce(new Error('provider_bad_output'));
+      await s.call('/api/personal-myth',{request_id:'busy_free_00001',answers:STORY_SAMPLE_ANSWERS});
+      await vi.waitFor(()=>expect(s.store.db.prepare("SELECT state FROM orders WHERE kind='free'").get()).toMatchObject({state:'generation_failed'}));
+      s.store.db.prepare("UPDATE operations SET state='uncertain'").run();
+      const r=await s.call('/api/personal-myth',{request_id:'busy_free_00002',answers:{...STORY_SAMPLE_ANSWERS,q1:'Другой ответ'}});
+      expect(r.response.status).toBe(409);expect(s.myth).toHaveBeenCalledTimes(1);
+    }finally{vi.restoreAllMocks();s.close();}
+  });
   it('crisis bypasses the provider and does not claim delivered commercial content',async()=>{
     const s=await setup();try{await s.consent();const r=await s.call('/api/personal-myth',{request_id:'crisis_myth_0001',answers:{...STORY_SAMPLE_ANSWERS,q1:'Я хочу покончить с собой'}});expect(r.data.status).toBe('crisis');expect(s.myth).not.toHaveBeenCalled();}finally{s.close();}
   });

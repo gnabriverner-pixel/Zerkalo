@@ -8,7 +8,7 @@ import { useProtectedFetch } from './ConsentBoundary';
 import { isShortJuxtapositionEnabled } from '../services/albertOpenerState';
 import {useFreePreview,readFreePreview} from '../services/freePreview';
 import { useMythConfig } from '../services/mythAvailability';
-import { waitForMyth, checkMythReadiness, readStorageAccepted, hasStoryAccount, MYTH_COPY, MYTH_SLOW_HINT_MS } from '../services/mythWait';
+import { waitForMyth, checkMythReadiness, readStorageAccepted, hasStoryAccount, MYTH_COPY, MYTH_ERROR_COPY, MYTH_OPEN_SAVED_LABEL, MYTH_SLOW_HINT_MS } from '../services/mythWait';
 
 /** Stories from the opt-in writer v4.1 carry only title and story; the mirror/question blocks would be empty. Old stories are unaffected. */
 const isTitleAndStoryOnly = (r: NonNullable<ApiResponse['story_result']>) =>
@@ -65,6 +65,7 @@ export default function PersonalMyth({
   });
   const [result, setResult] = useState<ApiResponse['story_result'] | null>(initialResult || null);
   const [errorText, setErrorText] = useState('');
+  const [errorCode, setErrorCode] = useState('');
   const [journalNote, setJournalNote] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
   const requestIdRef = useRef(`myth_${crypto.randomUUID().replace(/-/g, '')}`);
@@ -224,6 +225,7 @@ export default function PersonalMyth({
     generatingRef.current = true;
     setStep(5);
     setErrorText('');
+    setErrorCode('');
     const controller = new AbortController();
     abortRef.current = controller;
     try {
@@ -256,7 +258,9 @@ export default function PersonalMyth({
         setErrorText(data.ui?.safe_message || "Мы не можем сформировать историю по текущему запросу.");
         setStep(4);
       } else if (data.status === 'error' || !data.story_result) {
-        setErrorText(data.ui?.safe_message || "Связь с зеркалом прервалась. Попробуйте обновить.");
+        const code = String((data as any).code || '');
+        setErrorCode(code);
+        setErrorText(MYTH_ERROR_COPY[code] || data.ui?.safe_message || "Связь с зеркалом прервалась. Попробуйте обновить.");
         setStep(4);
       } else {
         onSafetyBlocked?.(false);
@@ -378,6 +382,7 @@ export default function PersonalMyth({
                 <textarea 
                   autoFocus
                   rows={3}
+                  maxLength={1000}
                   value={currentInputValue}
                   onChange={(e) => {
                     setErrorText('');
@@ -436,6 +441,12 @@ export default function PersonalMyth({
               {errorText && (
                 <div className="w-full max-w-xl mx-auto mb-6 p-4 bg-red-950/40 border border-red-500/30 rounded-xs text-center text-sm text-red-200">
                   <p className="mb-3 text-xs sm:text-sm font-normal">{errorText}</p>
+                  {errorCode === 'free_story_already_issued' && onOpenSavedStory ? (
+                  <button type="button" onClick={onOpenSavedStory}
+                    className="px-4 py-2 bg-red-900/60 hover:bg-red-800 text-xs font-mono uppercase tracking-wider text-red-100 rounded-xs transition-colors cursor-pointer">
+                    {MYTH_OPEN_SAVED_LABEL}
+                  </button>
+                  ) : errorCode === 'free_story_already_issued' ? null : (
                   <button
                     type="button"
                     onClick={() => {
@@ -446,6 +457,7 @@ export default function PersonalMyth({
                   >
                     Попробовать снова
                   </button>
+                  )}
                 </div>
               )}
 
