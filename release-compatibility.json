@@ -2,12 +2,12 @@
   "manifest_version": 1,
   "stage": "free-preview-internal-staging-candidate",
   "verified_at": null,
-  "verification_status": "READING_064_CANDIDATE_SEE_EXTERNAL_EVIDENCE",
+  "verification_status": "MYTH_RETRY_13_1_CANDIDATE_SEE_EXTERNAL_EVIDENCE",
   "production_authorized": false,
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
-    "branch": "fix/code-reading-064",
-    "pinned_sha": "63038f933c583d790ccca33cdad6b24bac316395"
+    "branch": "fix/myth-retry-13-1",
+    "pinned_sha": "f60a1169483effa2d834281551fd35fe4c2e695c"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
