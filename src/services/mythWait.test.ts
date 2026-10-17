@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { waitForMyth, checkMythReadiness, readStorageAccepted, hasStoryAccount, MYTH_COPY, MYTH_POLL_INTERVAL_MS, MYTH_TOTAL_WAIT_MS } from './mythWait';
+import { MYTH_ERROR_COPY, MYTH_OPEN_SAVED_LABEL, waitForMyth, checkMythReadiness, readStorageAccepted, hasStoryAccount, MYTH_COPY, MYTH_POLL_INTERVAL_MS, MYTH_TOTAL_WAIT_MS } from './mythWait';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 const html504 = () => new Response('<html><body>504 Gateway Time-out</body></html>', { status: 504, headers: { 'Content-Type': 'text/html' } });
@@ -164,5 +164,15 @@ describe('checkMythReadiness (read-only GET /api/stories)', () => {
     expect(MYTH_COPY.storageOn).toBe('Если история будет готова, она появится в сохранённых.');
     expect(MYTH_COPY.storageOff).toBe('Сохранение историй выключено. Готовый результат доступен временно; не закрывайте страницу, пока мы проверяем готовность.');
     expect(MYTH_COPY.expired).toBe('Время доступа к этой истории истекло.');
+  });
+});
+
+describe('13.1 code-specific refusal copy', () => {
+  it('has calm texts for known codes and none for the unknown ones (they keep the general text)', () => {
+    expect(MYTH_ERROR_COPY.free_story_already_issued).toBe('Ваш бесплатный Личный миф уже создан.');
+    expect(MYTH_ERROR_COPY.free_budget_exhausted).toBeTruthy();
+    expect(MYTH_ERROR_COPY.service_busy).toBeTruthy();
+    expect(MYTH_ERROR_COPY.saved_answers_differ).toBeUndefined();
+    expect(MYTH_OPEN_SAVED_LABEL).toBe('Открыть в «Моих мифах»');
   });
 });
