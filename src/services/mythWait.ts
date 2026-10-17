@@ -14,7 +14,7 @@ const GATEWAY_STATUSES = new Set([502, 503, 504]);
 /** Calm, code-specific messages for refused starts. Unknown codes fall back to the server text / the general one. */
 export const MYTH_ERROR_COPY: Record<string, string> = {
   free_story_already_issued: 'Ваш бесплатный Личный миф уже создан.',
-  free_budget_exhausted: 'Бесплатные места на сегодня закончились. Загляните позже.',
+  free_budget_exhausted: 'Бесплатные генерации пробного периода закончились.',
   service_busy: 'Сейчас много запросов. Ваши ответы сохранены в форме — попробуйте через минуту.',
 };
 export const MYTH_OPEN_SAVED_LABEL = 'Открыть в «Моих мифах»';
