@@ -133,8 +133,8 @@ describe("opt-in generation path", () => {
     return { generate, provider: { name: "routerai", model: "synthetic/model", isReady: () => true, generate, ...extra } as PersonalMythProvider };
   };
 
-  it("flag off: old path, no v41 mode, the old prompt is used", async () => {
-    vi.stubEnv("PERSONAL_MYTH_WRITER", "");
+  it("legacy flag: old path, no v41 mode, the old prompt is used (the unset default is v2a now)", async () => {
+    vi.stubEnv("PERSONAL_MYTH_WRITER", "legacy");
     const { generate, provider: p } = provider("не JSON");
     await expect(generatePersonalMyth(request(), p, 1000)).rejects.toThrow("personal_myth_quality_failed");
     expect(generate.mock.calls.length).toBeGreaterThanOrEqual(1);
@@ -609,12 +609,14 @@ describe("config read used by the screens (no model call)", () => {
       return await r.json() as any;
     } finally { server.close(); (server as any).closeAllConnections?.(); }
   };
-  it("reports v41, availability and a configured example only", async () => {
+  it("reports the writer (v2a default, v41 rollback, legacy), availability and a configured example only", async () => {
     const provider = { name: "x", model: "x", isReady: () => true, generate: async () => "" };
     expect(await cfg({ PERSONAL_MYTH_WRITER: "v41", PERSONAL_MYTH_EXAMPLE_URL: "" }, { mythProvider: provider, isProviderReady: () => false }))
       .toEqual({ writer: "v41", generation_available: false, example_url: null });
     expect(await cfg({ PERSONAL_MYTH_WRITER: "", PERSONAL_MYTH_EXAMPLE_URL: "https://example.test/read" }, { mythProvider: provider, isProviderReady: () => true }))
-      .toEqual({ writer: "default", generation_available: true, example_url: "https://example.test/read" });
+      .toEqual({ writer: "v2a", generation_available: true, example_url: "https://example.test/read" });
+    expect(await cfg({ PERSONAL_MYTH_WRITER: "legacy", PERSONAL_MYTH_EXAMPLE_URL: "" }, { mythProvider: provider, isProviderReady: () => true }))
+      .toEqual({ writer: "default", generation_available: true, example_url: null });
     expect((await cfg({ PERSONAL_MYTH_EXAMPLE_URL: "javascript:alert(1)" }, { mythProvider: provider, isProviderReady: () => true })).example_url).toBeNull();
   });
 });

@@ -5,7 +5,7 @@ export const ROUTERAI_URL = 'https://routerai.ru/api/v1';
 export const PRIMARY_MODEL = 'deepseek/deepseek-v4.1-flash';
 export const FALLBACK_MODEL = 'anthropic/claude-sonnet-5';
 export const MEETING_FALLBACK_MODEL = 'openai/gpt-5.4-mini';
-/** Opt-in Myth writer v4.1 only (PERSONAL_MYTH_WRITER=v41); never a fallback of another path. */
+/** Myth writers only (v2a default, v4.1 rollback via PERSONAL_MYTH_WRITER=v41); never a fallback of another path. */
 export const WRITER_V41_MODEL = 'anthropic/claude-opus-5.5';
 export interface ProviderEvent {
   gateway: 'routerai'; model: string; upstream: string | null;
@@ -100,6 +100,11 @@ export class RouterAIClient implements ChatClient {
   fallback(): RouterAIClient | undefined {
     return this.defaultModel === PRIMARY_MODEL
       ? new RouterAIClient(this.env, this.fallbackModel, this.transport, this.observe, this.fallbackModel) : undefined;
+  }
+  /** Writer v2a: the Opus writer client falls back to the primary DeepSeek model with the same prompt (same env/transport/observer). */
+  writerFallbackClient(): RouterAIClient | undefined {
+    return this.defaultModel === WRITER_V41_MODEL
+      ? new RouterAIClient(this.env, PRIMARY_MODEL, this.transport, this.observe, this.fallbackModel) : undefined;
   }
   async call(options: DeepSeekRequestOptions): Promise<string> {
     if (!this.isReady()) throw new Error('routerai_not_ready');

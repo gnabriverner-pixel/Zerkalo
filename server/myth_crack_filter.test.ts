@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   validatePersonalMythResult,
   parsePersonalMythRequest,
@@ -367,3 +367,7 @@ describe("Personal Myth V11: Targeted Crack Filter & Reliability Suite", () => {
     });
   });
 });
+
+// These tests cover the old v1.x path, which is opt-in now (the default writer is v2a).
+beforeEach(() => { vi.stubEnv('PERSONAL_MYTH_WRITER', 'legacy'); });
+afterEach(() => { vi.unstubAllEnvs(); });

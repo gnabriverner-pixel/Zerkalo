@@ -1,4 +1,4 @@
-import {describe,it,expect,vi} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import {RouterAIClient,PRIMARY_MODEL,FALLBACK_MODEL,MEETING_FALLBACK_MODEL,transportResponseFormat,normalizeUpstreamLabel,fallbackEligible,type ProviderEvent} from './routerai';
 import {strictFormat,MYTH_SCHEMA,MEETING_SCHEMA} from './structuredOutput';
@@ -137,3 +137,7 @@ describe('DeepSeek chat-completions transport compatibility',()=>{
     expect(openai.bodies).toHaveLength(2);
   });
 });
+
+// These tests cover the old v1.x path, which is opt-in now (the default writer is v2a).
+beforeEach(() => { vi.stubEnv('PERSONAL_MYTH_WRITER', 'legacy'); });
+afterEach(() => { vi.unstubAllEnvs(); });

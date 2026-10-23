@@ -12,6 +12,7 @@ import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
 import { RouterAIClient, PRIMARY_MODEL, MEETING_FALLBACK_MODEL } from "./server/routerai";
 import { isWriterV41Enabled, WRITER_V41_MODEL } from "./server/mythWriterV41";
+import { resolvePersonalMythWriter } from "./server/mythWriterV2A";
 import {
   createRouterAIMythProvider,
   PERSONAL_MYTH_WRITER_VERSION,
@@ -59,6 +60,7 @@ export function deriveMeetingCacheKey(codeData: any, storyData: any, userQuestio
         storyInputs: storyData?.storyInputs,
         storyTitle: storyData?.storyResult?.title || "",
         storyMirror: storyData?.storyResult?.mirror || {},
+        storyMadeOf: storyData?.storyResult?.made_of || [],
         userQuestion: normalizedQuestion,
       }),
     )
@@ -88,8 +90,11 @@ export async function createApp(options: CreateAppOptions = {}) {
   app.set('trust proxy', 'loopback');
   const deepseekClient = new RouterAIClient(process.env);
   const meetingClient = deepseekClient.withFallback(MEETING_FALLBACK_MODEL);
-  // Opt-in writer v4.1 may name its own model (must be one RouterAIClient already allows); otherwise the same client.
-  const writerV41Model = isWriterV41Enabled() ? String(process.env.PERSONAL_MYTH_V41_MODEL ?? '').trim() || WRITER_V41_MODEL : '';
+  // Writers: v2a (default) always uses Opus via RouterAI (DeepSeek fallback is built from the same client); the v4.1 rollback
+  // may name its own model (must be one RouterAIClient already allows); legacy keeps the shared client.
+  const personalMythWriter = resolvePersonalMythWriter();
+  const writerV41Model = personalMythWriter === 'v2a' ? WRITER_V41_MODEL
+    : isWriterV41Enabled() ? String(process.env.PERSONAL_MYTH_V41_MODEL ?? '').trim() || WRITER_V41_MODEL : '';
   const mythProvider = options.mythProvider
     || createRouterAIMythProvider(writerV41Model ? new RouterAIClient(process.env, writerV41Model) : deepseekClient);
   const isProviderConfigured = () =>
@@ -98,9 +103,10 @@ export async function createApp(options: CreateAppOptions = {}) {
       : options.mythProvider
       ? true
       : deepseekClient.isReady();
-  // Old path: unchanged 90 s ceiling. Opt-in writer v4.1/v4.2: default 240 s, ceiling 300 s (PERSONAL_MYTH_V41_TIMEOUT_MS).
-  const personalMythTimeoutMs = isWriterV41Enabled()
-    ? Math.min(300_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_V41_TIMEOUT_MS) || 240_000))
+  // Legacy path: unchanged 90 s ceiling. Writers: per-call default 180 s for v2a (primary + fallback fit the client's 6 min wait), 240 s for v4.1; ceiling 300 s
+  // (PERSONAL_MYTH_V2A_TIMEOUT_MS for v2a, PERSONAL_MYTH_V41_TIMEOUT_MS for the rollback).
+  const personalMythTimeoutMs = personalMythWriter !== 'legacy'
+    ? Math.min(300_000, Math.max(10_000, Number((personalMythWriter === 'v2a' ? process.env.PERSONAL_MYTH_V2A_TIMEOUT_MS : process.env.PERSONAL_MYTH_V41_TIMEOUT_MS)) || (personalMythWriter === 'v2a' ? 180_000 : 240_000)))
     : Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 75_000));
   const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
 
@@ -370,7 +376,7 @@ export async function createApp(options: CreateAppOptions = {}) {
     // example_url: a public example to read, shown on the site only when configured (PERSONAL_MYTH_EXAMPLE_URL: https URL or /path).
     const example = String(process.env.PERSONAL_MYTH_EXAMPLE_URL ?? "").trim();
     res.set("Cache-Control", "no-store").json({
-      writer: isWriterV41Enabled() ? "v41" : "default",
+      writer: ({ v2a: "v2a", v41: "v41", legacy: "default" } as const)[resolvePersonalMythWriter()],
       generation_available: isProviderConfigured(),
       example_url: /^(https:\/\/|\/(?!\/))[^\s"'<>]{1,300}$/.test(example) ? example : null,
     });
@@ -489,7 +495,7 @@ export async function createApp(options: CreateAppOptions = {}) {
         code,
         ui: {
           safe_message: inputError
-            ? "Проверь, что на все четыре вопроса дан короткий ответ."
+            ? (resolvePersonalMythWriter() === "v2a" ? "Проверьте, что на все три вопроса дан короткий ответ." : "Проверь, что на все четыре вопроса дан короткий ответ.")
             : notReady
             ? "Личный миф временно недоступен (провайдер генерации не настроен). Твои ответы сохранены."
             : "Историю не удалось сложить достаточно точно. Ответы сохранены — можно повторить попытку.",

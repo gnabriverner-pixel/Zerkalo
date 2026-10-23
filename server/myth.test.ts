@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   PERSONAL_MYTH_WRITER_VERSION,
   buildPersonalMythPromptV11,
@@ -710,3 +710,6 @@ describe("Personal Myth v1.1 release contract", () => {
   });
 });
 
+// These tests cover the old v1.x path, which is opt-in now (the default writer is v2a).
+beforeEach(() => { vi.stubEnv('PERSONAL_MYTH_WRITER', 'legacy'); });
+afterEach(() => { vi.unstubAllEnvs(); });

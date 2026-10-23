@@ -39,7 +39,7 @@ def estimate(snapshot,body,now):
     except UnicodeEncodeError:raise RuntimeError('ai_input_bound_exceeded')
     if size>POLICY['max_input_bytes']:raise RuntimeError('ai_input_bound_exceeded')
     cost=math.ceil((size*row['input_rate']+maximum*row['output_rate'])*POLICY['margin_numerator']/POLICY['margin_denominator']*1e6)
-    maximum_cost=max(math.ceil((POLICY['max_input_bytes']*r['input_rate']+POLICY['max_output_tokens']*r['output_rate'])*POLICY['margin_numerator']/POLICY['margin_denominator']*1e6) for r in snapshot['rows'] if r['model']!='anthropic/claude-opus-5.5' or os.environ.get('PERSONAL_MYTH_WRITER')=='v41')
+    maximum_cost=max(math.ceil((POLICY['max_input_bytes']*r['input_rate']+POLICY['max_output_tokens']*r['output_rate'])*POLICY['margin_numerator']/POLICY['margin_denominator']*1e6) for r in snapshot['rows'] if r['model']!='anthropic/claude-opus-5.5' or (os.environ.get('PERSONAL_MYTH_WRITER') or '').strip().lower()!='legacy')
     return cost,size,maximum_cost
 
 def reserve(body, scope):

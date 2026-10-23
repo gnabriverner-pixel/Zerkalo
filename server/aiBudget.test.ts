@@ -30,7 +30,7 @@ it('Web actual I/O hooks account failure, retry and fallback; paid context survi
  expect(calls).toBe(2);const rows=db.db.prepare('SELECT pool,state FROM ai_budget_attempts ORDER BY created_at').all();expect(rows).toEqual([{pool:'paid',state:'uncertain'},{pool:'paid',state:'complete'}]);db.close();
 });
 it('bounds fail before transport, stale/unknown pricing cannot open sales',()=>{
- expect(()=>validateAIRequest('unknown',[{role:'user',content:'x'}],1)).toThrow('ai_price_bound_unknown');expect(()=>validateAIRequest(PRIMARY_MODEL,[{role:'user',content:'x'.repeat(65536)}],1)).toThrow('ai_input_bound_exceeded');expect(()=>validateAIRequest(PRIMARY_MODEL,[{role:'user',content:'x'}],8001)).toThrow();expect(()=>validateAIRequest(PRIMARY_MODEL,[{role:'user',content:'x'}],1,Date.now()+86400001)).toThrow('ai_tariffs_stale');
+ expect(()=>validateAIRequest('unknown',[{role:'user',content:'x'}],1)).toThrow('ai_price_bound_unknown');expect(()=>validateAIRequest(PRIMARY_MODEL,[{role:'user',content:'x'.repeat(65536)}],1)).toThrow('ai_input_bound_exceeded');expect(()=>validateAIRequest(PRIMARY_MODEL,[{role:'user',content:'x'}],12001)).toThrow();expect(()=>validateAIRequest(PRIMARY_MODEL,[{role:'user',content:'x'}],1,Date.now()+86400001)).toThrow('ai_tariffs_stale');
  const db=new CommerceStore(':memory:',encryption);expect(new AIBudget(()=>db,{}).capacity()).toBe(false);db.close();
 });
 it('native DCS seam and concurrent processes share the same atomic SQLite ceiling, no external I/O',async()=>{

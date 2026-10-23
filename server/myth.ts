@@ -3,9 +3,14 @@ import { type ChatClient, RouterAIClient, fallbackEligible } from './routerai';
 import { MYTH_SCHEMA, strictFormat } from './structuredOutput';
 import { createHash } from 'node:crypto';
 import {
-  PERSONAL_MYTH_WRITER_V41_VERSION, WRITER_V42_SENT_SHA256, buildWriterV41UserMessage, isWriterV41Enabled, parseWriterV41Response,
+  PERSONAL_MYTH_WRITER_V41_VERSION, WRITER_V42_SENT_SHA256, buildWriterV41UserMessage, parseWriterV41Response,
   writerV41MaxTokens, writerV41Routing, writerV41SystemMessage,
 } from './mythWriterV41';
+import {
+  PERSONAL_MYTH_WRITER_V2A_VERSION, WriterV2AInvalid, buildWriterV2AUserMessage, isWriterV2AEnabled, resolvePersonalMythWriter,
+  validateWriterV2AResponse, writerV2AFallbackEligible, writerV2AMaxTokens, writerV2ARetryNote, writerV2ARouting,
+  writerV2ASystemMessage, writerV2ASystemMessageIntact, type WriterV2AOutput,
+} from './mythWriterV2A';
 
 export const PERSONAL_MYTH_WRITER_VERSION = "personal-myth-v1.5-emergent-possibility";
 
@@ -28,15 +33,21 @@ export interface PersonalMythResult {
   one_step: string;
   journal_question: string;
   disclaimer: string;
+  /** Writer v2a only: "what the tale is made of" table (image -> which answer gave it). */
+  made_of?: Array<{ element: string; source: string }>;
+  /** Writer v2a only: which provider/model produced this text and whether the DeepSeek fallback was used. */
+  generated_by?: { provider: string; model: string; fallback_used: boolean };
 }
 
 export interface PersonalMythProvider {
   readonly name: string;
   readonly model: string;
   isReady(): boolean;
-  /** `mode: 'v41'` (opt-in writer path): `prompt` is the finished user message; system message and call parameters differ. */
-  generate(prompt: string, timeoutMs: number, mode?: 'v41'): Promise<string>;
+  /** `mode: 'v41'|'v2a'` (writer paths): `prompt` is the finished user message; system message and call parameters differ. */
+  generate(prompt: string, timeoutMs: number, mode?: 'v41' | 'v2a'): Promise<string>;
   fallback?(): PersonalMythProvider | undefined;
+  /** Writer v2a: the provider used with the SAME prompt when the primary call fails (DeepSeek v4.1 flash). */
+  writerFallback?(): PersonalMythProvider | undefined;
 }
 
 export interface PersonalMythQualityReport {
@@ -367,14 +378,17 @@ export function parsePersonalMythRequest(value: unknown): PersonalMythRequest {
   if (!/^[a-zA-Z0-9_-]{12,80}$/u.test(request_id)) throw new Error("invalid_request_id");
 
   const answers = {} as StoryInputs;
+  // Writer v2a asks three questions (q1, q3, q4); q2 is kept in the stored shape as an empty string (no migration).
+  const q2Optional = isWriterV2AEnabled();
   for (const key of ANSWER_KEYS) {
     const answer = clean(value.answers[key]);
+    if (key === "q2" && q2Optional && answer === "") { answers[key] = ""; continue; }
     if (answer.length < 3 || answer.length > 1000) throw new Error(`invalid_answer:${key}`);
     answers[key] = answer;
   }
   return {
     request_id,
-    consent_version: clean(value.consent_version || PERSONAL_MYTH_WRITER_VERSION),
+    consent_version: clean(value.consent_version || (q2Optional ? PERSONAL_MYTH_WRITER_V2A_VERSION : PERSONAL_MYTH_WRITER_VERSION)),
     answers,
   };
 }
@@ -993,11 +1007,31 @@ export class DeepSeekMythProvider implements PersonalMythProvider {
     return client ? new DeepSeekMythProvider({}, client) : undefined;
   }
 
+  /** Writer v2a fallback: only for the Opus writer client; the same prompt goes to the primary DeepSeek model. */
+  writerFallback(): PersonalMythProvider | undefined {
+    const client = (this.client as RouterAIClient).writerFallbackClient?.();
+    return client ? new DeepSeekMythProvider({}, client) : undefined;
+  }
+
   isReady(): boolean {
     return this.client.isReady() && this.model.length >= 3;
   }
 
-  async generate(prompt: string, timeoutMs: number, mode?: 'v41'): Promise<string> {
+  async generate(prompt: string, timeoutMs: number, mode?: 'v41' | 'v2a'): Promise<string> {
+    if (mode === 'v2a') {
+      // Checked before any reservation: a mismatch refuses locally, sends nothing and costs nothing.
+      if (!writerV2ASystemMessageIntact()) throw new Error('provider_local_refusal');
+      return await this.client.call({
+        model: this.model,
+        messages: [
+          { role: "system", content: writerV2ASystemMessage() },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: writerV2AMaxTokens(),
+        routing: writerV2ARouting(),
+        timeoutMs,
+      });
+    }
     if (mode === 'v41') {
       // Checked before any reservation: a mismatch refuses locally, sends nothing and costs nothing.
       if (createHash('sha256').update(writerV41SystemMessage(), 'utf8').digest('hex') !== WRITER_V42_SENT_SHA256) throw new Error('provider_local_refusal');
@@ -1048,6 +1082,67 @@ export interface PersonalMythGenerationResult {
   writerVersion?: string;
 }
 
+const WRITER_V2A_DISCLAIMER = "Образный формат для саморефлексии. Не диагностика и не инструкция к действию.";
+
+/**
+ * Writer v2a (default): one strict {title, story, made_of, meaning, question, practice} call. The crisis protocol runs
+ * BEFORE this function in the routes (containsCrisisLanguage), exactly as for every other writer. One retry on a JSON/schema/
+ * Latin-word failure; a failed primary call (HTTP error, timeout, 402, finish=length, ...) switches to the DeepSeek fallback
+ * with the same prompt. No style/length/register regexes apply. Stored shape: PersonalMythResult + made_of + generated_by.
+ */
+async function generatePersonalMythWriterV2A(
+  request: PersonalMythRequest, provider: PersonalMythProvider, timeoutMs: number,
+): Promise<PersonalMythGenerationResult> {
+  if (!provider.isReady()) throw new Error("personal_myth_provider_not_ready");
+  const deadline = Date.now() + timeoutMs * 2; // same two-call wall-clock envelope as the old path (primary + fallback)
+  const basePrompt = buildWriterV2AUserMessage(request.answers);
+
+  const attempt = async (source: PersonalMythProvider): Promise<WriterV2AOutput> => {
+    const call = (prompt: string) => {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw new Error('provider_call_timeout');
+      return source.generate(prompt, Math.min(timeoutMs, remaining), 'v2a');
+    };
+    let invalid: WriterV2AInvalid;
+    try { return validateWriterV2AResponse(await call(basePrompt), request.answers); }
+    catch (error) { if (!(error instanceof WriterV2AInvalid)) throw error; invalid = error; }
+    // Exactly one retry; a second invalid answer ends in the existing failure handling (personal_myth_quality_failed).
+    return validateWriterV2AResponse(await call(basePrompt + writerV2ARetryNote(invalid)), request.answers);
+  };
+
+  let used = provider, output: WriterV2AOutput;
+  try { output = await attempt(provider); }
+  catch (error) {
+    const fallback = writerV2AFallbackEligible(error) ? provider.writerFallback?.() : undefined;
+    if (!fallback || !fallback.isReady()) throw error;
+    used = fallback;
+    output = await attempt(fallback);
+  }
+  const story = cleanProse(output.story);
+  return {
+    provider: used.name,
+    model: used.model,
+    writerVersion: PERSONAL_MYTH_WRITER_V2A_VERSION,
+    result: {
+      title: clean(output.title),
+      story,
+      mirror: { mainImage: "", innerTension: "", hiddenResource: "", newView: "" },
+      // Compatible mapping: meaning -> [text], question -> journal_question, practice -> one_step (PDF/Albert read these).
+      meaning: [clean(output.meaning)],
+      one_step: clean(output.practice),
+      journal_question: clean(output.question),
+      disclaimer: WRITER_V2A_DISCLAIMER,
+      made_of: output.made_of.map(row => ({ element: clean(row.element), source: clean(row.source) })),
+      generated_by: { provider: used.name, model: used.model, fallback_used: used !== provider },
+    },
+    quality: { passed: true, blockers: [], word_count: story.split(/\s+/u).filter(Boolean).length, paragraph_count: story.split(/\n\n/u).filter(Boolean).length },
+    repaired: false,
+    initialPassed: true,
+    initialBlockers: [],
+    repairAttempted: false,
+  };
+}
+
 /**
  * Writer v4.1 (PERSONAL_MYTH_WRITER=v41): exactly one model call, strict {title, story} parse, no repair,
  * no editor, no fallback model. The result keeps the stored PersonalMythResult shape with the mirror/meaning/
@@ -1088,7 +1183,9 @@ export async function generatePersonalMyth(
   provider: PersonalMythProvider,
   timeoutMs: number,
 ): Promise<PersonalMythGenerationResult> {
-  if (isWriterV41Enabled()) return await generatePersonalMythWriterV41(request, provider, timeoutMs);
+  const writer = resolvePersonalMythWriter();
+  if (writer === "v41") return await generatePersonalMythWriterV41(request, provider, timeoutMs);
+  if (writer === "v2a") return await generatePersonalMythWriterV2A(request, provider, timeoutMs);
   // Preserve the original two-attempt wall-clock envelope, including fallback.
   const deadline = Date.now() + timeoutMs * 2;
   const bounded = (source:PersonalMythProvider):PersonalMythProvider => ({

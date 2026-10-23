@@ -24,10 +24,10 @@ it('request components and response schema obey exact UTF-8 boundary; output lim
  expect(estimateAttempt(s,seed.rows[0].model,[{role:'user',content}],8000,base).input_bytes).toBe(65536);
  expect(()=>estimateAttempt(s,seed.rows[0].model,[{role:'user',content:content+'x'}],8000,base)).toThrow('ai_input_bound_exceeded');
  expect(()=>estimateAttempt(s,seed.rows[0].model,[{role:'user',content}],8000,base,{type:'json_object'})).toThrow('ai_input_bound_exceeded');
- expect(()=>estimateAttempt(s,seed.rows[0].model,[{role:'user',content:'ok'}],8001,base)).toThrow();
+ expect(()=>estimateAttempt(s,seed.rows[0].model,[{role:'user',content:'ok'}],12001,base)).toThrow();
  expect(()=>estimateAttempt(s,seed.rows[0].model,[{role:'user',content:'\ud800'}],100,base)).toThrow();
  expect(estimateAttempt(s,seed.rows[1].model,[{role:'user',content:'ok'}],100,base).cost_micro).toBeGreaterThan(estimateAttempt(s,seed.rows[0].model,[{role:'user',content:'ok'}],100,base).cost_micro);
- expect(budgetPolicy.strict_invoice_ceiling_verified).toBe(false);expect(MAX_ATTEMPT_MICRO).toBeLessThan(40e6);
+ expect(budgetPolicy.strict_invoice_ceiling_verified).toBe(false);expect(MAX_ATTEMPT_MICRO).toBeLessThan(75e6);
 });
 it('Python and Web use identical formula and boundary for ASCII, Russian, emoji, controls and response schema',()=>{
  const file=path.join(fs.mkdtempSync(path.join(os.tmpdir(),'tariff-parity-')),'data.sqlite'),db=new CommerceStore(file,key);initialiseTariffs(db.db,seed);const s=currentTariffs(db.db);
@@ -94,9 +94,11 @@ it('a failing non-optional model still fails the whole refresh',async()=>{
   const broken=(async(url:any)=>String(url).includes('claude-sonnet-5')?new Response('{}',{status:503}):catalog('ok')(url)) as typeof fetch;
   try{await expect(refreshTariffs(db.db,broken,base+3600000)).rejects.toThrow('ai_tariff_source_unavailable');}finally{db.close();}
 });
-it('the attempt ceiling counts Opus only when PERSONAL_MYTH_WRITER=v41',()=>{
-  const withoutFlag=maxAttempt(seed);
-  vi.stubEnv('PERSONAL_MYTH_WRITER','v41');const withFlag=maxAttempt(seed);vi.unstubAllEnvs();
-  expect(withoutFlag).toBe(MAX_ATTEMPT_MICRO);expect(withoutFlag).toBeLessThan(40e6);
-  expect(withFlag).toBeGreaterThan(withoutFlag);expect(withFlag).toBe(Math.ceil((65536*0.00044150496+8000*0.0022075248)*1.25*1e6));
+it('the attempt ceiling counts Opus (12000 output tokens) for the default v2a writer and the v4.1 rollback, not for legacy',()=>{
+  const byDefault=maxAttempt(seed);
+  vi.stubEnv('PERSONAL_MYTH_WRITER','legacy');const legacy=maxAttempt(seed);
+  vi.stubEnv('PERSONAL_MYTH_WRITER','v41');const v41=maxAttempt(seed);vi.unstubAllEnvs();
+  expect(byDefault).toBe(MAX_ATTEMPT_MICRO);expect(legacy).toBeLessThan(40e6);
+  expect(byDefault).toBeGreaterThan(legacy);expect(v41).toBe(byDefault);
+  expect(byDefault).toBe(Math.ceil((65536*0.00044150496+12000*0.0022075248)*1.25*1e6));
 });

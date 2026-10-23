@@ -82,6 +82,10 @@ export interface ApiResponse {
     one_step: string;
     journal_question: string;
     disclaimer: string;
+    /** Writer v2a only: «Из чего сделана сказка» (image -> which answer gave it). Absent in older stored myths. */
+    made_of?: { element: string; source: string }[];
+    /** Writer v2a only: which provider/model produced the text. */
+    generated_by?: { provider: string; model: string; fallback_used: boolean };
   };
   ui?: {
     safe_message?: string;

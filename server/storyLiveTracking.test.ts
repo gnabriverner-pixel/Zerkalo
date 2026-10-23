@@ -1,5 +1,5 @@
 // @vitest-environment node
-import {it,expect,vi} from 'vitest';import {once} from 'node:events';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';import {once} from 'node:events';
 import {CommerceStore} from './commerceStore';import {STORY_SAMPLE_MYTH,STORY_SAMPLE_ANSWERS} from './storySample';
 import {CONSENT_VERSION} from '../src/services/consent';
 vi.mock('./albert',async original=>({...await original<any>(),generateAlbertDialogue:vi.fn(async()=>({status:'ok',response:'Synthetic ordinary Albert response'}))}));
@@ -22,3 +22,7 @@ it('commercial native completion updates only its generator flags; crisis/reopen
     expect(application.liveGeneration).toEqual({personal_myth:true,meeting:false,albert:true});expect(provider.generate).toHaveBeenCalledTimes(1);
   }finally{server.close();server.closeAllConnections();store.close();}
 });
+
+// These tests cover the old v1.x path, which is opt-in now (the default writer is v2a).
+beforeEach(() => { vi.stubEnv('PERSONAL_MYTH_WRITER', 'legacy'); });
+afterEach(() => { vi.unstubAllEnvs(); });

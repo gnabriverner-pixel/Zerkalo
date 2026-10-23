@@ -78,19 +78,19 @@ function topLevelObjectCount(text: string): number {
   return count;
 }
 
-function classifyUnparsable(body: string): never {
+export function classifyUnparsable(body: string, failFn: (reason: string) => never = fail): never {
   const first = body.indexOf("{"), last = body.lastIndexOf("}");
   if (first === -1) {
     // A help menu / clarifying question instead of a story: no JSON at all.
     const menuLike = /(?:^|\n)\s*(?:\d+[.)]|[-*•])\s+\S/u.test(body) || /\?\s*$/u.test(body);
-    return fail(menuLike ? "help_menu" : "not_json");
+    return failFn(menuLike ? "help_menu" : "not_json");
   }
   if (last > first) {
     let sliceParses = true;
     try { JSON.parse(body.slice(first, last + 1)); } catch { sliceParses = false; }
-    if (sliceParses) return fail("text_around_json");
+    if (sliceParses) return failFn("text_around_json");
   }
-  return fail(topLevelObjectCount(body) > 1 ? "multiple_objects" : "invalid_json");
+  return failFn(topLevelObjectCount(body) > 1 ? "multiple_objects" : "invalid_json");
 }
 
 /**

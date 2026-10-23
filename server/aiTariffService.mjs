@@ -42,8 +42,9 @@ export function estimateAttempt(snapshot,model,messages,maxTokens,now=Date.now()
   const bytes=Buffer.byteLength(JSON.stringify({messages,...(responseFormat?{response_format:responseFormat}:{})}),'utf8');if(bytes>policy.max_input_bytes)throw Error('ai_input_bound_exceeded');
   return {cost_micro:Math.ceil((bytes*row.input_rate+maxTokens*row.output_rate)*policy.margin_numerator/policy.margin_denominator*1e6),input_bytes:bytes,output_tokens:maxTokens,estimate_version:snapshot.version,policy_version:policy.version,strict_invoice_ceiling_verified:false};
 }
-// The opt-in writer model raises the ceiling only when that path is switched on (PERSONAL_MYTH_WRITER=v41).
-const ceilingRows=snapshot=>snapshot.rows.filter(r=>r.model!=='anthropic/claude-opus-5.5'||process.env.PERSONAL_MYTH_WRITER==='v41');
+// The writer model raises the ceiling when a writer that uses it is active: v2a (default: unset/'v2a') or the v4.1 rollback.
+// Only PERSONAL_MYTH_WRITER=legacy (old v1.5 path) leaves it out.
+const ceilingRows=snapshot=>snapshot.rows.filter(r=>r.model!=='anthropic/claude-opus-5.5'||String(process.env.PERSONAL_MYTH_WRITER??'').trim().toLowerCase()!=='legacy');
 export function maxAttempt(snapshot){return Math.max(...ceilingRows(snapshot).map(r=>Math.ceil((policy.max_input_bytes*r.input_rate+policy.max_output_tokens*r.output_rate)*policy.margin_numerator/policy.margin_denominator*1e6)));}
 export function tariffVersion(snapshot){return crypto.createHash('sha256').update(JSON.stringify({captured_at:snapshot.captured_at,currency:snapshot.currency,rows:snapshot.rows.map(({model,input_rate,output_rate})=>({model,input_rate,output_rate}))})).digest('hex');}
 export function initialiseTariffs(db,seed){

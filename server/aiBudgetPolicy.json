@@ -2,7 +2,7 @@
   "version": "request-components-v2",
   "max_input_bytes": 65536,
   "max_messages": 100,
-  "max_output_tokens": 8000,
+  "max_output_tokens": 12000,
   "paid_attempts": 52,
   "free_example_attempts": 12,
   "margin_numerator": 5,
