@@ -38,6 +38,7 @@ export function deriveMeetingCacheKey(codeData: any, storyData: any, userQuestio
         storyInputs: storyData?.storyInputs,
         storyTitle: storyData?.storyResult?.title || "",
         storyMirror: storyData?.storyResult?.mirror || {},
+        storyMadeOf: storyData?.storyResult?.made_of || [],
         userQuestion: normalizedQuestion,
       }),
     )

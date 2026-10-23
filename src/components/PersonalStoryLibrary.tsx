@@ -3,6 +3,8 @@ import {useProtectedFetch} from './ConsentBoundary';
 import type {StoryInputs} from '../types';
 import './personalStoryLibrary.css';
 import {useFreePreview} from '../services/freePreview';
+import {useMythConfig} from '../services/mythAvailability';
+import {MYTH_V2A_QUESTIONS} from '../services/mythQuestionsV2A';
 
 type Order={id:string;kind:'free'|'paid';state:string;test:boolean;remaining:number;pending:number;preview_temporary?:boolean;data:{answers?:StoryInputs;question?:string;myth?:any;messages:{role:string;content:string}[];note:string}};
 const empty={q1:'',q2:'',q3:'',q4:''};
@@ -34,6 +36,8 @@ export function PersonalStoryLibrary({
 }) {
   const protectedFetch = useProtectedFetch();
   const preview = useFreePreview();
+  // Writer v2a asks three questions (q1, q3, q4; q2 stays ''): the saved-answers form follows the server's writer.
+  const activeQuestions: ReadonlyArray<readonly [keyof StoryInputs, string]> = useMythConfig()?.writer === 'v2a' ? MYTH_V2A_QUESTIONS.map(q => [q.key, q.title] as const) : questions;
   const [feedback, setFeedback] = useState(''), [feedbackAccepted, setFeedbackAccepted] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]), [selected, setSelected] = useState('');
   const [error, setError] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false), [mode, setMode] = useState('disabled');
@@ -246,11 +250,11 @@ export function PersonalStoryLibrary({
                   )}
                   {['paid', 'answers_saved', 'generation_failed'].includes(order.state) && !order.data.myth && (
                     <>
-                      {questions.map(([id, label]) => (
+                      {activeQuestions.map(([id, label]) => (
                         <label key={id}>{label}<textarea value={answers[id]} maxLength={1000} disabled={Boolean(order.data.answers) || busy} onChange={e => setAnswers({ ...answers, [id]: e.target.value })} /></label>
                       ))}
                       <label>Ваш вопрос Альберту (не обязателен)<textarea value={question} maxLength={2000} disabled={Boolean(order.data.answers) || busy} onChange={e => setQuestion(e.target.value)} /></label>
-                      <button disabled={busy || questions.some(([id]) => answers[id].trim().length < 3)} onClick={generateMyth}>Создать новый Миф</button>
+                      <button disabled={busy || activeQuestions.some(([id]) => answers[id].trim().length < 3)} onClick={generateMyth}>Создать новый Миф</button>
                     </>
                   )}
                   <button disabled={busy} onClick={() => run(epoch => reload(epoch))}>Проверить сохранённую историю</button>
@@ -268,10 +272,21 @@ export function PersonalStoryLibrary({
                     <>
                       <h3>Миф — текст истории</h3>
                       <p>{order.data.myth.story}</p>
-                      <h3>Зеркало — взгляд со стороны</h3>
-                      {Object.values(order.data.myth.mirror || {}).map((text: any, i) => (
-                        <p key={i}>{text}</p>
-                      ))}
+                      {Array.isArray(order.data.myth.made_of) && order.data.myth.made_of.length > 0 ? (
+                        <>
+                          <h3>Из чего сделана сказка</h3>
+                          {order.data.myth.made_of.map((row: { element: string; source: string }, i: number) => (
+                            <p key={i}><strong>{row.element}</strong> — {row.source}</p>
+                          ))}
+                        </>
+                      ) : (
+                        <>
+                          <h3>Зеркало — взгляд со стороны</h3>
+                          {Object.values(order.data.myth.mirror || {}).map((text: any, i) => (
+                            <p key={i}>{text}</p>
+                          ))}
+                        </>
+                      )}
                       <h3>Возможные смыслы</h3>
                       {order.data.myth.meaning?.map((text: string, i: number) => (
                         <p key={i}>{text}</p>
@@ -279,6 +294,7 @@ export function PersonalStoryLibrary({
                       <p>{order.data.myth.one_step}</p>
                       <p>{order.data.myth.journal_question}</p>
                       <p>{order.data.myth.disclaimer}</p>
+                      {Array.isArray(order.data.myth.made_of) && order.data.myth.made_of.length > 0 && <p><small>Если вы не узнали себя — это тоже ответ. Сказка — образ, не биография.</small></p>}
                       <h3>Альберт · проводник</h3>
                       <p>Осталось ответов: <strong>{order.remaining}</strong> из 5. Засчитывается только успешно сохранённый ответ.</p>
                       {order.data.messages.map((m, i) => (

@@ -9,12 +9,20 @@ export function storySections(order:StoryOrder):{title:string;body:string}[]{
   if(!m)throw new Error('story_not_issued');
   return [
     {title:'Новый Личный миф',body:`${m.title}\n${order.test?'Тестовый экземпляр. ':''}История создана с помощью ИИ. Это образный взгляд, который можно принять, уточнить или отвергнуть.`},
-    {title:'Ваши ответы',body:Object.entries(d.answers||{}).map(([key,value])=>`${({q1:'Ситуация',q2:'Образ состояния',q3:'Момент на своём месте',q4:'Желаемое качество'} as Record<string,string>)[key]||key}: ${value}`).join('\n\n')},
+    {title:'Ваши ответы',body:Object.entries(d.answers||{}).filter(([,value])=>String(value||'').trim()).map(([key,value])=>`${({q1:'Ситуация',q2:'Образ состояния',q3:'Момент на своём месте',q4:'Желаемое качество'} as Record<string,string>)[key]||key}: ${value}`).join('\n\n')},
     ...(d.question?[{title:'Ваш вопрос Альберту',body:d.question}]:[]),
     {title:'Миф — текст истории',body:m.story},
-    {title:'Зеркало — взгляд со стороны',body:Object.values(m.mirror||{}).join('\n\n')},
-    {title:'Возможные смыслы',body:(m.meaning||[]).join('\n\n')},
-    {title:'Предложение',body:[m.one_step,m.journal_question,m.disclaimer].filter(Boolean).join('\n\n')},
+    ...(Array.isArray(m.made_of)&&m.made_of.length?[
+      {title:'Из чего сделана сказка',body:m.made_of.map((row:{element:string;source:string})=>`${row.element} — ${row.source}`).join('\n\n')},
+      {title:'Что это может значить сейчас',body:(m.meaning||[]).join('\n\n')},
+      {title:'Вопрос',body:m.journal_question||''},
+      {title:'Практика на 7 дней',body:m.one_step||''},
+      {title:'Примечание',body:'Если вы не узнали себя — это тоже ответ. Сказка — образ, не биография.'},
+    ]:[
+      {title:'Зеркало — взгляд со стороны',body:Object.values(m.mirror||{}).join('\n\n')},
+      {title:'Возможные смыслы',body:(m.meaning||[]).join('\n\n')},
+      {title:'Предложение',body:[m.one_step,m.journal_question,m.disclaimer].filter(Boolean).join('\n\n')},
+    ]),
     ...d.messages.map(message=>({title:message.role==='user'?'Вы':'Альберт · проводник',body:message.content})),
     ...(d.note?[{title:'Ваша заметка',body:d.note}]:[]),
   ];
