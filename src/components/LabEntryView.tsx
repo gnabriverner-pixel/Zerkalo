@@ -305,7 +305,7 @@ export function LabEntryView({
           {/* Albert lead before cards */}
           <div className="max-w-2xl mx-auto mb-10 pl-5 border-l-2 border-[var(--color-antique-gold)]/60 text-left">
             <span className="text-[13px] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] font-mono block mb-1 font-medium">
-              Альберт · проводник
+              Альберт — ИИ-собеседник
             </span>
             <p className="font-serif italic text-lg sm:text-[20px] text-stone-200 leading-relaxed font-light">
               Начните с даты: так проще увидеть, как здесь всё устроено. Личный миф можно открыть и сразу.

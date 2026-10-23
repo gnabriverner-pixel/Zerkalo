@@ -265,7 +265,9 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(entryHtml).toContain('Посмотреть пример');
 
     // Split at footer to test that hero and gates have NO "ИИ" at all
-    const [aboveFooter, footer] = entryHtml.split('<footer');
+    const [aboveFooterRaw, footer] = entryHtml.split('<footer');
+    // the only allowed mention: Albert's label (CLAUDE.md: «Альберт обозначается как ИИ-собеседник»)
+    const aboveFooter = aboveFooterRaw.split('Альберт — ИИ-собеседник').join('');
     expect(aboveFooter).not.toContain('ИИ');
     expect(aboveFooter).not.toContain('AI');
 
@@ -346,7 +348,9 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(entryHtml).toContain('Посмотреть пример');
 
     // No AI on storefront outside footer
-    const [aboveFooter, footer] = entryHtml.split('<footer');
+    const [aboveFooterRaw, footer] = entryHtml.split('<footer');
+    // the only allowed mention: Albert's label (CLAUDE.md: «Альберт обозначается как ИИ-собеседник»)
+    const aboveFooter = aboveFooterRaw.split('Альберт — ИИ-собеседник').join('');
     expect(aboveFooter).not.toContain('ИИ');
     expect(aboveFooter).not.toContain('AI');
   });
