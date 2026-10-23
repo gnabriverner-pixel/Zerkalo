@@ -126,7 +126,7 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(html).toContain('Как читать');
     expect(html).toContain('Проверьте на себе');
     expect(html).not.toContain('Вопросы для проверки карты');
-    expect(html).toContain('Альберт · проводник');
+    expect(html).toContain('Альберт — ИИ-собеседник');
     expect(html).not.toContain('Альберт · ИИ-проводник');
     expect(html).toContain('Альберт — собеседник по вашей карте');
     expect(html).toContain('Поговорить с Альбертом');

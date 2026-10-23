@@ -1061,7 +1061,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           role="dialog"
           aria-modal="true"
-          aria-label="Диалог с Альбертом · проводником"
+          aria-label="Диалог с Альбертом — ИИ-собеседником"
           className={`relative w-full max-w-3xl h-[100dvh] sm:h-[88vh] max-h-[100dvh] flex flex-col sm:rounded-sm shadow-2xl z-10 max-w-full overflow-x-hidden border ${
             isDark
               ? 'bg-[#0F1412] text-[#EAEAEA] border-[#2A3B33]'
@@ -1086,7 +1086,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
                   data-testid="albert-header-title"
                   className="font-serif text-lg sm:text-xl font-normal truncate"
                 >
-                  Альберт · проводник
+                  Альберт — ИИ-собеседник
                 </h3>
               </div>
             </div>
@@ -1213,7 +1213,7 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
               >
                 <div className="flex items-center gap-2 mb-1.5 px-1 text-xs font-mono uppercase tracking-wider opacity-70">
                   {msg.sender === 'albert' ? (
-                    <span className="text-[var(--color-antique-gold)]">Альберт · проводник</span>
+                    <span className="text-[var(--color-antique-gold)]">Альберт — ИИ-собеседник</span>
                   ) : (
                     <span className="flex items-center gap-1">
                       <User className="w-3 h-3" />

@@ -279,7 +279,7 @@ export function PersonalStoryLibrary({
                       <p>{order.data.myth.one_step}</p>
                       <p>{order.data.myth.journal_question}</p>
                       <p>{order.data.myth.disclaimer}</p>
-                      <h3>Альберт · проводник</h3>
+                      <h3>Альберт — ИИ-собеседник</h3>
                       <p>Осталось ответов: <strong>{order.remaining}</strong> из 5. Засчитывается только успешно сохранённый ответ.</p>
                       {order.data.messages.map((m, i) => (
                         <section key={i} className={'story-message ' + m.role}>
