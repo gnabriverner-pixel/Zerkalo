@@ -107,7 +107,7 @@ describe('Release 10 — Личный миф (Acceptance Criteria)', () => {
       const codeV2File = path.join(process.cwd(), 'src/components/CodeV2/CodeV2Experience.tsx');
       const content = fs.readFileSync(codeV2File, 'utf-8');
 
-      expect(content).toContain('Альберт · проводник');
+      expect(content).toContain('Альберт — ИИ-собеседник');
       expect(content).toContain(
         'Мы посмотрели на пять сторон жизни через образы чисел. Что из этого вам знакомо — решаете вы. А если хочется обратиться к тому, что происходит сейчас, ответьте на четыре вопроса. По вашим ответам будет создан Личный миф.'
       );

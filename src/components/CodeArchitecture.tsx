@@ -796,7 +796,7 @@ export default function CodeArchitecture({
 
             <div className="max-w-2xl mx-auto space-y-3">
               <h3 className="font-serif text-3xl sm:text-5xl text-[var(--color-text-primary)] font-light">
-                Диалог с Альбертом Вяземским
+                Диалог с Альбертом — ИИ-собеседником
               </h3>
               <p className="text-[16px] text-[var(--color-text-secondary)] font-light leading-relaxed">
                 Сейчас Альберт может продолжить разговор о вашем Коде прямо здесь. После Мифа и Встречи вы сможете при желании перенести краткий контекст в Telegram.

@@ -23,7 +23,7 @@ export function storySections(order:StoryOrder):{title:string;body:string}[]{
       {title:'Возможные смыслы',body:(m.meaning||[]).join('\n\n')},
       {title:'Предложение',body:[m.one_step,m.journal_question,m.disclaimer].filter(Boolean).join('\n\n')},
     ]),
-    ...d.messages.map(message=>({title:message.role==='user'?'Вы':'Альберт · проводник',body:message.content})),
+    ...d.messages.map(message=>({title:message.role==='user'?'Вы':'Альберт — ИИ-собеседник',body:message.content})),
     ...(d.note?[{title:'Ваша заметка',body:d.note}]:[]),
   ];
 }

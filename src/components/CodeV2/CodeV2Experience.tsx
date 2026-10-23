@@ -806,7 +806,7 @@ export function CodeV2Experience({
 
                       {story && albertLead(pos.position, pos.energy) && (
                         <p className="code-room-lead border-l-2 border-[var(--color-antique-gold)]/50 pl-3 text-base text-stone-300">
-                          <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90">Альберт · проводник</span>
+                          <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90">Альберт — ИИ-собеседник</span>
                           {albertLead(pos.position, pos.energy)}
                         </p>
                       )}
@@ -1172,7 +1172,7 @@ export function CodeV2Experience({
               <section className="w-full bg-gradient-to-br from-[#121A2A] via-[#0E1524] to-[#0A0E18] border border-[var(--color-antique-gold)]/30 rounded-2xl p-6 sm:p-8 relative shadow-2xl overflow-hidden">
                 <div className="border-l-2 border-[var(--color-antique-gold)]/50 pl-4 space-y-3">
                   <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90 font-mono">
-                    Альберт · проводник
+                    Альберт — ИИ-собеседник
                   </span>
                   <p className="text-sm sm:text-base text-stone-200 leading-relaxed font-serif">
                     Мы посмотрели на пять сторон жизни через образы чисел. Что из этого вам знакомо — решаете вы. А если хочется обратиться к тому, что происходит сейчас, ответьте на четыре вопроса. По вашим ответам будет создан Личный миф.

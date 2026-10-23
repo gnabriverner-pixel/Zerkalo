@@ -4,6 +4,7 @@ import path from "path";
 import { promisify } from "util";
 import { validateBirthDate } from "../src/services/birthDate";
 import type { CalculationResult, CodeV2Payload } from "../src/types";
+import { stripMarkdownDeep } from "./stripMarkdown";
 import {
   HardenedPrivacyCache,
   deriveCacheKey,
@@ -352,8 +353,9 @@ export async function calculateCanonicalCodeV2(dob: string, ownerId?: string): P
     if (response.ok) {
       const data = (await response.json()) as any;
       if (data.status === "ok" && data.payload) {
-        codeV2Cache.set(cacheKey, data.payload, ownerId);
-        return data.payload;
+        const clean = stripMarkdownDeep(data.payload as CodeV2Payload);
+        codeV2Cache.set(cacheKey, clean, ownerId);
+        return clean;
       }
     }
   } catch (_httpErr) {
@@ -371,8 +373,9 @@ export async function calculateCanonicalCodeV2(dob: string, ownerId?: string): P
 
     const parsed = JSON.parse(stdout.trim());
     if (parsed && parsed.status === "ok" && parsed.calculation && parsed.positions) {
-      codeV2Cache.set(cacheKey, parsed as CodeV2Payload, ownerId);
-      return parsed as CodeV2Payload;
+      const clean = stripMarkdownDeep(parsed as CodeV2Payload);
+      codeV2Cache.set(cacheKey, clean, ownerId);
+      return clean;
     }
     throw new Error("invalid_dcs_code_v2_payload");
   } catch (cliErr: any) {
