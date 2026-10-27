@@ -2,12 +2,12 @@
   "manifest_version": 1,
   "stage": "free-preview-internal-staging-candidate",
   "verified_at": null,
-  "verification_status": "MYTH_RETRY_13_1_CANDIDATE_SEE_EXTERNAL_EVIDENCE",
+  "verification_status": "CIKL2_MYTH_V2A_CANDIDATE_SEE_EXTERNAL_EVIDENCE",
   "production_authorized": false,
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
-    "branch": "fix/myth-retry-13-1",
-    "pinned_sha": "f60a1169483effa2d834281551fd35fe4c2e695c"
+    "branch": "feat/cikl2-myth-a",
+    "pinned_sha": "4031b5191e00f78e4e54206d931b02e6c697c474"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
@@ -24,8 +24,8 @@
         "/health"
       ]
     },
-    "personal_myth_writer_version": "personal-myth-v1.5-emergent-possibility",
-    "personal_myth_default_prompt_variant": "v11",
+    "personal_myth_writer_version": "personal-myth-v2a",
+    "personal_myth_default_prompt_variant": "v2a",
     "meeting_of_mirrors_version": "meeting-v1.1",
     "consent_version": "zerkalo-2026-09-v1"
   },
