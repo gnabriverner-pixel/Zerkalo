@@ -179,3 +179,80 @@ describe('legacy path (no idempotency)', () => {
     expect(button('Создать историю заново')).toBeUndefined();
   });
 });
+
+describe('honest error box and free-story-ready intro', () => {
+  const onOpenSavedStory = vi.fn();
+  async function render() { await act(async () => { root.render(React.createElement(PersonalMyth, { initialInputs: ANSWERS, onMythCompleted, onOpenSavedStory } as any)); }); await flush(0); }
+  async function fillAndSubmit() {
+    await click('Начать Личный миф');
+    for (let i = 0; i < 3; i++) await click('Далее');
+    await click('Создать Личный миф');
+    await flush(0);
+  }
+  const failWith = (code: string, ui: any) => h.fetchMock.mockImplementation(async (url: string) => {
+    if (url === '/api/personal-myth') return json({ status: 'error', code, ui }, 409);
+    if (url === '/api/stories') return json({ orders: [] });
+    return json({});
+  });
+  beforeEach(() => onOpenSavedStory.mockReset());
+
+  it('answers_locked: truthful text and "Открыть «Мои мифы»" instead of "Попробовать снова"', async () => {
+    failWith('answers_locked', { safe_message: 'x', action: 'open_saved' });
+    await render(); await fillAndSubmit();
+    expect(text()).toContain('Бесплатная история в этом браузере уже создана — она в разделе «Мои мифы».');
+    expect(button('Попробовать снова')).toBeUndefined();
+    await click('Открыть «Мои мифы»');
+    expect(onOpenSavedStory).toHaveBeenCalledTimes(1);
+  });
+
+  it('service_busy: repeat is offered', async () => {
+    failWith('service_busy', { safe_message: 'Сейчас выполняются другие запросы.', action: 'retry' });
+    await render(); await fillAndSubmit();
+    expect(button('Попробовать снова')).toBeDefined();
+    expect(button('Открыть «Мои мифы»')).toBeUndefined();
+  });
+
+  it('unknown code: support text and link, no blind retry', async () => {
+    h.access = { ...h.access, support_url: 'https://t.me/synthetic_help' };
+    failWith('some_new_code', { safe_message: 'Не получилось создать историю. Ваши ответы сохранены. Напишите в поддержку — мы увидим причину.', action: 'support' });
+    await render(); await fillAndSubmit();
+    expect(text()).toContain('Напишите в поддержку — мы увидим причину.');
+    expect(button('Попробовать снова')).toBeUndefined();
+    expect((host.querySelector('[data-testid="myth-support"]') as HTMLAnchorElement).href).toBe('https://t.me/synthetic_help');
+  });
+
+  it('action none: neither retry nor open button', async () => {
+    failWith('recovery_invalid', { safe_message: 'Код восстановления не найден.', action: 'none' });
+    await render(); await fillAndSubmit();
+    expect(text()).toContain('Код восстановления не найден.');
+    expect(button('Попробовать снова')).toBeUndefined();
+  });
+
+  it('the note under the button no longer says "Попытка одна"', async () => {
+    h.fetchMock.mockImplementation(async () => json({ orders: [] }));
+    await render(); await click('Начать Личный миф'); for (let i = 0; i < 3; i++) await click('Далее');
+    expect(text()).toContain('Одна бесплатная история на этот браузер.');
+    expect(text()).not.toContain('Попытка одна');
+  });
+
+  it('a ready free story: the intro shows "Мои мифы" instead of the start button', async () => {
+    h.fetchMock.mockImplementation(async (url: string) => url === '/api/stories' ? json({ orders: [{ kind: 'free', state: 'ready' }] }) : json({}));
+    await render();
+    expect(text()).toContain('Ваша бесплатная история уже готова — «Мои мифы».');
+    expect(button('Начать Личный миф')).toBeUndefined();
+    await click('Открыть «Мои мифы»');
+    expect(onOpenSavedStory).toHaveBeenCalledTimes(1);
+  });
+
+  it('owner service mode keeps the form even with a ready free story', async () => {
+    h.fetchMock.mockImplementation(async (url: string) => url === '/api/stories' ? json({ orders: [{ kind: 'free', state: 'ready' }], owner_test: true }) : json({}));
+    await render();
+    expect(button('Начать Личный миф')).toBeDefined();
+  });
+
+  it('no account (401): the form is shown', async () => {
+    h.fetchMock.mockImplementation(async (url: string) => url === '/api/stories' ? json({ code: 'account_required' }, 401) : json({}));
+    await render();
+    expect(button('Начать Личный миф')).toBeDefined();
+  });
+});

@@ -17,11 +17,26 @@ export const MYTH_ERROR_COPY: Record<string, string> = {
   free_story_already_issued: 'Ваш бесплатный Личный миф уже создан.',
   free_budget_exhausted: 'Бесплатные генерации пробного периода закончились.',
   service_busy: 'Сейчас много запросов. Ваши ответы сохранены в форме — попробуйте через минуту.',
+  answers_locked: 'Бесплатная история в этом браузере уже создана — она в разделе «Мои мифы».',
 };
-export const MYTH_OPEN_SAVED_LABEL = 'Открыть в «Моих мифах»';
+export const MYTH_OPEN_SAVED_LABEL = 'Открыть «Мои мифы»';
+
+/** Codes after which the answer is already in "My myths": the screen offers to open it, never a repeat. */
+const OPEN_SAVED_CODES = new Set(['free_story_already_issued', 'answers_locked']);
+export type MythNextAction = 'open_saved' | 'retry' | 'support' | 'none';
+/**
+ * What the error box offers. The server names it in ui.action; a missing action (legacy endpoint, network failure)
+ * keeps the old behaviour: retry. "Try again" is shown only where repeating can really help.
+ */
+export function mythNextAction(code: string, serverAction?: string): MythNextAction {
+  if (OPEN_SAVED_CODES.has(code) || serverAction === 'open_saved') return 'open_saved';
+  if (serverAction === 'support' || serverAction === 'none' || serverAction === 'retry') return serverAction;
+  return 'retry';
+}
 
 export const MYTH_COPY = {
-  createNote: 'Займёт 1–3 минуты. Ответы уходят ИИ, чтобы написать историю. Попытка одна.',
+  createNote: 'Займёт 1–3 минуты. Ответы уходят ИИ, чтобы написать историю. Одна бесплатная история на этот браузер.',
+  freeReady: 'Ваша бесплатная история уже готова — «Мои мифы».',
   writing: 'Пишем ваш Личный миф.',
   mayTakeMinutes: 'Это может занять несколько минут.',
   elapsed: (sec: number) => `Прошло ${sec} с. Обновлять страницу не нужно.`,
@@ -168,4 +183,15 @@ export async function readStorageAccepted(get: (url: string, init: RequestInit) 
 /** Account probe for canResend: 200 means this browser holds a story account (cookie) to re-send under. */
 export async function hasStoryAccount(get: (url: string, init: RequestInit) => Promise<Response | null>): Promise<boolean> {
   try { return Boolean((await get('/api/stories', { method: 'GET', cache: 'no-store' }))?.ok); } catch { return false; }
+}
+
+/** Read-only: does this browser already hold a ready free story (so the form would be a trap)? Owner service mode is exempt. */
+export async function readFreeStoryReady(get: (url: string, init: RequestInit) => Promise<Response | null>): Promise<boolean> {
+  try {
+    const res = await get('/api/stories', { method: 'GET', cache: 'no-store' });
+    if (!res || !res.ok) return false;
+    const data = await res.json();
+    if (data?.owner_test === true) return false;
+    return Boolean((data?.orders as any[] | undefined)?.some(o => o?.kind === 'free' && o?.state === 'ready'));
+  } catch { return false; }
 }

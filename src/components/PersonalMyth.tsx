@@ -12,7 +12,7 @@ import { useMythConfig } from '../services/mythAvailability';
 import { MYTH_V2A_QUESTIONS } from '../services/mythQuestionsV2A';
 import { showSecondaryPaths } from '../services/featureFlags';
 import { MythV2AResultBody, isV2AResult } from './MythV2AResult';
-import { waitForMyth, checkMythReadiness, readStorageAccepted, hasStoryAccount, MYTH_COPY, MYTH_ERROR_COPY, MYTH_OPEN_SAVED_LABEL, MYTH_SLOW_HINT_MS } from '../services/mythWait';
+import { waitForMyth, checkMythReadiness, readFreeStoryReady, mythNextAction, readStorageAccepted, hasStoryAccount, MYTH_COPY, MYTH_ERROR_COPY, MYTH_OPEN_SAVED_LABEL, MYTH_SLOW_HINT_MS } from '../services/mythWait';
 
 
 /** Stories from the opt-in writer v4.1 carry only title and story; the mirror/question blocks would be empty. Old stories are unaffected. */
@@ -72,6 +72,9 @@ export default function PersonalMyth({
   const [result, setResult] = useState<ApiResponse['story_result'] | null>(initialResult || null);
   const [errorText, setErrorText] = useState('');
   const [errorCode, setErrorCode] = useState('');
+  const [errorAction, setErrorAction] = useState<string | undefined>(undefined);
+  const [errorSupportEmail, setErrorSupportEmail] = useState<string | null>(null);
+  const [freeReady, setFreeReady] = useState(false);
   const [journalNote, setJournalNote] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
   const requestIdRef = useRef(`myth_${crypto.randomUUID().replace(/-/g, '')}`);
@@ -91,6 +94,14 @@ export default function PersonalMyth({
   const writerV2A = mythConfig?.writer === 'v2a';
   const exampleUrl = mythConfig?.example_url ?? null;
   const generationBlocked = mythConfig?.generation_available === false || Boolean(freePreview?.enabled && !freePreview.can_start_myth);
+
+  // A ready free story in this browser: show "My myths" instead of a form that can only be refused.
+  useEffect(() => {
+    if (!freePreview?.enabled) return;
+    let alive = true;
+    void readFreeStoryReady(protectedFetch).then(v => { if (alive) setFreeReady(v); });
+    return () => { alive = false; };
+  }, [freePreview?.enabled]);
 
   // Stop waiting/re-sending when the component goes away.
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -237,6 +248,7 @@ export default function PersonalMyth({
     setStep(5);
     setErrorText('');
     setErrorCode('');
+    setErrorAction(undefined);
     const controller = new AbortController();
     abortRef.current = controller;
     try {
@@ -271,6 +283,8 @@ export default function PersonalMyth({
       } else if (data.status === 'error' || !data.story_result) {
         const code = String((data as any).code || '');
         setErrorCode(code);
+        setErrorAction((data as any).ui?.action);
+        setErrorSupportEmail((data as any).ui?.support_email ?? null);
         setErrorText(MYTH_ERROR_COPY[code] || data.ui?.safe_message || "Связь с зеркалом прервалась. Попробуйте обновить.");
         setStep(lastStep);
       } else {
@@ -334,14 +348,16 @@ export default function PersonalMyth({
                 <p role="status" className="mb-6 text-xs sm:text-sm font-mono text-stone-300">{freeWindowLine ?? 'Пробный доступ — бесплатно.'} Что в истории вам близко, решаете вы.</p>
               ) : null}
               {generationBlocked&&<p role="status" data-testid="myth-unavailable" className="mb-4 text-sm text-stone-300">{exampleUrl?MYTH_COPY.unavailableWithExample:MYTH_COPY.unavailableNoExample}{exampleUrl&&<> <a className="underline" href={exampleUrl} target="_blank" rel="noreferrer">Прочитать пример Личного мифа</a></>}</p>}
-              <button 
+              {freeReady&&<p role="status" data-testid="myth-free-ready" className="mb-4 text-sm text-stone-300">{MYTH_COPY.freeReady}</p>}
+              {freeReady&&onOpenSavedStory&&<button type="button" data-testid="myth-open-saved-intro" onClick={onOpenSavedStory} className="mb-4 px-8 py-4 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all cursor-pointer">{MYTH_OPEN_SAVED_LABEL}</button>}
+              {!freeReady&&<button 
                 disabled={generationBlocked}
                 onClick={async()=>{try{const access=await readFreePreview();if(access.enabled&&!access.can_start_myth){setErrorText(access.pause_message);return;}setStep(1);}catch(e:any){setErrorText(e.message);}}}
                 className="px-8 py-4 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] shadow-[0_0_30px_rgba(200,164,93,0.25)] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none inline-flex items-center gap-2"
               >
                 <span>Начать Личный миф</span>
                 <ArrowRight size={14} />
-              </button>
+              </button>}
               {errorText&&<p role="alert">{errorText}</p>}
               
               <div className="mt-14 text-xs text-stone-300 font-normal tracking-wide flex flex-wrap items-center justify-center gap-2 px-4 text-center">
@@ -452,23 +468,17 @@ export default function PersonalMyth({
               {errorText && (
                 <div className="w-full max-w-xl mx-auto mb-6 p-4 bg-red-950/40 border border-red-500/30 rounded-xs text-center text-sm text-red-200">
                   <p className="mb-3 text-xs sm:text-sm font-normal">{errorText}</p>
-                  {errorCode === 'free_story_already_issued' && onOpenSavedStory ? (
-                  <button type="button" onClick={onOpenSavedStory}
-                    className="px-4 py-2 bg-red-900/60 hover:bg-red-800 text-xs font-mono uppercase tracking-wider text-red-100 rounded-xs transition-colors cursor-pointer">
-                    {MYTH_OPEN_SAVED_LABEL}
-                  </button>
-                  ) : errorCode === 'free_story_already_issued' ? null : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErrorText('');
-                      handleGenerate();
-                    }}
-                    className="px-4 py-2 bg-red-900/60 hover:bg-red-800 text-xs font-mono uppercase tracking-wider text-red-100 rounded-xs transition-colors cursor-pointer"
-                  >
-                    Попробовать снова
-                  </button>
-                  )}
+                  {(() => {
+                    const next = mythNextAction(errorCode, errorAction);
+                    const btn = "px-4 py-2 bg-red-900/60 hover:bg-red-800 text-xs font-mono uppercase tracking-wider text-red-100 rounded-xs transition-colors cursor-pointer";
+                    if (next === 'open_saved') return onOpenSavedStory ? <button type="button" data-testid="myth-open-saved" onClick={onOpenSavedStory} className={btn}>{MYTH_OPEN_SAVED_LABEL}</button> : null;
+                    if (next === 'support') {
+                      const href = freePreview?.support_url || (errorSupportEmail ? `mailto:${errorSupportEmail}` : '');
+                      return href ? <a data-testid="myth-support" className="underline text-xs" href={href} target="_blank" rel="noreferrer">{MYTH_COPY.supportLink}</a> : null;
+                    }
+                    if (next === 'none') return null;
+                    return <button type="button" data-testid="myth-retry" onClick={() => { setErrorText(''); handleGenerate(); }} className={btn}>Попробовать снова</button>;
+                  })()}
                 </div>
               )}
 

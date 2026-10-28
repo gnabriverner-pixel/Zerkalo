@@ -173,6 +173,18 @@ describe('13.1 code-specific refusal copy', () => {
     expect(MYTH_ERROR_COPY.free_budget_exhausted).toBeTruthy();
     expect(MYTH_ERROR_COPY.service_busy).toBeTruthy();
     expect(MYTH_ERROR_COPY.saved_answers_differ).toBeUndefined();
-    expect(MYTH_OPEN_SAVED_LABEL).toBe('Открыть в «Моих мифах»');
+    expect(MYTH_OPEN_SAVED_LABEL).toBe('Открыть «Мои мифы»');
+  });
+});
+
+describe('mythNextAction', () => {
+  it('open saved for issued/locked codes, server action honoured, legacy default is retry', async () => {
+    const { mythNextAction } = await import('./mythWait');
+    expect(mythNextAction('answers_locked')).toBe('open_saved');
+    expect(mythNextAction('free_story_already_issued', 'none')).toBe('open_saved');
+    expect(mythNextAction('x', 'support')).toBe('support');
+    expect(mythNextAction('x', 'none')).toBe('none');
+    expect(mythNextAction('service_busy', 'retry')).toBe('retry');
+    expect(mythNextAction('')).toBe('retry');
   });
 });

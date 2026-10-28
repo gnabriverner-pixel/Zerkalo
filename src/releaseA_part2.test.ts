@@ -199,7 +199,7 @@ describe('free window line and create note', () => {
     expect(freeWindowLine(null)).toBeNull();
   });
   it('the create note says time, AI and one attempt', () => {
-    expect(MYTH_COPY.createNote).toBe('Займёт 1–3 минуты. Ответы уходят ИИ, чтобы написать историю. Попытка одна.');
+    expect(MYTH_COPY.createNote).toBe('Займёт 1–3 минуты. Ответы уходят ИИ, чтобы написать историю. Одна бесплатная история на этот браузер.');
   });
 });
 
