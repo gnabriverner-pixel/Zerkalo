@@ -2,7 +2,11 @@ import type { DeepSeekRequestOptions } from './deepseek';
 import {reserveProviderAttempt} from './aiBudget';
 
 export const ROUTERAI_URL = 'https://routerai.ru/api/v1';
-export const PRIMARY_MODEL = 'deepseek/deepseek-v4.1-flash';
+/** Default DeepSeek model. The previous id (deepseek/deepseek-v4.1-flash) lost its DeepSeek-provider endpoint on RouterAI
+ * (404 with provider.only=['deepseek']); -1017 has one. The old id stays priced in aiTariffs.json because the DCS Albert
+ * process still hardcodes it (telegram_v2/albert/routerai.py:18). */
+export const PRIMARY_MODEL = 'deepseek/deepseek-v4.1-flash-1017';
+export const LEGACY_PRIMARY_MODEL = 'deepseek/deepseek-v4.1-flash';
 export const FALLBACK_MODEL = 'anthropic/claude-sonnet-5';
 export const MEETING_FALLBACK_MODEL = 'openai/gpt-5.4-mini';
 /** Myth writers only (v2a default, v4.1 rollback via PERSONAL_MYTH_WRITER=v41); never a fallback of another path. */
@@ -185,7 +189,7 @@ export class RouterAIClient implements ChatClient {
       if (writer && routedUpstream !== 'anthropic') throw new Error('provider_upstream_mismatch');
       if (this.defaultModel === MEETING_FALLBACK_MODEL && routedUpstream !== 'openai') throw new Error('provider_upstream_mismatch');
       // Official DeepSeek returns upstream alias deepseek-flash in the proven transport.
-      const validModels = !secondary ? [PRIMARY_MODEL, 'deepseek-flash'] : [this.defaultModel];
+      const validModels = !secondary ? [PRIMARY_MODEL, 'deepseek-flash', 'deepseek-v4.1-flash-1017'] : [this.defaultModel];
       if (!validModels.includes(payload?.model)) throw new Error('provider_model_mismatch');
       event.responseModel = validModels.includes(payload?.model) ? payload.model : null;
       if(payload?.choices?.[0]?.finish_reason==='length')throw new Error('provider_truncated');

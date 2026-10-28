@@ -1628,6 +1628,1716 @@
           "variable_pricings": []
         }
       ]
+    },
+    {
+      "model": "deepseek/deepseek-v4.1-flash-1017",
+      "source": "https://routerai.ru/api/v1/models/deepseek/deepseek-v4.1-flash-1017/endpoints",
+      "input_rate": 0.00003816085416,
+      "output_rate": 0.0002081501136,
+      "captured_at": "2026-10-29T00:00:00.000Z",
+      "endpoints": [
+        {
+          "name": "BytePlus | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "BytePlus",
+          "tag": "byteplus",
+          "country": "sg",
+          "countries": [
+            "sg"
+          ],
+          "context_length": 1048576,
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "frequency_penalty",
+            "include_reasoning",
+            "logit_bias",
+            "logprobs",
+            "max_completion_tokens",
+            "max_tokens",
+            "min_p",
+            "parallel_tool_calls",
+            "presence_penalty",
+            "reasoning",
+            "reasoning_effort",
+            "repetition_penalty",
+            "response_format",
+            "seed",
+            "stop",
+            "structured_outputs",
+            "temperature",
+            "tool_choice",
+            "tools",
+            "top_k",
+            "top_logprobs",
+            "top_p"
+          ],
+          "supported_apis": [
+            "chat"
+          ],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000346916856,
+            "completion": 0.0001387667424,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": [
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000173458428,
+              "utc_end": 0,
+              "utc_days": [
+                "saturday",
+                "sunday"
+              ],
+              "utc_start": 0,
+              "completion": 0.0000693833712,
+              "input_cache_read": 3.46916856e-7
+            },
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000173458428,
+              "utc_end": 100,
+              "utc_days": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday"
+              ],
+              "utc_start": 0,
+              "completion": 0.0000693833712,
+              "input_cache_read": 3.46916856e-7
+            },
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000346916856,
+              "utc_end": 400,
+              "utc_days": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday"
+              ],
+              "utc_start": 100,
+              "completion": 0.0001387667424,
+              "input_cache_read": 6.93833712e-7
+            },
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000173458428,
+              "utc_end": 600,
+              "utc_days": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday"
+              ],
+              "utc_start": 400,
+              "completion": 0.0000693833712,
+              "input_cache_read": 3.46916856e-7
+            },
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000346916856,
+              "utc_end": 1000,
+              "utc_days": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday"
+              ],
+              "utc_start": 600,
+              "completion": 0.0001387667424,
+              "input_cache_read": 6.93833712e-7
+            },
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000173458428,
+              "utc_end": 0,
+              "utc_days": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday"
+              ],
+              "utc_start": 1000,
+              "completion": 0.0000693833712,
+              "input_cache_read": 3.46916856e-7
+            }
+          ]
+        },
+        {
+          "name": "Sail Research | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Sail Research",
+          "tag": "sail-research",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp4",
+          "max_completion_tokens": 384000,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "frequency_penalty",
+            "max_tokens",
+            "presence_penalty",
+            "seed",
+            "stop",
+            "temperature",
+            "top_k",
+            "top_p",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.000011679534152,
+            "completion": 0.0000173458428,
+            "input_cache_read": 7.7882834172e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "DeepInfra | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "DeepInfra",
+          "tag": "deepinfra",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 131072,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "repetition_penalty",
+            "top_k",
+            "seed",
+            "min_p",
+            "logit_bias",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [
+            "chat",
+            "embeddings"
+          ],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.000011332617296,
+            "completion": 0.000033997851888,
+            "input_cache_read": 3.3997851888e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "DeepInfra | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "DeepInfra",
+          "tag": "deepinfra/flex",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 131072,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "repetition_penalty",
+            "top_k",
+            "seed",
+            "min_p",
+            "logit_bias",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [
+            "chat",
+            "embeddings"
+          ],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000090660938368,
+            "completion": 0.0000271982815104,
+            "input_cache_read": 2.71982815104e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "DeepInfra | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "DeepInfra",
+          "tag": "deepinfra/priority",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 131072,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "repetition_penalty",
+            "top_k",
+            "seed",
+            "min_p",
+            "logit_bias",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [
+            "chat",
+            "embeddings"
+          ],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.000016998925944,
+            "completion": 0.000050996777832,
+            "input_cache_read": 5.0996777832e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Morph | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Morph",
+          "tag": "morph",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 1048576,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "stop",
+            "top_p",
+            "top_k",
+            "min_p",
+            "frequency_penalty",
+            "presence_penalty",
+            "repetition_penalty",
+            "seed",
+            "logit_bias",
+            "tools",
+            "tool_choice",
+            "structured_outputs",
+            "response_format"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.000005088113888,
+            "completion": 0.000044289718616,
+            "input_cache_read": 4.62555808e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Decart | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Decart",
+          "tag": "decart",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp4",
+          "max_completion_tokens": 262144,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "top_p",
+            "top_k",
+            "min_p",
+            "frequency_penalty",
+            "presence_penalty",
+            "repetition_penalty",
+            "stop",
+            "seed",
+            "max_tokens",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.000011968631532,
+            "completion": 0.000047874526128,
+            "input_cache_read": 2.3937263064e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Ionstream | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Ionstream",
+          "tag": "ionstream",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 943718,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "frequency_penalty",
+            "logit_bias",
+            "presence_penalty",
+            "seed",
+            "stop",
+            "top_k",
+            "top_p",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000173458428,
+            "completion": 0.0000520375284,
+            "input_cache_read": 0.000001098570044
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Wafer | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Wafer",
+          "tag": "wafer",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "mxfp4",
+          "max_completion_tokens": 1048576,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "top_p",
+            "top_k",
+            "min_p",
+            "frequency_penalty",
+            "presence_penalty",
+            "repetition_penalty",
+            "stop",
+            "seed",
+            "max_tokens",
+            "logit_bias",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.000004394280176,
+            "completion": 0.000057819476,
+            "input_cache_read": 5.7819476e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Reka | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Reka",
+          "tag": "reka",
+          "country": null,
+          "countries": [],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "top_p",
+            "max_tokens",
+            "stop",
+            "reasoning_effort",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": -5,
+          "pricing": {
+            "prompt": 0.00000462555808,
+            "completion": 0.000057819476,
+            "input_cache_read": 4.62555808e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Relace | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Relace",
+          "tag": "relace",
+          "country": null,
+          "countries": [],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 1048576,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "top_p",
+            "top_k",
+            "min_p",
+            "stop",
+            "max_tokens",
+            "logit_bias",
+            "frequency_penalty",
+            "presence_penalty",
+            "repetition_penalty",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.00000809472664,
+            "completion": 0.000057819476,
+            "input_cache_read": 9.25111616e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "InferenceNet | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "InferenceNet",
+          "tag": "inference-net",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1040000,
+          "quantization": "fp8",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "seed",
+            "response_format",
+            "structured_outputs",
+            "repetition_penalty",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.00000925111616,
+            "completion": 0.0000636014236,
+            "input_cache_read": 9.25111616e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "AtlasCloud | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "AtlasCloud",
+          "tag": "atlas-cloud",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "top_k",
+            "min_p",
+            "frequency_penalty",
+            "presence_penalty",
+            "repetition_penalty",
+            "stop",
+            "seed",
+            "logit_bias",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.00001561125852,
+            "completion": 0.00006244503408,
+            "input_cache_read": 0.000001561125852
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Cloudflare | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Cloudflare",
+          "tag": "cloudflare",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 1048576,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "top_k",
+            "seed",
+            "repetition_penalty",
+            "frequency_penalty",
+            "presence_penalty",
+            "min_p",
+            "stop",
+            "logit_bias",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000115638952,
+            "completion": 0.0000693833712,
+            "input_cache_read": 3.46916856e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "DeepSeek | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "DeepSeek",
+          "tag": "deepseek",
+          "country": "cn",
+          "countries": [
+            "cn"
+          ],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "logprobs",
+            "top_logprobs",
+            "tools",
+            "tool_choice",
+            "response_format"
+          ],
+          "supported_apis": [
+            "chat",
+            "completions"
+          ],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000173458428,
+            "completion": 0.0000693833712,
+            "input_cache_read": 3.46916856e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": [
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000173458428,
+              "utc_end": 0,
+              "utc_days": [
+                "saturday",
+                "sunday"
+              ],
+              "utc_start": 0,
+              "completion": 0.0000693833712,
+              "input_cache_read": 3.46916856e-7
+            },
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000173458428,
+              "utc_end": 100,
+              "utc_days": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday"
+              ],
+              "utc_start": 0,
+              "completion": 0.0000693833712,
+              "input_cache_read": 3.46916856e-7
+            },
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000346916856,
+              "utc_end": 400,
+              "utc_days": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday"
+              ],
+              "utc_start": 100,
+              "completion": 0.0001387667424,
+              "input_cache_read": 6.93833712e-7
+            },
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000173458428,
+              "utc_end": 600,
+              "utc_days": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday"
+              ],
+              "utc_start": 400,
+              "completion": 0.0000693833712,
+              "input_cache_read": 3.46916856e-7
+            },
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000346916856,
+              "utc_end": 1000,
+              "utc_days": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday"
+              ],
+              "utc_start": 600,
+              "completion": 0.0001387667424,
+              "input_cache_read": 6.93833712e-7
+            },
+            {
+              "type": "time-of-day",
+              "prompt": 0.0000173458428,
+              "utc_end": 0,
+              "utc_days": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday"
+              ],
+              "utc_start": 1000,
+              "completion": 0.0000693833712,
+              "input_cache_read": 3.46916856e-7
+            }
+          ]
+        },
+        {
+          "name": "StreamLake | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "StreamLake",
+          "tag": "streamlake",
+          "country": "cn",
+          "countries": [
+            "cn"
+          ],
+          "context_length": 1024000,
+          "quantization": "fp8",
+          "max_completion_tokens": 384000,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "reasoning_effort",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [
+            "chat"
+          ],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000173458428,
+            "completion": 0.0000693833712,
+            "input_cache_read": 3.46916856e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Alibaba | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Alibaba",
+          "tag": "alibaba",
+          "country": "sg",
+          "countries": [
+            "sg",
+            "cn"
+          ],
+          "context_length": 1000000,
+          "quantization": "unknown",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "seed",
+            "presence_penalty",
+            "response_format",
+            "top_k",
+            "frequency_penalty",
+            "stop",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [
+            "chat",
+            "responses",
+            "embeddings",
+            "messages"
+          ],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.00001908042708,
+            "completion": 0.00007632170832,
+            "input_cache_read": 0.000001908042708
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": [
+            {
+              "type": "time-of-day",
+              "prompt": 0.00003816085416,
+              "utc_end": 1400,
+              "utc_start": 0,
+              "completion": 0.00015264341664,
+              "input_cache_read": 0.000003816085416
+            },
+            {
+              "type": "time-of-day",
+              "prompt": 0.00001908042708,
+              "utc_end": 0,
+              "utc_start": 1400,
+              "completion": 0.00007632170832,
+              "input_cache_read": 0.000001908042708
+            }
+          ]
+        },
+        {
+          "name": "Cohere | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Cohere",
+          "tag": "cohere",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 384000,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "top_k",
+            "seed",
+            "structured_outputs",
+            "response_format",
+            "tools",
+            "tool_choice",
+            "parallel_tool_calls",
+            "logprobs",
+            "top_logprobs",
+            "repetition_penalty"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.00002254959564,
+            "completion": 0.00007632170832,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "GMICloud | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "GMICloud",
+          "tag": "gmicloud",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048575,
+          "quantization": "fp8",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "seed",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.00002081501136,
+            "completion": 0.00008326004544,
+            "input_cache_read": 4.163002272e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Novita | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Novita",
+          "tag": "novita",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "seed",
+            "top_k",
+            "repetition_penalty",
+            "response_format",
+            "tools",
+            "logprobs",
+            "top_logprobs",
+            "tool_choice"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.00002254959564,
+            "completion": 0.00009019838256,
+            "input_cache_read": 4.509919128e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "DigitalOcean | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "DigitalOcean",
+          "tag": "digitalocean",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 1048576,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "top_p",
+            "max_tokens",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000260187642,
+            "completion": 0.0001040750568,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Modal | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Modal",
+          "tag": "modal",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 1048576,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "top_p",
+            "stop",
+            "max_tokens",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.000028909738,
+            "completion": 0.000115638952,
+            "input_cache_read": 5.7819476e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Particle AI | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Particle AI",
+          "tag": "particle-ai",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 131072,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "frequency_penalty",
+            "logprobs",
+            "max_tokens",
+            "min_p",
+            "presence_penalty",
+            "reasoning_effort",
+            "repetition_penalty",
+            "seed",
+            "stop",
+            "temperature",
+            "tool_choice",
+            "tools",
+            "top_k",
+            "top_logprobs",
+            "top_p",
+            "response_format",
+            "structured_outputs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.000028909738,
+            "completion": 0.000115638952,
+            "input_cache_read": 0.00000346916856
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Baidu | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Baidu",
+          "tag": "baidu",
+          "country": "cn",
+          "countries": [
+            "cn"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "top_p",
+            "max_tokens",
+            "stop",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.00003237890656,
+            "completion": 0.00013067201576,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Makora | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Makora",
+          "tag": "makora",
+          "country": null,
+          "countries": [],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 943718,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "top_p",
+            "top_k",
+            "frequency_penalty",
+            "presence_penalty",
+            "repetition_penalty",
+            "stop",
+            "max_tokens",
+            "seed",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000173458428,
+            "completion": 0.0001387667424,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Phala | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Phala",
+          "tag": "phala",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "seed",
+            "top_k",
+            "min_p",
+            "repetition_penalty",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000231277904,
+            "completion": 0.0001387667424,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Crusoe | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Crusoe",
+          "tag": "crusoe",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "seed",
+            "min_p",
+            "repetition_penalty",
+            "top_k",
+            "logit_bias",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.00003353529608,
+            "completion": 0.0001387667424,
+            "input_cache_read": 8.09472664e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Parasail | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Parasail",
+          "tag": "parasail",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 1048576,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "frequency_penalty",
+            "presence_penalty",
+            "repetition_penalty",
+            "seed",
+            "stop",
+            "top_k",
+            "logit_bias",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000346916856,
+            "completion": 0.0001387667424,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "BaseTen | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "BaseTen",
+          "tag": "baseten",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 262144,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000346916856,
+            "completion": 0.0001387667424,
+            "input_cache_read": 8.09472664e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Fireworks | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Fireworks",
+          "tag": "fireworks",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "top_k",
+            "repetition_penalty",
+            "logit_bias",
+            "logprobs",
+            "top_logprobs",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000346916856,
+            "completion": 0.0001387667424,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "PrimeIntellect | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "PrimeIntellect",
+          "tag": "primeintellect",
+          "country": null,
+          "countries": [],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 131072,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "max_completion_tokens",
+            "temperature",
+            "top_p",
+            "top_k",
+            "stop",
+            "frequency_penalty",
+            "repetition_penalty",
+            "parallel_tool_calls",
+            "reasoning_effort",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000346916856,
+            "completion": 0.0001387667424,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Together | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Together",
+          "tag": "together",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "unknown",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "top_k",
+            "repetition_penalty",
+            "logit_bias",
+            "min_p",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "logprobs",
+            "top_logprobs"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000346916856,
+            "completion": 0.0001387667424,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "SiliconFlow | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "SiliconFlow",
+          "tag": "siliconflow",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "top_p",
+            "top_k",
+            "frequency_penalty",
+            "max_tokens",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000346916856,
+            "completion": 0.0001387667424,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "Nebius | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "Nebius",
+          "tag": "nebius",
+          "country": "nl",
+          "countries": [
+            "nl"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp8",
+          "max_completion_tokens": 393216,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "max_tokens",
+            "temperature",
+            "top_p",
+            "stop",
+            "frequency_penalty",
+            "presence_penalty",
+            "seed",
+            "top_k",
+            "logit_bias",
+            "logprobs",
+            "top_logprobs",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000346916856,
+            "completion": 0.0001387667424,
+            "input_cache_read": 6.93833712e-7
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        },
+        {
+          "name": "OpenInference | deepseek/deepseek-v4.1-flash-1017",
+          "provider_name": "OpenInference",
+          "tag": "open-inference",
+          "country": "us",
+          "countries": [
+            "us"
+          ],
+          "context_length": 1048576,
+          "quantization": "fp4",
+          "max_completion_tokens": 1048576,
+          "supported_parameters": [
+            "reasoning",
+            "include_reasoning",
+            "temperature",
+            "max_tokens",
+            "stop",
+            "seed",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "response_format",
+            "top_p",
+            "top_k",
+            "min_p",
+            "logit_bias",
+            "frequency_penalty",
+            "presence_penalty",
+            "repetition_penalty"
+          ],
+          "supported_apis": [],
+          "status": 0,
+          "pricing": {
+            "prompt": 0.0000015958175376,
+            "completion": 0.0002081501136,
+            "input_cache_read": 0.0000015842536424
+          },
+          "pricing_units": {
+            "prompt": "token",
+            "completion": "token",
+            "input_cache_read": "token"
+          },
+          "variable_pricings": []
+        }
+      ]
     }
   ]
 }

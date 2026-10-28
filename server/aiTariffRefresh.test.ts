@@ -54,7 +54,7 @@ it('Web validates after refresh/read, shares concurrent refresh and preserves th
     if(calls===3){clock=start+2;acceptTariffs(db.db,{...seed,captured_at:new Date(start+1).toISOString()},clock);}
     return new Response(JSON.stringify({data:{id:row.model,endpoints:row.endpoints}}));}) as typeof fetch;
   const budget=new AIBudget(()=>db,env,transport,()=>clock);budget.db();clock=start;
-  const [first,second]=await Promise.all([budget.prepare(),budget.prepare()]);expect(calls).toBe(4);expect(first.captured_at).toBe(new Date(start+1).toISOString());expect(second.captured_at).toBe(seed.captured_at);
+  const [first,second]=await Promise.all([budget.prepare(),budget.prepare()]);expect(calls).toBe(seed.rows.length);expect(first.captured_at).toBe(new Date(start+1).toISOString());expect(second.captured_at).toBe(seed.captured_at);
   const reserved=budget.reserve(seed.rows[0].model,{messages:[{role:'user',content:'synthetic'}],max_tokens:100});expect(reserved.id).toBeTypeOf('string');
   db.close();db=new CommerceStore(filename,key);expect(currentTariffs(db.db).version).toBe(first.version);db.close();
 });

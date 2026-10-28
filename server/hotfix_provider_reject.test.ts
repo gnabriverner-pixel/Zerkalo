@@ -42,3 +42,12 @@ describe('ALBERT_MODEL',()=>{
     expect(resolveAlbertModel({ALBERT_MODEL:'deepseek/unknown-model'} as any)).toBe(PRIMARY_MODEL);expect(warn).toHaveBeenCalledWith('albert_model_ignored',{reason:'no_tariff_row'});
   });
 });
+describe('default model and tariffs',()=>{
+  it('default model has a priced row, the legacy id stays priced (DCS Albert still uses it), seed validates',async()=>{
+    const {PRIMARY_MODEL:primary,LEGACY_PRIMARY_MODEL:legacy}=await import('./routerai');
+    const {validateTariffs}=await import('./aiTariffService.mjs');
+    expect(primary).toBe('deepseek/deepseek-v4.1-flash-1017');
+    const models=(tariffs.rows as any[]).map(r=>r.model);expect(models).toContain(primary);expect(models).toContain(legacy);
+    expect(()=>validateTariffs(tariffs as any,Date.parse(tariffs.captured_at)+1)).not.toThrow();
+  });
+});
