@@ -25,6 +25,7 @@ import {
 import { containsMeetingCrisisInput, generateMeetingOfMirrors } from "./server/meeting";
 import { AlbertCanonicalError, checkSafety, generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
 import { installChapterOfferRoutes } from "./server/chapterOffer";
+import { installLegacyEndpointGate } from "./server/legacyEndpoints";
 import crypto from "crypto";
 import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge, purgeCanonicalCaches, deriveCacheKey, bindCanonicalCacheOwner } from "./server/dcsBridge";
 import { createContinuationClaim, LOCAL_CANDIDATE_TELEGRAM_UNAVAILABLE_MESSAGE, sweepExpiredClaims } from "./server/handoff";
@@ -137,6 +138,8 @@ export async function createApp(options: CreateAppOptions = {}) {
   // Schema reference: "status": "crisis", "story_result": { "mirror": { "mainImage": "", "innerTension": "" } }
   app.use(express.json({ limit: "5mb" }));
   app.use(express.urlencoded({extended:false,limit:'8kb'}));
+  // Routes without a live client are closed (404) unless LEGACY_ENDPOINTS_ENABLED=true.
+  installLegacyEndpointGate(app);
   app.get('/privacy', (_req,res)=>res.sendFile(path.resolve('public/privacy.html')));
   app.get('/terms', (_req,res)=>res.sendFile(path.resolve('public/terms.html')));
   installConsentRoutes(app);
