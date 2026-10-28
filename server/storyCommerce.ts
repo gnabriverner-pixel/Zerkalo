@@ -11,6 +11,7 @@ import {parseAlbertMessage,checkSafety} from './albert';
 import {checkAndIncrementRate,consumeDailyBudget} from './rateLimit';
 import {AIBudget,withAIBudget} from './aiBudget';
 import {FreePreview,PREVIEW_FEEDBACK_VERSION} from './freePreview';
+import {ownerConfigured,keyMatches,isOwner,setOwnerCookie,OWNER_PAGE} from './ownerMode';
 
 const COOKIE='zerkalo_stories';
 const cookie=(req:Request,name:string)=>(req.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(name+'='))?.slice(name.length+1);
@@ -75,6 +76,69 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     preview_ended:'Пятидневный пробный доступ завершён. Уже полученные истории и PDF доступны.',
     service_busy:'Сейчас выполняются другие запросы. Ввод сохранён — попробуйте через минуту.',
     free_story_already_issued:'В этом доступе история уже создана. Откройте сохранённую историю или восстановите доступ своим кодом.',
+    owner_key_invalid:'Ключ не принят.',
+    answers_locked:'Бесплатная история в этом браузере уже создана — она в разделе «Мои мифы».',
+    saved_answers_differ:'В этом браузере уже сохранены другие ответы для бесплатной истории. Откройте её в «Моих мифах».',
+    account_required:'Этот браузер не связан с сохранённым доступом. Восстановите доступ кодом или начните заново.',
+    account_rate_limit:'Слишком много новых доступов с этого адреса. Попробуйте через несколько минут.',
+    rate_limit:'Слишком много запросов подряд. Ввод сохранён — попробуйте через минуту.',
+    recovery_rate_limit:'Слишком много попыток восстановления. Попробуйте через несколько минут.',
+    payment_refresh_rate_limit:'Слишком частые проверки платежа. Попробуйте через минуту.',
+    daily_budget_reached:'Дневной лимит бесплатных историй исчерпан. Ввод сохранён, попробуйте завтра.',
+    provider_not_ready:'Сервис написания историй сейчас недоступен. Ваши ответы сохранены, попробуйте позже.',
+    ai_concurrency_limit:'Сейчас выполняются другие запросы. Ввод сохранён — попробуйте через минуту.',
+    ai_price_bound_unknown:'Сервис временно приостановлен: стоимость вызова не подтверждена. Ваши ответы сохранены.',
+    ai_budget_policy_changed_needs_review:'Сервис временно приостановлен до проверки финансового предела. Ваши ответы сохранены.',
+    generation_not_delivered:'Историю получить не удалось, ответ не засчитан. Ваши ответы сохранены.',
+    empty_albert_response:'Собеседник не ответил, ответ не засчитан. Попробуйте ещё раз.',
+    story_not_found:'Такая история не найдена в этом доступе.',
+    story_not_issued:'История ещё не готова.',
+    story_not_ready:'История ещё не готова.',
+    myth_not_available:'История ещё создаётся. Подождите немного.',
+    order_revoked:'Этот заказ отозван. Результат недоступен.',
+    storage_consent_required:'Для сохранения истории нужно согласие на хранение. Без него результат доступен только пока открыта страница.',
+    consent_required:'Сначала нужно согласие на обработку данных.',
+    origin_rejected:'Запрос отклонён: откройте сайт по обычному адресу и повторите.',
+    request_key_required:'Запрос не распознан. Обновите страницу и повторите.',
+    request_key_conflict:'Этот запрос уже использован с другими данными. Обновите страницу.',
+    question_too_long:'Вопрос слишком длинный. Сократите его до двух тысяч знаков.',
+    note_invalid:'Заметка слишком длинная или повреждена.',
+    feedback_consent_required:'Для отзыва нужно ваше согласие.',
+    feedback_invalid:'Отзыв пустой или слишком длинный.',
+    explicit_retry_required:'Для повтора нужно явное подтверждение.',
+    explicit_deletion_required:'Для удаления нужно явное подтверждение.',
+    legacy_myth_invalid:'Старый результат не удалось перенести.',
+    free_import_not_available:'Перенос старого результата сейчас недоступен.',
+    payment_not_created:'Платёж ещё не создан.',
+    payment_not_pending:'Платёж уже обработан.',
+    payment_already_started:'Оплата этого заказа уже начата. Проверьте платёж.',
+    payment_provider_error:'Платёжный сервис не ответил. Деньги не списаны; попробуйте позже.',
+    payment_uncertain_needs_support:'Статус платежа неизвестен. Сохраните номер заказа и обратитесь в поддержку.',
+    payment_mismatch:'Платёж не совпал с заказом. Сохраните номер заказа и обратитесь в поддержку.',
+    payment_url_invalid:'Платёжная страница недоступна. Обратитесь в поддержку.',
+    payment_configuration_missing:'Оплата ещё не настроена. Ваш бесплатный результат доступен.',
+    live_checkout_closed:'Оплата сейчас закрыта. Ваш бесплатный результат доступен.',
+    receipt_email_required:'Для чека нужен адрес электронной почты.',
+    receipt_contact_conflict:'Для этого заказа уже указан другой адрес для чека.',
+    paid_order_required:'Это действие доступно только для оплаченного заказа.',
+    paid_order_not_available:'Оплаченный заказ недоступен.',
+    support_reason_invalid:'Причина обращения не распознана.',
+    commerce_disabled:'Сохранение историй сейчас выключено. Ввод остаётся в форме.',
+    commerce_private_directory_required:'Хранилище историй ещё не настроено. Ввод остаётся в форме.',
+    commerce_private_directory_invalid:'Хранилище историй недоступно. Ввод остаётся в форме; поддержка видит причину.',
+    commerce_key_changed:'Хранилище историй недоступно. Ввод остаётся в форме; поддержка видит причину.',
+    commerce_process_already_running:'Хранилище историй занято. Попробуйте через минуту.',
+    invalid_revocation_journal:'Хранилище историй временно недоступно. Ввод остаётся в форме.',
+  };
+  // What the screen offers next. retry: the same action may succeed later; open_saved: the answer is already in "My myths";
+  // none: repeating cannot help. A code missing from `errors` is unknown: support link, never a blind retry.
+  const RETRY=new Set(['service_busy','operation_in_progress','myth_not_available','rate_limit','account_rate_limit','ai_concurrency_limit','provider_not_ready','payment_refresh_rate_limit','recovery_rate_limit']);
+  const OPEN_SAVED=new Set(['answers_locked','free_story_already_issued','saved_answers_differ']);
+  const UNKNOWN_MESSAGE='Не получилось создать историю. Ваши ответы сохранены. Напишите в поддержку — мы увидим причину.';
+  const uiFor=(code:string,routePath:string)=>{
+    if(Object.prototype.hasOwnProperty.call(errors,code))return {safe_message:errors[code],action:OPEN_SAVED.has(code)?'open_saved':RETRY.has(code)?'retry':'none'};
+    console.warn('commerce_unmapped',{route:routePath,code});
+    return {safe_message:UNKNOWN_MESSAGE,action:'support',support_email:process.env.COMMERCE_SUPPORT_EMAIL||null};
   };
   const route=(fn:(req:Request,res:Response)=>Promise<any>|any)=>(req:Request,res:Response)=>{
     Promise.resolve().then(()=>fn(req,res)).catch(error=>{
@@ -83,10 +147,22 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
       const path=String(req.route?.path||'');
       if(known&&(path.startsWith('/api/personal-myth')||path.startsWith('/api/stories/')))console.warn('commerce_error',{route:path,code,status:error.status});
       // Never log provider bodies, customer texts, keys or a raw stack containing them.
-      res.status(known?error.status:502).json({status:'error',code,operation_failed:error?.operation_failed===true,ui:{safe_message:errors[code]||'Не удалось завершить действие. Ваш ввод остаётся в форме; проверьте историю перед повтором.'}});
+      res.status(known?error.status:502).json({status:'error',code,operation_failed:error?.operation_failed===true,ui:uiFor(code,path)});
     });
   };
   const buckets=new Map();
+  // Service mode (owner checks): 404 unless OWNER_TEST_KEY_SHA256 is set. The key travels only in the POST body.
+  app.get('/owner',(_req,res)=>{
+    if(!ownerConfigured())return res.sendStatus(404);
+    res.set({'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}).type('html').send(OWNER_PAGE);
+  });
+  app.post('/api/owner/unlock',route((req,res)=>{
+    if(!ownerConfigured())return res.sendStatus(404);
+    if(!sameOrigin(req))throw new CommerceError('origin_rejected',403);
+    if(!checkAndIncrementRate('owner:'+req.ip,5,Date.now(),600000,buckets).allowed)throw new CommerceError('rate_limit',429);
+    if(!keyMatches(req.body?.key))throw new CommerceError('owner_key_invalid',403);
+    setOwnerCookie(res);res.set('Cache-Control','no-store').json({owner:true});
+  }));
   app.get('/api/free-preview',(_req,res)=>res.set('Cache-Control','no-store').json(availability()));
   app.get('/api/local-free-preview',route((req,res)=>{
     if(!local(req)||process.env.LOCAL_STORY_SETUP!=='true'||process.env.NODE_ENV==='production')return res.sendStatus(404);
@@ -171,7 +247,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     const order=store().importFree(account(req),answers,myth);if(preview.status().active&&order.created_at>=preview.status().started_at!)preview.mark(order.id);
     res.json({order:publicOrder(store().order(account(req),order.id))});
   }));
-  app.get('/api/stories',route((req,res)=>res.json({orders:store().list(account(req)).map(publicOrder)})));
+  app.get('/api/stories',route((req,res)=>res.json({orders:store().list(account(req)).map(publicOrder),...(isOwner(req,cookie)?{owner_test:true}:{})})));
   app.get('/api/stories/:id',route((req,res)=>res.json({order:publicOrder(store().order(account(req),req.params.id))})));
   app.post('/api/stories/offer',route((req,res)=>{
     const free=store().list(account(req)).find(order=>order.kind==='free'&&order.state==='ready');
@@ -339,18 +415,22 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
       const parsed=parsePersonalMythRequest(req.body),requestKey=key(parsed.request_id);
       if(containsCrisisLanguage(parsed.answers))return res.json({mode:'story',status:'crisis',ui:{safe_message:SAFE_CRISIS_MESSAGE}});
       const db=store();let id=db.account(cookie(req,COOKIE));
-      const existing=id?db.list(id).find(order=>order.kind==='free'):undefined;
+      const owner=isOwner(req,cookie);
+      // Owner mode lifts only the one-free-story limit; budget, safety and rate checks below apply as usual.
+      const existing=id&&!owner?db.list(id).find(order=>order.kind==='free'):undefined;
       if(preview.enabled()&&!existing?.data.myth&&existing?.state!=='generating'&&!availability().can_start_myth)throw new CommerceError('free_budget_exhausted',503);
       if(!id){
         if(!checkAndIncrementRate('account:'+req.ip,10,Date.now(),600000,buckets).allowed)throw new CommerceError('account_rate_limit',429);
         const created=db.createAccount();id=created.id;setAccess(res,created.access);
       }
-      let order=db.createOrder(id,requestKey,'free',process.env.NODE_ENV!=='production');
+      let order=db.createOrder(id,requestKey,'free',owner||process.env.NODE_ENV!=='production',owner);
       if(preview.status().active&&order.created_at>=preview.status().started_at!)preview.mark(order.id);
       if(order.state==='ready'){
         if(JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('free_story_already_issued',402);
         return res.json({status:'ok',mode:'story',story_result:order.data.myth,order:publicOrder(order),replayed:true});
       }
+      // An already issued free story is never reopened for other answers (it used to surface as a bare answers_locked).
+      if(!owner&&(order.data.myth||order.issued_at)&&JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('free_story_already_issued',402);
       if(!order.data.answers)order=db.saveAnswers(id,order.id,parsed.answers,'');
       else if(order.state==='generation_failed'&&JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))order=db.restartFailedFree(id,order.id,parsed.answers);
       if(JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('saved_answers_differ',409);
