@@ -89,13 +89,13 @@ describe('honest Myth error messages',()=>{
   });
 });
 describe('owner service mode',()=>{
-  it('without OWNER_TEST_KEY_SHA256 the page and unlock return 404',async()=>{
-    const s=await setup();try{expect((await s.call('/owner')).status).toBe(404);expect((await s.call('/api/owner/unlock',{key:OWNER_KEY})).status).toBe(404);}finally{s.close();}
+  it('without OWNER_TEST_KEY_SHA256 the page, unlock and recovery return 404',async()=>{
+    const s=await setup();try{expect((await s.call('/api/owner/recovery')).status).toBe(404);expect((await s.call('/owner')).status).toBe(404);expect((await s.call('/api/owner/unlock',{key:OWNER_KEY})).status).toBe(404);}finally{s.close();}
   });
   it('/owner is noindex and has one key field; wrong key is 403 and rate limited; key is never logged',async()=>{
     const logs=[vi.spyOn(console,'warn').mockImplementation(()=>{}),vi.spyOn(console,'log').mockImplementation(()=>{}),vi.spyOn(console,'error').mockImplementation(()=>{})];
     const s=await setup({OWNER_TEST_KEY_SHA256:OWNER_HASH});try{
-      const page=await s.call('/owner');expect(page.status).toBe(200);expect(page.headers.get('x-robots-tag')).toContain('noindex');expect(page.text).toContain('noindex');expect(page.text).toContain('Служебный ключ');
+      const page=await s.call('/owner');expect(page.status).toBe(200);expect(page.headers.get('x-robots-tag')).toContain('noindex');expect(page.text).toContain('noindex');expect(page.text).toContain('Служебный ключ');expect(page.text).toContain('Каждый новый Миф — в новом служебном доступе; код восстановления показывается после создания.');
       for(let i=0;i<5;i++){const r=await s.call('/api/owner/unlock',{key:'wrong-key-'+i});expect(r.status).toBe(403);expect(r.headers.get('set-cookie')).toBeNull();}
       expect((await s.call('/api/owner/unlock',{key:OWNER_KEY})).status).toBe(429);// even the right key is throttled after 5 attempts
       const all=JSON.stringify(logs.map(l=>l.mock.calls));expect(all).not.toContain('wrong-key');expect(all).not.toContain(OWNER_KEY);expect(all).not.toContain(OWNER_HASH);
@@ -104,7 +104,7 @@ describe('owner service mode',()=>{
   it('cross-origin unlock is rejected',async()=>{
     const s=await setup({OWNER_TEST_KEY_SHA256:OWNER_HASH});try{expect((await s.call('/api/owner/unlock',{key:OWNER_KEY},{Origin:'https://evil.example'})).status).toBe(403);}finally{s.close();}
   });
-  it('without cookie the one-free-story limit holds; with cookie a second, test-marked Myth is created',async()=>{
+  it('without cookie the one-free-story limit holds; with cookie each new Myth gets a new test-marked access',async()=>{
     const s=await setup({OWNER_TEST_KEY_SHA256:OWNER_HASH});try{
       await s.consent();await s.issue();
       const blocked=await s.call('/api/personal-myth',{request_id:'hotfix_myth_0002',answers:OTHER});expect(blocked.body.code).toBe('free_story_already_issued');expect(s.myth).toHaveBeenCalledTimes(1);
@@ -113,8 +113,18 @@ describe('owner service mode',()=>{
       await s.issue('hotfix_myth_0002',OTHER);expect(s.myth).toHaveBeenCalledTimes(2);
       await s.issue('hotfix_myth_0003',{...OTHER,q1:'Третий синтетический ответ'});expect(s.myth).toHaveBeenCalledTimes(3);
       const orders=(await s.call('/api/stories')).body;expect(orders.owner_test).toBe(true);
-      const free=orders.orders.filter((o:any)=>o.kind==='free');expect(free).toHaveLength(3);expect(free.every((o:any)=>o.test===true)).toBe(true);
-      expect(s.store.db.prepare("SELECT COUNT(*) AS n FROM events WHERE name='issued' AND test=1").get()).toEqual({n:3});
+      // each new Myth lives in its own new access: the browser sees only the latest one, the one-free-per-access index is untouched
+      expect(orders.orders.filter((o:any)=>o.kind==='free')).toHaveLength(1);
+      expect(s.store.db.prepare("SELECT COUNT(*) AS n FROM accounts").get()).toEqual({n:3});
+      expect(s.store.db.prepare("SELECT COUNT(*) AS n FROM orders WHERE kind='free'").get()).toEqual({n:3});
+      expect(s.store.db.prepare("SELECT COUNT(*) AS n FROM orders WHERE kind='free' AND test=1").get()).toEqual({n:3});// all test here (non-production env); owner orders are always test
+      expect(s.store.db.prepare("SELECT COUNT(*) AS n FROM events WHERE name='issued' AND test=1").get()).toEqual({n:3});// all test here (non-production env); owner orders are always test
+      // polling the same request id does not spawn more accesses
+      expect((await s.call('/api/personal-myth',{request_id:'hotfix_myth_0003',answers:{...OTHER,q1:'Третий синтетический ответ'}})).status).toBe(200);
+      expect(s.store.db.prepare("SELECT COUNT(*) AS n FROM accounts").get()).toEqual({n:3});
+      // schema unchanged: old code reads the same database
+      const idx=(s.store.db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'one_free%'").all() as any[]).map(r=>r.name);expect(idx).toEqual(['one_free']);
+      const rec=await s.call('/api/owner/recovery');expect(rec.status).toBe(200);expect(rec.body.recovery).toMatch(/^[\w-]{43}$/);
     }finally{s.close();}
   });
   it('owner mode does not lift the window budget',async()=>{

@@ -83,9 +83,7 @@ export class CommerceStore {
       UPDATE ai_budget_attempts SET state='uncertain' WHERE state='reserved';
       CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY, access_hash TEXT UNIQUE, recovery_hash TEXT UNIQUE, deleted INTEGER NOT NULL DEFAULT 0, storage_accepted INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS orders(id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),request_key TEXT NOT NULL,kind TEXT NOT NULL,state TEXT NOT NULL,test INTEGER NOT NULL,created_at INTEGER NOT NULL,issued_at INTEGER,payment_started INTEGER,payment_id TEXT UNIQUE,checkout_url TEXT,payload TEXT,payload_expires INTEGER,UNIQUE(account_id,request_key));
-      -- One real free story per access. Owner service-mode orders are test=1 and are exempt (see ownerMode.ts); the old unconditional index is dropped.
-      DROP INDEX IF EXISTS one_free;
-      CREATE UNIQUE INDEX IF NOT EXISTS one_free_real ON orders(account_id) WHERE kind='free' AND test=0;
+      CREATE UNIQUE INDEX IF NOT EXISTS one_free ON orders(account_id) WHERE kind='free';
       CREATE TABLE IF NOT EXISTS operations(order_id TEXT NOT NULL REFERENCES orders(id),request_key TEXT NOT NULL,kind TEXT NOT NULL,input_hash TEXT NOT NULL,state TEXT NOT NULL,charged INTEGER NOT NULL DEFAULT 0,result TEXT,created_at INTEGER NOT NULL,finished_at INTEGER,PRIMARY KEY(order_id,request_key));
       CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY,name TEXT NOT NULL,order_id TEXT,created_at INTEGER NOT NULL,test INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS support_requests(order_id TEXT PRIMARY KEY REFERENCES orders(id),reason TEXT NOT NULL,created_at INTEGER NOT NULL,test INTEGER NOT NULL);
@@ -264,11 +262,11 @@ export class CommerceStore {
     this.db.prepare('UPDATE accounts SET storage_accepted=1,storage_version=?,storage_accepted_at=? WHERE id=?').run('personal-history-storage-v1',Date.now(),account);
     this.db.prepare('UPDATE orders SET payload_expires=NULL WHERE account_id=?').run(account);
   }
-  createOrder(account:string, requestKey:string, kind:'free'|'paid', test:boolean, allowExtraFree=false):StoryOrder {
+  createOrder(account:string, requestKey:string, kind:'free'|'paid', test:boolean):StoryOrder {
     return this.tx(()=>{
       this.assertAccount(account);
       if(kind==='paid'&&!this.storageAccepted(account))throw new CommerceError('storage_consent_required',403);
-      const existing=this.db.prepare("SELECT id FROM orders WHERE account_id=? AND (request_key=? OR (kind='free' AND ?='free' AND ?=0) OR (?='paid' AND kind='paid' AND state='pending_payment'))").get(account,requestKey,kind,+allowExtraFree,kind) as any;
+      const existing=this.db.prepare("SELECT id FROM orders WHERE account_id=? AND (request_key=? OR (kind='free' AND ?='free') OR (?='paid' AND kind='paid' AND state='pending_payment'))").get(account,requestKey,kind,kind) as any;
       if(existing)return this.order(account,existing.id);
       if(kind==='paid' && !this.db.prepare("SELECT id FROM orders WHERE account_id=? AND kind='free' AND state='ready'").get(account))throw new CommerceError('complete_free_first');
       const id=crypto.randomUUID();

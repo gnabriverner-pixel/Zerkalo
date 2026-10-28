@@ -156,6 +156,10 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     if(!ownerConfigured())return res.sendStatus(404);
     res.set({'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'}).type('html').send(OWNER_PAGE);
   });
+  app.get('/api/owner/recovery',route((req,res)=>{
+    if(!isOwner(req,cookie))return res.sendStatus(404);
+    res.set('Cache-Control','no-store').json({recovery:store().recovery(account(req))});
+  }));
   app.post('/api/owner/unlock',route((req,res)=>{
     if(!ownerConfigured())return res.sendStatus(404);
     if(!sameOrigin(req))throw new CommerceError('origin_rejected',403);
@@ -416,21 +420,26 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
       if(containsCrisisLanguage(parsed.answers))return res.json({mode:'story',status:'crisis',ui:{safe_message:SAFE_CRISIS_MESSAGE}});
       const db=store();let id=db.account(cookie(req,COOKIE));
       const owner=isOwner(req,cookie);
-      // Owner mode lifts only the one-free-story limit; budget, safety and rate checks below apply as usual.
-      const existing=id&&!owner?db.list(id).find(order=>order.kind==='free'):undefined;
+      // Owner mode: a request key not yet known to the current access gets a NEW access (like a first visit), so the
+      // one-free-story-per-access rule and its DB index stay untouched. Same key again (polling) stays on its access.
+      if(owner&&!(id&&db.db.prepare('SELECT 1 FROM orders WHERE account_id=? AND request_key=?').get(id,requestKey))){
+        if(!checkAndIncrementRate('account:'+req.ip,10,Date.now(),600000,buckets).allowed)throw new CommerceError('account_rate_limit',429);
+        const created=db.createAccount(true);id=created.id;setAccess(res,created.access,true);
+      }
+      const existing=id?db.list(id).find(order=>order.kind==='free'):undefined;
       if(preview.enabled()&&!existing?.data.myth&&existing?.state!=='generating'&&!availability().can_start_myth)throw new CommerceError('free_budget_exhausted',503);
       if(!id){
         if(!checkAndIncrementRate('account:'+req.ip,10,Date.now(),600000,buckets).allowed)throw new CommerceError('account_rate_limit',429);
         const created=db.createAccount();id=created.id;setAccess(res,created.access);
       }
-      let order=db.createOrder(id,requestKey,'free',owner||process.env.NODE_ENV!=='production',owner);
+      let order=db.createOrder(id,requestKey,'free',owner||process.env.NODE_ENV!=='production');
       if(preview.status().active&&order.created_at>=preview.status().started_at!)preview.mark(order.id);
       if(order.state==='ready'){
         if(JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('free_story_already_issued',402);
         return res.json({status:'ok',mode:'story',story_result:order.data.myth,order:publicOrder(order),replayed:true});
       }
       // An already issued free story is never reopened for other answers (it used to surface as a bare answers_locked).
-      if(!owner&&(order.data.myth||order.issued_at)&&JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('free_story_already_issued',402);
+      if((order.data.myth||order.issued_at)&&JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('free_story_already_issued',402);
       if(!order.data.answers)order=db.saveAnswers(id,order.id,parsed.answers,'');
       else if(order.state==='generation_failed'&&JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))order=db.restartFailedFree(id,order.id,parsed.answers);
       if(JSON.stringify(order.data.answers)!==JSON.stringify(parsed.answers))throw new CommerceError('saved_answers_differ',409);
