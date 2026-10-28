@@ -21,14 +21,14 @@ export function MythV2AResultBody({ result, inputs, afterStory }: { result: Myth
       <div className="text-center w-full max-w-2xl mx-auto pt-4">
         <EmblemPlate planet={7} variant="obsidian" size={64} showNumber={false} showLabel={false} className="mx-auto mb-6" />
         <span className="text-[13px] tracking-[0.3em] uppercase text-[var(--color-antique-gold)] font-sans font-medium block mb-2">
-          Личный Миф · Художественная сцена
+          Личный миф
         </span>
         <h1 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-4 font-light tracking-tight" data-testid="myth-title">
           {result.title}
         </h1>
       </div>
 
-      <div className="w-full max-w-[var(--measure)] mx-auto border-t border-white/10 pt-8" data-testid="myth-answers">
+      <div className="w-full max-w-[var(--measure)] mx-auto border-t border-white/10 pt-8 mb-12 sm:mb-16" data-testid="myth-answers">
         <span className="text-[13px] uppercase font-sans font-medium tracking-[0.25em] text-[var(--color-antique-gold)]/80 block mb-4">
           Что вы рассказали в трёх ответах
         </span>
@@ -43,10 +43,7 @@ export function MythV2AResultBody({ result, inputs, afterStory }: { result: Myth
       </div>
 
       <article className="w-full max-w-[calc(var(--measure)+6rem)] mx-auto bg-[#EFE5D3] px-6 py-10 sm:px-12 sm:py-14 rounded-xs">
-        <div className="mb-8 flex items-center justify-between border-b border-[#6B5638]/20 pb-4 text-[13px] uppercase tracking-[0.25em] text-[#6B5638] font-sans font-medium">
-          <span>Личный миф</span>
-          <span>Чернила · ваши три ответа</span>
-        </div>
+        <div className="mb-8 border-b border-[#6B5638]/20 pb-4 text-center text-[13px] uppercase tracking-[0.25em] text-[#6B5638] font-sans font-medium">Ваша история</div>
         <div className="font-serif text-[1.3125rem] sm:text-[1.4375rem] leading-[1.68] text-[#231c14] space-y-[1.1em] font-normal max-w-[var(--measure)] mx-auto" data-testid="myth-story">
           {result.story.split('\n\n').map((paragraph, idx) => (
             <p key={idx}>{paragraph}</p>

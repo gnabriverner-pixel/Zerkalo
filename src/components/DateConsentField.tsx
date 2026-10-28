@@ -18,13 +18,10 @@ export function DateConsentField({ checked, onChange }: { checked: boolean; onCh
           {DATE_CONSENT_LABEL} (<a href="/privacy" target="_blank" rel="noreferrer" className="underline text-[var(--color-antique-gold)]">политика</a>). Мне есть 18 лет.
         </span>
       </label>
-      <ul className="text-xs text-stone-400 space-y-1 pl-8 list-none">
-        <li>Дата нужна для расчёта; в нашей базе она не сохраняется.</li>
-        <li>Ответы для Личного мифа уходят языковой модели, чтобы написать текст.</li>
-        <li>Согласие можно отозвать, а данные удалить в любой момент.</li>
-      </ul>
+      <p className="text-xs text-stone-400 pl-8">Дата нужна для расчёта; в нашей базе она не сохраняется.</p>
       <details className="text-xs text-stone-400 pl-8">
         <summary className="cursor-pointer py-1">Подробнее</summary>
+        <p className="leading-relaxed pt-1">Ответы для Личного мифа уходят языковой модели, чтобы написать текст. Согласие можно отозвать, а данные удалить в любой момент.</p>
         <p className="leading-relaxed pt-1">
           Сайт информационно-развлекательный и только для тех, кому исполнилось 18 лет. Не вводите чужие данные. Где хранятся данные, кому они передаются и как их удалить —{' '}
           <a href="/privacy" target="_blank" rel="noreferrer" className="underline text-[var(--color-antique-gold)]">в политике</a>.
