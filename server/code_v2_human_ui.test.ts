@@ -71,7 +71,8 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     // Artistic content words (central motif + mini-stories or fallback essences)
     const artisticWords = [
       payload.central_motif || '',
-      ...payload.positions.flatMap((p) => {
+      // Only the first room is open on arrival; the others show a heading and one phrase.
+      ...payload.positions.slice(0, 1).flatMap((p) => {
         const s = (p as any).mini_story;
         return s ? [s.title, ...s.paragraphs, s.question] : [p.essence, p.verification_question];
       }),
@@ -110,7 +111,12 @@ describe('Code V2 Human Product Experience UI Contract', () => {
 
     // Full mini-stories with all paragraphs and story question visible immediately without expanding
     const textContent = html.replace(/<[^>]*>/g, ' ');
-    for (const position of payload.positions) {
+    for (const [roomIndex, position] of payload.positions.entries()) {
+      if (roomIndex > 0) {
+        // One room open at a time: the others show a heading and a first phrase, and open on a click.
+        expect(textContent).toContain(position.energy_name);
+        continue;
+      }
       if (position.mini_story) {
         expect(textContent).toContain(position.mini_story.title);
         for (const paragraph of position.mini_story.paragraphs) {
@@ -126,7 +132,6 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(html).toContain('Как читать');
     expect(html).toContain('Проверьте на себе');
     expect(html).not.toContain('Вопросы для проверки карты');
-    expect(html).toContain('Альберт — ИИ-собеседник');
     expect(html).not.toContain('Альберт · ИИ-проводник');
     expect(html).toContain('Альберт — собеседник по вашей карте');
     expect(html).toContain('Поговорить с Альбертом');
@@ -141,6 +146,7 @@ describe('Code V2 Human Product Experience UI Contract', () => {
         onOpenAlbert: () => {}
       })
     );
+    expect(expandedHtml).toContain('Альберт — ИИ-собеседник');
     expect(expandedHtml).toContain('Когда эта сила работает');
     expect(expandedHtml).toContain('Где она начинает мешать');
     expect(expandedHtml).toContain('Главная ловушка');
@@ -195,6 +201,7 @@ describe('Code V2 Human Product Experience UI Contract', () => {
       React.createElement(CodeV2Experience, {
         initialDate: '06.05.1986',
         initialPayload: fallbackPayload,
+        initialExpanded: { path: true },
         isQaMode: false,
         onOpenAlbert: () => {}
       })
@@ -304,13 +311,14 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(entryHtml).toContain('mirror-hero.webp');
     expect(entryHtml.toLowerCase()).toContain('fetchpriority="high"');
 
-    // Solid cards #0D121D without glassmorphism over the moon
-    expect(entryHtml).toContain('bg-[#0D121D]');
-    expect(entryHtml).not.toContain('bg-[#060911]/75');
+    // «Museum» (release 14a): no card boxes with a coloured outline, thin lines and air instead
+    expect(entryHtml).not.toContain('bg-[#0D121D]');
+    expect(entryHtml).not.toContain('shadow-[0_8px_32px');
+    expect(entryHtml).not.toContain('brightness-[1.18]');
 
-    // 150px luminary emblems on cards
-    expect(entryHtml).toContain('width:150px');
-    expect(entryHtml).toContain('height:150px');
+    // quieter 112px luminary emblems
+    expect(entryHtml).toContain('width:112px');
+    expect(entryHtml).toContain('height:112px');
 
     // 3 date fields in Code card: DD, MM, YYYY
     expect(entryHtml).toContain('id="birth-day"');

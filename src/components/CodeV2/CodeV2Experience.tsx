@@ -416,7 +416,7 @@ export function CodeV2Experience({
   };
 
   // One room open at a time; the first one is open on arrival.
-  const [openRoom, setOpenRoom] = useState<string | null>(() => initialPayload?.positions?.[0]?.position ?? null);
+  const [openRoom, setOpenRoom] = useState<string | null>(() => initialPayload?.positions?.find(p => initialExpanded?.[p.position])?.position ?? initialPayload?.positions?.[0]?.position ?? null);
   useEffect(() => {
     if (payload && !payload.positions.some(p => p.position === openRoom)) {
       setOpenRoom(payload.positions[0]?.position ?? null);
