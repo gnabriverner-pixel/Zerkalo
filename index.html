@@ -3,29 +3,47 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Зеркало Себя — Ведическая нумерология и Личный миф</title>
-    <meta name="description" content="Две независимые линзы самопознания: точный ведический Цифровой Код даты рождения и метафорический Личный Миф из ваших образов." />
+    <title>Зеркало себя — разбор по дате и Личный миф</title>
+    <meta name="description" content="Зеркало себя: пять сторон жизни по дате рождения через истории и вопросы, а затем Личный миф — художественная история по вашим ответам. Информационно-развлекательный проект." />
     <link rel="canonical" href="https://zerkalosebya.ru/" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://zerkalosebya.ru/" />
-    <meta property="og:title" content="Зеркало Себя — Цифровой Код и Личный Миф" />
-    <meta property="og:description" content="Две независимые линзы самопознания: точный ведический Цифровой Код даты рождения и метафорический Личный Миф." />
+    <meta property="og:title" content="Зеркало себя — разбор по дате и Личный миф" />
+    <meta property="og:description" content="Пять сторон жизни по дате рождения через истории и вопросы, а затем Личный миф — художественная история по вашим ответам." />
     <meta property="og:image" content="https://zerkalosebya.ru/og/zerkalo-share.jpg" />
     <meta property="og:locale" content="ru_RU" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://zerkalosebya.ru/" />
-    <meta name="twitter:title" content="Зеркало Себя — Цифровой Код и Личный Миф" />
-    <meta name="twitter:description" content="Две независимые линзы самопознания: точный ведический Цифровой Код даты рождения и метафорический Личный Миф." />
+    <meta name="twitter:title" content="Зеркало себя — разбор по дате и Личный миф" />
+    <meta name="twitter:description" content="Пять сторон жизни по дате рождения через истории и вопросы, а затем Личный миф — художественная история по вашим ответам." />
     <meta name="twitter:image" content="https://zerkalosebya.ru/og/zerkalo-share.jpg" />
 
     <link rel="preload" href="/fonts/manrope-cyrillic-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/cormorant-garamond-cyrillic-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/boot/moon-mobile.webp" as="image" type="image/webp" media="(max-width: 640px)">
+    <style>
+      html, body { margin: 0; background: #090d15; }
+      #boot { position: fixed; inset: 0; z-index: 100; overflow: hidden; background: radial-gradient(120% 90% at 50% -10%, #1b2440 0%, transparent 60%), linear-gradient(180deg, #0c1020, #070a12); transition: opacity .45s ease; }
+      #boot.boot-out { opacity: 0; pointer-events: none; }
+      #boot img { position: absolute; left: 50%; top: -101px; width: 1250px; height: 708px; transform: translateX(-50%); object-fit: contain; opacity: .85; mix-blend-mode: screen; }
+      #boot .boot-title { position: absolute; left: 0; right: 0; top: 26%; margin: 0; text-align: center; font: 300 56px/0.96 'Cormorant Garamond', Georgia, serif; letter-spacing: -.01em; color: #f1ede4; text-shadow: 0 2px 14px rgba(9,13,21,.95); }
+      @media (min-width: 641px) { #boot img { top: -126px; width: 1440px; height: 816px; } #boot .boot-title { top: 34%; font-size: 72px; } }
+      @media (min-width: 1024px) { #boot img { top: -176px; width: 1800px; height: 1020px; } #boot .boot-title { font-size: 88px; } }
+    </style>
   </head>
   <body>
+    <div id="boot" aria-hidden="true">
+      <picture>
+        <source media="(max-width: 640px)" srcset="/boot/moon-mobile.webp" type="image/webp">
+        <img src="/boot/moon.webp" alt="" width="1250" height="708" fetchpriority="high" decoding="async">
+      </picture>
+      <p class="boot-title">Зеркало себя</p>
+    </div>
+    <script>if (location.pathname !== '/') { var b = document.getElementById('boot'); if (b) b.remove(); }</script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

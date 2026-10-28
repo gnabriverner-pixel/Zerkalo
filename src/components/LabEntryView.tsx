@@ -213,15 +213,8 @@ export function LabEntryView({
       <div className="absolute inset-x-0 top-0 h-[640px] sm:h-[760px] lg:h-[860px] pointer-events-none overflow-hidden select-none" aria-hidden="true">
         {/* Soft Golden Coronal Glow breathing behind the Moon */}
         <motion.div
-          animate={shouldReduceMotion ? { opacity: 0.85, scale: 1 } : {
-            opacity: [0.75, 0.98, 0.75],
-            scale: [0.97, 1.03, 0.97],
-          }}
-          transition={shouldReduceMotion ? { duration: 0.01 } : {
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
+          animate={{ opacity: 0.6, scale: 1 }}
+          transition={{ duration: 0.01 }}
           className="absolute rounded-full pointer-events-none left-1/2 -translate-x-1/2"
           style={{
             background: 'radial-gradient(circle, rgba(224,198,147,0.32) 0%, rgba(200,164,93,0.18) 40%, rgba(200,164,93,0.06) 62%, transparent 75%)',
@@ -234,9 +227,7 @@ export function LabEntryView({
 
         {/* High-definition Moon & Sacred Geometry Artwork with Celestial Drift */}
         <motion.div
-          animate={shouldReduceMotion ? { y: 0 } : { y: [-3, 3, -3] }}
-          transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 11, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute left-1/2 -translate-x-1/2 top-[-165px] sm:top-[-190px] lg:top-[-240px] w-[1250px] sm:w-[1440px] lg:w-[1800px] h-[708px] sm:h-[816px] lg:h-[1020px] pointer-events-none flex items-center justify-center"
+                    className="absolute left-1/2 -translate-x-1/2 top-[-165px] sm:top-[-190px] lg:top-[-240px] w-[1250px] sm:w-[1440px] lg:w-[1800px] h-[708px] sm:h-[816px] lg:h-[1020px] pointer-events-none flex items-center justify-center"
         >
           <picture className="w-full h-full block">
             <source media="(max-width: 640px)" srcSet={mirrorHeroMobile} type="image/webp" />
@@ -246,7 +237,7 @@ export function LabEntryView({
               alt=""
               fetchPriority="high"
               decoding="async"
-              className="w-full h-full object-contain opacity-90 sm:opacity-95 mix-blend-screen filter brightness-[1.18] contrast-[1.12]"
+              className="w-full h-full object-contain opacity-90 sm:opacity-95 mix-blend-screen "
             />
           </picture>
         </motion.div>
@@ -332,7 +323,7 @@ export function LabEntryView({
               initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.15 }}
-              className="group relative flex flex-col items-center justify-between p-8 sm:p-10 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 text-center shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+              className="group relative flex flex-col items-center justify-between py-12 sm:px-8 border-t border-white/10 text-center"
             >
               <div className="flex flex-col items-center w-full">
                 <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-6">
@@ -340,7 +331,7 @@ export function LabEntryView({
                 </span>
 
                 <div className="my-2 transition-transform duration-700 group-hover:scale-105">
-                  <Orb number={1} size={150} glow={true} />
+                  <Orb number={1} size={112} glow={false} />
                 </div>
 
                 <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-6 mb-3">
@@ -415,7 +406,7 @@ export function LabEntryView({
                     <span className="text-[13px] text-red-300 font-light block">{dateError}</span>
                   )}
 
-                  <div className="w-full pt-4 border-t border-[var(--color-border-subtle)] flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+                  <div className="w-full pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
                     <button
                       type="submit"
                       className="min-h-11 px-6 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] rounded-xs uppercase tracking-[0.18em] text-[13px] font-semibold transition-all cursor-pointer shadow-[0_2px_12px_rgba(200,164,93,0.2)]"
@@ -425,7 +416,7 @@ export function LabEntryView({
                     <button
                       type="button"
                       onClick={handleSelectCodeSample}
-                      className="min-h-11 px-5 py-2.5 border border-[var(--color-border-gold)] bg-transparent hover:bg-white/5 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.16em] text-[12px] font-medium transition-all cursor-pointer"
+                      className="min-h-11 px-4 py-2.5 text-[var(--color-text-secondary)] hover:text-white underline underline-offset-4 decoration-white/20 hover:decoration-white/60 tracking-[0.04em] text-[14px] transition-colors cursor-pointer"
                     >
                       Посмотреть пример
                     </button>
@@ -439,7 +430,7 @@ export function LabEntryView({
               initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.25 }}
-              className="group relative flex flex-col items-center justify-between p-8 sm:p-10 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 text-center shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+              className="group relative flex flex-col items-center justify-between py-12 sm:px-8 border-t border-white/10 text-center"
             >
               <div className="flex flex-col items-center w-full">
                 <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-6">
@@ -447,7 +438,7 @@ export function LabEntryView({
                 </span>
 
                 <div className="my-2 transition-transform duration-700 group-hover:scale-105">
-                  <Orb number={7} size={150} showNumber={false} glow={true} />
+                  <Orb number={7} size={112} showNumber={false} glow={false} />
                 </div>
 
                 <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-6 mb-3">
@@ -459,18 +450,18 @@ export function LabEntryView({
                 </p>
               </div>
 
-              <div className="w-full pt-6 border-t border-[var(--color-border-subtle)] flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+              <div className="w-full pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
                 <button
                   type="button"
                   onClick={handleStartMyth}
-                  className="min-h-11 px-6 py-2.5 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] rounded-xs uppercase tracking-[0.18em] text-[13px] font-semibold transition-all cursor-pointer shadow-[0_2px_12px_rgba(200,164,93,0.2)]"
+                  className="min-h-11 px-6 py-2.5 border border-[var(--color-border-gold)] hover:bg-white/5 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.18em] text-[13px] font-semibold transition-colors cursor-pointer"
                 >
                   {hasMyth ? 'Открыть историю' : 'Начать Личный миф'}
                 </button>
                 <button
                   type="button"
                   onClick={() => { window.location.href = '/primer-lichnogo-mifa'; }}
-                  className="min-h-11 px-5 py-2.5 border border-[var(--color-border-gold)] bg-transparent hover:bg-white/5 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.16em] text-[12px] font-medium transition-all cursor-pointer"
+                  className="min-h-11 px-4 py-2.5 text-[var(--color-text-secondary)] hover:text-white underline underline-offset-4 decoration-white/20 hover:decoration-white/60 tracking-[0.04em] text-[14px] transition-colors cursor-pointer"
                 >
                   Прочитать пример
                 </button>
@@ -487,7 +478,7 @@ export function LabEntryView({
             initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.7 }}
-            className="w-full mb-8 p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)] shadow-[0_0_24px_rgba(200,164,93,0.08)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
+            className="w-full mb-8 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
           >
             <div className="flex items-start gap-4">
               <div className="p-3 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)]/50 shrink-0 mt-0.5">
@@ -520,7 +511,7 @@ export function LabEntryView({
               <button
                 type="button"
                 onClick={onRestoreDraft}
-                className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                className="px-6 py-3 border border-[var(--color-border-gold)] hover:bg-white/5 text-[var(--color-antique-gold)] uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Продолжить</span>
                 <ChevronRight size={14} />
@@ -544,7 +535,7 @@ export function LabEntryView({
             initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.7 }}
-            className="w-full mb-8 p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)] shadow-[0_0_30px_rgba(200,164,93,0.1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
+            className="w-full mb-8 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
           >
             <div className="flex items-start gap-4">
               <div className="p-3 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)] shrink-0 mt-0.5">
@@ -576,7 +567,7 @@ export function LabEntryView({
               <button
                 type="button"
                 onClick={onRestoreSavedMirror}
-                className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                className="px-6 py-3 border border-[var(--color-border-gold)] hover:bg-white/5 text-[var(--color-antique-gold)] uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Продолжить с того места</span>
                 <ChevronRight size={14} />
@@ -605,10 +596,10 @@ export function LabEntryView({
             animate={{ opacity: 1, y: 0 }}
             transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, delay: 0.3 }}
             onClick={handleMeeting}
-            className={`w-full p-6 sm:p-8 rounded-xs border transition-all duration-700 flex flex-col sm:flex-row items-center justify-between gap-6 text-left mb-8 ${
+            className={`w-full pt-8 border-t transition-colors duration-700 flex flex-col sm:flex-row items-center justify-between gap-6 text-left mb-8 ${
               isMeetingReady
-                ? 'bg-[var(--color-bg-surface)] border-[var(--color-border-gold)] shadow-[0_0_30px_rgba(200,164,93,0.1)] cursor-pointer hover:border-[var(--color-antique-gold)]'
-                : 'bg-[var(--color-bg-surface)]/50 border-[var(--color-border-subtle)] cursor-pointer hover:border-[var(--color-border-gold)]'
+                ? 'border-white/10 cursor-pointer hover:border-[var(--color-border-gold)]'
+                : 'border-white/10 cursor-pointer hover:border-[var(--color-border-gold)]'
             }`}
           >
             <div className="flex items-center gap-5 sm:gap-6">
@@ -661,7 +652,7 @@ export function LabEntryView({
           {/* Three Steps verbatim per Astra 058 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full text-left mb-10">
             {/* Step I */}
-            <div className="p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] flex flex-col justify-between shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+            <div className="py-4 flex flex-col justify-between">
               <div>
                 <span className="font-serif text-2xl text-[var(--color-antique-gold)] font-light block mb-2">I</span>
                 <h4 className="font-serif text-xl text-stone-100 font-normal mb-3">Небо, полное характеров.</h4>
@@ -672,7 +663,7 @@ export function LabEntryView({
             </div>
 
             {/* Step II */}
-            <div className="p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] flex flex-col justify-between shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+            <div className="py-4 flex flex-col justify-between">
               <div>
                 <span className="font-serif text-2xl text-[var(--color-antique-gold)] font-light block mb-2">II</span>
                 <h4 className="font-serif text-xl text-stone-100 font-normal mb-3">Свет и тень.</h4>
@@ -683,7 +674,7 @@ export function LabEntryView({
             </div>
 
             {/* Step III */}
-            <div className="p-6 sm:p-7 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] flex flex-col justify-between shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+            <div className="py-4 flex flex-col justify-between">
               <div>
                 <span className="font-serif text-2xl text-[var(--color-antique-gold)] font-light block mb-2">III</span>
                 <h4 className="font-serif text-xl text-stone-100 font-normal mb-3">Число как свет.</h4>
@@ -702,7 +693,7 @@ export function LabEntryView({
                 el?.scrollIntoView({ behavior: 'smooth' });
                 dayRef.current?.focus();
               }}
-              className="min-h-11 px-7 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-[#090D15] rounded-xs uppercase tracking-[0.18em] text-[13px] font-semibold transition-all cursor-pointer shadow-[0_2px_12px_rgba(200,164,93,0.2)]"
+              className="min-h-11 px-7 py-3 border border-[var(--color-border-gold)] hover:bg-white/5 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.18em] text-[13px] font-semibold transition-colors cursor-pointer"
             >
               Посмотреть свои пять чисел
             </button>
@@ -735,7 +726,7 @@ export function LabEntryView({
                 return (
                   <div
                     key={num}
-                    className="p-3 sm:p-3.5 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all flex flex-col items-center text-center group cursor-pointer"
+                    className="p-2 transition-opacity hover:opacity-80 flex flex-col items-center text-center group cursor-pointer"
                     onClick={handlePantheon}
                   >
                     <div className="mb-2 transition-transform duration-300 group-hover:scale-105">

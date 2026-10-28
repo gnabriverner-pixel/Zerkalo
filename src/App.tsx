@@ -302,7 +302,7 @@ function AppContent() {
             title="Главная"
             aria-label="Главная страница Зеркало Себя"
           >
-            <span className={`w-2.5 h-2.5 rounded-full bg-[var(--color-antique-gold)] shadow-[0_0_8px_rgba(200,164,93,0.6)] group-hover:scale-125 transition-transform`} />
+            <span className={`w-2.5 h-2.5 rounded-full bg-[var(--color-antique-gold)]/70 group-hover:bg-[var(--color-antique-gold)] transition-transform`} />
             <span className={`hidden sm:inline font-serif text-lg tracking-wide transition-colors whitespace-nowrap ${
               mode === 'alabaster' && !isPreviewV2
                 ? 'text-[#1A1A1C] group-hover:text-[var(--color-antique-gold)]'
@@ -385,7 +385,7 @@ function AppContent() {
           {!commerceSafetyBlocked && (
             <button
               onClick={() => setIsChapterOfferOpen(true)}
-              className="min-h-[40px] px-2.5 sm:px-3.5 py-2 rounded-full text-[12px] sm:text-sm tracking-wider uppercase transition-all duration-300 flex items-center gap-1 cursor-pointer text-[var(--color-antique-gold)] border border-[var(--color-antique-gold)]/40 bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20"
+              className={`min-h-[40px] px-2.5 sm:px-3.5 py-2 rounded-full text-[12px] sm:text-sm tracking-wider uppercase transition-colors duration-300 flex items-center gap-1 cursor-pointer ${mode === 'alabaster' && !isPreviewV2 ? 'text-[#63656C] hover:text-[#1A1A1C]' : 'text-gray-400 hover:text-gray-200'}`}
               title={getMythsAccessLabel(freePreview)}
             >
               <span>МОИ МИФЫ</span>
