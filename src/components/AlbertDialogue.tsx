@@ -463,6 +463,10 @@ export const AlbertDialogue: React.FC<AlbertDialogueProps> = ({
           effectiveMythAnchors?.hiddenResource ?? effectiveStoryResult?.mirror?.hiddenResource,
         newView: effectiveMythAnchors?.newView ?? effectiveStoryResult?.mirror?.newView,
         oneStep: effectiveMythAnchors?.oneStep ?? effectiveStoryResult?.one_step,
+        story: effectiveStoryResult?.story,
+        madeOf: effectiveStoryResult?.made_of,
+        meaning: effectiveStoryResult?.meaning,
+        question: effectiveStoryResult?.journal_question,
       };
     }
 

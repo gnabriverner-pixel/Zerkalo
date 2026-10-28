@@ -59,6 +59,11 @@ export interface AlbertDialogueContext {
     hiddenResource?: string;
     newView?: string;
     oneStep?: string;
+    /** Mode A (writer v2a): the whole Myth, not only the practice. */
+    story?: string;
+    madeOf?: Array<{ element?: string; source?: string }>;
+    meaning?: string[] | string;
+    question?: string;
   };
 }
 
@@ -360,6 +365,26 @@ export function buildCanonicalEnvelopeFromWebContext(
     ((context?.mythAnchors as any)?.oneStep || context?.storyResult?.one_step || "").trim()
   );
 
+  // Mode A (writer v2a) Myths have no mirror blocks: the Myth is the tale, the «made of» table, the meaning, the question and the practice.
+  const anchors = (context?.mythAnchors ?? {}) as NonNullable<AlbertDialogueContext["mythAnchors"]>;
+  const mythStory = sanitizeVisibleAlbertText(String(anchors.story || context?.storyResult?.story || "").trim());
+  const rawMadeOf = Array.isArray(anchors.madeOf) && anchors.madeOf.length ? anchors.madeOf : context?.storyResult?.made_of;
+  const mythMadeOf = (Array.isArray(rawMadeOf) ? rawMadeOf : [])
+    .slice(0, 12)
+    .map((row) => {
+      const element = sanitizeVisibleAlbertText(String(row?.element || "").trim()).slice(0, 200);
+      const source = sanitizeVisibleAlbertText(String(row?.source || "").trim()).slice(0, 200);
+      return element && source ? `${element} ← ${source}` : "";
+    })
+    .filter(Boolean);
+  const rawMeaning = anchors.meaning ?? context?.storyResult?.meaning;
+  const mythMeaning = sanitizeVisibleAlbertText(
+    (Array.isArray(rawMeaning) ? rawMeaning.join(" ") : String(rawMeaning || "")).trim()
+  );
+  const mythQuestion = sanitizeVisibleAlbertText(
+    String(anchors.question || context?.storyResult?.journal_question || "").trim()
+  );
+
   const rawResonances = context?.resonances || context?.parallels || [];
   const sanitizedResonances = rawResonances.map((r) => ({
     theme: sanitizeVisibleAlbertText(r.theme || ""),
@@ -407,8 +432,27 @@ export function buildCanonicalEnvelopeFromWebContext(
   }
   if (mythOneStep) {
     evidence.push(
-      machineClaim(`Предложенный шаг в мифе: ${mythOneStep.slice(0, 500)}`, "myth", "myth.oneStep", now)
+      machineClaim(`Предложенный шаг в мифе: ${mythOneStep.slice(0, 1200)}`, "myth", "myth.oneStep", now)
     );
+  }
+  if (mythMadeOf.length) {
+    evidence.push(
+      machineClaim(
+        `Из чего сделана сказка (образ ← какой ответ его дал): ${mythMadeOf.join("; ")}`.slice(0, 1800),
+        "myth",
+        "myth.madeOf",
+        now
+      )
+    );
+  }
+  if (mythMeaning) {
+    evidence.push(machineClaim(`Что это может значить, по версии мифа: ${mythMeaning.slice(0, 1200)}`, "myth", "myth.meaning", now));
+  }
+  if (mythQuestion) {
+    evidence.push(machineClaim(`Вопрос мифа: ${mythQuestion.slice(0, 400)}`, "myth", "myth.question", now));
+  }
+  if (mythStory) {
+    evidence.push(machineClaim(`Текст сказки: ${mythStory.slice(0, 3500)}`, "myth", "myth.story", now));
   }
 
   // Memory statements from history and explicit user question / note
@@ -569,7 +613,7 @@ export function buildCanonicalEnvelopeFromWebContext(
 
   const hasCodeLens = components.length > 0 || Boolean(codeHypothesis);
   const hasMythLens = Boolean(
-    mythMainImage || mythTitle || mythInnerTension || mythHiddenResource || mythNewView || combinedStoryTurnText
+    mythMainImage || mythTitle || mythInnerTension || mythHiddenResource || mythNewView || mythStory || mythMadeOf.length > 0 || combinedStoryTurnText
   );
 
   const effectiveMeetingSummary = explicitMeetingSummary ? explicitMeetingSummary.slice(0, 500) : null;
