@@ -18,7 +18,7 @@ export function MythExamplePage() {
     <div className="min-h-screen bg-[#0b0d14] text-stone-100 flex flex-col">
       <main className="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-12" data-testid="myth-example">
         <a href="/" className="inline-block text-[13px] uppercase tracking-[0.15em] text-[var(--color-antique-gold)] hover:underline">← На главную</a>
-        <p data-testid="myth-example-banner" className="text-xs sm:text-sm text-stone-300 border border-white/10 bg-white/[0.03] px-4 py-3">
+        <p data-testid="myth-example-banner" className="text-sm text-stone-300 font-serif italic text-center max-w-[var(--measure)] mx-auto">
           Пример для вымышленного человека. Ответы и история придуманы, чтобы показать, как выглядит Личный миф.
         </p>
         <MythV2AResultBody result={MYTH_EXAMPLE_RESULT} inputs={MYTH_EXAMPLE_INPUTS} />

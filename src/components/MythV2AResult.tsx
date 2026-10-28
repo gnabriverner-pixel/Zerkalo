@@ -20,7 +20,7 @@ export function MythV2AResultBody({ result, inputs, afterStory }: { result: Myth
     <>
       <div className="text-center w-full max-w-2xl mx-auto pt-4">
         <EmblemPlate planet={7} variant="obsidian" size={64} showNumber={false} showLabel={false} className="mx-auto mb-6" />
-        <span className="text-[13px] tracking-[0.3em] uppercase text-purple-300/80 font-sans font-medium block mb-2">
+        <span className="text-[13px] tracking-[0.3em] uppercase text-[var(--color-antique-gold)] font-sans font-medium block mb-2">
           Личный Миф · Художественная сцена
         </span>
         <h1 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-4 font-light tracking-tight" data-testid="myth-title">
