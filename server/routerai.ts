@@ -7,6 +7,8 @@ export const FALLBACK_MODEL = 'anthropic/claude-sonnet-5';
 export const MEETING_FALLBACK_MODEL = 'openai/gpt-5.4-mini';
 /** Myth writers only (v2a default, v4.1 rollback via PERSONAL_MYTH_WRITER=v41); never a fallback of another path. */
 export const WRITER_V41_MODEL = 'anthropic/claude-opus-5.5';
+/** Statuses meaning "refused, nothing generated": the reserve is released instead of staying uncertain. */
+export const DEFINITE_REJECT_STATUSES = new Set([400, 401, 402, 403, 404, 422]);
 export interface ProviderEvent {
   gateway: 'routerai'; model: string; upstream: string | null;
   responseModel: string | null;
@@ -145,7 +147,7 @@ export class RouterAIClient implements ChatClient {
       if (!ok) throw new Error('provider_local_refusal');
     }
     const budget=await reserveProviderAttempt(this.defaultModel,{...options,response_format:responseFormat});
-    let transportComplete=false, handedToTransport=false, localRefusal=false;
+    let transportComplete=false, handedToTransport=false, localRefusal=false, rejectedStatus:number|null=null;
     event.stage='before_headers';
     try {
       const serialized = JSON.stringify(requestBody);
@@ -155,7 +157,7 @@ export class RouterAIClient implements ChatClient {
       handedToTransport=true;
       const response = await this.transport(`${ROUTERAI_URL}/chat/completions`, init);
       event.stage='reading_body';event.responseId=safeToken(response.headers?.get?.('x-generation-id'));
-      if (!response.ok) throw new Error(`provider_http_${response.status}`);
+      if (!response.ok) { if (DEFINITE_REJECT_STATUSES.has(response.status)) rejectedStatus = response.status; throw new Error(`provider_http_${response.status}`); }
       let payload: any;
       try { payload = await response.json(); } catch { throw new Error('provider_invalid_json'); }
       event.stage='complete';event.responseId=event.responseId??safeToken(payload?.id);
@@ -206,6 +208,7 @@ export class RouterAIClient implements ChatClient {
       this.observe(event);
       if(budget){
         if(localRefusal&&!transportComplete)budget.db.releaseUnsentAI(budget.id);
+        else if(rejectedStatus!==null&&!transportComplete)budget.db.releaseRejectedAI(budget.id,rejectedStatus);
         else budget.db.finishAI(budget.id,transportComplete,event);
       }
     }

@@ -85,15 +85,17 @@ def reserve(body, scope):
     finally:db.close()
 
 native_post=routerai._bounded_post
+REJECT_STATUSES=(400,401,402,403,404,422)
 def accounted_post(body,key,timeout,transport):
     scope=SCOPE.get() or {'pool':'free'}
     try:ident=reserve(body,scope)
     except Exception as error:
         scope['budget_error']=str(error) if str(error).startswith(('ai_','paid_','free_')) else 'ai_budget_unavailable'
         raise
-    successful=False;usage={};started=time.monotonic()
+    successful=False;usage={};started=time.monotonic();rejected=None
     try:
         response=native_post(body,key,timeout,transport);successful=response.status_code==200
+        if response.status_code in REJECT_STATUSES:rejected=response.status_code
         try:
             payload=response.json();candidate=payload.get('usage') if isinstance(payload,dict) else None
             usage=candidate if isinstance(candidate,dict) else {}
@@ -101,7 +103,15 @@ def accounted_post(body,key,timeout,transport):
         return response
     finally:
         number=lambda value:value if type(value) in (int,float) and math.isfinite(value) and value>=0 else None
-        with sqlite3.connect(DB,timeout=5) as db:db.execute("UPDATE ai_budget_attempts SET state=?,finished_at=?,input_tokens=?,output_tokens=?,usage_cost=?,usage_currency='UNKNOWN',duration_ms=? WHERE id=? AND state='reserved'",('complete' if successful else 'uncertain',int(time.time()*1000),number(usage.get('prompt_tokens')),number(usage.get('completion_tokens')),number(usage.get('cost')),round((time.monotonic()-started)*1000),ident))
+        if rejected is not None:
+            # Definite provider refusal (e.g. 402/404): nothing was generated, so the reserve is released, not left 'uncertain'.
+            with sqlite3.connect(DB,timeout=5) as db:
+                row=db.execute("SELECT pool,order_id,cost_micro FROM ai_budget_attempts WHERE id=? AND state='reserved'",(ident,)).fetchone()
+                if row:
+                    if row[0]=='paid':db.execute("UPDATE ai_budget_commitments SET spent_micro=MAX(0,spent_micro-?),attempts=MAX(0,attempts-1) WHERE order_id=?",(row[2],row[1]))
+                    db.execute("UPDATE ai_budget_attempts SET state='released',cost_micro=0,finished_at=?,outcome=? WHERE id=?",(int(time.time()*1000),'provider_rejected_http_%d'%rejected,ident))
+        else:
+            with sqlite3.connect(DB,timeout=5) as db:db.execute("UPDATE ai_budget_attempts SET state=?,finished_at=?,input_tokens=?,output_tokens=?,usage_cost=?,usage_currency='UNKNOWN',duration_ms=? WHERE id=? AND state='reserved'",('complete' if successful else 'uncertain',int(time.time()*1000),number(usage.get('prompt_tokens')),number(usage.get('completion_tokens')),number(usage.get('cost')),round((time.monotonic()-started)*1000),ident))
 routerai._bounded_post=accounted_post
 native_init=routerai.RouterAIProvider.__init__
 def budget_provider_init(self,settings,*,transport=None,observe=None):

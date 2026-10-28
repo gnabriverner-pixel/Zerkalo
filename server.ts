@@ -11,6 +11,7 @@ import { buildPersonalMythPrompt } from "./src/services/mythPrompts";
 import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
 import { RouterAIClient, PRIMARY_MODEL, MEETING_FALLBACK_MODEL } from "./server/routerai";
+import { resolveAlbertModel } from "./server/albertModel";
 import { isWriterV41Enabled, WRITER_V41_MODEL } from "./server/mythWriterV41";
 import { resolvePersonalMythWriter } from "./server/mythWriterV2A";
 import {
@@ -49,7 +50,7 @@ import {
 
 const PERSONAL_MYTH_MODEL = PRIMARY_MODEL;
 const MEETING_MODEL = PRIMARY_MODEL;
-const ALBERT_MODEL = PRIMARY_MODEL;
+const ALBERT_MODEL = resolveAlbertModel(process.env);
 const meetingSynthesisCache = new Map<string, { expiresAt: number; payload: any }>();
 
 export function deriveMeetingCacheKey(codeData: any, storyData: any, userQuestion?: string): string {

@@ -207,6 +207,16 @@ export class CommerceStore {
       this.db.prepare("UPDATE ai_budget_attempts SET state='released',cost_micro=0,finished_at=?,outcome='local_refusal_not_sent' WHERE id=?").run(Date.now(),id);
     });
   }
+  /** The provider answered with a definite refusal (HTTP 4xx such as 402/404): it generated nothing, so the attempt is not
+   * 'uncertain'. Same release as an unsent attempt, but the outcome records the status for the journal. */
+  releaseRejectedAI(id:string,status:number){
+    this.tx(()=>{
+      const row=this.db.prepare('SELECT pool,order_id,cost_micro,state FROM ai_budget_attempts WHERE id=?').get(id) as any;
+      if(!row||row.state!=='reserved')return;
+      if(row.pool==='paid')this.db.prepare('UPDATE ai_budget_commitments SET spent_micro=MAX(0,spent_micro-?),attempts=MAX(0,attempts-1) WHERE order_id=?').run(row.cost_micro,row.order_id);
+      this.db.prepare("UPDATE ai_budget_attempts SET state='released',cost_micro=0,finished_at=?,outcome=? WHERE id=?").run(Date.now(),`provider_rejected_http_${Math.trunc(status)}`,id);
+    });
+  }
   finishAI(id:string,success:boolean,usage?:{inputTokens?:number|null;outputTokens?:number|null;usageCost?:number|null;usageCostCurrency?:string;latencyMs?:number;outcome?:string}){
     const numeric=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:null;
     this.db.prepare("UPDATE ai_budget_attempts SET state=?,finished_at=?,input_tokens=?,output_tokens=?,usage_cost=?,usage_currency=?,duration_ms=?,outcome=? WHERE id=? AND state='reserved'").run(success?'complete':'uncertain',Date.now(),numeric(usage?.inputTokens),numeric(usage?.outputTokens),numeric(usage?.usageCost),usage?.usageCostCurrency||'UNKNOWN',numeric(usage?.latencyMs),usage?.outcome||null,id);
