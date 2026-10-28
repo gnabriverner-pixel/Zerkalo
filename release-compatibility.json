@@ -2,17 +2,17 @@
   "manifest_version": 1,
   "stage": "free-preview-internal-staging-candidate",
   "verified_at": null,
-  "verification_status": "MYTH_RETRY_13_1_CANDIDATE_SEE_EXTERNAL_EVIDENCE",
+  "verification_status": "DOVODKA_14A_DCS_B_CANDIDATE_SEE_EXTERNAL_EVIDENCE",
   "production_authorized": false,
   "web": {
     "repository": "gnabriverner-pixel/Zerkalo",
-    "branch": "fix/myth-retry-13-1",
-    "pinned_sha": "f60a1169483effa2d834281551fd35fe4c2e695c"
+    "branch": "release/14a",
+    "pinned_sha": "ff7725e6ec66541f9aad7987cc7ab8dff54e5ecb"
   },
   "dcs": {
     "repository": "gnabriverner-pixel/digital-code-system",
-    "branch": "release/numeric-houses-8-2026-10-14",
-    "pinned_sha": "d63a44bff8c30c97c9cdddd6ceaecc585d17ea4c"
+    "branch": "release/dcs-b",
+    "pinned_sha": "dfe7fabb4e6f5d77edf07130c3944757e920b23c"
   },
   "contracts": {
     "dcs_service_http": {
@@ -24,8 +24,8 @@
         "/health"
       ]
     },
-    "personal_myth_writer_version": "personal-myth-v1.5-emergent-possibility",
-    "personal_myth_default_prompt_variant": "v11",
+    "personal_myth_writer_version": "personal-myth-v2a",
+    "personal_myth_default_prompt_variant": "v2a",
     "meeting_of_mirrors_version": "meeting-v1.1",
     "consent_version": "zerkalo-2026-10-v2"
   },
