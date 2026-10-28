@@ -93,7 +93,7 @@ describe('Release 13 — «Цельный путь» (Acceptance Tests)', () => 
       // Key remains q3
       expect(content).toContain("id: 'q3'");
       // Trial access copy
-      expect(content).toContain('Пробный доступ — бесплатно. Что в истории вам близко, решаете вы.');
+      expect(content).toContain('Что в истории вам близко, решаете вы.');
       // All emblems changed to obsidian (no alabaster)
       expect(content).not.toContain('variant="alabaster"');
       expect(content).toContain('variant="obsidian"');
@@ -116,7 +116,7 @@ describe('Release 13 — «Цельный путь» (Acceptance Tests)', () => 
       expect(content).toContain('Прочитать пример Личного мифа');
       // 3. Access string
       expect(content).toContain('Проверяем доступ…');
-      expect(content).toContain('Пробный доступ — бесплатно до');
+      expect(fs.readFileSync(path.join(process.cwd(), 'src/services/freeWindowLine.ts'), 'utf-8')).toContain('Пробный доступ — бесплатно до');
       // 4. Collapsible details «Хранение и доступ»
       expect(content).toContain('<details className="story-details">');
       expect(content).toContain('<summary>Хранение и доступ</summary>');

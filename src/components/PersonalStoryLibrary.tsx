@@ -3,6 +3,7 @@ import {useProtectedFetch} from './ConsentBoundary';
 import type {StoryInputs} from '../types';
 import './personalStoryLibrary.css';
 import {useFreePreview} from '../services/freePreview';
+import {freeWindowLine} from '../services/freeWindowLine';
 import {useMythConfig} from '../services/mythAvailability';
 import {MYTH_V2A_QUESTIONS} from '../services/mythQuestionsV2A';
 import {STORY_PRICE_LABEL} from '../services/storyPrice';
@@ -360,12 +361,10 @@ export function PersonalStoryLibrary({
           {preview === null
             ? 'Проверяем доступ…'
             : preview.enabled && preview.active
-            ? (preview.ends_at
-                ? `Пробный доступ — бесплатно до ${new Date(preview.ends_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Europe/Moscow' })} включительно.`
-                : 'Пробный доступ — бесплатно.')
+            ? (freeWindowLine(preview) ?? 'Пробный доступ — бесплатно.')
             : mode === 'live'
             ? `${STORY_PRICE_LABEL} · одна покупка`
-            : 'Личный миф — предложение. Полученные мифы остаются у вас.'}
+            : 'Личный миф — предложение.'}
         </p>
 
         {/* 3b. Экран после окна: предложение Личного мифа, оплата пока не открыта */}
@@ -386,7 +385,7 @@ export function PersonalStoryLibrary({
             {preview?.enabled ? (
               <>
                 <p>Один Личный миф, до пяти ответов Альберта о нём и сохранение. Миф создаётся с помощью ИИ: его можно принять, уточнить или отвергнуть.</p>
-                <p>Полученные мифы остаются у вас бесплатно.</p>
+                <p>После окончания пробного доступа новый Миф — по цене на экране перед оплатой, условия — в <a href="/terms" target="_blank" rel="noreferrer">оферте</a>.</p>
                 {!preview.new_generation_available && <p role="status">{preview.pause_message}</p>}
                 {preview.support_url ? (
                   <p><a href={preview.support_url} target="_blank" rel="noreferrer">Помощь в Telegram</a></p>
@@ -395,7 +394,7 @@ export function PersonalStoryLibrary({
                 )}
               </>
             ) : (
-              <p>Первая полная история бесплатна. За новую покупку: новый Миф из новых ответов, до пяти успешно выданных ответов Альберта, сохранение и PDF. Код и уже полученные результаты остаются доступны.</p>
+              <p>Одна покупка — один Миф из новых ответов: до пяти успешно выданных ответов Альберта, сохранение и PDF. Код остаётся доступен.</p>
             )}
             <p className="story-muted">Истории и ответы создаются с помощью ИИ. Миф опирается на три ответа, не на числовой расчёт. Вопрос передаётся Альберту. Его предложения не являются вашим решением.</p>
             {mode !== 'live' && !preview?.enabled && (

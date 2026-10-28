@@ -20,6 +20,7 @@ export const MYTH_ERROR_COPY: Record<string, string> = {
 export const MYTH_OPEN_SAVED_LABEL = 'Открыть в «Моих мифах»';
 
 export const MYTH_COPY = {
+  createNote: 'Займёт 1–3 минуты. Ответы уходят ИИ, чтобы написать историю. Попытка одна.',
   writing: 'Пишем ваш Личный миф.',
   mayTakeMinutes: 'Это может занять несколько минут.',
   elapsed: (sec: number) => `Прошло ${sec} с. Обновлять страницу не нужно.`,

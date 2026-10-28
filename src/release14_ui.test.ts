@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConsentBoundary } from './components/ConsentBoundary';
 import { PersonalStoryLibrary } from './components/PersonalStoryLibrary';
 import { SiteFooter } from './components/SiteFooter';
+import { MythExamplePage, isMythExamplePath } from './components/MythExamplePage';
 import { STORY_PRICE_LABEL } from './services/storyPrice';
 import { ALBERT_CONVERSATION_STORAGE_KEY } from './services/albertOpenerState';
 import { clearTransientDraft, deleteMyMirrorSnapshot } from './services/myMirrorStorage';
@@ -48,7 +49,7 @@ describe('footer on every page', () => {
     expect(container.textContent).toContain('Контакты:');
   });
   it('static pages carry the footer too', () => {
-    for (const f of ['public/privacy.html', 'public/terms.html', 'public/primer-lichnogo-mifa/index.html']) {
+    for (const f of ['public/privacy.html', 'public/terms.html']) {
       const html = fs.readFileSync(path.resolve(__dirname, '..', f), 'utf8');
       expect(html, f).toContain('data-site-footer');
       expect(html, f).toContain('href="/terms"');
@@ -94,5 +95,31 @@ describe('deletion interface calls /api/delete-data', () => {
     expect(await requestServerDeletion()).toBe('nothing_to_delete');
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
     expect(await requestServerDeletion()).toBe('failed');
+  });
+});
+
+describe('public Myth example (mode A)', () => {
+  it('shows the same screen as the real Myth: tale, made-of table, meaning, question, 7-day practice, not-recognised line, fictional-person note', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    await act(async () => root.render(React.createElement(MythExamplePage)));
+    const text = container.textContent ?? '';
+    expect(container.querySelector('[data-testid="myth-title"]')?.textContent).toBe('Вторая лампа');
+    expect(container.querySelector('[data-testid="myth-example-banner"]')?.textContent).toContain('Пример для вымышленного человека');
+    expect(text).toContain('Что вы рассказали в трёх ответах');
+    expect(text).toContain('Близости, в которой остаётся своё место');
+    expect(container.querySelectorAll('[data-testid="myth-made-of"] tbody tr').length).toBe(7);
+    expect(container.querySelector('[data-testid="myth-meaning"]')?.textContent).toContain('свой угол внутри неё');
+    expect(container.querySelector('[data-testid="myth-question"]')?.textContent).toContain('О каком своём вечере');
+    expect(container.querySelector('[data-testid="myth-practice"]')?.textContent).toContain('Семь дней');
+    expect(container.querySelector('[data-testid="myth-fixed-line"]')?.textContent).toContain('не узнали себя');
+    expect(text).not.toContain('Велосипед');
+    expect(container.querySelector('footer[data-site-footer]')).not.toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+  it('recognises the route with and without a trailing slash', () => {
+    expect(isMythExamplePath('/primer-lichnogo-mifa')).toBe(true);
+    expect(isMythExamplePath('/primer-lichnogo-mifa/')).toBe(true);
+    expect(isMythExamplePath('/')).toBe(false);
   });
 });

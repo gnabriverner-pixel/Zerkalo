@@ -69,6 +69,8 @@ interface CodeV2ExperienceProps {
   onBackToCollection?: () => void;
   onSwitchToV1?: () => void;
   onOpenMyth?: () => void;
+  /** One calm line about the free window (from /api/free-preview), shown at the bridge to the Myth. */
+  freeWindowLine?: string | null;
   isExample?: boolean;
 }
 
@@ -185,6 +187,7 @@ export function CodeV2Experience({
   onBackToCollection,
   onSwitchToV1,
   onOpenMyth,
+  freeWindowLine,
   isExample = false
 }: CodeV2ExperienceProps) {
   const isQaEffective = Boolean(isQaMode && import.meta.env.DEV);
@@ -1212,6 +1215,7 @@ export function CodeV2Experience({
                   >
                     <span>Начать Личный миф</span>
                   </button>
+                  {freeWindowLine && <p data-testid="bridge-free-window" className="mt-3 text-xs text-stone-400">{freeWindowLine}</p>}
                 </div>
               </section>
             )}

@@ -5,8 +5,6 @@ import { getMythsAccessLabel, type PreviewStatus } from '../src/services/freePre
 import { MYTH_COPY } from '../src/services/mythWait';
 
 describe('Release 10 — Личный миф (Acceptance Criteria)', () => {
-  const exampleFilePath = '/Users/artemkrysin/Claude/astra-opus/evidence/release-0c10c61/example-velosiped.md';
-
   describe('1. Absence of deprecated story naming on storefront / UI', () => {
     it('verifies MYTH_COPY has updated writing string', () => {
       expect(MYTH_COPY.writing).toBe('Пишем ваш Личный миф.');
@@ -109,7 +107,7 @@ describe('Release 10 — Личный миф (Acceptance Criteria)', () => {
 
       expect(content).toContain('Альберт — ИИ-собеседник');
       expect(content).toContain(
-        'Мы посмотрели на пять сторон жизни через образы чисел. Что из этого вам знакомо — решаете вы. А если хочется обратиться к тому, что происходит сейчас, ответьте на четыре вопроса. По вашим ответам будет создан Личный миф.'
+        'Мы посмотрели на пять сторон жизни через образы чисел. Что из этого вам знакомо — решаете вы. А если хочется обратиться к тому, что происходит сейчас, ответьте на три вопроса. По вашим ответам будет создан Личный миф.'
       );
       expect(content).toContain('Начать Личный миф');
     });
@@ -125,37 +123,11 @@ describe('Release 10 — Личный миф (Acceptance Criteria)', () => {
     });
   });
 
-  describe('4. Static example page (/primer-lichnogo-mifa)', () => {
-    it('exists and matches example-velosiped.md symbol for symbol', () => {
-      expect(fs.existsSync(exampleFilePath), `Source file ${exampleFilePath} must exist`).toBe(true);
-      const rawMarkdown = fs.readFileSync(exampleFilePath, 'utf-8');
-
-      const lines = rawMarkdown.trim().split('\n');
-      const title = lines[0].replace('# ', '').trim();
-      const paras = lines.slice(4).map((l: string) => l.trim()).filter(Boolean);
-
-      expect(title).toBe('Велосипед в сером коридоре');
-      expect(paras.length).toBe(14);
-
-      const staticPagePath = path.join(process.cwd(), 'public/primer-lichnogo-mifa/index.html');
-      expect(fs.existsSync(staticPagePath), `Static page ${staticPagePath} must exist`).toBe(true);
-
-      const htmlContent = fs.readFileSync(staticPagePath, 'utf-8');
-
-      // Caption
-      expect(htmlContent).toContain('Пример Личного мифа по вымышленным ответам');
-      // Title
-      expect(htmlContent).toContain('data-testid="myth-example-title">Велосипед в сером коридоре</h1>');
-      // Max width ≤ 640px
-      expect(htmlContent).toContain('max-width: 640px');
-      // Dark background
-      expect(htmlContent).toContain('#0b0d14');
-
-      // Symbol for symbol paragraph check
-      for (let i = 0; i < paras.length; i++) {
-        const p = paras[i];
-        expect(htmlContent, `Paragraph ${i + 1} must match symbol-for-symbol`).toContain(`<p>${p}</p>`);
-      }
+  describe('4. Example page (/primer-lichnogo-mifa)', () => {
+    it('is a client route that reuses the Myth screen; the old static page is gone', () => {
+      expect(fs.existsSync(path.join(process.cwd(), 'public/primer-lichnogo-mifa/index.html'))).toBe(false);
+      const main = fs.readFileSync(path.join(process.cwd(), 'src/main.tsx'), 'utf-8');
+      expect(main).toContain('MythExamplePage');
     });
   });
 });

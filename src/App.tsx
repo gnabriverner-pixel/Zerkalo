@@ -29,6 +29,7 @@ import { ConsentBoundary } from './components/ConsentBoundary';
 import { requestServerDeletion } from './services/serverDeletion';
 import { SiteFooter } from './components/SiteFooter';
 import {useFreePreview,meetingUnavailable,getMythsAccessLabel} from './services/freePreview';
+import {freeWindowLine} from './services/freeWindowLine';
 
 function sanitizeUrlDob(): void {
   if (typeof window === 'undefined') return;
@@ -484,6 +485,7 @@ function AppContent() {
                   onContinue={hasMyth ? () => (meetingBlocked ? openOrdinaryAlbert() : setMode('meeting')) : undefined}
                   continueLabel={meetingBlocked ? 'Обсудить с Альбертом' : 'Открыть Встречу зеркал'}
                   onOpenMyth={hasMyth ? undefined : () => setMode('myth')}
+                  freeWindowLine={freeWindowLine(freePreview)}
                   isQaMode={isQaMode && import.meta.env.DEV}
                   onOpenAlbert={(p, options) => {
                     setCodeV2Payload(p);
