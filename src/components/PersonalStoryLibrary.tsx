@@ -5,6 +5,7 @@ import './personalStoryLibrary.css';
 import {useFreePreview} from '../services/freePreview';
 import {useMythConfig} from '../services/mythAvailability';
 import {MYTH_V2A_QUESTIONS} from '../services/mythQuestionsV2A';
+import {STORY_PRICE_LABEL} from '../services/storyPrice';
 
 type Order={id:string;kind:'free'|'paid';state:string;test:boolean;remaining:number;pending:number;preview_temporary?:boolean;data:{answers?:StoryInputs;question?:string;myth?:any;messages:{role:string;content:string}[];note:string}};
 const empty={q1:'',q2:'',q3:'',q4:''};
@@ -363,9 +364,20 @@ export function PersonalStoryLibrary({
                 ? `Пробный доступ — бесплатно до ${new Date(preview.ends_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Europe/Moscow' })} включительно.`
                 : 'Пробный доступ — бесплатно.')
             : mode === 'live'
-            ? '790 ₽ · одна покупка'
-            : 'Пробный доступ завершён. Полученные мифы остаются у вас.'}
+            ? `${STORY_PRICE_LABEL} · одна покупка`
+            : 'Личный миф — предложение. Полученные мифы остаются у вас.'}
         </p>
+
+        {/* 3b. Экран после окна: предложение Личного мифа, оплата пока не открыта */}
+        {preview !== null && !(preview.enabled && preview.active) && mode !== 'live' && (
+          <section className="story-offer" aria-labelledby="story-offer-title" data-testid="story-offer">
+            <h3 id="story-offer-title">Личный миф</h3>
+            <p>Короткий художественный текст по вашим трём ответам, написанный с помощью ИИ. Сохранение, PDF и до пяти ответов Альберта о нём. Это информационно-развлекательный текст: гипотезы и образы для размышления.</p>
+            <p className="story-offer-price"><strong>{STORY_PRICE_LABEL}</strong> · одна покупка — один Миф</p>
+            <button type="button" disabled aria-disabled="true">Оплата скоро откроется</button>
+            <p className="story-muted">Оплачивая, вы принимаете <a href="/terms" target="_blank" rel="noreferrer">оферту</a>.</p>
+          </section>
+        )}
 
         {/* 4. Всё остальное — под одним раскрывающимся заголовком «Хранение и доступ» (свёрнут по умолчанию) */}
         <details className="story-details">
@@ -472,7 +484,7 @@ export function PersonalStoryLibrary({
 
             {freeDone && !crisisBlocked && preview && !preview.enabled && (
               <>
-                <p>790 ₽ за одну новую историю. Не подписка. Ошибка или кризисный ответ не расходуют пять ответов. При сбое — повторное открытие истории, ограниченный повтор или обращение по номеру заказа для выдачи/возврата. Новая генерация не начинается сама при перезагрузке.</p>
+                <p>{STORY_PRICE_LABEL} за одну новую историю. Одна покупка — один Миф. Ошибка или кризисный ответ не расходуют пять ответов. При сбое — повторное открытие истории, ограниченный повтор или обращение по номеру заказа для выдачи/возврата. Новая генерация не начинается сама при перезагрузке.</p>
                 {mode === 'live' && (
                   <label>
                     Электронная почта для чека
@@ -483,8 +495,9 @@ export function PersonalStoryLibrary({
                   disabled={busy || !savedCode || mode === 'disabled' || (mode === 'live' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(receiptEmail))}
                   onClick={createOrder}
                 >
-                  Новый Личный миф — 790 ₽
+                  Новый Личный миф — {STORY_PRICE_LABEL}
                 </button>
+                <p className="story-muted">Оплачивая, вы принимаете <a href="/terms" target="_blank" rel="noreferrer">оферту</a>.</p>
                 {!savedCode && <p>Перед оплатой получите и сохраните код восстановления.</p>}
               </>
             )}

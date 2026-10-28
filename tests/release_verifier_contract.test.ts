@@ -272,7 +272,7 @@ describe("T4.3 Release Verifier Contract: Metadata Release Child vs Application 
     expect(manifest.web.branch).toBe("codex/stage1-convergence-candidate");
     expect(manifest.dcs.repository).toBe("gnabriverner-pixel/digital-code-system");
     expect(manifest.dcs.branch).toBe("codex/stage1-owner-iteration");
-    expect(manifest.contracts.consent_version).toBe("zerkalo-2026-09-v1");
+    expect(manifest.contracts.consent_version).toBe("zerkalo-2026-10-v2");
     expect(manifest.contracts.personal_myth_writer_version).toBe("personal-myth-v1.5-emergent-possibility");
     expect(manifest.contracts.personal_myth_default_prompt_variant).toBe("v11");
     expect(manifest.contracts.dcs_service_http.endpoints).toEqual([

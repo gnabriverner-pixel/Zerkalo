@@ -35,7 +35,7 @@ test('consent → canonical Code → recorded Myth/Meeting → save/reload → h
   await page.route('**/api/consent',async route=>{
     const request=route.request();
     if(request.method()==='POST' && request.postDataJSON()?.scope==='telegram_transfer'){
-      await route.fulfill({json:{accepted:true,version:'zerkalo-2026-09-v1'}});
+      await route.fulfill({json:{accepted:true,version:'zerkalo-2026-10-v2'}});
       return;
     }
     await route.continue();

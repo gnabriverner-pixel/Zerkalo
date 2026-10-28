@@ -1,4 +1,4 @@
-export const CONSENT_VERSION = 'zerkalo-2026-09-v1';
+export const CONSENT_VERSION = 'zerkalo-2026-10-v2';
 export const CONSENT_MAX_AGE_MS = 7 * 86400_000;
 export type ConsentScope = 'core' | 'telegram_transfer';
 

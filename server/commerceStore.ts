@@ -3,8 +3,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const STORY_PRICE = 79000;
-export const STORY_CURRENCY = 'RUB';
+import { STORY_PRICE, STORY_CURRENCY, STORY_PRICE_VALUE } from '../src/services/storyPrice';
+export { STORY_PRICE, STORY_CURRENCY };
 export const ALBERT_ALLOWANCE = 5;
 export class CommerceError extends Error {
   constructor(public code: string, public status = 409) { super(code); }
@@ -335,7 +335,7 @@ export class CommerceStore {
   confirmPayment(account:string,id:string,payment:{id:string;status:string;paid:boolean;test:boolean;amount:{value:string;currency:string};metadata?:{order_id?:string}}){
     return this.tx(()=>{
       const order=this.order(account,id);
-      if(order.kind!=='paid'||payment.id!==order.payment_id||payment.metadata?.order_id!==id||payment.amount?.value!=='790.00'||payment.amount?.currency!==STORY_CURRENCY||payment.test!==Boolean(order.test))throw new CommerceError('payment_mismatch',422);
+      if(order.kind!=='paid'||payment.id!==order.payment_id||payment.metadata?.order_id!==id||payment.amount?.value!==STORY_PRICE_VALUE||payment.amount?.currency!==STORY_CURRENCY||payment.test!==Boolean(order.test))throw new CommerceError('payment_mismatch',422);
       if(payment.status==='canceled' && order.state==='pending_payment')this.db.prepare("UPDATE orders SET state='canceled' WHERE id=?").run(id);
       if(payment.status==='succeeded' && payment.paid===true && order.state==='pending_payment'){
         this.db.prepare("UPDATE orders SET state='paid' WHERE id=?").run(id);this.event('server_confirmed',order);

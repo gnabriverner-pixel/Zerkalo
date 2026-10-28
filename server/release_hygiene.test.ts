@@ -64,7 +64,7 @@ describe("Release Hygiene Production Server Suite", () => {
       body: JSON.stringify({
         accepted: true,
         adult: true,
-        version: "zerkalo-2026-09-v1",
+        version: "zerkalo-2026-10-v2",
         scope: "core",
       }),
     });

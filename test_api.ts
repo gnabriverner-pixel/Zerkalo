@@ -10,7 +10,7 @@ async function test() {
   const consent = await fetch('http://localhost:3000/api/consent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:3000' },
-    body: JSON.stringify({ accepted: true, adult: true, version: 'zerkalo-2026-09-v1', scope: 'core' }),
+    body: JSON.stringify({ accepted: true, adult: true, version: 'zerkalo-2026-10-v2', scope: 'core' }),
   });
   const cookie = consent.headers.get('set-cookie')?.split(';')[0] || '';
 

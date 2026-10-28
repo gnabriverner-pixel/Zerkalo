@@ -8,7 +8,8 @@ import { GLOSSARY_ROLES } from '../../data/glossary';
 import { hasCanonicalV2Result } from '../../services/codeV2Session';
 import { validateBirthDate } from '../../services/birthDate';
 import { loadQaPanel, type QaPanelModule } from './qaPanelLoader';
-import { useProtectedFetch } from '../ConsentBoundary';
+import { useProtectedFetch, useInlineConsent } from '../ConsentBoundary';
+import { DateConsentField, DATE_CONSENT_REQUIRED_MESSAGE } from '../DateConsentField';
 import './codeReading.css';
 import {
   Calculator,
@@ -206,6 +207,8 @@ export function CodeV2Experience({
     };
   }, [isQaEffective]);
   const protectedFetch = useProtectedFetch();
+  const inlineConsent = useInlineConsent();
+  const [consentChecked, setConsentChecked] = useState(false);
   const [day, setDay] = useState(() => (initialDate ? initialDate.split('.')[0] || '' : ''));
   const [month, setMonth] = useState(() => (initialDate ? initialDate.split('.')[1] || '' : ''));
   const [year, setYear] = useState(() => (initialDate ? initialDate.split('.')[2] || '' : ''));
@@ -348,10 +351,26 @@ export function CodeV2Experience({
       return;
     }
 
+    // The date leaves the browser only after the consent mark at the date field (or an earlier valid consent).
+    if (!inlineConsent.accepted && !consentChecked) {
+      setDateError(DATE_CONSENT_REQUIRED_MESSAGE);
+      return;
+    }
+
     setDay(d);
     setMonth(m);
     setYear(y);
-    fetchV2Calculation(validation.formatted);
+    void (async () => {
+      if (!inlineConsent.accepted) {
+        try {
+          await inlineConsent.accept();
+        } catch {
+          setApiError('Согласие не сохранено. Попробуйте ещё раз.');
+          return;
+        }
+      }
+      fetchV2Calculation(validation.formatted);
+    })();
   };
 
   const handleSelectPreset = (presetDob: string) => {
@@ -497,6 +516,10 @@ export function CodeV2Experience({
                   )}
                 </button>
               </form>
+
+              {!inlineConsent.accepted && (
+                <DateConsentField checked={consentChecked} onChange={value => { setConsentChecked(value); if (value) setDateError(''); }} />
+              )}
 
               {dateError && (
                 <div className="mt-4 text-xs text-rose-400 flex items-center gap-1.5">

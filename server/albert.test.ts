@@ -80,10 +80,10 @@ describe("Albert Web Dialogue Canonical DTO Adapter (digital-code-system/telegra
     }), { status: 200 }));
     let resp;
     try {
-      resp = await generateAlbertDialogue(sampleRequest,undefined,'deepseek-v4-pro',45_000,{version:'zerkalo-2026-09-v1',recordedAt:1700000000000});
+      resp = await generateAlbertDialogue(sampleRequest,undefined,'deepseek-v4-pro',45_000,{version:'zerkalo-2026-10-v2',recordedAt:1700000000000});
       const body = JSON.parse(fetchMock.mock.calls[0][1]!.body as string);
       expect(body.envelope.consent.recorded_at).toBe(new Date(1700000000000).toISOString());
-      expect(body.envelope.consent.policy_version).toBe('zerkalo-2026-09-v1');
+      expect(body.envelope.consent.policy_version).toBe('zerkalo-2026-10-v2');
       expect(body.envelope.consent.cross_surface).toBe(false);
       expect(body.envelope.memory_summary.recent_turns).toEqual([
         { role: "user", text: sampleRequest.history![0].text },

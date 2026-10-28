@@ -27,7 +27,7 @@
     "personal_myth_writer_version": "personal-myth-v1.5-emergent-possibility",
     "personal_myth_default_prompt_variant": "v11",
     "meeting_of_mirrors_version": "meeting-v1.1",
-    "consent_version": "zerkalo-2026-09-v1"
+    "consent_version": "zerkalo-2026-10-v2"
   },
   "runtime": {
     "node_major": 24,

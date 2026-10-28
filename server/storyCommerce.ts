@@ -1,6 +1,7 @@
 import type {Express,Request,Response} from 'express';
 import path from 'node:path';
 import {CommerceStore,CommerceError,type StoryOrder} from './commerceStore';
+import { STORY_PRICE_VALUE, STORY_PRICE_RUB, STORY_PRICE_LABEL } from '../src/services/storyPrice';
 import {MockStoryPayment,YooTestPayment,liveCheckoutConfigured,validReceiptEmail,type StoryPayment} from './storyPayment';
 import {makeStoryPdf,storySections} from './storyPdf';
 import {STORY_SAMPLE} from './storySample';
@@ -121,7 +122,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     const configuredMode=preview.enabled()?'disabled':options.payment?.mode||process.env.COMMERCE_PAYMENT_MODE||'disabled';
     if(configuredMode==='live'&&budget.configured()){try{await budget.prepare();}catch{/* Rights remain available; capacity reports the pause. */}}
     const live=liveCheckoutConfigured(process.env)&&budget.capacity();
-    res.set('Cache-Control','no-store').json({enabled:enabled(),storage_accepted:Boolean(id&&database?.storageAccepted(id)),payment_mode:configuredMode==='live'&&!liveCheckoutConfigured(process.env)?'disabled':configuredMode,live_checkout:!preview.enabled()&&live,new_sales_paused:configuredMode==='live'&&!live,title:'Новый Личный миф',price_rub:790,support_email:process.env.COMMERCE_SUPPORT_EMAIL||null,preview:availability()});
+    res.set('Cache-Control','no-store').json({enabled:enabled(),storage_accepted:Boolean(id&&database?.storageAccepted(id)),payment_mode:configuredMode==='live'&&!liveCheckoutConfigured(process.env)?'disabled':configuredMode,live_checkout:!preview.enabled()&&live,new_sales_paused:configuredMode==='live'&&!live,title:'Новый Личный миф',price_rub:STORY_PRICE_RUB,support_email:process.env.COMMERCE_SUPPORT_EMAIL||null,preview:availability()});
   });
   // A forged notification cannot issue rights. Retrieve the object under the merchant's credentials.
   app.post('/api/stories/payment-webhook',route(async(req,res)=>{
@@ -133,7 +134,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     if(notification?.event==='refund.succeeded'){
       if(!adapter.refund)throw new CommerceError('refund_not_supported',503);
       const refund=await adapter.refund(id),found=store().paymentOrder(refund.payment_id);
-      if(found && refund.status==='succeeded' && refund.amount?.value==='790.00' && refund.amount?.currency==='RUB')store().markRefunded(found.account,found.id);
+      if(found && refund.status==='succeeded' && refund.amount?.value===STORY_PRICE_VALUE && refund.amount?.currency==='RUB')store().markRefunded(found.account,found.id);
     }else if(['payment.succeeded','payment.canceled'].includes(notification?.event)){
       const actual=await adapter.get(id),found=store().paymentOrder(actual.id);
       if(found)store().confirmPayment(found.account,found.id,actual);
@@ -196,7 +197,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     }
     db.paymentStarted(id,order.id);order=db.order(id,order.id);
     const actual=await adapter.create(order);
-    if(!actual.id||actual.amount?.value!=='790.00'||actual.amount?.currency!=='RUB'||actual.metadata?.order_id!==order.id||actual.test!==Boolean(order.test))throw new CommerceError('payment_mismatch',422);
+    if(!actual.id||actual.amount?.value!==STORY_PRICE_VALUE||actual.amount?.currency!=='RUB'||actual.metadata?.order_id!==order.id||actual.test!==Boolean(order.test))throw new CommerceError('payment_mismatch',422);
     const terminal=['succeeded','canceled'].includes(actual.status);
     const url=terminal?'/?stories=1':actual.confirmation?.confirmation_url;
     if(!url)throw new CommerceError('payment_mismatch',422);
@@ -215,7 +216,7 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     const found=store().paymentOrder(req.params.payment);
     if(!found||found.account!==account(req))throw new CommerceError('story_not_found',404);
     // POST form is deliberate and same-origin. This simulation cannot be enabled in production.
-    res.type('html').send(`<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Имитация оплаты</title><body><h1>Имитация оплаты — деньги не списываются</h1><p>Новая личная история · 790 ₽</p><form method="post"><button name="decision" value="success">Имитировать успешную оплату</button><button name="decision" value="cancel">Имитировать отмену</button></form></body></html>`);
+    res.type('html').send(`<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Имитация оплаты</title><body><h1>Имитация оплаты — деньги не списываются</h1><p>Новая личная история · ${STORY_PRICE_LABEL}</p><form method="post"><button name="decision" value="success">Имитировать успешную оплату</button><button name="decision" value="cancel">Имитировать отмену</button></form></body></html>`);
   }));
   // Express urlencoded is installed by the caller before these routes.
   app.post('/api/stories/mock-checkout/:payment',route((req,res)=>{

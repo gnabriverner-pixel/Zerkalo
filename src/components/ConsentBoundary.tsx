@@ -2,12 +2,22 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { acceptConsent } from '../services/consent';
 
 type ProtectedFetch = (input: string, init: RequestInit) => Promise<Response | null>;
-type ConsentAccess = { protectedFetch: ProtectedFetch; ensureCoreConsent: () => Promise<boolean> };
+type InlineConsent = { accepted: boolean; accept: () => Promise<void> };
+type ConsentAccess = { protectedFetch: ProtectedFetch; ensureCoreConsent: () => Promise<boolean>; inline: InlineConsent };
 const ConsentContext = createContext<ConsentAccess | null>(null);
 
 export function useProtectedFetch(): ProtectedFetch {
   const value = useContext(ConsentContext);
   return value?.protectedFetch || (async () => { throw new Error('ConsentBoundary is required for protected requests'); });
+}
+
+/**
+ * Inline consent at the moment of date entry: the form shows one checkbox and calls accept()
+ * only after it is ticked. `accepted` reflects a valid consent cookie of the current version.
+ */
+export function useInlineConsent(): InlineConsent {
+  const value = useContext(ConsentContext);
+  return value?.inline || { accepted: false, accept: async () => { throw new Error('ConsentBoundary is required for protected requests'); } };
 }
 
 export function useCoreConsent(): () => Promise<boolean> {
@@ -21,6 +31,7 @@ export function ConsentBoundary({ children }: { children: React.ReactNode }) {
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [inlineAccepted, setInlineAccepted] = useState(false);
   const pending = useRef<Promise<boolean> | null>(null);
   const resolvePending = useRef<((accepted: boolean) => void) | null>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
@@ -58,6 +69,11 @@ export function ConsentBoundary({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [open, busy, close]);
 
+  const inline = React.useMemo<InlineConsent>(() => ({
+    accepted: inlineAccepted,
+    accept: async () => { await acceptConsent('core'); setInlineAccepted(true); },
+  }), [inlineAccepted]);
+
   const ensureCoreConsent = useCallback(async (): Promise<boolean> => {
     let accepted = false;
     try {
@@ -91,6 +107,7 @@ export function ConsentBoundary({ children }: { children: React.ReactNode }) {
     setError('');
     try {
       await acceptConsent('core');
+      setInlineAccepted(true);
       close(true);
     } catch {
       setError('Согласие не сохранено. Попробуйте ещё раз.');
@@ -99,7 +116,7 @@ export function ConsentBoundary({ children }: { children: React.ReactNode }) {
     }
   };
 
-  return <ConsentContext.Provider value={{ protectedFetch, ensureCoreConsent }}>
+  return <ConsentContext.Provider value={{ protectedFetch, ensureCoreConsent, inline }}>
     {children}
     {open && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 px-5 py-8 overflow-y-auto" onMouseDown={event => { if (event.target === event.currentTarget && !busy) close(false); }}>
       <section role="dialog" aria-modal="true" aria-labelledby="consent-heading" className="max-w-xl w-full max-h-full overflow-y-auto space-y-5 rounded-2xl border border-white/15 bg-[#090D15] p-6 sm:p-8 text-stone-100 shadow-2xl">

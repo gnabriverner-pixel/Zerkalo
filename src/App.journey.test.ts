@@ -30,6 +30,9 @@ async function enterSyntheticDob(values = ['18', '12', '1989']) {
       field.dispatchEvent(new Event('input', { bubbles: true }));
     });
   });
+  // Consent is a mark under the date field, not a wall before the page.
+  const mark = container.querySelector('input[type=checkbox]') as HTMLInputElement | null;
+  if (mark && !mark.checked) await act(async () => { mark.click(); });
   await click('Посмотреть свой разбор');
 }
 beforeEach(() => {

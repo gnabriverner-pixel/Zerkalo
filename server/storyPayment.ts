@@ -1,4 +1,5 @@
 import { CommerceError, type StoryOrder } from './commerceStore';
+import { STORY_PRICE_VALUE } from '../src/services/storyPrice';
 
 export interface Payment {
   id:string;status:string;paid:boolean;test:boolean;
@@ -51,11 +52,11 @@ export class YooTestPayment implements StoryPayment {
     const email=order.data?.receipt_email;
     if(this.mode==='live'&&(typeof email!=='string'||!validReceiptEmail(email)))throw new CommerceError('receipt_email_required',400);
     const receipt=this.mode==='live'?{customer:{email},tax_system_code:Number(this.env.COMMERCE_RECEIPT_TAX_SYSTEM_CODE),items:[{
-      description:'Новая личная история',quantity:'1.00',amount:{value:'790.00',currency:'RUB'},
+      description:'Новая личная история',quantity:'1.00',amount:{value:STORY_PRICE_VALUE,currency:'RUB'},
       vat_code:Number(this.env.COMMERCE_RECEIPT_VAT_CODE),payment_subject:'service',payment_mode:this.env.COMMERCE_RECEIPT_PAYMENT_MODE,
     }]}:undefined;
     const payment=await this.api('payments',{
-      amount:{value:'790.00',currency:'RUB'},capture:true,
+      amount:{value:STORY_PRICE_VALUE,currency:'RUB'},capture:true,
       description:'Новая личная история',metadata:{order_id:order.id},
       confirmation:{type:'redirect',return_url:new URL('/?stories=1',origin).href},
       ...(receipt?{receipt}:{}),
@@ -82,8 +83,8 @@ export class YooTestPayment implements StoryPayment {
     if(this.mode!=='test')throw new CommerceError('test_refund_only',403);
     if(!/^[\w-]{8,100}$/.test(requestKey))throw new CommerceError('request_key_required',400);
     const payment=await this.get(id);
-    if(payment.status!=='succeeded'||!payment.paid||payment.amount?.value!=='790.00'||payment.amount?.currency!=='RUB')throw new CommerceError('refund_payment_invalid',422);
-    return this.api('refunds',{payment_id:id,amount:{value:'790.00',currency:'RUB'}},requestKey);
+    if(payment.status!=='succeeded'||!payment.paid||payment.amount?.value!==STORY_PRICE_VALUE||payment.amount?.currency!=='RUB')throw new CommerceError('refund_payment_invalid',422);
+    return this.api('refunds',{payment_id:id,amount:{value:STORY_PRICE_VALUE,currency:'RUB'}},requestKey);
   }
 }
 
@@ -103,7 +104,7 @@ export class MockStoryPayment implements StoryPayment {
   private values=new Map<string,Payment>();
   async create(order:StoryOrder){
     const id=`mock-${order.id}`;
-    if(!this.values.has(id))this.values.set(id,{id,status:'pending',paid:false,test:true,amount:{value:'790.00',currency:'RUB'},metadata:{order_id:order.id},confirmation:{confirmation_url:`/api/stories/mock-checkout/${id}`}});
+    if(!this.values.has(id))this.values.set(id,{id,status:'pending',paid:false,test:true,amount:{value:STORY_PRICE_VALUE,currency:'RUB'},metadata:{order_id:order.id},confirmation:{confirmation_url:`/api/stories/mock-checkout/${id}`}});
     return this.get(id);
   }
   async get(id:string){
