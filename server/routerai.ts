@@ -7,8 +7,9 @@ export const FALLBACK_MODEL = 'anthropic/claude-sonnet-5';
 export const MEETING_FALLBACK_MODEL = 'openai/gpt-5.4-mini';
 /** Myth writers only (v2a default, v4.1 rollback via PERSONAL_MYTH_WRITER=v41); never a fallback of another path. */
 export const WRITER_V41_MODEL = 'anthropic/claude-opus-5.5';
-/** Statuses meaning "refused, nothing generated": the reserve is released instead of staying uncertain. */
-export const DEFINITE_REJECT_STATUSES = new Set([400, 401, 402, 403, 404, 422]);
+/** Statuses meaning "refused, nothing generated" (402 no balance, 404 no such model/endpoint): the reserve is released
+ * instead of staying uncertain. Other 4xx (400/401/422/429) deliberately stay uncertain, see mythWriterV41.test.ts. */
+export const DEFINITE_REJECT_STATUSES = new Set([402, 404]);
 export interface ProviderEvent {
   gateway: 'routerai'; model: string; upstream: string | null;
   responseModel: string | null;

@@ -85,7 +85,7 @@ def reserve(body, scope):
     finally:db.close()
 
 native_post=routerai._bounded_post
-REJECT_STATUSES=(400,401,402,403,404,422)
+REJECT_STATUSES=(402,404)
 def accounted_post(body,key,timeout,transport):
     scope=SCOPE.get() or {'pool':'free'}
     try:ident=reserve(body,scope)

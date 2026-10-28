@@ -207,7 +207,7 @@ export class CommerceStore {
       this.db.prepare("UPDATE ai_budget_attempts SET state='released',cost_micro=0,finished_at=?,outcome='local_refusal_not_sent' WHERE id=?").run(Date.now(),id);
     });
   }
-  /** The provider answered with a definite refusal (HTTP 4xx such as 402/404): it generated nothing, so the attempt is not
+  /** The provider answered with a definite refusal (HTTP 402/404): it generated nothing, so the attempt is not
    * 'uncertain'. Same release as an unsent attempt, but the outcome records the status for the journal. */
   releaseRejectedAI(id:string,status:number){
     this.tx(()=>{

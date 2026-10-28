@@ -22,8 +22,8 @@ describe('definite provider refusals release the reserve',()=>{
   it('404 and 402 release the attempt (no cost, outcome recorded)',async()=>{
     for(const status of [404,402]){const {rows,avail}=await callWith(status);expect(rows).toEqual([{state:'released',cost_micro:0,outcome:`provider_rejected_http_${status}`}]);expect(avail.used_micro).toBe(0);}
   });
-  it('5xx stays uncertain (the call may have been billed)',async()=>{
-    const {rows}=await callWith(503);expect(rows).toHaveLength(1);expect(rows[0].state).toBe('uncertain');
+  it('5xx and other 4xx stay uncertain (the call may have been billed / existing policy)',async()=>{
+    for(const status of [503,400,401,422,429]){const {rows}=await callWith(status);expect(rows).toHaveLength(1);expect(rows[0].state).toBe('uncertain');}
   });
   it('native DCS seam (Albert path): 404 releases, 503 stays uncertain',()=>{
     const root=process.env.DCS_ROOT||'/Users/artemkrysin/Documents/Zerkalo-Independent-Audit/work/release-first-sales-dcs-de78';
