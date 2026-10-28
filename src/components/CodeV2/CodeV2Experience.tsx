@@ -415,6 +415,37 @@ export function CodeV2Experience({
     fetchV2Calculation(presetDob);
   };
 
+  // One room open at a time; the first one is open on arrival.
+  const [openRoom, setOpenRoom] = useState<string | null>(() => initialPayload?.positions?.[0]?.position ?? null);
+  useEffect(() => {
+    if (payload && !payload.positions.some(p => p.position === openRoom)) {
+      setOpenRoom(payload.positions[0]?.position ?? null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payload]);
+  const scrollToRoom = (id: string) => {
+    window.setTimeout(() => document.getElementById(`code-room-${id}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 60);
+  };
+  const openRoomById = (id: string) => {
+    setOpenRoom(id);
+    scrollToRoom(id);
+  };
+  const toggleRoom = (id: string) => {
+    if (openRoom === id) {
+      setOpenRoom(null);
+      return;
+    }
+    openRoomById(id);
+  };
+  const [showTop, setShowTop] = useState(false);
+  useEffect(() => {
+    if (!payload) return;
+    const onScroll = () => setShowTop(window.scrollY > 700);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [payload]);
+
   const toggleDetails = (posName: string) => {
     setExpandedDetails(prev => ({
       ...prev,
@@ -616,13 +647,11 @@ export function CodeV2Experience({
             </div>
 
             {/* 1. HERO OPENING: FIVE NUMBERS & CENTRAL MOTIF (MEANING FIRST) */}
-            <section className="w-full bg-gradient-to-br from-[#12192B] via-[#0E1524] to-[#0A0E18] border border-[var(--color-antique-gold)]/30 rounded-3xl p-6 sm:p-9 relative shadow-2xl overflow-hidden">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-[radial-gradient(circle_at_top_right,rgba(200,164,93,0.12),transparent_70%)] pointer-events-none" />
+            <section className="w-full relative">
 
               {/* Celestial Immersion Intro */}
               <div className="text-center max-w-xl mx-auto mb-8 relative z-10">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-antique-gold)]/25 text-[13px] font-mono uppercase tracking-widest text-[var(--color-antique-gold)] mb-3">
-                  <Sparkles className="w-3 h-3" />
+                <div className="inline-flex items-center gap-2 text-[13px] uppercase tracking-[0.25em] text-[var(--color-antique-gold)] mb-3">
                   <span>Как читать</span>
                 </div>
                 <h1 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-2">
@@ -759,7 +788,7 @@ export function CodeV2Experience({
                               : undefined
                           })
                         }
-                        className="px-3.5 py-1.5 rounded-lg bg-[var(--color-antique-gold)]/15 border border-[var(--color-antique-gold)]/40 hover:bg-[var(--color-antique-gold)]/25 text-amber-200 text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-lg border border-white/10 hover:border-white/30 text-stone-200 text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
                         <span>Уточнить</span>
@@ -824,120 +853,154 @@ export function CodeV2Experience({
               </div>
             </section>
 
-            {/* 4. FIVE POSITIONS - EDITORIAL CHAPTERS */}
-            <section className="w-full space-y-6">
-              <div className="text-center max-w-xl mx-auto mb-2">
+            {/* 4. FIVE ROOMS: table of contents, one room open at a time */}
+            <section className="w-full" id="code-rooms">
+              <div className="text-center max-w-xl mx-auto mb-6">
                 <h2 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
                   Пять комнат вашего дома
                 </h2>
               </div>
 
-              <div className="space-y-6">
+              <nav aria-label="Оглавление комнат" className="code-toc" data-testid="code-toc">
+                <ol>
+                  {payload.positions.map((pos, idx) => (
+                    <li key={pos.position}>
+                      <a
+                        href={`#code-room-${pos.position}`}
+                        aria-current={openRoom === pos.position ? 'true' : undefined}
+                        onClick={e => { e.preventDefault(); openRoomById(pos.position); }}
+                      >
+                        <span className="code-toc-n">{idx + 1}</span>
+                        <span>{GLOSSARY_ROLES[pos.position]?.title.split(' · ')[0] || pos.public_name.replace('Число ', '')}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+
+              <div>
                 {payload.positions.map((pos) => {
+                  const isOpen = openRoom === pos.position;
                   const isExpanded = !!expandedDetails[pos.position];
                   const story = readerStory(pos.mini_story, pos.verification_question);
                   const publicEssence = cleanPositionEssence(pos.essence);
+                  const lead = story ? albertLead(pos.position, pos.energy) : null;
                   const firstSceneExample = selectRelevantSceneExample(
                     pos.life_scenes,
                     localQuestion.trim() || userQuestion?.trim()
                   );
                   const posReaction = reactions[pos.position];
+                  const roomTitle = GLOSSARY_ROLES[pos.position]?.title || `${pos.public_name} · ${pos.role}`;
+                  const firstPhrase = story && story.paragraphs[0] ? getFirstSentence(story.paragraphs[0]) : getFirstSentence(publicEssence);
                   return (
                     <div
                       key={pos.position}
-                      className="code-room w-full bg-[#0D1322]/80 border border-white/5 rounded-2xl p-6 sm:p-8"
+                      id={`code-room-${pos.position}`}
+                      className="code-room w-full border-t border-white/10 py-8 sm:py-10 scroll-mt-20"
                     >
-                      {/* Position Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 pb-5 border-b border-white/5">
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0 pt-0.5">
-                            <EmblemPlate planet={pos.energy} variant="obsidian" size={72} />
-                          </div>
-                          <div>
-                            <div className="text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)] mb-1">
-                              <Term role={pos.position}>
-                                {GLOSSARY_ROLES[pos.position]?.title || `${pos.public_name} · ${pos.role}`}
-                              </Term>
-                            </div>
-                            <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
-                              <Term planet={pos.energy}>{pos.energy_name}</Term> · {pos.energy}
-                            </h3>
-                            <p className="mt-2 text-base text-stone-300">{ROLE_READING_HINTS[pos.position]}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {story && albertLead(pos.position, pos.energy) && (
-                        <p className="code-room-lead border-l-2 border-[var(--color-antique-gold)]/50 pl-3 text-base text-stone-300">
-                          <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90">Альберт — ИИ-собеседник</span>
-                          {albertLead(pos.position, pos.energy)}
-                        </p>
+                      <button
+                        type="button"
+                        onClick={() => toggleRoom(pos.position)}
+                        aria-expanded={isOpen}
+                        aria-controls={`code-room-body-${pos.position}`}
+                        className="w-full flex items-start gap-4 text-left cursor-pointer"
+                      >
+                        <span className="flex-shrink-0 pt-1">
+                          <EmblemPlate planet={pos.energy} variant="obsidian" size={56} showLabel={false} interactive={false} />
+                        </span>
+                        <span className="min-w-0 flex-1 block">
+                          <span className="block text-[12px] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] mb-1">{roomTitle}</span>
+                          <span className="block font-serif text-2xl sm:text-3xl text-stone-100 font-light">{pos.energy_name} · {pos.energy}</span>
+                        </span>
+                        <ChevronDown className={`w-5 h-5 mt-2 flex-shrink-0 text-stone-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {!isOpen && firstPhrase && (
+                        <p className="mt-3 pl-[72px] text-[15px] text-stone-300 leading-relaxed">{firstPhrase}</p>
                       )}
-                      {story && (
-                        (() => {
-                          const seenTermsInStory = new Set<string>();
-                          return (
-                            <div className="code-room-story">
-                              {story.title && (
-                                <h4 className="font-serif text-2xl sm:text-[32px] text-stone-100 font-light mb-3 leading-snug">
-                                  {story.title}
-                                </h4>
-                              )}
-                              {story.paragraphs.map((para, i) => (
-                                <p key={i} className="text-stone-200">
-                                  {renderTextWithTerms(para, seenTermsInStory)}
+
+                      {isOpen && (
+                        <div id={`code-room-body-${pos.position}`} className="mt-8">
+                          {story && (
+                            (() => {
+                              const seenTermsInStory = new Set<string>();
+                              return (
+                                <div className="code-room-story">
+                                  {story.title && (
+                                    <h4 className="font-serif text-2xl sm:text-[32px] text-stone-100 font-light mb-4 leading-snug">
+                                      {story.title}
+                                    </h4>
+                                  )}
+                                  {story.paragraphs.map((para, i) => (
+                                    <p key={i} className="text-stone-200">
+                                      {renderTextWithTerms(para, seenTermsInStory)}
+                                    </p>
+                                  ))}
+                                </div>
+                              );
+                            })()
+                          )}
+                          {!story && (
+                            <div className="mb-4">
+                              <div className="text-xs font-medium text-stone-400 mb-2">
+                                О чём это число ({pos.public_name}, {pos.energy})
+                              </div>
+                              {pos.position === 'path' && (
+                                <p className="mb-3 text-base text-stone-300 font-normal leading-relaxed">
+                                  Это не готовая черта характера, а направление практики.
                                 </p>
-                              ))}
+                              )}
+                              <p className="text-base sm:text-[17px] text-stone-200 font-normal leading-relaxed">
+                                {isExpanded ? publicEssence : getFirstSentence(publicEssence)}
+                              </p>
                             </div>
-                          );
-                        })()
-                      )}
-                      {/* 1. О чём это число (человеческий смысл) */}
-                      {!story && (<>
-                      <div className="mb-4">
-                        <div className="text-xs font-medium text-stone-400 mb-2">
-                          О чём это число ({pos.public_name}, {pos.energy})
-                        </div>
-                        {pos.position === 'path' && (
-                          <p className="mb-3 rounded-xl border border-[var(--color-antique-gold)]/20 bg-[var(--color-antique-gold)]/5 px-4 py-3 text-base text-stone-300 font-normal leading-relaxed">
-                            Это не готовая черта характера, а направление практики.
-                          </p>
-                        )}
-                        <p className="text-base sm:text-[17px] text-stone-200 font-normal leading-relaxed">
-                          {isExpanded ? publicEssence : getFirstSentence(publicEssence)}
-                        </p>
-                      </div>
+                          )}
+                          {!story && firstSceneExample && (
+                            <div className="mb-4 pl-3.5 border-l border-[var(--color-antique-gold)]/40 text-sm sm:text-base text-stone-300 leading-relaxed">
+                              <span className="text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90 block mb-0.5">
+                                Пример
+                              </span>
+                              <span>{firstSceneExample}</span>
+                            </div>
+                          )}
 
-                      </>)}
-                      {/* 2. Конкретный пример проявления */}
-                      {!story && firstSceneExample && (
-                        <div className="mb-4 pl-3.5 border-l border-[var(--color-antique-gold)]/40 text-sm sm:text-base text-stone-300 leading-relaxed">
-                          <span className="text-xs font-mono uppercase tracking-wider text-[var(--color-antique-gold)]/90 block mb-0.5">
-                            Пример
-                          </span>
-                          <span>{firstSceneExample}</span>
-                        </div>
-                      )}
+                          <div className="code-room-question">
+                            <span className="text-[13px] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] block mb-2">Проверьте на себе:</span>
+                            <p className="text-stone-100 font-serif italic">«{story ? story.question : pos.verification_question}»</p>
+                          </div>
 
-                      <div className="code-room-question flex items-start gap-3">
-                        <Compass className="w-4 h-4 text-[var(--color-antique-gold)] flex-shrink-0 mt-1" />
-                        <div className="min-w-0">
-                          <span className="text-sm text-stone-300 block mb-2">Проверьте на себе:</span>
-                          <p className="text-stone-100 font-serif italic">«{story ? story.question : pos.verification_question}»</p>
-                        </div>
-                      </div>
+                          {/* One folded line: Albert's word, details, reactions */}
+                          <div className="code-room-actions">
+                            <button
+                              type="button"
+                              onClick={() => toggleDetails(pos.position)}
+                              aria-expanded={isExpanded}
+                              aria-controls={`code-details-${pos.position}`}
+                              className="min-h-11 w-full text-left text-sm text-stone-300 hover:text-white flex items-center gap-2 cursor-pointer transition-colors"
+                            >
+                              <span className="flex-1">
+                                {isExpanded
+                                  ? 'Свернуть'
+                                  : `Подробности (${pos.life_scenes?.length || 0})${lead ? ' · слово Альберта' : ''}${showExample ? '' : ' · отклик'}`}
+                              </span>
+                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </button>
 
-                      {/* Progressive disclosure: Dynamic Forces & Life Scenes */}
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <motion.div
-                            id={`code-details-${pos.position}`}
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="space-y-3 mb-6 pt-3 border-t border-white/5 overflow-hidden"
-                          >
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  id={`code-details-${pos.position}`}
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="space-y-3 pt-3 overflow-hidden"
+                                >
+                                  {lead && (
+                                    <p className="code-room-lead border-l-2 border-[var(--color-antique-gold)]/50 pl-3 text-base text-stone-300">
+                                      <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90">Альберт — ИИ-собеседник</span>
+                                      {lead}
+                                    </p>
+                                  )}
                             {pos.position === 'direction' && pos.direction_compound ? (
                               <div className="space-y-4">
                                 <div className="rounded-xl border border-[var(--color-antique-gold)]/20 bg-[var(--color-antique-gold)]/5 p-4 sm:p-5">
@@ -1057,28 +1120,7 @@ export function CodeV2Experience({
                                 ))}
                               </div>
                             )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      {/* Progressive disclosure & position reaction controls */}
-                      <div className="code-room-actions flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <button
-                          type="button"
-                          onClick={() => toggleDetails(pos.position)}
-                          aria-expanded={isExpanded}
-                          aria-controls={`code-details-${pos.position}`}
-                          className="min-h-11 text-sm text-stone-300 hover:text-[var(--color-antique-gold)] flex items-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>
-                            {isExpanded
-                              ? 'Свернуть'
-                              : `Подробности (${pos.life_scenes?.length || 0})`}
-                          </span>
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </button>
-
+                                  <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         {!showExample && (
                           <div className="flex flex-wrap items-center gap-2">
                             <button
@@ -1129,7 +1171,13 @@ export function CodeV2Experience({
                             </button>
                           </div>
                         )}
-                      </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1137,7 +1185,7 @@ export function CodeV2Experience({
             </section>
 
             {onContinue && (
-              <div className="rounded-2xl border border-white/10 p-6 space-y-3">
+              <div className="space-y-3">
                 <button
                   type="button"
                   onClick={() => { if (!showExample) reportPathEvent('bridge_clicked'); onContinue(); }}
@@ -1149,7 +1197,7 @@ export function CodeV2Experience({
             )}
 
             {/* 5. KEY CONNECTIONS (EXPANDABLE ON DEMAND) */}
-            <section className="w-full bg-[#0D1322]/80 border border-white/5 rounded-2xl p-6 sm:p-8 backdrop-blur-md">
+            <section className="w-full border-t border-white/10 pt-8">
               <button
                 type="button"
                 onClick={() => toggleDetails('interactions')}
@@ -1170,7 +1218,7 @@ export function CodeV2Experience({
                   {payload.interactions.map((inter, idx) => (
                     <div
                       key={idx}
-                      className="bg-black/30 border border-white/5 hover:border-white/10 rounded-xl p-5 flex flex-col justify-between transition-all"
+                      className="border-t border-white/10 pt-4 flex flex-col justify-between"
                     >
                       <div>
                         {isQaEffective && (
@@ -1192,8 +1240,7 @@ export function CodeV2Experience({
             </section>
 
             {/* 8. ALBERT FINAL INVITATION */}
-            <section className="w-full bg-gradient-to-br from-[#121A2A] via-[#0E1524] to-[#0A0E18] border border-[var(--color-antique-gold)]/30 rounded-2xl p-6 sm:p-8 relative shadow-2xl overflow-hidden">
-              <div className="absolute top-0 right-0 w-80 h-80 bg-[radial-gradient(circle_at_top_right,rgba(200,164,93,0.12),transparent_70%)] pointer-events-none" />
+            <section className="w-full border-t border-white/10 pt-8 relative">
 
               <div className="flex flex-col items-start gap-5 relative z-10">
                 <div className="max-w-xl">
@@ -1232,7 +1279,7 @@ export function CodeV2Experience({
 
             {/* 9. ALBERT BRIDGE TO PERSONAL MYTH */}
             {onOpenMyth && (
-              <section className="w-full bg-gradient-to-br from-[#121A2A] via-[#0E1524] to-[#0A0E18] border border-[var(--color-antique-gold)]/30 rounded-2xl p-6 sm:p-8 relative shadow-2xl overflow-hidden">
+              <section className="w-full border-t border-white/10 pt-8 relative">
                 <div className="border-l-2 border-[var(--color-antique-gold)]/50 pl-4 space-y-3">
                   <span className="block text-xs uppercase tracking-wider text-[var(--color-antique-gold)]/90 font-mono">
                     Альберт — ИИ-собеседник
@@ -1258,6 +1305,16 @@ export function CodeV2Experience({
         )}
 
       </div>
+      {payload && showTop && (
+        <button
+          type="button"
+          aria-label="Наверх"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed right-4 bottom-5 z-20 w-11 h-11 rounded-full border border-white/15 bg-[#0D121D]/90 text-stone-200 hover:text-white flex items-center justify-center cursor-pointer"
+        >
+          <ChevronUp className="w-5 h-5" />
+        </button>
+      )}
     </div>
   );
 }

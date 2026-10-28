@@ -18,13 +18,18 @@
 .code-role-map dt > span { max-width: 100%; }
 .code-role-number { font-size: 2.5rem; line-height: 1; }
 .code-role-map dd { margin: 0; line-height: 1.55; overflow-wrap: anywhere; }
-.code-room { max-width: 44rem; margin-inline: auto; overflow-wrap: anywhere; }
+.code-room { max-width: var(--measure); margin-inline: auto; overflow-wrap: anywhere; }
+.code-toc { max-width: var(--measure); margin: 0 auto var(--space-4); }
+.code-toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem 1.25rem; }
+.code-toc a { display: inline-flex; align-items: baseline; gap: 0.5rem; min-height: 44px; align-items: center; font-size: 0.9375rem; color: var(--text-secondary); text-decoration: none; border-bottom: 1px solid transparent; }
+.code-toc a:hover, .code-toc a[aria-current='true'] { color: var(--text-primary); border-bottom-color: var(--border-gold); }
+.code-toc-n { font-family: var(--font-display); font-size: 1.25rem; color: var(--gold); }
 .code-room-lead { margin-bottom: 1.75rem; line-height: 1.55; }
-.code-room-story { font-size: 1.0625rem; line-height: 1.65; }
+.code-room-story { font-size: var(--fs-body); line-height: var(--lh-body); }
 .code-room-story > p + p { margin-top: 1em; }
-.code-room-question { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgb(255 255 255 / 0.1); }
+.code-room-question { margin-top: var(--space-4); }
 .code-room-question p { font-size: 1.375rem; line-height: 1.45; }
-.code-room-actions { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgb(255 255 255 / 0.06); }
+.code-room-actions { margin-top: var(--space-3); padding-top: 0.25rem; border-top: 1px solid rgb(255 255 255 / 0.08); }
 .code-room-actions button { min-height: 44px; }
 @media (min-width: 768px) {
   .code-role-map { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; text-align: center; }
