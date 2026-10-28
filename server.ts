@@ -29,7 +29,9 @@ import crypto from "crypto";
 import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge, purgeCanonicalCaches, deriveCacheKey, bindCanonicalCacheOwner } from "./server/dcsBridge";
 import { createContinuationClaim, LOCAL_CANDIDATE_TELEGRAM_UNAVAILABLE_MESSAGE, sweepExpiredClaims } from "./server/handoff";
 import { registerDeletionScope, executeDataDeletion, registerCachePurger, registerCacheOwnerBinder, bindSessionCalculationsToToken } from "./server/deletion";
-import { installConsentRoutes, verifyConsent } from './server/consent';
+import { personalMythHealthInfo } from './server/mythHealth';
+import { recordPathEvent, isPathEvent, prunePathCounters, CLIENT_PATH_EVENTS } from './server/pathCounters';
+import { installConsentRoutes, verifyConsent, consentReceiptFromRequest } from './server/consent';
 import { installStoryCommerce, type StoryCommerceOptions } from './server/storyCommerce';
 import { installLocalStorySetup } from './server/localStorySetup';
 import {
@@ -127,6 +129,8 @@ export async function createApp(options: CreateAppOptions = {}) {
     message: 'Сейчас слишком много запросов к диалогу. Ваши результаты сохранены — попробуйте через несколько минут.',
   });
   // Keeps the client maps bounded on a long-running process.
+  prunePathCounters();
+  setInterval(() => prunePathCounters(), 24 * 60 * 60_000).unref();
   const ratePurgeTimer = setInterval(() => purgeExpiredRateLimits(Date.now(), rateWindowMs), 60 * 60_000);
   ratePurgeTimer.unref?.();
 
@@ -292,9 +296,7 @@ export async function createApp(options: CreateAppOptions = {}) {
           live_verified: liveGeneration.personal_myth,
           ready: providerConfigured && liveGeneration.personal_myth,
           provider: "routerai",
-          model: PERSONAL_MYTH_MODEL,
-          writer: PERSONAL_MYTH_WRITER_VERSION,
-          fallback_model: "anthropic/claude-sonnet-5",
+          ...personalMythHealthInfo(process.env, PERSONAL_MYTH_MODEL),
         },
         meeting: {
           configured: providerConfigured,
@@ -330,8 +332,26 @@ export async function createApp(options: CreateAppOptions = {}) {
     });
   });
 
+  // Anonymous path counters: name, time and test flag only. No consent needed - no personal data is involved.
+  const pathEventBuckets = new Map<string, any>();
+  app.post("/api/path-event", (req, res) => {
+    const name = req.body?.name;
+    if (!isPathEvent(name) || !CLIENT_PATH_EVENTS.includes(name)) {
+      return res.status(400).json({ status: "error", code: "path_event_rejected" });
+    }
+    if (!checkAndIncrementRate(req.ip || "unknown", 120, Date.now(), 10 * 60_000, pathEventBuckets).allowed) {
+      return res.status(429).json({ status: "error", code: "rate_limit_exceeded" });
+    }
+    recordPathEvent(name, process.env.NODE_ENV !== "production" || req.body?.test === true);
+    return res.status(204).end();
+  });
+
   // Tester Feedback submission
+  // Disabled unless TESTER_FEEDBACK_ENABLED=true: the files are plain text without a retention limit.
   app.post("/api/feedback", async (req, res) => {
+    if (process.env.TESTER_FEEDBACK_ENABLED !== "true") {
+      return res.status(404).json({ status: "error", code: "feedback_disabled" });
+    }
     try {
       const score = Number(req.body?.score);
       if (!Number.isInteger(score) || score < 0 || score > 10) {
@@ -462,7 +482,9 @@ export async function createApp(options: CreateAppOptions = {}) {
         });
       }
 
+      recordPathEvent("myth_started", process.env.NODE_ENV !== "production");
       const generated = await generatePersonalMyth(reqBody, mythProvider, personalMythTimeoutMs);
+      recordPathEvent("myth_ready", process.env.NODE_ENV !== "production");
       const payload = {
         mode: "story",
         status: "ok",
@@ -733,7 +755,16 @@ export async function createApp(options: CreateAppOptions = {}) {
   // Privacy: Fail-closed Deletion Endpoint
   app.post("/api/delete-data", async (req, res) => {
     try {
-      const token = String(req.body?.token || "").trim();
+      // The consent cookie is httpOnly, so the interface cannot send its event id: when no token is given,
+      // the server takes the deletion scope from the caller's own consent receipt (same-origin only).
+      let token = String(req.body?.token || "").trim();
+      if (!token) {
+        const origin = req.get("origin");
+        let sameOrigin = false;
+        try { sameOrigin = Boolean(origin) && new URL(origin as string).host === req.get("host"); } catch { sameOrigin = false; }
+        if (!sameOrigin) return res.status(403).json({ status: "error", code: "deletion_origin_rejected" });
+        token = consentReceiptFromRequest(req)?.eventId || "";
+      }
       const result = await executeDataDeletion(token);
       if (result.status === "error") {
         const isInput = result.code === "invalid_token" || result.code === "deletion_scope_not_found";

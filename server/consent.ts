@@ -34,6 +34,7 @@ export function verifyConsent(token:string, now=Date.now()): Receipt|null {
       typeof r.eventId==='string' ? r : null;
   } catch {return null;}
 }
+export function consentReceiptFromRequest(req:Request){return receipt(req);}
 function receipt(req:Request):Receipt|null {
   const token=(req.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith(`${COOKIE}=`))?.slice(COOKIE.length+1);
   return token ? verifyConsent(token) : null;

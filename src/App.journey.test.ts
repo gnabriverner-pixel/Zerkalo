@@ -124,6 +124,7 @@ describe('actual V2 journey', () => {
     const requests: any[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url, init) => {
       if (url === '/api/consent') return new Response(JSON.stringify({accepted:true}));
+      if (url === '/api/path-event') return new Response(null,{status:204});
       if (url === '/api/code-v2') return new Response(JSON.stringify({status:'ok',payload}));
       requests.push(JSON.parse(init.body));
       return new Response(JSON.stringify({status:'ok',message:'Учитываю вашу поправку.',truthState:truth}));

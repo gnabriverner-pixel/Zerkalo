@@ -26,6 +26,8 @@ import { isShortJuxtapositionEnabled } from './services/albertOpenerState';
 import { loadQaPanel, type QaPanelModule } from './components/CodeV2/qaPanelLoader';
 import { EmblemDefs } from './art/emblem';
 import { ConsentBoundary } from './components/ConsentBoundary';
+import { requestServerDeletion } from './services/serverDeletion';
+import { SiteFooter } from './components/SiteFooter';
 import {useFreePreview,meetingUnavailable,getMythsAccessLabel} from './services/freePreview';
 
 function sanitizeUrlDob(): void {
@@ -221,6 +223,7 @@ function AppContent() {
 
   const handleDeleteSavedMirror = () => {
     deleteMyMirrorSnapshot();
+    void requestServerDeletion();
     setSavedSnapshot(null);
   };
 
@@ -253,6 +256,7 @@ function AppContent() {
 
   const handleClearDraft = () => {
     clearTransientDraft();
+    void requestServerDeletion();
     setTransientDraft(null);
     setCodeDate('');
     setUserQuestion('');
@@ -747,6 +751,7 @@ function AppContent() {
         previousMyth={storyResult}
         onStoriesDeleted={()=>{handleDeleteSavedMirror();handleClearDraft();}}
       />
+      <SiteFooter />
     </div>
   );
 }

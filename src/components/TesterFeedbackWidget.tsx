@@ -8,7 +8,14 @@ interface TesterFeedbackWidgetProps {
   onFeedbackSubmitted?: (fb: TesterFeedback) => void;
 }
 
-export function TesterFeedbackWidget({ onFeedbackSubmitted }: TesterFeedbackWidgetProps) {
+/** Tester widget stores plain-text files on the server: off unless the build explicitly enables it. */
+export const TESTER_FEEDBACK_ENABLED = import.meta.env.VITE_TESTER_FEEDBACK === 'true';
+
+export function TesterFeedbackWidget(props: TesterFeedbackWidgetProps) {
+  return TESTER_FEEDBACK_ENABLED ? <TesterFeedbackWidgetInner {...props} /> : null;
+}
+
+function TesterFeedbackWidgetInner({ onFeedbackSubmitted }: TesterFeedbackWidgetProps) {
   const protectedFetch = useProtectedFetch();
   const [score, setScore] = useState<number | null>(null);
   const [hoverScore, setHoverScore] = useState<number | null>(null);

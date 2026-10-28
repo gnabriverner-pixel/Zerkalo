@@ -288,6 +288,9 @@ export function LabEntryView({
           <p className="text-[var(--color-text-secondary)] font-normal text-[17px] sm:text-[18px] max-w-2xl mx-auto leading-[1.7] pt-2">
             Начните с даты рождения: пять сторон жизни через истории и вопросы.
           </p>
+          <p className="text-[var(--color-text-muted)] text-[13px] sm:text-sm max-w-2xl mx-auto leading-relaxed" data-testid="entry-promise">
+            Ответы видите только вы. Решение об оплате — после того, как увидите пример.
+          </p>
 
           <a
             href="#date-gate"

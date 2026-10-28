@@ -6,6 +6,8 @@ import path from 'node:path';
 import { STORY_PRICE, STORY_CURRENCY, STORY_PRICE_VALUE } from '../src/services/storyPrice';
 export { STORY_PRICE, STORY_CURRENCY };
 export const ALBERT_ALLOWANCE = 5;
+import { recordPathEvent, type PathEventName } from './pathCounters';
+const PATH_COUNTER_OF_EVENT:Record<string,PathEventName|undefined>={checkout_started:'checkout_started',server_confirmed:'paid',experience_started:'myth_started',issued:'myth_ready'};
 export class CommerceError extends Error {
   constructor(public code: string, public status = 409) { super(code); }
 }
@@ -314,7 +316,10 @@ export class CommerceStore {
   event(name:string,order:StoryOrder){
     if(!['first_completed','offer_shown','checkout_started','server_confirmed','issued','delivery_error','experience_started','albert_used','pdf_exported'].includes(name))throw new Error('unknown_event');
     // One occurrence per order/event: replay is not another customer or sale.
-    this.db.prepare('INSERT OR IGNORE INTO events VALUES (?,?,?,?,?)').run(`${order.id}:${name}`,name,order.id,Date.now(),order.test);
+    const inserted=this.db.prepare('INSERT OR IGNORE INTO events VALUES (?,?,?,?,?)').run(`${order.id}:${name}`,name,order.id,Date.now(),order.test);
+    // Anonymous path counter (name, time, test flag only): once per order and event, same as the row above.
+    const counter=PATH_COUNTER_OF_EVENT[name];
+    if(counter&&Number(inserted.changes)>0)recordPathEvent(counter,Boolean(order.test));
   }
   paymentStarted(account:string,id:string){
     const order=this.order(account,id);

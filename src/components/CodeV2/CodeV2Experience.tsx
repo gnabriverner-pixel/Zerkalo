@@ -9,6 +9,7 @@ import { hasCanonicalV2Result } from '../../services/codeV2Session';
 import { validateBirthDate } from '../../services/birthDate';
 import { loadQaPanel, type QaPanelModule } from './qaPanelLoader';
 import { useProtectedFetch, useInlineConsent } from '../ConsentBoundary';
+import { reportPathEvent } from '../../services/pathEvents';
 import { DateConsentField, DATE_CONSENT_REQUIRED_MESSAGE } from '../DateConsentField';
 import './codeReading.css';
 import {
@@ -288,6 +289,7 @@ export function CodeV2Experience({
 
       if (controller.signal.aborted) return;
       setPayload(data.payload);
+      if (!isExample) reportPathEvent('code_result_shown');
       onCalculated?.(data.payload);
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -369,6 +371,7 @@ export function CodeV2Experience({
           return;
         }
       }
+      reportPathEvent('date_entered');
       fetchV2Calculation(validation.formatted);
     })();
   };
@@ -1100,7 +1103,7 @@ export function CodeV2Experience({
               <div className="rounded-2xl border border-white/10 p-6 space-y-3">
                 <button
                   type="button"
-                  onClick={onContinue}
+                  onClick={() => { if (!isExample) reportPathEvent('bridge_clicked'); onContinue(); }}
                   className="min-h-[44px] px-5 py-3 rounded-xl bg-[var(--color-antique-gold)] text-[#111622] cursor-pointer font-medium"
                 >
                   {continueLabel}

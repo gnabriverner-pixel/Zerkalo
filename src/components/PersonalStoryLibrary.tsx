@@ -386,7 +386,7 @@ export function PersonalStoryLibrary({
             {preview?.enabled ? (
               <>
                 <p>Один Личный миф, до пяти ответов Альберта о нём и сохранение. Миф создаётся с помощью ИИ: его можно принять, уточнить или отвергнуть.</p>
-                <p>Полученные мифы не станут платными.</p>
+                <p>Полученные мифы остаются у вас бесплатно.</p>
                 {!preview.new_generation_available && <p role="status">{preview.pause_message}</p>}
                 {preview.support_url ? (
                   <p><a href={preview.support_url} target="_blank" rel="noreferrer">Помощь в Telegram</a></p>
@@ -404,7 +404,7 @@ export function PersonalStoryLibrary({
                   ? 'Имитация оплаты — деньги не списываются. Это не тестовый магазин.'
                   : mode === 'test'
                   ? 'Тестовый магазин — настоящие продажи закрыты.'
-                  : 'Оплата ещё не подключена. Настоящие продажи закрыты.'}
+                  : 'Оплата скоро откроется.'}
               </p>
             )}
 

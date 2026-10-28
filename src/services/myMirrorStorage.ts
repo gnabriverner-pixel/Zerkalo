@@ -1,6 +1,7 @@
 import { CalculationResult, CodeV2Payload, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult } from '../types';
 import { hasCanonicalV2Result } from './codeV2Session';
 import { clearTruthState, persistTruthState } from './albertTruthState';
+import { clearAlbertConversation } from './albertOpenerState';
 
 
 function validV2State(candidate: Record<string, unknown>): boolean {
@@ -178,6 +179,8 @@ export function deleteMyMirrorSnapshot(): boolean {
 
   try {
     window.localStorage.removeItem(MY_MIRROR_STORAGE_KEY);
+    // The privacy policy promises that deleting the mirror also erases the Albert conversation.
+    clearAlbertConversation();
     clearTruthState();
     return true;
   } catch (err) {
@@ -389,6 +392,7 @@ export function clearTransientDraft(): boolean {
   if (typeof window === 'undefined' || !window.sessionStorage) return false;
   try {
     window.sessionStorage.removeItem(TRANSIENT_DRAFT_KEY);
+    clearAlbertConversation();
     clearTruthState();
     return true;
   } catch {

@@ -52,7 +52,9 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
     can_start_myth:!state.enabled||Boolean(options.ready()&&funds.available&&state.phase!=='not_started'),
     new_generation_available:Boolean(state.active&&options.ready()&&funds.available),budget_warning:funds.warning,
     pause_message:!options.ready()?'Личный миф временно недоступен. Полученные результаты сохранены.':!funds.available?'Новые генерации временно приостановлены: общий бюджет пробного доступа недоступен. Полученные мифы и PDF остаются доступны.':state.phase==='not_started'?'Пробный доступ ещё не открыт.':state.active?'':'Пятидневный пробный доступ завершён. Сохранённые результаты доступны.'};};
-  const setAccess=(res:Response,access:string)=>res.cookie(COOKIE,access,{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production'||process.env.COMMERCE_PUBLIC_ORIGIN?.startsWith('https://'),path:'/',maxAge:365*86400000});
+  // The 365-day cookie exists only after consent to server-side storage. Before it, the access token is a
+  // session cookie (no Max-Age): strictly needed to hand the requested Myth back, gone when the browser closes.
+  const setAccess=(res:Response,access:string,persistent=false)=>res.cookie(COOKIE,access,{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production'||process.env.COMMERCE_PUBLIC_ORIGIN?.startsWith('https://'),path:'/',...(persistent?{maxAge:365*86400000}:{})});
   const errors:Record<string,string>={
     checkout_not_connected:'Оплата ещё не подключена. Ваш бесплатный результат доступен.',
     commerce_key_missing:'Сохранение историй ещё не настроено. Ответы остаются в форме.',
@@ -152,14 +154,14 @@ export function installStoryCommerce(app:Express,options:StoryCommerceOptions){
   app.post('/api/stories/account',route((req,res)=>{
     const previous=store().account(cookie(req,COOKIE));
     const accepted=req.body?.storage_accepted===true&&req.body?.storage_version==='personal-history-storage-v1';
-    if(previous){if(accepted)store().acceptStorage(previous);if(!store().storageAccepted(previous))throw new CommerceError('storage_consent_required',403);return res.json({created:false});}
+    if(previous){if(accepted){store().acceptStorage(previous);setAccess(res,cookie(req,COOKIE)!,true);}if(!store().storageAccepted(previous))throw new CommerceError('storage_consent_required',403);return res.json({created:false});}
     if(!accepted)throw new CommerceError('storage_consent_required',403);
     if(!checkAndIncrementRate('account:'+req.ip,10,Date.now(),600000,buckets).allowed)throw new CommerceError('account_rate_limit',429);
-    const created=store().createAccount(true);setAccess(res,created.access);res.json({created:true,recovery:created.recovery});
+    const created=store().createAccount(true);setAccess(res,created.access,true);res.json({created:true,recovery:created.recovery});
   }));
   app.post('/api/stories/restore',route((req,res)=>{
     if(!checkAndIncrementRate('restore:'+req.ip,5,Date.now(),600000,buckets).allowed)throw new CommerceError('recovery_rate_limit',429);
-    const restored=store().restore(String(req.body?.recovery||'').trim());setAccess(res,restored.access);res.json({restored:true});
+    const restored=store().restore(String(req.body?.recovery||'').trim());setAccess(res,restored.access,true);res.json({restored:true});
   }));
   app.post('/api/stories/recovery',route((req,res)=>res.json({recovery:store().recovery(account(req))})));
   app.post('/api/stories/import-free',route((req,res)=>{
