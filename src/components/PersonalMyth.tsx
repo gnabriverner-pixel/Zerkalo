@@ -10,6 +10,7 @@ import {useFreePreview,readFreePreview} from '../services/freePreview';
 import {freeWindowLine as buildFreeWindowLine} from '../services/freeWindowLine';
 import { useMythConfig } from '../services/mythAvailability';
 import { MYTH_V2A_QUESTIONS } from '../services/mythQuestionsV2A';
+import { showSecondaryPaths } from '../services/featureFlags';
 import { MythV2AResultBody, isV2AResult } from './MythV2AResult';
 import { waitForMyth, checkMythReadiness, readStorageAccepted, hasStoryAccount, MYTH_COPY, MYTH_ERROR_COPY, MYTH_OPEN_SAVED_LABEL, MYTH_SLOW_HINT_MS } from '../services/mythWait';
 
@@ -645,7 +646,7 @@ export default function PersonalMyth({
 
               {/* CTA TO ALBERT SHORT JUXTAPOSITION / DIGITAL CODE / MEETING */}
               <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-10 rounded-xs text-center space-y-6">
-                {freePreview?.active&&onOpenSavedStory?<><p>{MYTH_COPY.albertIntro} До пяти успешно выданных ответов Альберта, сохранение и PDF — бесплатно в пробный период.</p><button onClick={onOpenSavedStory}>Обсудить с Альбертом и сохранить</button><p>Встреча — дополнительный раздел по желанию.</p></>:shortJuxtapositionEnabled && onOpenAlbertJuxtaposition ? (
+                {freePreview?.active&&onOpenSavedStory?<><p>{MYTH_COPY.albertIntro} До пяти успешно выданных ответов Альберта, сохранение и PDF — бесплатно в пробный период.</p><button onClick={onOpenSavedStory}>Обсудить с Альбертом и сохранить</button>{showSecondaryPaths()&&<p>Встреча — дополнительный раздел по желанию.</p>}</>:shortJuxtapositionEnabled && onOpenAlbertJuxtaposition ? (
                   <>
                     <div>
                       <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">

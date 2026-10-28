@@ -202,3 +202,28 @@ describe('free window line and create note', () => {
     expect(MYTH_COPY.createNote).toBe('Займёт 1–3 минуты. Ответы уходят ИИ, чтобы написать историю. Попытка одна.');
   });
 });
+
+describe('one path: secondary screens are off by default', () => {
+  const navTexts = () => [...container.querySelectorAll('button')].map(b => b.textContent?.trim());
+  it('home and header show no Meeting, «О методе» or «Мир девяти светил»; Code, Myth and «Мои мифы» stay', async () => {
+    window.history.replaceState({}, '', '/');
+    await stubServer({ consentGetAccepted: true });
+    await act(async () => root.render(React.createElement(App)));
+    const text = container.textContent ?? '';
+    expect(navTexts()).not.toContain('Встреча');
+    expect(navTexts()).not.toContain('О методе');
+    expect(text).not.toContain('Мир девяти светил');
+    expect(text).not.toContain('Встреча Зеркал');
+    expect(navTexts()).toContain('Миф');
+    expect(text).toContain('Посмотреть свой разбор');
+  });
+  it('the flag brings them back', async () => {
+    vi.stubEnv('VITE_SHOW_SECONDARY_PATHS', 'true');
+    window.history.replaceState({}, '', '/');
+    await stubServer({ consentGetAccepted: true });
+    await act(async () => root.render(React.createElement(App)));
+    expect(container.textContent).toContain('Мир девяти светил');
+    expect(navTexts()).toContain('О методе');
+    vi.unstubAllEnvs();
+  });
+});

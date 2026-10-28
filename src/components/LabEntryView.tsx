@@ -1,3 +1,4 @@
+import { showSecondaryPaths } from '../services/featureFlags';
 import { DateConsentField } from './DateConsentField';
 import { useDateConsentGate } from './useDateConsentGate';
 import React, { useState, useRef } from 'react';
@@ -638,6 +639,7 @@ export function LabEntryView({
           </motion.div>
         )}
 
+        {showSecondaryPaths() && (<>
         {/* ========================================================= */}
         {/* 5. WORLD OF NINE PLANETS (МИР ДЕВЯТИ СВЕТИЛ — ASTRA 058) */}
         {/* ========================================================= */}
@@ -751,6 +753,7 @@ export function LabEntryView({
             </div>
           </div>
         </motion.section>
+        </>)}
 
         {/* Project Footer Disclaimer */}
         <footer className="w-full pt-12 pb-4 border-t border-[var(--color-border-subtle)] text-center">

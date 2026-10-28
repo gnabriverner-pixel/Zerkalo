@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { cleanPositionEssence, CodeV2Experience } from '../src/components/CodeV2/CodeV2Experience';
@@ -288,7 +288,10 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(modalHtml).toContain('href="/api/stories-sample/pdf"');
   });
 
+  afterEach(() => { vi.unstubAllEnvs(); });
+
   it('Release 6 contract: visual silence, solid cards with 150px emblems, 3 date fields, World of Nine Planets and term tooltips', () => {
+    vi.stubEnv('VITE_SHOW_SECONDARY_PATHS', 'true'); // the World of Nine Planets block is behind the secondary-paths flag
     const entryHtml = renderToString(
       React.createElement(LabEntryView, {
         onSelectMyth: () => {},

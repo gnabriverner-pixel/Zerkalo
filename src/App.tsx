@@ -30,6 +30,7 @@ import { requestServerDeletion } from './services/serverDeletion';
 import { SiteFooter } from './components/SiteFooter';
 import {useFreePreview,meetingUnavailable,getMythsAccessLabel} from './services/freePreview';
 import {freeWindowLine} from './services/freeWindowLine';
+import {showSecondaryPaths} from './services/featureFlags';
 
 function sanitizeUrlDob(): void {
   if (typeof window === 'undefined') return;
@@ -74,7 +75,8 @@ function AppContent() {
   // Digital Code V2 Preview State
   const [isPreviewV2, setIsPreviewV2] = useState(true);
   const freePreview=useFreePreview();
-  const meetingBlocked=meetingUnavailable(freePreview);
+  // Without the flag the Meeting is off the path: every «continue» goes to the ordinary Albert instead.
+  const meetingBlocked=!showSecondaryPaths()||meetingUnavailable(freePreview);
   const openOrdinaryAlbert=()=>{setAlbertInitialTopic(undefined);setIsAlbertV2Open(true);};
   const [isQaMode, setIsQaMode] = useState<boolean>(() => {
     if (typeof window === 'undefined' || !import.meta.env.DEV) return false;
@@ -245,9 +247,9 @@ function AppContent() {
     setMeetingUserNote(draft.meetingUserNote ?? '');
 
     if (draft.mode && draft.mode !== 'entry' && (draft.mode as string) !== 'ab-test') {
-      setMode(draft.mode as 'alabaster' | 'myth' | 'meeting');
+      setMode(draft.mode === 'meeting' && !showSecondaryPaths() ? 'myth' : (draft.mode as 'alabaster' | 'myth' | 'meeting'));
     } else if (draft.codeResult && draft.storyResult) {
-      setMode('meeting');
+      setMode(showSecondaryPaths() ? 'meeting' : 'myth');
     } else if (draft.codeResult) {
       setMode('alabaster');
     } else if (draft.storyResult || draft.storyInputs) {
@@ -395,14 +397,14 @@ function AppContent() {
         <div className={`pointer-events-auto hidden sm:flex items-center gap-2 sm:gap-4 text-xs transition-colors duration-300 ${
           mode === 'alabaster' && !isPreviewV2 ? 'text-[#63656C]' : 'text-gray-400'
         }`}>
-          <button
+          {showSecondaryPaths() && <button
             onClick={() => setShowAbout(true)}
             className={`min-h-[44px] px-2 py-2 tracking-wider uppercase text-[13px] sm:text-sm transition-colors cursor-pointer font-light ${
               mode === 'alabaster' && !isPreviewV2 ? 'hover:text-[#1A1A1C]' : 'hover:text-[var(--color-antique-gold)]'
             }`}
           >
             О методе
-          </button>
+          </button>}
 
           <button
             onClick={openLibrary}
@@ -425,7 +427,7 @@ function AppContent() {
                 {getMythsAccessLabel(freePreview)}
               </button>
             )}
-            <button className="w-full text-left px-3 py-3 text-sm text-stone-100" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setShowAbout(true); }}>О методе</button>
+            {showSecondaryPaths() && <button className="w-full text-left px-3 py-3 text-sm text-stone-100" onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); setShowAbout(true); }}>О методе</button>}
             <button className="w-full text-left px-3 py-3 text-sm text-stone-100" onClick={openLibrary}>Мои заметки</button>
           </div>
         </details>
@@ -444,7 +446,7 @@ function AppContent() {
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className={`w-full min-h-screen ${isPreviewV2 ? 'bg-[#090D15]' : 'bg-[#FCFAF7]'}`}
             >
-              {isPreviewV2 ? (
+              {isPreviewV2 || !showSecondaryPaths() ? (
                 <CodeV2Experience
                   initialDate={codeDate || ''}
                   initialPayload={codeV2Payload || undefined}
@@ -615,7 +617,7 @@ function AppContent() {
                 initialResult={storyResult}
                 userQuestion={userQuestion}
                 onInputsChange={(inputs) => setStoryInputs(inputs)}
-                onOpenAbout={() => setShowAbout(true)}
+                onOpenAbout={showSecondaryPaths() ? () => setShowAbout(true) : undefined}
                 onMythCompleted={(inputs, result) => {
                   setStoryInputs(inputs);
                   setStoryResult(result || null);

@@ -43,7 +43,7 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn(); window.scrollTo = vi.fn();
   container = document.createElement('div'); document.body.append(container); root = createRoot(container);
 });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 describe('actual V2 journey', () => {
   it('returns focus to the visible mobile menu after closing notes', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ enabled: false }))));
@@ -88,6 +88,7 @@ describe('actual V2 journey', () => {
     expect(fetchMock.mock.calls.filter(call => call[0] === '/api/code-v2')).toHaveLength(1);
   });
   it('Myth first remains independent; calculating later joins the same experience', async () => {
+    vi.stubEnv('VITE_SHOW_SECONDARY_PATHS', 'true'); // this journey goes through the Meeting, which is off the default path
     const payload = await calculateCanonicalCodeV2('18.12.1989');
     window.history.replaceState({}, '', '/');
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/consent' ? {accepted:true} : {status:'ok',payload})));
