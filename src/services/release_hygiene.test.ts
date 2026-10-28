@@ -58,7 +58,7 @@ describe('Release Hygiene Frontend Suite', () => {
     expect(currentUrl.searchParams.get('preview')).toBe('v2');
 
     // 2. The date inputs must remain empty (no auto-fill from query string)
-    const inputs = [...container.querySelectorAll('input:not([type=checkbox])')];
+    const inputs = [...container.querySelectorAll<HTMLInputElement>('input:not([type=checkbox])')];
     inputs.forEach((input) => {
       expect(input.value).toBe('');
     });
