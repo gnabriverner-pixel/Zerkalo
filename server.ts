@@ -106,10 +106,10 @@ export async function createApp(options: CreateAppOptions = {}) {
       : options.mythProvider
       ? true
       : deepseekClient.isReady();
-  // Legacy path: unchanged 90 s ceiling. Writers: per-call default 180 s for v2a (primary + fallback fit the client's 6 min wait), 240 s for v4.1; ceiling 300 s
+  // Legacy path: unchanged 90 s ceiling. Writers: per-call default 240 s (live v2a runs take 169–172 s; primary + fallback = 480 s worst case, inside the client's 9 min wait); ceiling 300 s
   // (PERSONAL_MYTH_V2A_TIMEOUT_MS for v2a, PERSONAL_MYTH_V41_TIMEOUT_MS for the rollback).
   const personalMythTimeoutMs = personalMythWriter !== 'legacy'
-    ? Math.min(300_000, Math.max(10_000, Number((personalMythWriter === 'v2a' ? process.env.PERSONAL_MYTH_V2A_TIMEOUT_MS : process.env.PERSONAL_MYTH_V41_TIMEOUT_MS)) || (personalMythWriter === 'v2a' ? 180_000 : 240_000)))
+    ? Math.min(300_000, Math.max(10_000, Number((personalMythWriter === 'v2a' ? process.env.PERSONAL_MYTH_V2A_TIMEOUT_MS : process.env.PERSONAL_MYTH_V41_TIMEOUT_MS)) || 240_000))
     : Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 75_000));
   const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
 

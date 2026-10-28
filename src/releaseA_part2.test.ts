@@ -227,3 +227,22 @@ describe('one path: secondary screens are off by default', () => {
     vi.unstubAllEnvs();
   });
 });
+
+describe('Myth timeout and waiting', () => {
+  it('server default is 240 s per call and the client waits longer than two calls', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const serverSource = fs.readFileSync(path.resolve(__dirname, '../server.ts'), 'utf8');
+    expect(serverSource).toContain('|| 240_000');
+    expect(serverSource).not.toContain("'v2a' ? 180_000");
+    const { MYTH_TOTAL_WAIT_MS } = await import('./services/mythWait');
+    expect(MYTH_TOTAL_WAIT_MS).toBeGreaterThan(2 * 240_000);
+  });
+  it('the policy says the session cookie is technically necessary and lives until the browser closes', async () => {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const html = fs.readFileSync(path.resolve(__dirname, '../public/privacy.html'), 'utf8');
+    expect(html).toContain('технически необходима, чтобы вернуть вам ждущий результат Мифа');
+    expect(html).toContain('zerkalo.consent.mark');
+  });
+});
