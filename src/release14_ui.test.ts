@@ -42,11 +42,12 @@ describe('screen after the free window', () => {
 });
 
 describe('footer on every page', () => {
-  it('React footer links the offer and the policy and shows the contact placeholder', async () => {
+  it('React footer links the offer and the policy and shows contacts without bracketed placeholders', async () => {
     await act(async () => root.render(React.createElement(SiteFooter)));
     expect(container.querySelector('footer a[href="/terms"]')).not.toBeNull();
     expect(container.querySelector('footer a[href="/privacy"]')).not.toBeNull();
     expect(container.textContent).toContain('Контакты:');
+    expect(container.textContent).not.toMatch(/[\[\]]/);
   });
   it('static pages carry the footer too', () => {
     for (const f of ['public/privacy.html', 'public/terms.html']) {
@@ -59,7 +60,7 @@ describe('footer on every page', () => {
   it('policy and offer are the new texts: operator placeholder, no DeepSeek-only claim, no old edition', () => {
     const privacy = fs.readFileSync(path.resolve(__dirname, '../public/privacy.html'), 'utf8');
     const terms = fs.readFileSync(path.resolve(__dirname, '../public/terms.html'), 'utf8');
-    expect(privacy).toContain('[ФИО]');
+    expect(privacy).toContain('{{OPERATOR_REQ_HTML}}');
     expect(privacy).toContain('zerkalo-2026-10-v2');
     expect(privacy).not.toContain('Указывается оператор');
     expect(terms).toContain('Договор-оферта');
@@ -115,7 +116,8 @@ describe('public Myth example (mode A)', () => {
     expect(container.querySelector('[data-testid="myth-fixed-line"]')?.textContent).toContain('не узнали себя');
     expect(text).not.toContain('Велосипед');
     expect(container.querySelector('footer[data-site-footer]')).not.toBeNull();
-    expect(fetchSpy).not.toHaveBeenCalled();
+    // Only the footer's read-only config request is allowed: no generation or other API call.
+    expect(fetchSpy.mock.calls.every(c => String(c[0]) === '/api/personal-myth/config')).toBe(true);
   });
   it('recognises the route with and without a trailing slash', () => {
     expect(isMythExamplePath('/primer-lichnogo-mifa')).toBe(true);

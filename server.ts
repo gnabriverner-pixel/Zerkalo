@@ -35,6 +35,7 @@ import { recordPathEvent, isPathEvent, prunePathCounters, CLIENT_PATH_EVENTS } f
 import { installConsentRoutes, verifyConsent, consentReceiptFromRequest } from './server/consent';
 import { installStoryCommerce, type StoryCommerceOptions } from './server/storyCommerce';
 import { installLocalStorySetup } from './server/localStorySetup';
+import { renderLegalPage, legalRequisitesConfigured, publicLegalContact } from './server/legal';
 import {
   checkAndIncrementRate,
   consumeDailyBudget,
@@ -140,8 +141,18 @@ export async function createApp(options: CreateAppOptions = {}) {
   app.use(express.urlencoded({extended:false,limit:'8kb'}));
   // Routes without a live client are closed (404) unless LEGACY_ENDPOINTS_ENABLED=true.
   installLegacyEndpointGate(app);
-  app.get('/privacy', (_req,res)=>res.sendFile(path.resolve('public/privacy.html')));
-  app.get('/terms', (_req,res)=>res.sendFile(path.resolve('public/terms.html')));
+  // Offer and policy: operator details come from the environment (OPERATOR_NAME / OPERATOR_INN / OPERATOR_EMAIL); never hard-coded.
+  const supportUrlFromConfig=():string|null=>{
+    try{return (commerce.store().db.prepare("SELECT value FROM configuration WHERE key='free_preview_support_url'").get() as any)?.value??null;}catch{return null;}
+  };
+  const legalPage=(file:string)=>(_req:express.Request,res:express.Response)=>{
+    try{
+      const html=renderLegalPage(nodeFs.readFileSync(path.resolve('public',file),'utf8'),process.env,supportUrlFromConfig());
+      res.set('Cache-Control','no-store').type('html').send(html);
+    }catch{res.status(500).type('text').send('legal_page_unavailable');}
+  };
+  app.get('/privacy', legalPage('privacy.html'));
+  app.get('/terms', legalPage('terms.html'));
   installConsentRoutes(app);
   installLocalStorySetup(app);
   const commerce=installStoryCommerce(app,{
@@ -283,6 +294,7 @@ export async function createApp(options: CreateAppOptions = {}) {
       ready,
       transport_ready: canonicalBridge.verified,
       provider_configured: providerConfigured,
+      legal_requisites_configured: legalRequisitesConfigured(process.env),
       preflight_ready: preflightReady,
       service: "zerkalo",
       release_sha: releaseSha,
@@ -401,6 +413,7 @@ export async function createApp(options: CreateAppOptions = {}) {
     res.set("Cache-Control", "no-store").json({
       writer: ({ v2a: "v2a", v41: "v41", legacy: "default" } as const)[resolvePersonalMythWriter()],
       generation_available: isProviderConfigured(),
+      legal_contact: publicLegalContact(process.env, supportUrlFromConfig()),
       example_url: /^(https:\/\/|\/(?!\/))[^\s"'<>]{1,300}$/.test(example) ? example : null,
     });
   });

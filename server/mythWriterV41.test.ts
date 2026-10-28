@@ -612,11 +612,11 @@ describe("config read used by the screens (no model call)", () => {
   it("reports the writer (v2a default, v41 rollback, legacy), availability and a configured example only", async () => {
     const provider = { name: "x", model: "x", isReady: () => true, generate: async () => "" };
     expect(await cfg({ PERSONAL_MYTH_WRITER: "v41", PERSONAL_MYTH_EXAMPLE_URL: "" }, { mythProvider: provider, isProviderReady: () => false }))
-      .toEqual({ writer: "v41", generation_available: false, example_url: null });
+      .toEqual({ writer: "v41", generation_available: false, legal_contact: { email: null, support_url: null }, example_url: null });
     expect(await cfg({ PERSONAL_MYTH_WRITER: "", PERSONAL_MYTH_EXAMPLE_URL: "https://example.test/read" }, { mythProvider: provider, isProviderReady: () => true }))
-      .toEqual({ writer: "v2a", generation_available: true, example_url: "https://example.test/read" });
+      .toEqual({ writer: "v2a", generation_available: true, legal_contact: { email: null, support_url: null }, example_url: "https://example.test/read" });
     expect(await cfg({ PERSONAL_MYTH_WRITER: "legacy", PERSONAL_MYTH_EXAMPLE_URL: "" }, { mythProvider: provider, isProviderReady: () => true }))
-      .toEqual({ writer: "default", generation_available: true, example_url: null });
+      .toEqual({ writer: "default", generation_available: true, legal_contact: { email: null, support_url: null }, example_url: null });
     expect((await cfg({ PERSONAL_MYTH_EXAMPLE_URL: "javascript:alert(1)" }, { mythProvider: provider, isProviderReady: () => true })).example_url).toBeNull();
   });
 });
