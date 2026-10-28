@@ -561,7 +561,8 @@ function AppContent() {
                     return;
                   }
                   if (options?.autoCalculate) {
-                    setIsDemoCodeSample(true);
+                    // The person's own date from the home form: never the sample (no «example» banner).
+                    setIsDemoCodeSample(false);
                     setAutoCalculateCode(true);
                   } else if (m === 'code' && isDemoCodeSample) {
                     // User explicitly chose "Посмотреть свой разбор" after viewing the sample:

@@ -1,3 +1,5 @@
+import { DateConsentField } from './DateConsentField';
+import { useDateConsentGate } from './useDateConsentGate';
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Bookmark, RotateCcw, ChevronRight, ChevronDown, Trash2 } from 'lucide-react';
@@ -66,6 +68,7 @@ export function LabEntryView({
   const [dateError, setDateError] = useState('');
   const [isPantheonOpen, setIsPantheonOpen] = useState(false);
   const [isSampleStoryOpen, setIsSampleStoryOpen] = useState(false);
+  const consentGate = useDateConsentGate();
 
   const dayRef = useRef<HTMLInputElement>(null);
   const monthRef = useRef<HTMLInputElement>(null);
@@ -137,7 +140,7 @@ export function LabEntryView({
     }
   };
 
-  const handleCodeSubmit = (e?: React.FormEvent) => {
+  const handleCodeSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!day || !month || !year) {
       setDateError('Введите полную дату рождения (ДД · ММ · ГГГГ)');
@@ -149,6 +152,12 @@ export function LabEntryView({
       return;
     }
     const formatted = validation.formatted;
+    // The mark under the date is the consent: without it (or an earlier valid one) the date does not leave this form.
+    const problem = await consentGate.confirm();
+    if (problem) {
+      setDateError(problem);
+      return;
+    }
     if (onSelectCode) {
       onSelectCode(formatted, { autoCalculate: true });
     } else if (onSelectMode) {
@@ -396,6 +405,10 @@ export function LabEntryView({
                       />
                     </div>
                   </div>
+
+                  {consentGate.showMark && (
+                    <DateConsentField checked={consentGate.checked} onChange={value => { consentGate.setChecked(value); if (value) setDateError(''); }} />
+                  )}
 
                   {dateError && (
                     <span className="text-[13px] text-red-300 font-light block">{dateError}</span>

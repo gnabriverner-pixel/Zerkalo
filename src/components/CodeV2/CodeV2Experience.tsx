@@ -8,7 +8,7 @@ import { GLOSSARY_ROLES } from '../../data/glossary';
 import { hasCanonicalV2Result } from '../../services/codeV2Session';
 import { validateBirthDate } from '../../services/birthDate';
 import { loadQaPanel, type QaPanelModule } from './qaPanelLoader';
-import { useProtectedFetch, useInlineConsent } from '../ConsentBoundary';
+import { useProtectedFetch, useInlineConsent, CONSENT_MISSING } from '../ConsentBoundary';
 import { reportPathEvent } from '../../services/pathEvents';
 import { DateConsentField, DATE_CONSENT_REQUIRED_MESSAGE } from '../DateConsentField';
 import './codeReading.css';
@@ -213,6 +213,10 @@ export function CodeV2Experience({
   const protectedFetch = useProtectedFetch();
   const inlineConsent = useInlineConsent();
   const [consentChecked, setConsentChecked] = useState(false);
+  // The «example» banner and wording belong to the sample only. Any date the person submits (or «change date») ends the example for good.
+  const [exampleEnded, setExampleEnded] = useState(false);
+  useEffect(() => { if (isExample) setExampleEnded(false); }, [isExample]);
+  const showExample = isExample && !exampleEnded;
   const [day, setDay] = useState(() => (initialDate ? initialDate.split('.')[0] || '' : ''));
   const [month, setMonth] = useState(() => (initialDate ? initialDate.split('.')[1] || '' : ''));
   const [year, setYear] = useState(() => (initialDate ? initialDate.split('.')[2] || '' : ''));
@@ -260,6 +264,8 @@ export function CodeV2Experience({
   const yearRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
+  const showExampleRef = useRef(showExample);
+  showExampleRef.current = showExample;
   const requestRef = useRef<AbortController | null>(null);
   useEffect(() => () => requestRef.current?.abort(), []);
 
@@ -277,7 +283,7 @@ export function CodeV2Experience({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dob: fullDob })
-      });
+      }, { noDialog: !showExampleRef.current });
       if (!resp) return;
 
       if (!resp.ok) {
@@ -292,7 +298,7 @@ export function CodeV2Experience({
 
       if (controller.signal.aborted) return;
       setPayload(data.payload);
-      if (!isExample) reportPathEvent('code_result_shown');
+      if (!showExampleRef.current) reportPathEvent('code_result_shown');
       onCalculated?.(data.payload);
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -300,6 +306,13 @@ export function CodeV2Experience({
     } catch (err: any) {
       if (controller.signal.aborted) return;
       if (err?.message === 'consent_cancelled') return;
+      if (err?.message === CONSENT_MISSING) {
+        // The consent is the mark under the date: show it again instead of opening a dialog over the loading state.
+        inlineConsent.revoke();
+        setConsentChecked(false);
+        setDateError(DATE_CONSENT_REQUIRED_MESSAGE);
+        return;
+      }
       console.error('Code calculation failed:', err);
       setApiError(err.message || 'Ошибка соединения с модулем расчёта');
     } finally {
@@ -338,6 +351,7 @@ export function CodeV2Experience({
         setDay(d);
         setMonth(m);
         setYear(y);
+        if (!showExampleRef.current) reportPathEvent('date_entered');
         fetchV2Calculation(validation.formatted);
         onAutoCalculateConsumed?.();
       }
@@ -365,14 +379,25 @@ export function CodeV2Experience({
     setDay(d);
     setMonth(m);
     setYear(y);
+    // The person's own date ends the sample before the answer arrives, so the banner can never sit over their result.
+    setExampleEnded(true);
+    showExampleRef.current = false;
+    setIsLoading(true);
     void (async () => {
       if (!inlineConsent.accepted) {
         try {
           await inlineConsent.accept();
         } catch {
+          setIsLoading(false);
           setApiError('Согласие не сохранено. Попробуйте ещё раз.');
           return;
         }
+      } else if (inlineConsent.restored && !(await inlineConsent.verify())) {
+        // The local reminder outlived the server cookie: ask for the mark again, no dialog.
+        setIsLoading(false);
+        setConsentChecked(false);
+        setDateError(DATE_CONSENT_REQUIRED_MESSAGE);
+        return;
       }
       reportPathEvent('date_entered');
       fetchV2Calculation(validation.formatted);
@@ -380,6 +405,8 @@ export function CodeV2Experience({
   };
 
   const handleSelectPreset = (presetDob: string) => {
+    setExampleEnded(true);
+    showExampleRef.current = false;
     const [pDay, pMonth, pYear] = presetDob.split('.');
     setDay(pDay);
     setMonth(pMonth);
@@ -550,7 +577,7 @@ export function CodeV2Experience({
         {payload && (
           <div ref={resultsRef} className="w-full space-y-10 sm:space-y-14">
             
-            {isExample && (
+            {showExample && (
               <div className="w-full text-xs text-stone-400 font-serif italic pb-2 border-b border-white/5">
                 Пример разбора для вымышленной даты 14.03.1987.
               </div>
@@ -560,7 +587,7 @@ export function CodeV2Experience({
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/5 text-xs text-stone-400">
               <div className="flex items-center gap-2">
                 <span className="font-serif text-stone-200 text-sm">
-                  {isExample ? 'Пример пяти чисел' : 'Ваши пять чисел'}
+                  {showExample ? 'Пример пяти чисел' : 'Ваши пять чисел'}
                 </span>
                 <span>·</span>
                 <span className="font-mono text-stone-300">{payload.calculation.date}</span>
@@ -572,12 +599,19 @@ export function CodeV2Experience({
                   setPayload(null);
                   setDateError('');
                   setApiError(null);
+                  // Empty fields: the old date must not stay in the boxes (they are length-limited and would swallow new input).
+                  setDay('');
+                  setMonth('');
+                  setYear('');
+                  setIsLoading(false);
+                  setExampleEnded(true);
+                  showExampleRef.current = false;
                   onChangeDate?.();
                   setTimeout(() => dayRef.current?.focus(), 100);
                 }}
                 className="text-stone-400 hover:text-[var(--color-antique-gold)] transition-colors cursor-pointer text-xs"
               >
-                {isExample ? 'Ввести свою дату' : 'Изменить дату'}
+                {showExample ? 'Ввести свою дату' : 'Изменить дату'}
               </button>
             </div>
 
@@ -665,7 +699,7 @@ export function CodeV2Experience({
                 })()}
 
                 {/* Quiet Albert Invitation & Central Hypothesis Reaction */}
-                {!isExample && (
+                {!showExample && (
                   <div className="pt-5 border-t border-white/10 flex flex-col gap-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
@@ -1045,7 +1079,7 @@ export function CodeV2Experience({
                           {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
 
-                        {!isExample && (
+                        {!showExample && (
                           <div className="flex flex-wrap items-center gap-2">
                             <button
                               type="button"
@@ -1106,7 +1140,7 @@ export function CodeV2Experience({
               <div className="rounded-2xl border border-white/10 p-6 space-y-3">
                 <button
                   type="button"
-                  onClick={() => { if (!isExample) reportPathEvent('bridge_clicked'); onContinue(); }}
+                  onClick={() => { if (!showExample) reportPathEvent('bridge_clicked'); onContinue(); }}
                   className="min-h-[44px] px-5 py-3 rounded-xl bg-[var(--color-antique-gold)] text-[#111622] cursor-pointer font-medium"
                 >
                   {continueLabel}
@@ -1174,7 +1208,7 @@ export function CodeV2Experience({
                       type="button"
                       aria-label="Поговорить с Альбертом"
                       onClick={() => {
-                        if (isExample) {
+                        if (showExample) {
                           onChangeDate?.();
                           return;
                         }
@@ -1185,10 +1219,10 @@ export function CodeV2Experience({
                       className="w-full sm:w-auto px-5 py-3 rounded-xl border border-[var(--color-antique-gold)]/40 text-stone-200 text-sm hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center gap-2.5 min-h-11"
                     >
                       <MessageSquare className="w-4 h-4" />
-                      <span>{isExample ? 'Ввести свою дату для беседы' : 'Обсудить с Альбертом здесь'}</span>
+                      <span>{showExample ? 'Ввести свою дату для беседы' : 'Обсудить с Альбертом здесь'}</span>
                     </button>
                     <span className="text-xs text-stone-400 mt-1.5">
-                      {isExample ? 'Альберт обсудит карту вашей даты' : 'Разговор откроется на сайте'}
+                      {showExample ? 'Альберт обсудит карту вашей даты' : 'Разговор откроется на сайте'}
                     </span>
                   </div>
 
