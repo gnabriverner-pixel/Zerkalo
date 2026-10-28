@@ -94,8 +94,8 @@ describe('Code V2 Human Product Experience UI Contract', () => {
     expect(html).toContain('Что заметно в ваших поступках');
     expect(html).toContain('В каком окружении вам легче');
     expect(html).toContain('Ваши пять чисел и их роли');
-    expect(html).toContain('Венера (6) ⟷ Сатурн (8)');
-    expect(html).toContain('Покой сердца и строгий закон формы');
+    expect(html).toContain('Сатурн (8) ⟷ Солнце (1)');
+    expect(html).toContain('Труженик и правитель');
     expect(html).toContain('Сравните это описание со своей жизнью. Оно может не совпасть.');
     expect(html).toContain('Узнавать себя во всём не обязательно.');
     expect(html).not.toContain('headline_mechanism');

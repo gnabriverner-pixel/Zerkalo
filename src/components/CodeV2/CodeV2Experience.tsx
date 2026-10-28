@@ -253,10 +253,11 @@ export function CodeV2Experience({
   const [showHeroMotifDetails, setShowHeroMotifDetails] = useState(false);
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>(initialExpanded || {});
 
-  const soulPos = payload?.positions.find(p => p.position === 'soul');
-  const pathPos = payload?.positions.find(p => p.position === 'path');
-  const leadInteractionBadge = soulPos && pathPos
-    ? `${soulPos.energy_name} (${soulPos.energy}) ⟷ ${pathPos.energy_name} (${pathPos.energy})`
+  const leadInteraction = payload?.interactions?.find(i => i.role === 'center') ?? payload?.interactions?.[0];
+  const leadPosA = payload?.positions.find(p => p.position === leadInteraction?.pair?.[0]);
+  const leadPosB = payload?.positions.find(p => p.position === leadInteraction?.pair?.[1]);
+  const leadInteractionBadge = leadPosA && leadPosB
+    ? `${leadPosA.energy_name} (${leadPosA.energy}) ⟷ ${leadPosB.energy_name} (${leadPosB.energy})`
     : null;
 
   const dayRef = useRef<HTMLInputElement>(null);

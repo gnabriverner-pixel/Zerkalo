@@ -257,6 +257,8 @@ export interface CodeV2MiniStory {
 export interface CodeV2Interaction {
   pair: [string, string];
   energies: [number, number];
+  role?: string;
+  relation?: string;
   positions_label: string;
   heading: string;
   category: string;
