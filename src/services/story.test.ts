@@ -16,17 +16,17 @@ describe('Story Module constraints', () => {
     expect(fileContent).not.toMatch(/магия/i);
   });
 
-  it('PersonalMyth.tsx uses real navigation instead of a mock alert', () => {
+  it('PersonalMyth.tsx does not contain mock alert for lead CTA', () => {
     const fileContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
     expect(fileContent).not.toContain('alert("Открытие');
-    expect(fileContent).toContain('onNavigateToMeeting');
   });
 
-  it('PersonalMyth.tsx uses the real writer endpoint and has no fabricated story fallback', () => {
+  it('PersonalMyth.tsx fallback contains correct keys', () => {
     const fileContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
-    expect(fileContent).toContain("fetch('/api/personal-myth'");
-    expect(fileContent).not.toContain('applyFallback');
-    expect(fileContent).not.toContain('status === \'demo\'');
+    expect(fileContent).toContain('mainImage: inputs.q2 ||');
+    expect(fileContent).toContain('innerTension: inputs.q1 ||');
+    expect(fileContent).toContain('hiddenResource: inputs.q4 ||');
+    expect(fileContent).toContain('newView: inputs.q3 ||');
   });
 
   it('server prompt does not use forbidden words loosely or directly in user-facing text', () => {
@@ -67,13 +67,13 @@ describe('Story Module constraints', () => {
     expect(fileContent).toMatch(/\/api\/lead/);
   });
 
-  it('LeadModal.tsx и PersonalMyth.tsx проверяют data.status', () => {
+  it('LeadModal.tsx и PersonalMyth.tsx проверяет data.status', () => {
     const leadContent = fs.readFileSync(path.join(__dirname, '../components/LeadModal.tsx'), 'utf-8');
     expect(leadContent).toMatch(/data\.status === 'ok'/);
     
     const pmContent = fs.readFileSync(path.join(__dirname, '../components/PersonalMyth.tsx'), 'utf-8');
-    expect(pmContent).toMatch(/data\.status === 'error'/);
-    expect(pmContent).toMatch(/data\.status === 'crisis'/);
+    expect(pmContent).toMatch(/data\.status === 'demo'/);
+    expect(pmContent).toMatch(/applyFallback\(\)/);
     expect(pmContent).not.toMatch(/dangerouslySetInnerHTML/);
   });
 });

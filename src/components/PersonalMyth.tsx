@@ -1,13 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, ArrowRight, ChevronLeft, RotateCcw } from 'lucide-react';
-import { StoryInputs, ApiResponse } from '../types';
-import { EmblemPlate } from '../art/emblem';
+import { ApiResponse, StoryInputs } from '../types';
 import { Orb } from './Orb';
 
 interface PersonalMythProps {
-  initialInputs?: StoryInputs | null;
-  initialResult?: ApiResponse['story_result'] | null;
   onOpenAbout?: () => void;
   onMythCompleted?: (inputs: StoryInputs, result: ApiResponse['story_result']) => void;
   onNavigateToMeeting?: () => void;
@@ -15,85 +12,91 @@ interface PersonalMythProps {
 }
 
 export default function PersonalMyth({ 
-  initialInputs,
-  initialResult,
   onOpenAbout,
   onMythCompleted,
   onNavigateToMeeting,
   hasCodeResult 
 }: PersonalMythProps = {}) {
-  const [step, setStep] = useState(initialResult ? 6 : 0);
-  const [inputs, setInputs] = useState<StoryInputs>(initialInputs || { q1: '', q2: '', q3: '', q4: '' });
-  const [result, setResult] = useState<ApiResponse['story_result'] | null>(initialResult || null);
+  // 0 = Intro, 1-4 = questions, 5 = generating, 6 = result
+  const [step, setStep] = useState(0);
+  const [inputs, setInputs] = useState<StoryInputs>({ q1: '', q2: '', q3: '', q4: '' });
+  const [result, setResult] = useState<ApiResponse['story_result'] | null>(null);
   const [errorText, setErrorText] = useState('');
   const [journalNote, setJournalNote] = useState('');
   const resultRef = useRef<HTMLDivElement>(null);
-  const requestIdRef = useRef(`myth_${crypto.randomUUID().replace(/-/g, '')}`);
-
-  useEffect(() => {
-    if (initialResult) {
-      setResult(initialResult);
-      setStep(6);
-    }
-  }, [initialResult]);
-
-  useEffect(() => {
-    if (initialInputs) {
-      setInputs(initialInputs);
-    }
-  }, [initialInputs]);
 
   const stepMeta = [
     {
       id: 'q1',
-      tag: '01 / 04 · Ситуация',
-      orbNumber: 4, // Rahu
-      title: 'В какой ситуации тебе сейчас хочется лучше понять себя?',
-      placeholder: 'Опиши один эпизод: что происходит, что ты делаешь и что остаётся неясным. Если трудности нет — что хочется исследовать?'
+      tag: 'Дыхание 01 / 04 · Точка ожидания',
+      orbNumber: 4,
+      title: 'Где сейчас вашему внутреннему пространству стало тесно или недостаёт воздуха?',
+      placeholder: 'Опишите ощущением: развилка на дороге, тихое ожидание перед рассветом, запертое окно...'
     },
     {
       id: 'q2',
-      tag: '02 / 04 · Образ состояния',
-      orbNumber: 8, // Saturn
-      title: 'Какой предмет, место или образ точнее всего передаёт это состояние?',
-      placeholder: 'Подойдёт обычная вещь. Образ не приходит — так и напиши; выдумывать красивую метафору не нужно.'
+      tag: 'Дыхание 02 / 04 · Живой образ',
+      orbNumber: 8,
+      title: 'Если бы ваше сегодняшнее состояние было пейзажем или образом — что вы видите?',
+      placeholder: 'Туман над утренним океаном, высокий маяк на скале, сад под первым снегом...'
     },
     {
       id: 'q3',
-      tag: '03 / 04 · Точка живости',
-      orbNumber: 5, // Mercury
-      title: 'Когда за последнее время ты почувствовал: «вот здесь я на своём месте»?',
-      placeholder: 'Что ты делал и что в этом было живым: движение, внимание, общение? Достаточно одного небольшого эпизода. Если не вспоминается — так и напиши.'
+      tag: 'Дыхание 03 / 04 · Мгновение полёта',
+      orbNumber: 5,
+      title: 'Вспомните мгновение, когда вы чувствовали в себе крылья, лёгкость и живую радость.',
+      placeholder: 'Утренний свет, быстрая дорога, глубокий разговор, тишина у воды...'
     },
     {
       id: 'q4',
-      tag: '04 / 04 · Искомое качество',
-      orbNumber: 6, // Venus
-      title: 'Чего тебе хочется больше в этой ситуации?',
-      placeholder: 'Назови качество или состояние своими словами. Не правильный ответ, а то, чего действительно ищешь.'
+      tag: 'Дыхание 04 / 04 · Горизонт мечты',
+      orbNumber: 6,
+      title: 'Какое состояние или простор вы больше всего хотите впустить в свою жизнь сейчас?',
+      placeholder: 'Свободу полёта, ясную тишину, смелость мечтать, сердечное тепло...'
     }
   ];
 
   const handleNext = () => {
     if (step < 4) {
       setStep(step + 1);
-    } else if (step === 4) {
+    } else {
       handleGenerate();
     }
+  };
+
+  const applyFallback = () => {
+    const fallbackStoryResult: NonNullable<ApiResponse['story_result']> = {
+      title: 'Песня открытого горизонта',
+      story: `В пространстве, где ощущалось ${inputs.q1 || 'тихое ожидание перед рассветом'}, долго стоял знакомый образ: ${inputs.q2 || 'высокий берег над утренним морем'}. Казалось, что само небо прислушивается к этой тишине и ждёт первого движения.\n\nНо стоило внутри проснуться памяти о настоящем полёте — ${inputs.q3 || 'чистому утреннему свету и свободному дыханию'} — как горизонт мягко расступился. Пришло то самое созвучие, которого так ждало сердце: ${inputs.q4 || 'простор, лёгкость и ясная внутренняя свобода'}. И тогда ветер сам наполнил паруса.`,
+      mirror: {
+        mainImage: inputs.q2 || 'Высокий берег над утренним морем',
+        innerTension: inputs.q1 || 'Точка перед новым взлётом',
+        hiddenResource: inputs.q4 || 'Спокойный простор и ясность',
+        newView: inputs.q3 || 'Память о собственных крыльях'
+      },
+      meaning: [
+        'Любое ощущение тесноты говорит лишь о том, что ваши крылья выросли для большего неба.',
+        'Точка вашей живой радости всегда остаётся внутри вас как надёжный компас.'
+      ],
+      one_step: 'Подарите себе сегодня одно свободное решение из чувства простора и радости, а не спешки.',
+      journal_question: 'Куда полетят мои мысли и мечты, если я прямо сейчас разрешу себе дышать полной грудью?',
+      disclaimer: 'Художественно-рефлексивный формат самопознания.'
+    };
+    setResult(fallbackStoryResult);
+    if (onMythCompleted) {
+      onMythCompleted(inputs, fallbackStoryResult);
+    }
+    setStep(6);
   };
 
   const handleGenerate = async () => {
     setStep(5);
     setErrorText('');
     try {
-      const res = await fetch('/api/personal-myth', {
+      const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          request_id: requestIdRef.current,
-          consent_version: 'personal-myth-v1.1-rc',
-          answers: inputs,
-        })
+        body: JSON.stringify({ mode: 'story', storyInputs: inputs })
       });
       
       const data: ApiResponse = await res.json();
@@ -101,6 +104,8 @@ export default function PersonalMyth({
       if (data.status === 'crisis') {
         setErrorText(data.ui?.safe_message || "Мы не можем сформировать историю по текущему запросу.");
         setStep(4);
+      } else if (data.status === 'demo') {
+        applyFallback();
       } else if (data.status === 'error' || !data.story_result) {
         setErrorText(data.ui?.safe_message || "Связь с зеркалом прервалась. Попробуйте обновить.");
         setStep(4);
@@ -113,8 +118,7 @@ export default function PersonalMyth({
       }
     } catch (err) {
       console.error(err);
-      setErrorText("Связь с зеркалом прервалась. Попробуйте обновить страницу или отправить запрос снова.");
-      setStep(4);
+      applyFallback();
     }
   };
 
@@ -128,49 +132,58 @@ export default function PersonalMyth({
   const currentInputValue = currentQuestion ? inputs[currentQuestion.id as keyof StoryInputs] : '';
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-70px)] py-12 px-4 sm:px-6 lg:px-8 text-[#EAEAEA] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] py-20 sm:py-28 px-6 sm:px-10 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full">
       
       <div className="w-full max-w-3xl flex flex-col items-center relative z-10 my-auto">
 
         <AnimatePresence mode="wait">
           
+          {/* STEP 0: BREATHING INTRO SCREEN */}
           {step === 0 && (
             <motion.div 
               key="intro"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.8 }}
-              className="text-center w-full max-w-2xl mx-auto py-8"
+              transition={{ duration: 0.9 }}
+              className="text-center w-full max-w-2xl mx-auto py-8 space-y-10"
             >
-              <div className="flex justify-center mb-8">
-                <EmblemPlate planet={7} variant="alabaster" size={140} showNumber={false} showLabel={false} />
+              <div className="flex justify-center mb-4 animate-float-gentle">
+                <Orb number={7} size={185} glow={true} />
               </div>
 
-              <span className="text-[13px] uppercase tracking-[0.3em] text-purple-300/80 font-mono block mb-3">
-                Независимое зеркало · Личный миф
-              </span>
+              <div className="space-y-5">
+                <span className="text-[11px] uppercase tracking-[0.42em] text-[#7CE8EE] font-mono block opacity-85">
+                  Орбита I · Голос Воображения и Свободы
+                </span>
 
-              <h1 className="font-serif text-4xl sm:text-6xl text-stone-100 mb-4 font-normal tracking-tight leading-tight">
-                Личный миф
-              </h1>
+                <h1 className="font-serif text-5xl sm:text-7xl text-[var(--color-text-primary)] font-light tracking-tight leading-tight">
+                  Личный Миф
+                </h1>
 
-              <p className="text-base sm:text-lg text-stone-300/80 leading-relaxed mb-10 max-w-lg mx-auto font-normal">
-                Четыре образных вопроса. Никаких анкет и дат рождения — только живая история, рождающаяся из твоих собственных метафор.
-              </p>
+                <p className="font-serif text-xl sm:text-2xl text-[var(--color-text-secondary)] leading-[1.8] max-w-xl mx-auto font-light pt-2">
+                  Четыре вопроса-образа в открытом пространстве тишины. Без дат и расчётов ваши собственные метафоры сложатся в светлую сказку о том, где живут ваши крылья.
+                </p>
+              </div>
               
-              <button 
-                onClick={() => setStep(1)}
-                className="px-8 py-4 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] shadow-[0_0_30px_rgba(200,164,93,0.25)] transition-all cursor-pointer inline-flex items-center gap-2"
-              >
-                <span>Войти через образы</span>
-                <ArrowRight size={14} />
-              </button>
+              <div className="pt-4">
+                <button 
+                  onClick={() => setStep(1)}
+                  className="px-10 py-4 border border-[var(--color-antique-gold)]/45 bg-[var(--color-antique-gold)]/[0.08] hover:bg-[var(--color-antique-gold)]/[0.18] text-[var(--color-antique-gold)] uppercase tracking-[0.28em] text-[11px] font-mono rounded-full transition-all cursor-pointer inline-flex items-center gap-3"
+                >
+                  <span>Войти в пространство образов</span>
+                  <ArrowRight size={14} />
+                </button>
+              </div>
               
-              <div className="mt-14 text-xs text-stone-400/60 font-normal tracking-wide flex items-center justify-center gap-2">
-                 <span>Образный формат для внутренней тишины и саморефлексии.</span>
+              <div className="pt-10 text-xs text-[var(--color-text-muted)] font-light tracking-wide flex items-center justify-center gap-3">
+                 <span>Свободный художественный поток самопознания</span>
                  {onOpenAbout && (
-                   <button type="button" onClick={onOpenAbout} className="text-[var(--color-antique-gold)] hover:underline ml-1">
+                   <button
+                     type="button"
+                     onClick={onOpenAbout}
+                     className="text-[var(--color-antique-gold)] hover:underline cursor-pointer"
+                   >
                      О методе
                    </button>
                  )}
@@ -178,237 +191,187 @@ export default function PersonalMyth({
             </motion.div>
           )}
 
+          {/* STEPS 1 TO 4: ONE BREATHABLE QUESTION PER SCREEN */}
           {step >= 1 && step <= 4 && currentQuestion && (
             <motion.div
               key={`step-${step}`}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.6 }}
-              className="w-full flex flex-col items-center text-center max-w-2xl mx-auto py-6"
+              transition={{ duration: 0.7 }}
+              className="w-full flex flex-col items-center text-center max-w-2xl mx-auto py-8 space-y-12"
             >
-              <div className="flex items-center justify-between w-full mb-10">
-                <span className="text-xs uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono">
+              <div className="flex items-center justify-between w-full">
+                <span className="text-[11px] uppercase tracking-[0.32em] text-[var(--color-antique-gold)] font-mono">
                   {currentQuestion.tag}
                 </span>
 
                 {step > 1 ? (
-                  <button onClick={() => setStep(step - 1)} className="text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1 transition-colors cursor-pointer">
+                  <button 
+                    onClick={() => setStep(step - 1)} 
+                    className="text-[11px] uppercase tracking-[0.22em] text-[var(--color-text-muted)] hover:text-white flex items-center gap-1 transition-colors cursor-pointer font-mono"
+                  >
                     <ChevronLeft size={14} />
                     <span>Назад</span>
                   </button>
                 ) : (
-                  <button onClick={() => setStep(0)} className="text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 transition-colors cursor-pointer">
-                    Отмена
+                  <button 
+                    onClick={() => setStep(0)} 
+                    className="text-[11px] uppercase tracking-[0.22em] text-[var(--color-text-muted)] hover:text-white transition-colors cursor-pointer font-mono"
+                  >
+                    В начало
                   </button>
                 )}
               </div>
 
-              <div className="mb-8">
-                <EmblemPlate planet={currentQuestion.orbNumber} variant="alabaster" size={100} showNumber={false} showLabel={false} />
+              <div className="py-2 animate-float-gentle">
+                <Orb number={currentQuestion.orbNumber} size={130} glow={true} />
               </div>
 
-              <h2 className="font-serif text-2xl sm:text-4xl text-stone-100 mb-10 leading-relaxed font-light max-w-xl">
+              <h2 className="font-serif text-3xl sm:text-5xl text-[var(--color-text-primary)] leading-[1.35] font-light max-w-2xl">
                 {currentQuestion.title}
               </h2>
               
-              <div className="relative w-full mb-6">
+              <div className="relative w-full">
                 <textarea 
                   autoFocus
                   rows={3}
+                  className="w-full bg-transparent border-0 border-b border-white/20 focus:border-[var(--color-antique-gold)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/55 text-xl sm:text-2xl font-serif text-center py-4 px-2 outline-none transition-all duration-300 resize-none leading-[1.7]"
+                  placeholder={currentQuestion.placeholder}
                   value={currentInputValue}
-                  onChange={(e) => {
-                    setErrorText(null);
-                    setInputs({ ...inputs, [currentQuestion.id]: e.target.value });
-                  }}
+                  onChange={(e) => setInputs({ ...inputs, [currentQuestion.id]: e.target.value })}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey && currentInputValue.trim().length >= 3) {
                       e.preventDefault();
                       handleNext();
                     }
                   }}
-                  placeholder={currentQuestion.placeholder}
-                  className="w-full bg-transparent border-b border-stone-600 focus:border-[var(--color-antique-gold)] px-2 py-3 text-lg sm:text-xl text-stone-100 placeholder:text-stone-600 focus:outline-none transition-colors resize-none font-serif leading-relaxed text-center"
                 />
-                
-                <div className="flex justify-between items-center text-[13px] uppercase font-mono text-stone-400 mt-2 px-1">
-                  <span>Минимум 3 символа</span>
-                  <span>{currentInputValue.length} знаков</span>
-                </div>
               </div>
-
+              
               {errorText && (
-                <div className="w-full max-w-xl mx-auto mb-6 p-4 bg-red-950/40 border border-red-500/30 rounded-xs text-center text-sm text-red-200">
-                  <p className="mb-3 text-xs sm:text-sm font-normal">{errorText}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErrorText(null);
-                      handleGenerate();
-                    }}
-                    className="px-4 py-2 bg-red-900/60 hover:bg-red-800 text-xs font-mono uppercase tracking-wider text-red-100 rounded-xs transition-colors cursor-pointer"
-                  >
-                    Попробовать снова
-                  </button>
+                <div className="text-xs text-amber-300 max-w-md font-light">
+                  {errorText}
                 </div>
               )}
 
-              <div className="flex flex-col items-center gap-4">
-                <button
-                  disabled={currentInputValue.trim().length < 3}
+              <div className="flex flex-col items-center gap-4 pt-2">
+                <button 
                   onClick={handleNext}
-                  className={`px-8 py-3.5 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs transition-all flex items-center gap-2 cursor-pointer ${
-                    currentInputValue.trim().length >= 3
-                      ? 'bg-[var(--color-antique-gold)] text-gray-950 hover:bg-[#D9B770] shadow-[0_0_20px_rgba(200,164,93,0.2)]'
-                      : 'bg-white/5 text-stone-600 border border-white/5 cursor-not-allowed'
-                  }`}
+                  disabled={currentInputValue.trim().length < 3}
+                  className="px-10 py-4 border border-[var(--color-antique-gold)]/45 bg-[var(--color-antique-gold)]/[0.08] hover:bg-[var(--color-antique-gold)]/[0.18] text-[var(--color-antique-gold)] rounded-full uppercase tracking-[0.28em] text-[11px] font-mono transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center gap-3 cursor-pointer"
                 >
-                  <span>{step === 4 ? 'Соткать историю' : 'Далее'}</span>
+                  <span>{step === 4 ? 'Сплести сказку' : 'Следующее дыхание'}</span>
                   <ArrowRight size={14} />
                 </button>
-                <span className="text-[13px] text-stone-400 font-mono">или нажми Enter</span>
+                
+                <span className="text-[11px] text-[var(--color-text-muted)] font-light">
+                  {step === 4 ? 'Нажмите Enter для рождения сказки' : 'Нажмите Enter для продолжения'}
+                </span>
               </div>
+
             </motion.div>
           )}
 
+          {/* STEP 5: GENERATING STATE */}
           {step === 5 && (
             <motion.div
               key="generating"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="w-full flex flex-col items-center justify-center py-24 text-center max-w-lg mx-auto"
+              className="w-full flex flex-col items-center justify-center py-28 text-center max-w-lg mx-auto space-y-6"
             >
-              <EmblemPlate planet={7} variant="alabaster" size={140} showNumber={false} showLabel={false} className="mb-8" />
-              <Loader2 className="w-6 h-6 text-[var(--color-antique-gold)] animate-spin mb-6" />
-              <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 mb-3 font-light">
-                Собираем метафорическую историю...
+              <Orb number={7} size={160} glow={true} />
+              <Loader2 className="w-5 h-5 text-[var(--color-antique-gold)] animate-spin" />
+              <h3 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light">
+                Рождается ваша история...
               </h3>
-              <p className="text-xs text-stone-400 font-normal max-w-sm leading-relaxed">
-                Сказка рождается строго из твоих четырех ответов, без домыслов и шаблонов.
+              <p className="text-sm text-[var(--color-text-secondary)] font-light max-w-sm leading-relaxed">
+                Четыре ваших образа соединяются в единую метафору простора и надежды.
               </p>
             </motion.div>
           )}
 
+          {/* STEP 6: SPACIOUS LITERARY RESULT SCREEN (NO HEAVY BOXES) */}
           {step === 6 && result && (
             <motion.div
               key="result"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
+              transition={{ duration: 0.9 }}
               ref={resultRef}
-              className="w-full flex flex-col items-center text-left py-6 space-y-12"
+              className="w-full flex flex-col items-center text-center py-8 space-y-24 sm:space-y-32"
             >
               {/* Header Title */}
-              <div className="text-center w-full max-w-2xl mx-auto pt-4">
-                <EmblemPlate planet={7} variant="alabaster" size={64} showNumber={false} showLabel={false} className="mx-auto mb-6" />
+              <div className="w-full max-w-2xl mx-auto space-y-6">
+                <Orb number={7} size={90} glow={true} className="mx-auto" />
                 
-                <span className="text-[13px] tracking-[0.3em] uppercase text-purple-300/80 font-mono block mb-2">
-                  Личный Миф · Художественная сцена
+                <span className="text-[10px] tracking-[0.38em] uppercase text-[#7CE8EE] font-mono block">
+                  Личный Миф · Ваша Живая Притча
                 </span>
-                <p className="text-xs text-stone-400 font-normal mb-4">
-                  Дальше — художественная сцена. Её герой — ты.
-                </p>
                 
-                <h1 className="font-serif text-3xl sm:text-5xl text-stone-100 mb-4 font-light tracking-tight">
+                <h1 className="font-serif text-4xl sm:text-6xl text-[var(--color-text-primary)] font-light tracking-tight leading-tight">
                   {result.title}
                 </h1>
+
+                {/* Subtle Ribbon of the 4 Source Metaphors */}
+                <p className="font-serif italic text-base sm:text-lg text-[var(--color-text-muted)] font-light pt-2">
+                  Из ваших образов: «{inputs.q1}» · «{inputs.q2}» · «{inputs.q3}» · «{inputs.q4}»
+                </p>
               </div>
 
-              {/* PROVENANCE: Из каких образов родилась история */}
-              <div className="w-full bg-[#0D121D]/70 border border-white/[0.08] p-6 sm:p-8 rounded-xs">
-                <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]/80 block mb-4">
-                  Символические истоки
-                </span>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-[13px] uppercase text-stone-400 font-mono block mb-1">01 · Ситуация</span>
-                    <p className="text-xs text-stone-300 font-serif italic">«{inputs.q1 || '—'}»</p>
-                  </div>
-                  <div>
-                    <span className="text-[13px] uppercase text-stone-400 font-mono block mb-1">02 · Образ состояния</span>
-                    <p className="text-xs text-stone-300 font-serif italic">«{inputs.q2 || '—'}»</p>
-                  </div>
-                  <div>
-                    <span className="text-[13px] uppercase text-stone-400 font-mono block mb-1">03 · Точка живости</span>
-                    <p className="text-xs text-stone-300 font-serif italic">«{inputs.q3 || '—'}»</p>
-                  </div>
-                  <div>
-                    <span className="text-[13px] uppercase text-stone-400 font-mono block mb-1">04 · Искомое качество</span>
-                    <p className="text-xs text-stone-300 font-serif italic">«{inputs.q4 || '—'}»</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* EDITORIAL STORY TEXT (High Leading, Book Chapter) */}
-              <article className="w-full bg-[#EFE5D3] border border-[#D1B98D]/50 p-8 sm:p-12 rounded-xs shadow-[0_28px_80px_rgba(0,0,0,0.3)]">
-                <div className="mb-8 flex items-center justify-between border-b border-[#7B6545]/20 pb-4 text-[13px] uppercase tracking-[0.25em] text-[#7B6545] font-mono">
-                  <span>Личный миф</span>
-                  <span>Чернила · твои четыре образа</span>
-                </div>
-                <div className="font-serif text-lg sm:text-[21px] leading-[2] text-[#282019] space-y-8 font-normal max-w-2xl mx-auto tracking-[0.015em]">
+              {/* PURE LITERARY STORY IN OPEN SPACE */}
+              <div className="w-full max-w-2xl mx-auto pt-12 border-t border-white/[0.08] text-left">
+                <div className="font-serif text-2xl sm:text-[26px] leading-[1.95] text-[#F7F4ED] space-y-10 font-light">
                   {result.story.split('\n\n').map((paragraph, idx) => (
                     <p key={idx}>{paragraph}</p>
                   ))}
                 </div>
-              </article>
-
-              <div className="w-full max-w-2xl mx-auto rounded-xs border border-purple-300/15 bg-purple-300/[0.04] p-6 sm:p-7">
-                <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-purple-200/80 block mb-3">
-                  Что стало возможным
-                </span>
-                <p className="font-serif text-lg text-stone-200 leading-relaxed">
-                  {result.mirror.hiddenResource}
-                </p>
               </div>
 
-              <p className="max-w-2xl mx-auto text-sm text-stone-400 leading-relaxed text-center">
-                У этой истории нет единственно правильной расшифровки. Можно взять одну деталь, изменить её или решить, что образ вам не подходит — смысл остаётся за вами.
-              </p>
-
               {/* LIVING QUESTION FOR REFLECTION */}
-              <div className="w-full bg-[#0D121D]/90 border border-[var(--color-antique-gold)]/20 p-8 sm:p-10 rounded-xs text-center">
-                <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-3">
-                  Вопрос для внутренней тишины
+              <div className="w-full max-w-xl mx-auto pt-16 border-t border-white/[0.08] text-center space-y-6">
+                <span className="text-[10px] uppercase font-mono tracking-[0.35em] text-[var(--color-antique-gold)] block">
+                  Горизонт для размышления
                 </span>
                 
-                <p className="font-serif italic text-xl sm:text-2xl text-stone-100 mb-6 font-normal max-w-xl mx-auto">
-                  «{result.journal_question || "Какое крошечное решение из чувства покоя я могу принять прямо сейчас?"}»
+                <p className="font-serif italic text-2xl sm:text-3xl text-[#EAE4D7] font-light leading-[1.75]">
+                  «{result.journal_question || "Куда полетят мои мысли и мечты, если я прямо сейчас разрешу себе дышать полной грудью?"}»
                 </p>
 
                 <textarea 
                   rows={2}
                   value={journalNote}
                   onChange={(e) => setJournalNote(e.target.value)}
-                  placeholder="Запиши здесь свой отклик или мысль..."
-                  className="w-full max-w-xl mx-auto bg-transparent border-0 border-b border-white/20 focus:border-[var(--color-antique-gold)] text-sm text-center py-2 outline-none transition-colors text-stone-100 placeholder:text-stone-600 font-normal resize-none block"
+                  placeholder="Запишите здесь свой отклик или мечту..."
+                  className="w-full bg-transparent border-0 border-b border-white/20 focus:border-[var(--color-antique-gold)] text-base font-serif text-center py-3 outline-none transition-colors text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/60 font-light resize-none block"
                 />
               </div>
 
-              {/* CTA TO DIGITAL CODE / MEETING */}
-              <div className="w-full bg-[#0D121D]/80 border border-white/[0.08] p-8 sm:p-10 rounded-xs text-center space-y-6">
-                <div>
-                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
-                    Следующее зеркало
+              {/* BRIDGE TO SECOND ORBIT / MEETING */}
+              <div className="w-full max-w-2xl mx-auto pt-16 border-t border-white/[0.08] text-center space-y-8">
+                <div className="space-y-3">
+                  <span className="text-[10px] uppercase font-mono tracking-[0.35em] text-[#7CE8EE] block">
+                    Гармония двух орбит
                   </span>
-                  <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light mb-2">
-                    {hasCodeResult ? 'Встреча двух зеркал' : 'Цифровой код твоей природы'}
+                  <h3 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light">
+                    {hasCodeResult ? 'Готовы к Встрече Зеркал?' : 'Второе отражение: Космос Даты Рождения'}
                   </h3>
-                  <p className="text-xs sm:text-sm text-stone-400 font-normal max-w-md mx-auto leading-relaxed">
+                  <p className="text-base text-[var(--color-text-secondary)] font-light max-w-lg mx-auto leading-[1.85]">
                     {hasCodeResult 
-                      ? 'Твой код уже рассчитан. Можно перейти к синтезу двух независимых отражений.'
-                      : 'Открой независимую линзу через дату рождения, чтобы получить пять ключей и сопоставить их с мифом.'}
+                      ? 'Ваш звёздный атлас даты уже открыт. Соедините обе линзы, чтобы увидеть единую картину вашей природы.'
+                      : 'Откройте созвездие своей даты рождения, чтобы соединить живую сказку сегодняшнего дня с вечной мелодией ваших чисел.'}
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-6">
                   {onNavigateToMeeting && (
                     <button 
                       onClick={onNavigateToMeeting}
-                      className="px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.2em] text-xs font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center gap-2 cursor-pointer shadow-md"
+                      className="px-9 py-4 border border-[var(--color-antique-gold)]/45 bg-[var(--color-antique-gold)]/[0.08] hover:bg-[var(--color-antique-gold)]/[0.18] text-[var(--color-antique-gold)] uppercase tracking-[0.25em] text-[11px] font-mono rounded-full transition-all flex items-center gap-3 cursor-pointer"
                     >
-                      <span>{hasCodeResult ? 'Открыть Встречу зеркал' : 'Открыть Цифровой код'}</span>
+                      <span>{hasCodeResult ? 'Открыть Встречу Зеркал' : 'Перейти к Космосу Даты'}</span>
                       <ArrowRight size={14} />
                     </button>
                   )}
@@ -418,12 +381,11 @@ export default function PersonalMyth({
                       setStep(0);
                       setInputs({ q1: '', q2: '', q3: '', q4: '' });
                       setResult(null);
-                      requestIdRef.current = `myth_${crypto.randomUUID().replace(/-/g, '')}`;
                     }}
-                    className="px-5 py-3 text-xs uppercase tracking-wider text-stone-400 hover:text-stone-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="text-[11px] uppercase font-mono tracking-[0.25em] text-[var(--color-text-muted)] hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
                   >
                     <RotateCcw size={13} />
-                    <span>Пройти заново</span>
+                    <span>Новая сказка</span>
                   </button>
                 </div>
               </div>

@@ -1,178 +1,60 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle2, 
   AlertCircle, 
   Sparkles, 
-  GitFork, 
-  Send,
+  Send, 
   RefreshCw, 
   ChevronRight,
-  MessageSquare,
-  Bookmark,
-  Check,
-  Trash2
+  MessageSquare
 } from 'lucide-react';
-import { CalculationResult, CodeV2Payload, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, MeetingApiResponse } from '../types';
-import { EmblemPlate } from '../art/emblem';
+import { CalculationResult, FirstMirror, StoryInputs, ApiResponse, MeetingOfMirrorsResult, MeetingApiResponse } from '../types';
+import { Orb } from './Orb';
 import { AlbertDialogue } from './AlbertDialogue';
-import { TesterFeedbackWidget } from './TesterFeedbackWidget';
-import { generateFirstMirror } from '../services/interpretation';
-import { firstMirrorFromV2 } from '../services/codeV2Session';
-import { 
-  saveMyMirrorSnapshot, 
-  loadMyMirrorSnapshot, 
-  deleteMyMirrorSnapshot,
-  isSnapshotMatchingCurrentSession
-} from '../services/myMirrorStorage';
 
-export interface MeetingOfMirrorsProps {
-  codeDate?: string;
-  codeV2Payload?: CodeV2Payload | null;
-  journeyId?: string;
-  onOpenAlbert?: () => void;
+interface MeetingOfMirrorsProps {
   codeResult: CalculationResult | null;
   firstMirror: FirstMirror | null;
   storyInputs: StoryInputs | null;
   storyResult: ApiResponse['story_result'] | null;
-  initialMeetingResult?: MeetingOfMirrorsResult | null;
-  onMeetingCompleted?: (result: MeetingOfMirrorsResult) => void;
-  initialUserNote?: string;
-  onUserNoteChange?: (note: string) => void;
-  onSaveSnapshot?: () => void;
-  onDeleteSnapshot?: () => void;
   onOpenCode: () => void;
   onOpenMyth: () => void;
 }
 
 export function MeetingOfMirrors({
-  codeDate,
-  codeV2Payload,
-  journeyId,
-  onOpenAlbert,
   codeResult,
   firstMirror,
   storyInputs,
   storyResult,
-  initialMeetingResult,
-  onMeetingCompleted,
-  initialUserNote,
-  onUserNoteChange,
-  onSaveSnapshot,
-  onDeleteSnapshot,
   onOpenCode,
   onOpenMyth
 }: MeetingOfMirrorsProps) {
-  const [meetingResult, setMeetingResult] = useState<MeetingOfMirrorsResult | null>(initialMeetingResult || null);
+  const [meetingResult, setMeetingResult] = useState<MeetingOfMirrorsResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isAlbertOpen, setIsAlbertOpen] = useState(false);
   const [albertTopic, setAlbertTopic] = useState('');
-  const [userNote, setUserNote] = useState(initialUserNote || '');
-  const telegramBotUrl = 'https://t.me/digitalcodesystem_bot';
-
-  const effectiveFirstMirror = (): FirstMirror | null => {
-    if (firstMirror) return firstMirror;
-    if (codeV2Payload) return firstMirrorFromV2(codeV2Payload);
-    return codeResult ? generateFirstMirror(codeResult) : null;
-  };
-
-  const checkCurrentSaveStatus = (): string | null => {
-    const current = loadMyMirrorSnapshot();
-    if (!current) return null;
-    const currentFirstMirror = effectiveFirstMirror();
-    const matches = isSnapshotMatchingCurrentSession(current, {
-      codeDate,
-      codeResult,
-      firstMirror: currentFirstMirror,
-      storyInputs,
-      storyResult,
-      meetingResult,
-      meetingUserNote: userNote
-    });
-    return matches ? current.savedAt : null;
-  };
-
-  const [savedAt, setSavedAt] = useState<string | null>(() => checkCurrentSaveStatus());
-
-  useEffect(() => {
-    setMeetingResult(initialMeetingResult || null);
-  }, [initialMeetingResult]);
-
-  useEffect(() => {
-    if (initialUserNote !== undefined) {
-      setUserNote(initialUserNote);
-    }
-  }, [initialUserNote]);
-
-  useEffect(() => {
-    setSavedAt(checkCurrentSaveStatus());
-  }, [codeDate, codeResult, firstMirror, storyInputs, storyResult, meetingResult, userNote]);
+  const [userNote, setUserNote] = useState('');
 
   const hasCode = !!codeResult;
   const hasMyth = !!storyResult && !!storyInputs;
   const isReadyForSynthesis = hasCode && hasMyth;
 
-  const handleUserNoteChange = (val: string) => {
-    setUserNote(val);
-    if (onUserNoteChange) onUserNoteChange(val);
-  };
-
-  const handleSave = () => {
-    if (!codeResult || !storyInputs || !storyResult || !meetingResult) return;
-    const currentFirstMirror = effectiveFirstMirror();
-    if (!currentFirstMirror) return;
-    const success = saveMyMirrorSnapshot({
-      codeDate: codeDate || `${codeResult.soul}.${codeResult.expression}.${codeResult.path}`,
-      codeResult,
-      codeV2Payload,
-      journeyId,
-      firstMirror: currentFirstMirror,
-      storyInputs,
-      storyResult,
-      meetingResult,
-      meetingUserNote: userNote || undefined
-    });
-    if (success) {
-      const loaded = loadMyMirrorSnapshot();
-      setSavedAt(loaded?.savedAt || new Date().toISOString());
-      if (onSaveSnapshot) onSaveSnapshot();
-    }
-  };
-
-  const handleDelete = () => {
-    deleteMyMirrorSnapshot();
-    setSavedAt(null);
-    if (onDeleteSnapshot) onDeleteSnapshot();
-  };
-
-  const synthesisRequest = useRef<AbortController | null>(null);
-  useEffect(() => () => synthesisRequest.current?.abort(), []);
-
   const handleRunSynthesis = async () => {
     if (!isReadyForSynthesis) return;
-    const currentFirstMirror = effectiveFirstMirror();
-    if (!currentFirstMirror) {
-      setErrorMessage('Не удалось восстановить первое зеркало. Вернитесь к Коду и повторите расчёт.');
-      return;
-    }
 
-    synthesisRequest.current?.abort();
-    const controller = new AbortController();
-    synthesisRequest.current = controller;
     setIsLoading(true);
     setErrorMessage('');
 
     try {
-      const response = await fetch('/api/meeting-of-mirrors', {
-        signal: controller.signal,
+      const response = await fetch('/api/lab/meeting/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           codeData: {
             calc: codeResult,
-            firstMirror: currentFirstMirror,
-            codeV2Payload: codeV2Payload || undefined
+            firstMirror: firstMirror || undefined
           },
           storyData: {
             storyInputs,
@@ -182,341 +64,266 @@ export function MeetingOfMirrors({
       });
 
       const data: MeetingApiResponse = await response.json();
-      if (controller.signal.aborted) return;
 
       if (data.status === 'ok' && data.result) {
         setMeetingResult(data.result);
-        if (onMeetingCompleted) {
-          onMeetingCompleted(data.result);
-        }
       } else {
         setErrorMessage(data.ui?.safe_message || 'Не удалось сформировать встречу зеркал. Попробуйте еще раз.');
       }
     } catch (err) {
-      if (controller.signal.aborted) return;
       console.error(err);
       setErrorMessage('Связь с зеркалом прервалась при сопоставлении линз.');
     } finally {
-      if (!controller.signal.aborted) setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-70px)] py-12 px-4 sm:px-6 lg:px-8 text-[#EAEAEA] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] py-20 sm:py-28 px-6 sm:px-10 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full">
       
-      <div className="w-full max-w-4xl flex flex-col items-center relative z-10 my-auto">
+      <div className="w-full max-w-4xl flex flex-col items-center relative z-10 my-auto space-y-24 sm:space-y-32">
         
         {/* ========================================================= */}
-        {/* VISUAL CENTER: TWO CONVERGING ORBS */}
+        {/* VISUAL CENTER: TWO CONVERGING ORBS IN OPEN SPACE          */}
         {/* ========================================================= */}
-        <div className="flex flex-col items-center text-center mb-12">
+        <div className="flex flex-col items-center text-center space-y-8 max-w-2xl mx-auto">
           
-          <div className="flex items-center justify-center -space-x-4 sm:-space-x-6 mb-8 relative">
+          <div className="flex items-center justify-center -space-x-6 mb-2 relative">
             <motion.div
               initial={{ x: -25, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.9 }}
+              transition={{ duration: 1 }}
               className="relative z-10"
             >
-              <EmblemPlate planet={codeResult?.soul || 1} variant="obsidian" size={130} />
+              <Orb number={codeResult?.soul || 1} size="lg" glow={true} />
             </motion.div>
 
             <motion.div
               initial={{ x: 25, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.9 }}
+              transition={{ duration: 1 }}
               className="relative z-20"
             >
-              <EmblemPlate planet={7} variant="alabaster" size={130} showNumber={false} showLabel={false} />
+              <Orb number={7} size="lg" glow={true} />
             </motion.div>
           </div>
 
-          <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] mb-3">
-            Синтез двух зеркал · Встреча
+          <span className="text-[11px] uppercase tracking-[0.42em] text-[var(--color-antique-gold)] font-mono block opacity-85">
+            Синтез · Гармония Двух Отражений
           </span>
 
-          <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-light text-stone-100 mb-4 tracking-tight">
+          <h1 className="font-serif text-5xl sm:text-7xl text-[var(--color-text-primary)] font-light tracking-tight leading-tight">
             Встреча Зеркал
           </h1>
 
-          <p className="text-sm sm:text-base text-stone-300 font-normal max-w-xl mx-auto leading-relaxed">
-            Два независимых взгляда встречаются, чтобы показать новое различие и возможную опору — без требования согласиться с ними.
+          <p className="font-serif italic text-xl sm:text-2xl text-[#EAE4D7] leading-[1.8] font-light">
+            «Два независимых взгляда встречаются в одном небе: вечный рисунок вашей даты рождения и живая сказка вашего сегодняшнего состояния.»
           </p>
         </div>
 
         {/* ========================================================= */}
-        {/* PRE-MEETING STATUS & CARDS */}
+        {/* STATUS OF THE TWO ORBITS (AIRY TWO-COLUMN VIEW)           */}
         {/* ========================================================= */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-          
-          {/* Lens 1: Code */}
-          <div className={`p-6 rounded-xs border transition-all ${
-            hasCode 
-              ? 'bg-[#0D121D] border-white/10' 
-              : 'bg-[#0D121D]/40 border-dashed border-white/10'
-          }`}>
-            <div className="flex justify-between items-start mb-4">
-              <span className="text-[13px] uppercase font-mono tracking-widest text-stone-400">
-                Линза 1 · Цифровой код
-              </span>
+        <div className="w-full max-w-3xl pt-12 border-t border-white/[0.08] space-y-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 relative">
+            
+            <div className="hidden sm:block absolute left-1/2 top-2 bottom-2 w-px bg-white/[0.08] -translate-x-1/2 pointer-events-none" />
+
+            {/* Orbit 1: Digital Code */}
+            <div className="space-y-4 text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-between gap-3">
+                <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--color-antique-gold)] font-mono">
+                  Орбита II · Космос Даты
+                </span>
+                {hasCode && (
+                  <span className="inline-flex items-center gap-1 text-xs text-emerald-300 font-light">
+                    <CheckCircle2 size={13} /> Открыт
+                  </span>
+                )}
+              </div>
+
               {hasCode ? (
-                <span className="flex items-center gap-1.5 text-sm text-emerald-400 font-mono">
-                  <CheckCircle2 size={13} />
-                  <span>Собрано</span>
-                </span>
+                <div className="flex items-center justify-center sm:justify-start gap-4 pt-1">
+                  <Orb number={codeResult.soul} size="sm" glow={false} />
+                  <div className="text-left">
+                    <div className="font-serif text-2xl text-[var(--color-text-primary)] font-light">
+                      Душа {codeResult.soulComposite} · Путь {codeResult.pathComposite}
+                    </div>
+                    <div className="text-xs text-[var(--color-text-muted)] font-mono mt-0.5">
+                      Выражение {codeResult.expressionComposite}
+                    </div>
+                  </div>
+                </div>
               ) : (
-                <span className="text-sm text-amber-400/80 font-mono">Не рассчитано</span>
+                <div className="space-y-3">
+                  <p className="text-sm text-[var(--color-text-secondary)] font-light leading-relaxed">
+                    Откройте звёздный атлас своей даты рождения.
+                  </p>
+                  <button 
+                    onClick={onOpenCode}
+                    className="text-[11px] text-[var(--color-antique-gold)] hover:underline uppercase tracking-[0.25em] inline-flex items-center gap-1 font-mono cursor-pointer"
+                  >
+                    Перейти к дате <ChevronRight size={12} />
+                  </button>
+                </div>
               )}
             </div>
 
-            {hasCode ? (
-              <div>
-                <h3 className="font-serif text-xl text-stone-100 mb-1">
-                  Формула: {codeResult.soul} / {codeResult.expression} / {codeResult.path}
-                </h3>
-                <p className="text-sm text-stone-300 font-normal leading-relaxed line-clamp-3">
-                  {firstMirror?.keyInsight || `Число Души ${codeResult.soul}, Путь ${codeResult.path}`}
-                </p>
+            {/* Orbit 2: Personal Myth */}
+            <div className="space-y-4 text-center sm:text-left sm:pl-6">
+              <div className="flex items-center justify-center sm:justify-between gap-3">
+                <span className="text-[10px] uppercase tracking-[0.3em] text-[#7CE8EE] font-mono">
+                  Орбита I · Личный Миф
+                </span>
+                {hasMyth && (
+                  <span className="inline-flex items-center gap-1 text-xs text-emerald-300 font-light">
+                    <CheckCircle2 size={13} /> Создан
+                  </span>
+                )}
               </div>
-            ) : (
-              <button
-                onClick={onOpenCode}
-                className="text-sm text-[var(--color-antique-gold)] hover:underline flex items-center gap-1 mt-2 cursor-pointer"
-              >
-                <span>Рассчитать код</span>
-                <ChevronRight size={14} />
-              </button>
-            )}
-          </div>
 
-          {/* Lens 2: Myth */}
-          <div className={`p-6 rounded-xs border transition-all ${
-            hasMyth 
-              ? 'bg-[#0D121D] border-white/10' 
-              : 'bg-[#0D121D]/40 border-dashed border-white/10'
-          }`}>
-            <div className="flex justify-between items-start mb-4">
-              <span className="text-[13px] uppercase font-mono tracking-widest text-stone-400">
-                Линза 2 · Личный миф
-              </span>
               {hasMyth ? (
-                <span className="flex items-center gap-1.5 text-sm text-emerald-400 font-mono">
-                  <CheckCircle2 size={13} />
-                  <span>Сотворено</span>
-                </span>
+                <div className="flex items-center justify-center sm:justify-start gap-4 pt-1">
+                  <Orb number={7} size="sm" glow={false} />
+                  <div className="text-left">
+                    <div className="font-serif text-2xl text-[var(--color-text-primary)] italic font-light">
+                      «{storyResult.title}»
+                    </div>
+                    <div className="text-xs text-[var(--color-text-muted)] font-mono truncate max-w-[200px] mt-0.5">
+                      Образ: {storyInputs.q2 || 'открытый горизонт'}
+                    </div>
+                  </div>
+                </div>
               ) : (
-                <span className="text-sm text-amber-400/80 font-mono">Не создано</span>
+                <div className="space-y-3">
+                  <p className="text-sm text-[var(--color-text-secondary)] font-light leading-relaxed">
+                    Ответьте на 4 образных вопроса для рождения вашей сказки.
+                  </p>
+                  <button 
+                    onClick={onOpenMyth}
+                    className="text-[11px] text-[#7CE8EE] hover:underline uppercase tracking-[0.25em] inline-flex items-center gap-1 font-mono cursor-pointer"
+                  >
+                    Перейти к мифу <ChevronRight size={12} />
+                  </button>
+                </div>
               )}
             </div>
 
-            {hasMyth ? (
-              <div>
-                <h3 className="font-serif text-xl text-stone-100 mb-1">
-                  «{storyResult.title}»
-                </h3>
-                <p className="text-sm text-stone-300 font-normal leading-relaxed line-clamp-3">
-                  {storyResult.story}
-                </p>
-              </div>
-            ) : (
-              <button
-                onClick={onOpenMyth}
-                className="text-sm text-[var(--color-antique-gold)] hover:underline flex items-center gap-1 mt-2 cursor-pointer"
-              >
-                <span>Создать Личный миф</span>
-                <ChevronRight size={14} />
-              </button>
-            )}
           </div>
 
+          {/* Trigger Synthesis Button */}
+          {!meetingResult && (
+            <div className="pt-10 border-t border-white/[0.08] flex flex-col items-center text-center space-y-6">
+              <span className="text-sm text-[var(--color-text-secondary)] font-light">
+                {isReadyForSynthesis
+                  ? 'Оба созвездия открыты. Прикоснитесь, чтобы услышать их общее звучание.'
+                  : 'Когда обе орбиты будут пройдены, здесь откроется их живое созвучие.'}
+              </span>
+
+              <button
+                disabled={!isReadyForSynthesis || isLoading}
+                onClick={handleRunSynthesis}
+                className="px-10 py-4 border border-[var(--color-antique-gold)]/45 bg-[var(--color-antique-gold)]/[0.08] hover:bg-[var(--color-antique-gold)]/[0.18] text-[var(--color-antique-gold)] rounded-full uppercase tracking-[0.28em] text-[11px] font-mono transition-all disabled:opacity-25 disabled:cursor-not-allowed flex items-center justify-center gap-3 cursor-pointer"
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Соединяем созвездия...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={14} />
+                    <span>Соединить два отражения</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {errorMessage && (
+            <div className="text-amber-300 text-xs flex items-center justify-center gap-2 font-light">
+              <AlertCircle size={14} className="shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
         </div>
 
-        {/* Synthesis Action Button */}
-        {!meetingResult && (
-          <div className="flex flex-col items-center mb-12">
-            <button
-              onClick={handleRunSynthesis}
-              disabled={!isReadyForSynthesis || isLoading}
-              className={`w-full sm:w-auto px-8 py-3.5 rounded-xs uppercase tracking-[0.18em] text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                isReadyForSynthesis && !isLoading
-                  ? 'bg-[var(--color-antique-gold)] text-gray-950 hover:bg-[#D9B770] cursor-pointer shadow-md'
-                  : 'bg-white/5 text-stone-500 cursor-not-allowed border border-white/[0.06]'
-              }`}
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw size={14} className="animate-spin text-stone-400" />
-                  <span>Сопоставляем отражения...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles size={14} />
-                  <span>Провести Встречу зеркал</span>
-                </>
-              )}
-            </button>
-
-            {errorMessage && (
-              <p className="mt-3 text-sm text-red-300 flex items-center gap-1.5">
-                <AlertCircle size={13} />
-                <span>{errorMessage}</span>
-              </p>
-            )}
-          </div>
-        )}
-
         {/* ========================================================= */}
-        {/* SYNTHESIS RESULTS DISPLAY */}
+        {/* SYNTHESIS RESULT: FLOWING HARMONY OF MEANINGS             */}
         {/* ========================================================= */}
         <AnimatePresence>
           {meetingResult && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="w-full space-y-8"
+              transition={{ duration: 0.9 }}
+              className="w-full max-w-2xl mx-auto space-y-24 text-left"
             >
-              {/* Summary & Confidence Header */}
-              <div className="bg-[#0D121D] border border-[var(--color-border-gold)] p-8 sm:p-10 rounded-xs text-left relative overflow-hidden">
-                <div className="space-y-3 mb-5">
-                  <h3 className="font-serif text-xl sm:text-2xl text-[var(--color-antique-gold)] font-normal">
-                    Что становится видно рядом
-                  </h3>
-                  <p className="text-sm sm:text-base text-stone-300 leading-relaxed max-w-2xl">
-                    {meetingResult.confidenceNote}
-                  </p>
-                </div>
+              {/* Summary */}
+              <div className="pt-12 border-t border-white/[0.08] space-y-4 text-center">
+                <span className="text-[10px] uppercase font-mono tracking-[0.35em] text-[var(--color-antique-gold)] block">
+                  Единое созвучие
+                </span>
 
-                <p className="font-serif text-xl sm:text-2xl text-stone-100 font-normal leading-relaxed mb-6">
+                <p className="font-serif text-2xl sm:text-3xl text-[#F7F4ED] leading-[1.8] font-light">
                   {meetingResult.summary}
                 </p>
 
-                {meetingResult.possibleSupport && (
-                  <div className="bg-[var(--color-antique-gold)]/[0.07] border border-[var(--color-antique-gold)]/25 p-5 sm:p-6 mb-6 rounded-xs">
-                    <span className="text-[13px] uppercase font-mono tracking-[0.22em] text-[var(--color-antique-gold)] block mb-3">
-                      Возможная опора
-                    </span>
-                    <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed">
-                      {meetingResult.possibleSupport}
-                    </p>
-                    <p className="text-sm text-stone-400 leading-relaxed mt-3">
-                      Это гипотеза из ваших слов и двух линз. Оставьте только то, что подтверждается вашим опытом.
-                    </p>
-                  </div>
-                )}
-
-                {meetingResult.disclaimer && (
-                  <p className="text-sm sm:text-base text-stone-400 font-normal border-t border-white/[0.06] pt-4 leading-relaxed">
-                    {meetingResult.disclaimer}
+                {meetingResult.confidenceNote && (
+                  <p className="text-xs text-[var(--color-text-muted)] italic font-light pt-2">
+                    {meetingResult.confidenceNote}
                   </p>
                 )}
               </div>
 
-              {/* Zero-resonance state banner if parallels is empty */}
-              {meetingResult.parallels.length === 0 && (
-                <div className="bg-[#0D121D] border border-white/[0.08] p-8 sm:p-10 rounded-xs text-left space-y-4">
-                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
-                    Нулевая встреча — полноценный результат
-                  </span>
-                  <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
-                    Сильных резонансов не найдено
-                  </h3>
-                  <p className="text-base text-stone-300 font-normal leading-relaxed max-w-2xl">
-                    Два независимых взгляда показывают разные плоскости: мы не превращаем отдельные похожие слова в искусственную связь.
-                  </p>
-                </div>
-              )}
-
-              {/* Parallels Section */}
-              {meetingResult.parallels.length > 0 && (
-                <div className="space-y-4 text-left">
-                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
-                    Смысловые резонансы (где зеркала сходятся)
+              {/* Parallels */}
+              {meetingResult.parallels && meetingResult.parallels.length > 0 && (
+                <div className="space-y-12 pt-12 border-t border-white/[0.08]">
+                  <span className="text-[10px] uppercase font-mono tracking-[0.35em] text-[#7CE8EE] block text-center">
+                    Где ваши числа и ваша сказка поют в унисон
                   </span>
 
-                  <div className="grid grid-cols-1 gap-6">
-                    {meetingResult.parallels.map((p, idx) => (
-                      <div 
-                        key={idx}
-                        className="bg-[#0D121D] border border-white/[0.08] p-6 sm:p-8 rounded-xs space-y-4"
-                      >
-                        <h4 className="font-serif text-xl sm:text-2xl text-stone-100 font-light">
-                          {p.theme}
+                  <div className="space-y-14">
+                    {meetingResult.parallels.map((item, idx) => (
+                      <div key={idx} className="space-y-5">
+                        <h4 className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light">
+                          {item.theme}
                         </h4>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="bg-[#E8E0D4] border border-[#C8A45D]/35 p-4 rounded-xs text-[#2B241C]">
-                            <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
-                              Линза Кода:
-                            </span>
-                            <p className="text-sm sm:text-base font-sans leading-relaxed text-[#2B241C]">
-                              {p.codeAnchor}
-                            </p>
-                          </div>
+                        <p className="font-serif text-xl text-[var(--color-text-secondary)] leading-[1.85] font-light">
+                          В вашем звёздном коде звучит: <span className="text-white">{item.codeAnchor}</span> А в вашей сказке это же движение откликается через образ: <span className="text-white">{item.mythAnchor}</span>
+                        </p>
 
-                          <div className="bg-[#EFE5D3] border border-[#B89568]/35 p-4 rounded-xs text-[#282019]">
-                            <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
-                              Линза Мифа:
-                            </span>
-                            <p className="text-sm sm:text-base font-sans leading-relaxed text-[#282019]">
-                              {p.mythAnchor}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="pt-2 border-t border-white/[0.06]">
-                          <p className="text-base sm:text-lg leading-relaxed text-stone-300 font-serif italic">
-                            «{p.synthesis}»
-                          </p>
-                        </div>
+                        <p className="font-serif italic text-xl sm:text-2xl text-[var(--color-antique-gold)] leading-[1.8] font-light">
+                          «{item.synthesis}»
+                        </p>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Divergences Section */}
-              {meetingResult.divergences.length > 0 && (
-                <div className="space-y-4 text-left">
-                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
-                    Различия ракурсов (где зеркала расходятся)
+              {/* Divergences */}
+              {meetingResult.divergences && meetingResult.divergences.length > 0 && (
+                <div className="space-y-12 pt-12 border-t border-white/[0.08]">
+                  <span className="text-[10px] uppercase font-mono tracking-[0.35em] text-[var(--color-antique-gold)] block text-center">
+                    Простор между двумя берегами
                   </span>
 
-                  <div className="grid grid-cols-1 gap-6">
-                    {meetingResult.divergences.map((d, idx) => (
-                      <div 
-                        key={idx}
-                        className="bg-[#0D121D] border border-white/[0.08] p-6 sm:p-8 rounded-xs space-y-4"
-                      >
-                        <h4 className="font-serif text-xl sm:text-2xl text-stone-100 font-light">
-                          {d.theme}
+                  <div className="space-y-12">
+                    {meetingResult.divergences.map((div, idx) => (
+                      <div key={idx} className="space-y-4">
+                        <h4 className="font-serif text-2xl text-[var(--color-text-primary)] font-light">
+                          {div.theme}
                         </h4>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="bg-[#E8E0D4] border border-[#C8A45D]/35 p-4 rounded-xs text-[#2B241C]">
-                            <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
-                              Линза Кода:
-                            </span>
-                            <p className="text-sm sm:text-base font-sans leading-relaxed text-[#2B241C]">
-                              {d.codeAspect}
-                            </p>
-                          </div>
+                        <p className="font-serif text-xl text-[var(--color-text-secondary)] leading-[1.85] font-light">
+                          Природа даты напоминает: <span className="text-white">{div.codeAspect}</span> В то время как сегодняшнее состояние ищет: <span className="text-white">{div.mythAspect}</span>
+                        </p>
 
-                          <div className="bg-[#EFE5D3] border border-[#B89568]/35 p-4 rounded-xs text-[#282019]">
-                            <span className="text-[13px] uppercase font-mono tracking-widest text-[#7C5A20] block mb-1.5 font-medium">
-                              Линза Мифа:
-                            </span>
-                            <p className="text-sm sm:text-base font-sans leading-relaxed text-[#282019]">
-                              {d.mythAspect}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="pt-2 border-t border-white/[0.06]">
-                          <p className="text-base sm:text-lg leading-relaxed text-stone-300 font-serif italic">
-                            «{d.reflection}»
-                          </p>
-                        </div>
+                        <p className="font-serif italic text-lg text-[#EAE4D7] font-light leading-[1.8]">
+                          {div.reflection}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -524,126 +331,61 @@ export function MeetingOfMirrors({
               )}
 
               {/* Albert's Synthesis Insight & Living Question */}
-              <div className="bg-[#0D121D] border border-white/[0.08] p-8 sm:p-10 rounded-xs space-y-6 text-left">
-                <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
-                  Новое различение
+              <div className="pt-16 border-t border-white/[0.08] space-y-8 text-center">
+                <span className="text-[10px] uppercase font-mono tracking-[0.35em] text-[var(--color-antique-gold)] block">
+                  Слово Альберта Вяземского
                 </span>
                 
-                <p className="font-serif text-lg sm:text-xl text-stone-100 leading-relaxed font-normal">
+                <p className="font-serif text-xl sm:text-2xl text-[var(--color-text-primary)] leading-[1.9] font-light">
                   {meetingResult.albertInsight}
                 </p>
 
-                <div className="border-t border-white/[0.06] pt-6">
-                  <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block mb-2">
-                    Проверка на своём опыте
+                <div className="pt-10 space-y-6">
+                  <span className="text-[10px] uppercase font-mono tracking-[0.35em] text-[#7CE8EE] block">
+                    Вопрос для внутренней тишины
                   </span>
-                  <p className="font-serif italic text-lg sm:text-xl text-emerald-200 mb-4 font-normal">
+                  <p className="font-serif italic text-2xl sm:text-3xl text-[#F7F4ED] font-light leading-[1.75]">
                     «{meetingResult.reflectiveQuestion}»
                   </p>
                   <textarea
                     rows={2}
                     value={userNote}
-                    onChange={(e) => handleUserNoteChange(e.target.value)}
-                    placeholder="Что здесь похоже на ваш опыт, а что хочется уточнить или отвергнуть?"
-                    className="w-full bg-[#080C14] border-0 border-b border-white/20 text-base text-stone-200 py-3 outline-none focus:border-[var(--color-antique-gold)] resize-none font-normal"
+                    onChange={(e) => setUserNote(e.target.value)}
+                    placeholder="Запишите здесь свою мысль или отклик..."
+                    className="w-full bg-transparent border-0 border-b border-white/20 text-base font-serif text-center text-[var(--color-text-primary)] py-3 outline-none focus:border-[var(--color-antique-gold)] resize-none font-light"
                   />
                 </div>
               </div>
 
-              {/* ALBERT CONTINUATION CTA */}
-              <div className="bg-[#0D121D] border border-[var(--color-antique-gold)]/40 p-8 sm:p-10 rounded-xs text-center space-y-5">
-                <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] block">
-                  Продолжение исследования
-                </span>
-                
-                <h3 className="font-serif text-2xl sm:text-3xl text-stone-100 font-light">
-                  Исследовать синтез с Альбертом
+              {/* OPEN DIALOGUE CTA */}
+              <div className="pt-16 border-t border-white/[0.08] text-center space-y-8">
+                <h3 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light">
+                  Продолжить разговор с Альбертом
                 </h3>
-                
-                <p className="text-sm sm:text-base text-stone-300 font-normal max-w-lg mx-auto leading-relaxed">
-                  Задайте вопрос Альберту прямо на сайте: он удерживает структуру вашего Кода, образы Мифа и найденные параллели.
-                </p>
 
-                <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-2">
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-6">
                   <button
                     onClick={() => {
-                      if (onOpenAlbert) { onOpenAlbert(); return; }
-                      setAlbertTopic(meetingResult?.reflectiveQuestion || meetingResult?.albertInsight || 'Продолжение исследования');
+                      setAlbertTopic(`Обсуждение синтеза: Душа ${codeResult?.soul}, Путь ${codeResult?.path}, Миф "${storyResult?.title}".`);
                       setIsAlbertOpen(true);
                     }}
-                    className="w-full sm:w-auto px-8 py-3.5 bg-[var(--color-antique-gold)] text-gray-950 uppercase tracking-[0.18em] text-sm font-semibold rounded-xs hover:bg-[#D9B770] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+                    className="px-9 py-4 border border-[var(--color-antique-gold)]/45 bg-[var(--color-antique-gold)]/[0.08] hover:bg-[var(--color-antique-gold)]/[0.18] text-[var(--color-antique-gold)] uppercase tracking-[0.25em] text-[11px] font-mono rounded-full transition-all flex items-center gap-2.5 cursor-pointer"
                   >
                     <MessageSquare size={14} />
                     <span>Диалог на сайте</span>
                   </button>
 
                   <a
-                    href={telegramBotUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full sm:w-auto px-6 py-3.5 border border-white/15 text-stone-300 hover:text-white uppercase tracking-[0.18em] text-sm rounded-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    href="https://t.me/digitalcodesystem_bot" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="px-9 py-4 border border-white/15 hover:border-white/35 text-[var(--color-text-primary)] uppercase tracking-[0.25em] text-[11px] font-mono rounded-full transition-all flex items-center gap-2.5 cursor-pointer"
                   >
                     <Send size={14} />
-                    <span>Открыть Telegram</span>
+                    <span>Перейти в Telegram</span>
                   </a>
                 </div>
-                <p className="text-sm leading-relaxed text-stone-400 max-w-lg mx-auto">
-                  Telegram откроется как отдельный диалог с @digitalcodesystem_bot. Текущие результаты останутся на этом устройстве; для разговора с их контекстом используйте «Диалог на сайте».
-                </p>
               </div>
-
-              {/* LOCAL PERSISTENCE BRIDGE (MY MIRROR V0) */}
-              <div className="bg-[#0D121D]/90 border border-white/[0.08] p-6 sm:p-8 rounded-xs space-y-4 text-left">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
-                  <div className="flex items-center gap-2">
-                    <Bookmark size={14} className="text-[var(--color-antique-gold)]" />
-                    <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)]">
-                      Моё зеркало · Локальное сохранение
-                    </span>
-                  </div>
-                  {savedAt && (
-                    <span className="text-[13px] font-mono text-emerald-400/90 flex items-center gap-1.5">
-                      <Check size={12} />
-                      <span>Сохранено в этом браузере</span>
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <h4 className="font-serif text-lg sm:text-xl text-stone-100 font-light mb-1">
-                    {savedAt ? 'Зеркало сохранено на этом устройстве' : 'Сохранить в «Моё зеркало»'}
-                  </h4>
-                  <p className="text-sm text-stone-400 font-normal leading-relaxed max-w-xl">
-                    Код, ваши 4 ответа, Личный миф и Встреча сохранятся только в этом браузере на этом устройстве. Нового серверного хранения не создаётся.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  <button
-                    onClick={handleSave}
-                    className={`px-5 py-2.5 rounded-xs uppercase tracking-[0.2em] text-[13px] font-medium transition-all flex items-center gap-2 cursor-pointer ${
-                      savedAt
-                        ? 'bg-white/10 text-stone-200 hover:bg-white/15 border border-white/20'
-                        : 'border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)]'
-                    }`}
-                  >
-                    <Bookmark size={13} />
-                    <span>{savedAt ? 'Обновить сохранённое' : 'Сохранить на этом устройстве'}</span>
-                  </button>
-
-                  {savedAt && (
-                    <button
-                      onClick={handleDelete}
-                      className="px-4 py-2.5 text-stone-400 hover:text-red-300 uppercase tracking-[0.18em] text-[13px] font-mono transition-colors flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Trash2 size={12} />
-                      <span>Удалить сохранённое</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <TesterFeedbackWidget />
 
             </motion.div>
           )}
@@ -655,14 +397,7 @@ export function MeetingOfMirrors({
       <AlbertDialogue
         isOpen={isAlbertOpen}
         onClose={() => setIsAlbertOpen(false)}
-        journeyId={journeyId}
-        codeV2Payload={codeV2Payload}
-        codeV2Context={codeV2Payload?.albert_context}
-        userNote={userNote}
-        onUserNoteChange={handleUserNoteChange}
         calc={codeResult}
-        storyResult={storyResult}
-        meetingResult={meetingResult}
         initialTopic={albertTopic}
         theme="dark"
       />

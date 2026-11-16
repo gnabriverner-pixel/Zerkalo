@@ -1,164 +1,139 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Manrope:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap');
 @import "tailwindcss";
 
-@theme {
-  --text-xs: 0.875rem;
-  --text-xs--line-height: 1.5;
-  --text-sm: 1rem;
-  --text-sm--line-height: 1.65;
+@layer base {
+  :root {
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
 
-  --color-antique-gold: oklch(0.80 0.115 74);
-  --color-gold: oklch(0.80 0.115 74);
-  --color-gold-soft: oklch(0.72 0.07 72 / 45%);
-  --color-gold-glow: oklch(0.80 0.115 74 / 15%);
-  
-  --color-bg-deep: oklch(0.14 0.03 264);
-  --color-bg-surface: oklch(0.18 0.03 263 / 70%);
-  --color-border-subtle: oklch(1 1 1 / 8%);
-  --color-border-gold: oklch(0.80 0.115 74 / 35%);
+    /* Cosmic Air, Expanse & Harmony Palette */
+    --color-bg-deep: #050914;
+    --color-bg-surface: rgba(12, 19, 38, 0.42);
+    --color-text-primary: #F7F4ED;
+    --color-text-secondary: #C6CFE0;
+    --color-text-muted: #7F8CA6;
+    --color-antique-gold: #DFBE78;
+    --color-cosmic-cyan: #7CE8EE;
+    --color-cosmic-violet: #B69DF8;
+    --color-border-subtle: rgba(198, 207, 224, 0.09);
+    --color-border-gold: rgba(223, 190, 120, 0.28);
 
-  --color-text-primary: oklch(0.94 0.01 85);
-  --color-text-secondary: oklch(0.70 0.02 250);
-  --color-text-muted: oklch(0.50 0.02 250);
+    /* Legacy compatibility tokens */
+    --bg-deep: oklch(0.13 0.04 265);
+    --gold: oklch(0.83 0.11 80);
+    --gold-dim: oklch(0.68 0.08 74);
+    --gold-glow: oklch(0.83 0.11 80 / 0.18);
+    --ink: oklch(0.97 0.01 80);
+    --ink-muted: oklch(0.76 0.03 260);
+    --ink-faint: oklch(0.55 0.03 260);
+  }
 
-  /* Alabaster Edition Tokens */
-  --color-alabaster: oklch(0.965 0.012 85);
-  --color-marble: oklch(0.985 0.006 85);
-  --color-graphite: oklch(0.22 0.015 260);
-  --color-ash: oklch(0.48 0.02 260);
-  --color-gold-leaf: oklch(0.74 0.09 75);
-  --color-hairline: oklch(0.22 0.015 260 / 9%);
+  body {
+    background-color: var(--color-bg-deep);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-weight: 300;
+    line-height: 1.85;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    padding: 0;
+  }
 
-  --font-serif: 'Cormorant Garamond', Georgia, serif;
-  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  h1, h2, h3, h4, .font-serif, .font-display {
+    font-family: var(--font-display);
+    font-weight: 300;
+    letter-spacing: -0.01em;
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
 }
 
-:root {
-  --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  /* Базовая темная атмосфера */
-  --bg-deep: oklch(0.14 0.03 264);
-  --bg-surface: oklch(0.18 0.03 263 / 70%);
-  --border-subtle: oklch(1 1 1 / 8%);
-  --border-gold: oklch(0.80 0.115 74 / 35%);
-
-  /* Золото и акценты */
-  --gold: oklch(0.80 0.115 74);
-  --gold-soft: oklch(0.72 0.07 72 / 45%);
-  --gold-glow: oklch(0.80 0.115 74 / 15%);
-
-  /* Типографика */
-  --text-primary: oklch(0.94 0.01 85);
-  --text-secondary: oklch(0.70 0.02 250);
-  --text-muted: oklch(0.50 0.02 250);
-
-  /* Alabaster Edition Tokens */
-  --bg-alabaster: oklch(0.965 0.012 85);
-  --bg-marble-surface: oklch(0.985 0.006 85 / 85%);
-  --text-graphite: oklch(0.22 0.015 260);
-  --text-ash: oklch(0.48 0.02 260);
-  --gold-leaf: oklch(0.74 0.09 75);
-  --gold-leaf-soft: oklch(0.74 0.09 75 / 15%);
-  --border-hairline: oklch(0.22 0.015 260 / 9%);
-  --border-gold-subtle: oklch(0.74 0.09 75 / 35%);
-
-  --gradient-deep: radial-gradient(120% 90% at 50% -10%, oklch(0.26 0.05 268) 0%, transparent 60%),
-                    linear-gradient(180deg, oklch(0.15 0.03 262), oklch(0.11 0.02 265));
-  
-  --gradient-alabaster: radial-gradient(100% 80% at 50% 0%, oklch(0.98 0.008 85) 0%, oklch(0.96 0.014 85) 100%);
-}
-
-body {
-  background: var(--gradient-deep);
-  background-attachment: fixed;
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-}
-
-/* Alabaster View Scope */
-.theme-alabaster {
-  background: var(--gradient-alabaster);
-  color: var(--text-graphite);
-}
-
-h1, h2, h3, .font-serif {
-  font-family: var(--font-display);
-  font-weight: 300;
-}
-
-/* Кинематика */
-@keyframes spin-slow {
+/* Weightless Cosmic Animations */
+@keyframes slow-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-@keyframes spin-reverse {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(-360deg); }
+@keyframes slow-spin-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
 }
 
-@keyframes breathe {
-  0%, 100% { transform: scale(1); opacity: 0.92; }
-  50% { transform: scale(1.03); opacity: 1; }
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.78; transform: scale(1.06); }
 }
 
-@keyframes veil {
-  0%, 100% { opacity: 0.35; filter: blur(30px); }
-  50% { opacity: 0.6; filter: blur(45px); }
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-7px); }
 }
 
-@keyframes pulse-gentle {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.02); }
+@keyframes aurora-shift {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.48; }
+  50% { transform: translate(1.5%, -1.5%) scale(1.05); opacity: 0.68; }
 }
 
-.animate-spin-slow { animation: spin-slow 90s linear infinite; }
-.animate-spin-reverse { animation: spin-reverse 120s linear infinite; }
-.animate-breathe   { animation: breathe 7s ease-in-out infinite; }
-.animate-veil      { animation: veil 9s ease-in-out infinite; }
-.animate-pulse-gentle { animation: pulse-gentle 5s ease-in-out infinite; }
-
-:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 4px;
+.animate-slow-spin {
+  animation: slow-spin 95s linear infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-  }
+.animate-slow-spin-reverse {
+  animation: slow-spin-reverse 115s linear infinite;
 }
 
-/* Custom Scrollbar */
+.animate-pulse-glow {
+  animation: pulse-glow 8s ease-in-out infinite;
+}
+
+.animate-float-gentle {
+  animation: float-gentle 7s ease-in-out infinite;
+}
+
+.animate-aurora {
+  animation: aurora-shift 26s ease-in-out infinite;
+}
+
+/* Weightless Translucent Veils (No heavy boxes) */
+.cosmic-veil {
+  background: radial-gradient(120% 120% at 50% 0%, rgba(20, 30, 58, 0.40) 0%, rgba(7, 11, 24, 0.25) 100%);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(223, 190, 120, 0.16);
+}
+
+.cosmic-veil-subtle {
+  background: linear-gradient(180deg, rgba(15, 23, 45, 0.28) 0%, rgba(6, 10, 22, 0.12) 100%);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(198, 207, 224, 0.08);
+}
+
+.cosmic-starfield {
+  background-image:
+    radial-gradient(1.2px 1.2px at 14% 22%, rgba(255, 255, 255, 0.75) 50%, transparent 100%),
+    radial-gradient(1px 1px at 32% 68%, rgba(223, 190, 120, 0.7) 50%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 52% 27%, rgba(124, 232, 238, 0.65) 50%, transparent 100%),
+    radial-gradient(1px 1px at 71% 82%, rgba(255, 255, 255, 0.6) 50%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 86% 21%, rgba(223, 190, 120, 0.8) 50%, transparent 100%),
+    radial-gradient(1px 1px at 92% 61%, rgba(182, 157, 248, 0.65) 50%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 24% 89%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
+  background-size: 640px 640px;
+}
+
+/* Custom Subtle Scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: oklch(0.12 0.02 264);
+  background: #050914;
 }
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.80 0.115 74 / 20%);
+  background: rgba(223, 190, 120, 0.24);
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.80 0.115 74 / 50%);
-}
-
-.theme-alabaster ::-webkit-scrollbar-track {
-  background: oklch(0.95 0.01 85);
-}
-.theme-alabaster ::-webkit-scrollbar-thumb {
-  background: oklch(0.74 0.09 75 / 30%);
+  background: rgba(223, 190, 120, 0.48);
 }

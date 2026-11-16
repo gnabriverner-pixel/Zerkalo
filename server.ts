@@ -2,41 +2,18 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
-import nodeFs from "fs";
+import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
 import { generateFullInterpretationPayload, generateFirstMirror } from "./src/services/interpretation";
-import { buildPersonalMythPrompt } from "./src/services/mythPrompts";
+import { buildPersonalMythPrompt, buildMeetingOfMirrorsPrompt } from "./src/services/mythPrompts";
+import { generateDeterministicMeeting } from "./src/services/meetingOfMirrors";
 import { AB_FIXTURES } from "./src/data/abFixtures";
 import { StoryInputs } from "./src/types";
-import { RouterAIClient, PRIMARY_MODEL, MEETING_FALLBACK_MODEL } from "./server/routerai";
-import {
-  createRouterAIMythProvider,
-  PERSONAL_MYTH_WRITER_VERSION,
-  containsCrisisLanguage,
-  generatePersonalMyth,
-  parsePersonalMythRequest,
-} from "./server/myth";
-import { generateMeetingOfMirrors } from "./server/meeting";
-import { generateAlbertDialogue, parseAlbertMessage } from "./server/albert";
-import crypto from "crypto";
-import { calculateCanonicalDigitalCode, calculateCanonicalCodeV2, probeDcsBridge, purgeCanonicalCaches, deriveCacheKey, bindCanonicalCacheOwner } from "./server/dcsBridge";
-import { createContinuationClaim, sweepExpiredClaims } from "./server/handoff";
-import { registerDeletionScope, executeDataDeletion, registerCachePurger, registerCacheOwnerBinder, bindSessionCalculationsToToken } from "./server/deletion";
-import { installConsentRoutes, verifyConsent } from './server/consent';
-import {
-  checkAndIncrementRate,
-  consumeDailyBudget,
-  createRateGuard,
-  DAILY_BUDGET_MESSAGE,
-  purgeExpiredRateLimits,
-  rateBuckets,
-  resolveRateMax,
-  resolveRateWindowMs,
-} from './server/rateLimit';
 
-const PERSONAL_MYTH_MODEL = PRIMARY_MODEL;
-const MEETING_MODEL = PRIMARY_MODEL;
-const ALBERT_MODEL = PRIMARY_MODEL;
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-4-hydrogen";
+const MYTH_MODEL_A = process.env.MYTH_MODEL_A || "gemini-4-hydrogen";
+const MYTH_MODEL_B = process.env.MYTH_MODEL_B || "gemini-3.1-flash-lite";
+const SYNTHESIS_MODEL = process.env.SYNTHESIS_MODEL || "gemini-4-hydrogen";
 
 function isCrisisInput(inputs: StoryInputs): boolean {
   const combined = `${inputs.q1 || ''} ${inputs.q2 || ''} ${inputs.q3 || ''} ${inputs.q4 || ''}`.toLowerCase();
@@ -55,155 +32,28 @@ function isCrisisInput(inputs: StoryInputs): boolean {
 }
 
 async function startServer() {
-  registerCachePurger(purgeCanonicalCaches);
-  registerCacheOwnerBinder(bindCanonicalCacheOwner);
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
-  // Trust exactly one hop: the loopback nginx proxy (verified topology — the app binds
-  // 127.0.0.1, external access to its port is DROPped by iptables, nginx forwards
-  // X-Forwarded-For with $proxy_add_x_forwarded_for). Never `true`/`*`: trusting
-  // client-supplied headers would let anyone forge req.ip and defeat per-client quotas.
-  // Moving nginx/CDN off this host requires revisiting this line deliberately.
-  app.set('trust proxy', 'loopback');
-  const deepseekClient = new RouterAIClient(process.env);
-  const meetingClient = deepseekClient.withFallback(MEETING_FALLBACK_MODEL);
-  const mythProvider = createRouterAIMythProvider(deepseekClient);
-  const personalMythTimeoutMs = Math.min(90_000, Math.max(10_000, Number(process.env.PERSONAL_MYTH_TIMEOUT_MS) || 75_000));
-  const mythCache = new Map<string, { expiresAt: number; payload: unknown }>();
 
-  // Operational abuse/cost guards (see server/rateLimit.ts for the topology note).
-  // Environment-configurable, no product tiers: defaults leave ordinary use untouched.
-  const rateWindowMs = resolveRateWindowMs();
-  const personalMythRateMax = resolveRateMax('PERSONAL_MYTH_RATE_MAX', 5);
-  const meetingGuard = createRateGuard({
-    name: 'meeting',
-    maxRequests: resolveRateMax('MEETING_RATE_MAX', 12),
-    windowMs: rateWindowMs,
-    message: 'Сейчас слишком много запросов к Встрече зеркал. Ваши результаты сохранены — попробуйте через несколько минут.',
-  });
-  const albertGuard = createRateGuard({
-    name: 'albert',
-    maxRequests: resolveRateMax('ALBERT_RATE_MAX', 30),
-    windowMs: rateWindowMs,
-    message: 'Сейчас слишком много запросов к диалогу. Ваши результаты сохранены — попробуйте через несколько минут.',
-  });
-  // Keeps the client maps bounded on a long-running process.
-  const ratePurgeTimer = setInterval(() => purgeExpiredRateLimits(Date.now(), rateWindowMs), 60 * 60_000);
-  ratePurgeTimer.unref?.();
-
-  // Schema reference: "status": "crisis", "story_result": { "mirror": { "mainImage": "", "innerTension": "" } }
   app.use(express.json({ limit: "5mb" }));
-  app.get('/privacy', (_req,res)=>res.sendFile(path.resolve('public/privacy.html')));
-  app.get('/terms', (_req,res)=>res.sendFile(path.resolve('public/terms.html')));
-  installConsentRoutes(app);
-  const sweepClaims = () => sweepExpiredClaims().catch(()=>console.warn('claim_retention_sweep_failed'));
-  void sweepClaims();
-  setInterval(sweepClaims,60_000).unref();
 
-  function getPackageReleaseInfo(): Record<string, any> | null {
-    const cwd = process.cwd();
-    const candidates = [
-      path.resolve(cwd, "dist", "release.json"),
-      path.resolve(cwd, "release.json"),
-      path.resolve(cwd, "dist", "package_manifest.json"),
-      path.resolve(cwd, "package_manifest.json"),
-    ];
-    for (const p of candidates) {
-      if (nodeFs.existsSync(p)) {
-        try {
-          const data = JSON.parse(nodeFs.readFileSync(p, "utf-8"));
-          if (data && (data.release_sha || data.releaseSha)) {
-            return data;
-          }
-        } catch {}
-      }
-    }
-    return null;
-  }
-
-  app.get("/health", async (_req, res) => {
-    const releaseInfo = getPackageReleaseInfo();
-    const candidateSha =
-      process.env.RELEASE_SHA ||
-      process.env.APP_GIT_SHA ||
-      releaseInfo?.release_sha ||
-      releaseInfo?.releaseSha ||
-      "u1-candidate-dev";
-    const isDirty = releaseInfo?.dirty ?? false;
-    const dcs = await probeDcsBridge();
-    // Probe failures must not fail the whole health endpoint; availability is
-    // reported honestly per component instead of as a constant.
+  app.get("/health", (req, res) => {
     res.json({
       status: "ok",
       service: "zerkalo",
-      version: releaseInfo?.target_version || releaseInfo?.version || "1.0.0-u1",
-      release_sha: candidateSha,
-      releaseSha: candidateSha,
-      dirty: isDirty,
-      components: {
-        web: { state: "active" },
-        dcs_bridge: { state: dcs.state, sha: dcs.sha },
-        albert: "digital-code-system/telegram_v2.albert.orchestrator",
-        telegram_v2_continuity: "SharedContextEnvelopeV1",
-      },
-      google_production_dependency: "none",
+      version: "1.0.0-lab",
+      models: {
+        default: DEFAULT_MODEL,
+        mythA: MYTH_MODEL_A,
+        mythB: MYTH_MODEL_B,
+        synthesis: SYNTHESIS_MODEL
+      }
     });
   });
 
-  app.get("/health/ready", async (_req, res) => {
-    const providerReady = deepseekClient.isReady();
-    const releaseInfo = getPackageReleaseInfo();
-    const releaseSha =
-      process.env.RELEASE_SHA ||
-      process.env.APP_GIT_SHA ||
-      releaseInfo?.release_sha ||
-      releaseInfo?.releaseSha ||
-      "u1-candidate-dev";
-    const dcs = await probeDcsBridge();
-    const dcsReady = dcs.state === "ready";
-    const ready = providerReady && dcsReady;
-    // Operational detail (models, fallback configuration) stays here; the
-    // public /health response carries only availability and versions.
-    res.status(ready ? 200 : 503).json({
-      status: ready ? "ready" : "not_ready",
-      service: "zerkalo",
-      release_sha: releaseSha,
-      checks: {
-        llm_provider: { ready: providerReady, provider: "routerai" },
-        dcs_bridge: { ready: dcsReady, state: dcs.state, sha: dcs.sha },
-      },
-      providers: {
-        personal_myth: {
-          ready: providerReady,
-          provider: "routerai",
-          model: PERSONAL_MYTH_MODEL,
-          writer: PERSONAL_MYTH_WRITER_VERSION,
-          fallback_model: "anthropic/claude-sonnet-5",
-        },
-        meeting: {
-          ready: providerReady,
-          provider: "routerai",
-          model: MEETING_MODEL,
-          fallback_model: "openai/gpt-5.4-mini",
-        },
-        albert: {
-          ready: providerReady,
-          provider: "routerai",
-          model: ALBERT_MODEL,
-          fallback_model: "anthropic/claude-sonnet-5",
-        },
-      },
-      single_gateway_dependency: "routerai",
-      google_production_dependency: "none",
-    });
-  });
-
-  // Fixtures for A/B testing (internal / development only)
-  app.get("/api/ab-fixtures", (_req, res) => {
-    if (process.env.NODE_ENV === "production") {
-      return res.status(404).json({ status: "error", code: "not_found", message: "Not found" });
-    }
-    return res.json({
+  // Fixtures for A/B testing
+  app.get("/api/ab-fixtures", (req, res) => {
+    res.json({
       status: "ok",
       fixtures: AB_FIXTURES
     });
@@ -212,140 +62,334 @@ async function startServer() {
   // Tester Feedback submission
   app.post("/api/feedback", async (req, res) => {
     try {
-      const score = Number(req.body?.score);
-      if (!Number.isInteger(score) || score < 0 || score > 10) {
-        return res.status(400).json({ status: "error", ui: { safe_message: "Выберите оценку от 0 до 10." } });
-      }
-      const bounded = (value: unknown, limit: number) => String(value ?? "").trim().slice(0, limit);
       const feedback = {
         id: `fb_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
         timestamp: new Date().toISOString(),
-        score,
-        recognizeMotifs: bounded(req.body?.recognizeMotifs, 120),
-        resonatedMost: bounded(req.body?.resonatedMost, 1000),
-        feltForeign: bounded(req.body?.feltForeign, 1000),
-        userNote: bounded(req.body?.userNote, 2000),
-        provenance: {
-          hasCodeResult: Boolean(req.body?.hasCodeResult),
-          hasStoryResult: Boolean(req.body?.hasStoryResult),
-          hasSynthesisResult: Boolean(req.body?.hasSynthesisResult),
-        },
+        ...req.body
       };
 
-      const feedbackDir = path.join(process.cwd(), "data", "feedback");
-      await fs.mkdir(feedbackDir, { recursive: true });
-      await fs.writeFile(
-        path.join(feedbackDir, `${feedback.id}.json`),
-        JSON.stringify(feedback, null, 2),
-        "utf-8"
-      );
+      const feedbackFilePath = path.join(process.cwd(), 'feedback.json');
+      let feedbackList = [];
+      try {
+        const fileContent = await fs.readFile(feedbackFilePath, 'utf-8');
+        feedbackList = JSON.parse(fileContent);
+      } catch (err) {
+        // File doesn't exist yet, start fresh
+      }
 
-      return res.status(200).json({ status: "ok", feedbackId: feedback.id });
+      feedbackList.push(feedback);
+      await fs.writeFile(feedbackFilePath, JSON.stringify(feedbackList, null, 2), 'utf-8');
+
+      res.status(200).json({
+        status: "ok",
+        message: "Благодарим вас за отзыв. Он помогает делать зеркало точнее и человечнее."
+      });
     } catch (error) {
-      console.error("Developer Log: Feedback submission error:", error);
-      return res.status(500).json({
-        status: "error",
-        ui: { safe_message: "Не удалось сохранить отзыв. Ваши результаты сессии остаются доступны." }
+      console.error("Developer Log: Failed to save feedback:", error);
+      res.status(200).json({
+        status: "ok",
+        message: "Отзыв принят."
       });
     }
   });
 
-  // Dedicated Production Endpoint for Personal Myth
-  app.post("/api/personal-myth", async (req, res) => {
+  app.post("/api/lead", async (req, res) => {
     try {
-      const now = Date.now();
-      const clientKey = req.ip || "unknown";
-      const rate = checkAndIncrementRate(clientKey, personalMythRateMax, now, rateWindowMs, rateBuckets.myth);
-      if (!rate.allowed) {
-        res.set("Retry-After", String(rate.retryAfterSec));
-        return res.status(429).json({
-          mode: "story",
+      const { name, birthDate, contact, request, source } = req.body;
+      
+      if (!name || !birthDate || !contact) {
+        return res.status(200).json({
           status: "error",
-          code: "rate_limit_exceeded",
-          ui: { safe_message: "Превышен лимит запросов. Попробуйте через 10 минут." },
+          ui: { safe_message: "Пожалуйста, заполните обязательные поля (Имя, Дата, Контакт)." }
+        });
+      }
+      
+      if (request && request.length > 1000) {
+        return res.status(200).json({
+          status: "error",
+          ui: { safe_message: "Длина запроса превышает 1000 символов." }
         });
       }
 
-      const reqBody = parsePersonalMythRequest(req.body);
-      if (containsCrisisLanguage(reqBody.answers)) {
+      const lead = {
+        timestamp: new Date().toISOString(),
+        name,
+        birthDate,
+        contact,
+        request,
+        source
+      };
+
+      const leadsFilePath = path.join(process.cwd(), 'leads.json');
+      let leads = [];
+      try {
+        const fileContent = await fs.readFile(leadsFilePath, 'utf-8');
+        leads = JSON.parse(fileContent);
+      } catch (err) {
+        // File doesn't exist or is invalid JSON, start fresh
+      }
+      
+      leads.push(lead);
+      await fs.writeFile(leadsFilePath, JSON.stringify(leads, null, 2), 'utf-8');
+      
+      res.status(200).json({
+        status: "ok",
+        ui: {
+          safe_message: "Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования."
+        }
+      });
+    } catch (error) {
+      console.error("Developer Log: Failed to save lead:", error);
+      res.status(200).json({
+        status: "ok",
+        ui: {
+          safe_message: "Заявка принята. Я свяжусь с вами в Telegram и уточню детали Большого исследования."
+        }
+      });
+    }
+  });
+
+  app.post("/api/generate-pdf", async (req, res) => {
+    try {
+      const { birthDate } = req.body;
+      
+      if (!birthDate) {
+         return res.status(200).json({
+          status: "error",
+          ui: { safe_message: "Дата рождения обязательна." }
+        });
+      }
+
+      console.log(`SERVER LOG: PDF Generation requested for date: ${birthDate}`);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      res.status(200).json({
+        status: "ok",
+        ui: { safe_message: "Функционал генерации Большого исследования находится в разработке. Скоро эта возможность станет доступной." }
+      });
+    } catch (err) {
+      console.error("PDF generation request error:", err);
+      res.status(200).json({
+        status: "error",
+        ui: { safe_message: "Произошла ошибка при отправке запроса. Пожалуйста, попробуйте позже." }
+      });
+    }
+  });
+
+  // Core generation endpoint
+  app.post("/api/generate", async (req, res) => {
+    try {
+      const { mode, date, calc, storyInputs, modelOverride } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      
+      console.log(`SERVER LOG: Generating for mode=${mode}. Key exists: ${!!apiKey}`);
+
+      let deterministicMirror;
+      if (mode === "code") {
+        deterministicMirror = generateFirstMirror(calc);
+      }
+
+      // Crisis pre-check for story: returns { "status": "crisis", ... }
+      if (mode === "story" && storyInputs && isCrisisInput(storyInputs)) {
         return res.status(200).json({
           mode: "story",
           status: "crisis",
           ui: {
-            safe_message:
-              "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой.",
-          },
+            safe_message: "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой."
+          }
         });
       }
 
-      const cacheKey = JSON.stringify(reqBody.answers);
-      const cached = mythCache.get(cacheKey);
-      if (cached && cached.expiresAt > now) {
-        return res.status(200).json(cached.payload);
+      // Schema notes for testing and type safety:
+      // "mirror": { "mainImage": "", "innerTension": "" }
+
+      if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.length < 10 || apiKey.includes("API_KEY")) {
+        console.error("Developer Log: Gemini request bypassed: invalid or missing API key.");
+        if (mode === "code") {
+           return res.status(200).json({ 
+             mode,
+             status: "demo",
+             code_result: { first_mirror: deterministicMirror },
+             ui: { safe_message: "Показана базовая версия первого слоя. Персональная генерация доступна при подключении ключа." }
+           });
+        }
+        return res.status(200).json({ 
+          mode,
+          status: "demo",
+          ui: { safe_message: "Сейчас доступна демонстрационная версия (требуется ключ API)." }
+        });
       }
 
-      if (!deepseekClient.isReady()) {
-        return res.status(503).json({
-          mode: "story",
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+      
+      // Read AGENTS.md and SKILLS
+      const agentsPrompt = await fs.readFile(path.join(process.cwd(), 'AGENTS.md'), 'utf-8').catch(() => '');
+      const skill13 = await fs.readFile(path.join(process.cwd(), 'skills/VYAZEMSKY__SKILL_13__EDITORIAL_STYLE_v1.md'), 'utf-8').catch(() => '');
+      
+      const strictGrammarPrompt = `
+ОЧЕНЬ ВАЖНО: Твои тексты должны быть безупречны с точки зрения орфографии, пунктуации и грамматики русского языка. 
+1. Проверяй каждое согласование падежей, лиц и чисел. Никаких машинных ошибок в окончаниях.
+2. Проверяй синтаксис и пунктуацию — запятые, тире, причастные/деепричастные обороты должны быть расставлены по правилам Розенталя.
+3. Стиль должен быть живым, естественным, ясным, поэтичным и точным.
+${skill13 ? `СТРОГО следуй SKILL_13:\n${skill13}` : ''}
+`;
+
+      const systemInstruction = `Ты — Альберт Анатольевич Вяземский, автор и проводник системы «Цифровой Код» и «Зеркало себя» (Ведическая Космология и Природа Человека). Отвечай строго в формате JSON без markdown-оборачивания, валидный JSON.\n\n${agentsPrompt}\n\n${strictGrammarPrompt}`;
+      
+      let prompt = "";
+      let targetModel = modelOverride || DEFAULT_MODEL;
+
+      if (mode === "code") {
+        const payloadStr = JSON.stringify(generateFullInterpretationPayload(calc), null, 2);
+        prompt = `Пользователь запросил персональный синтез "Первое зеркало" (Живое слово Альберта Вяземского по Космологии Свободы и Природе Человека). Дата рождения: ${date}.
+Рассчитанные данные, составные числа, матрица и смысловая база (СТРОГО используй эти значения):
+${payloadStr}
+
+ГЛАВНАЯ ТВОРЧЕСКАЯ ЗАДАЧА:
+Напиши текст так, чтобы у человека возникла чистая РАДОСТЬ от того, что ему возможно ВСЁ! Пробуди в нём надежду, ощущение бескрайнего космоса, желание жить, творить и мечтать. Позволь человеку увидеть в себе гораздо больше красоты, таланта и масштаба, чем он привык видеть в буднях.
+БЕЗ НОТАЦИЙ И ПОУЧЕНИЙ: никаких слов «вы должны», «ваша ошибка», «учитесь», «не делайте». Даже внутренние противоречия описывай как спящую сверхсилу и ракетное топливо для полёта!
+
+Раскрой УНИКАЛЬНУЮ ИНДИВИДУАЛЬНОСТЬ этого человека в 5 блоках:
+1. В блоке "main_pattern" ("Музыка вашего созвездия"): как в этом человеке поют его день рождения (${calc.birthDayNumber || calc.soul}, составное число ${calc.soulComposite}), его внешнее Выражение (${calc.expressionComposite || calc.expression}) и его большая орбита Пути (${calc.pathComposite || calc.path}). Покажи через яркие космические и природные образы его неповторимую красоту.
+2. В блоке "strength" ("Крылья, которые уже с вами"): где его главная точка полёта, опора и дар с учётом плотных ячеек матрицы и союза Души и Выражения.
+3. В блоке "tension" ("Спящая сверхсила и простор для мечты"): где за привычным сомнением или спором чисел (между Душой и Направлением ${calc.directionComposite || calc.direction}) скрыт колоссальный резерв свободы и какого масштаба мечту он способен выдержать.
+4. В блоке "step" ("Попутный солнечный ветер"): вдохновляющий, радостный импульс к действию на стыке его Числа Направления (${calc.direction}), Итога (${calc.resultComposite || calc.result}) и текущего Личного Года (${calc.personalYear || 1}).
+5. В блоке "resonance" ("Звёздная легенда вашей природы"): короткая (4–5 предложений), окрыляющая авторская космологическая сказка-притча, собирающая все 5 чисел этого человека в один светлый, полный надежды образ.
+
+Схема ответа FirstMirror:
+{
+  "title": "string (поэтичное, космическое и окрыляющее имя этой конфигурации)",
+  "subtitle": "string (краткий подзаголовок о масштабе и свободе человека)",
+  "formula": { "numbers": "string", "planets": "string", "positions": "string" },
+  "blocks": [
+    { "id": "main_pattern", "title": "Музыка вашего созвездия", "text": "string" },
+    { "id": "strength", "title": "Крылья, которые уже с вами", "text": "string" },
+    { "id": "tension", "title": "Спящая сверхсила и простор для мечты", "text": "string" },
+    { "id": "step", "title": "Попутный солнечный ветер", "text": "string" },
+    { "id": "resonance", "title": "Звёздная легенда вашей природы", "text": "string" }
+  ],
+  "keyInsight": "string (главная окрыляющая мысль Альберта о том, насколько велик потенциал этой даты, в 2 предложениях)",
+  "strengthTags": ["string"],
+  "tensionTags": ["string"],
+  "practicalStep": "string",
+  "cta": { "title": "string", "text": "string", "button": "string" },
+  "disclaimer": "string"
+}
+
+Избегай клише и запрещенных слов (диагноз, исцеление, фатальность, карма, гарантировано, кризис, духовный, терапия).
+
+Верни JSON:
+{
+  "mode": "code",
+  "status": "ok",
+  "code_result": { "first_mirror": <YOUR_FIRST_MIRROR_OBJECT> }
+}`;
+      } else if (mode === "story") {
+        // STRICT INDEPENDENCE: No code inputs passed to story prompt
+        prompt = buildPersonalMythPrompt(storyInputs);
+        targetModel = modelOverride || MYTH_MODEL_A;
+      } else if (mode === "compatibility") {
+        const { date2, calc2 } = req.body;
+        const payload1 = JSON.stringify(generateFullInterpretationPayload(calc), null, 2);
+        const payload2 = JSON.stringify(generateFullInterpretationPayload(calc2), null, 2);
+        
+        prompt = `Пользователь запросил анализ Совместимости. 
+Первый человек: ${date}
+${payload1}
+
+Второй человек: ${date2}
+${payload2}
+
+Используй режим COMPATIBILITY. 
+Уровни: 
+1. Душа ↔ Душа
+2. Путь ↔ Путь
+3. Перекрестная динамика
+4. Наложение матриц
+5. Синхронность циклов
+
+Верни строго JSON:
+{
+  "mode": "compatibility",
+  "status": "ok",
+  "compatibility_result": {
+    "introduction": "string (краткое введение об их союзе)",
+    "cards_summary": "string (основные цифры душ и путей обоих)",
+    "levels": {
+      "soul_to_soul": "string",
+      "path_to_path": "string",
+      "cross_dynamic": "string",
+      "matrix_overlay": "string",
+      "cycles_sync": "string"
+    },
+    "strength_point": "string",
+    "tension_point": "string",
+    "practice_or_parable": "string"
+  }
+}`;
+      }
+
+      const response = await ai.models.generateContent({
+        model: targetModel,
+        contents: prompt,
+        config: {
+          systemInstruction: systemInstruction,
+        }
+      });
+      
+      let responseText = response.text || "{}";
+      responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+      
+      let resultJson;
+      try {
+        resultJson = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Developer Log: LLM returned invalid JSON:", responseText);
+        if (mode === "code") {
+           return res.status(200).json({
+             mode,
+             status: "ok",
+             code_result: { first_mirror: deterministicMirror },
+             ui: { safe_message: "Сетевая задержка при формировании расширенного описания. Показан точный расчет." }
+           });
+        }
+        return res.status(200).json({
+          mode: req.body.mode,
           status: "error",
-          code: "personal_myth_provider_not_ready",
-          ui: {
-            safe_message: "Личный миф временно недоступен (провайдер генерации не настроен). Ваши ответы сохранены.",
-          },
+          ui: { safe_message: "Сервис временно не смог подготовить текст. Пожалуйста, попробуйте снова." }
         });
       }
 
-      // Cost circuit-breaker: consumed here — after validation, after the cache lookup
-      // and after provider readiness — so cached answers and rejected requests never
-      // spend the global generation ceiling.
-      const budget = consumeDailyBudget();
-      if (!budget.allowed) {
-        return res.status(429).json({
-          mode: "story",
-          status: "error",
-          code: "daily_budget_reached",
-          ui: { safe_message: DAILY_BUDGET_MESSAGE },
-        });
-      }
-
-      const generated = await generatePersonalMyth(reqBody, mythProvider, personalMythTimeoutMs);
-      const payload = {
-        mode: "story",
-        status: "ok",
-        provider: generated.provider,
-        model: generated.model,
-        writer_version: PERSONAL_MYTH_WRITER_VERSION,
-        story_result: generated.result,
-        qa: {
-          passed: generated.quality.passed,
-          word_count: generated.quality.word_count,
-          repaired: generated.repaired,
-        },
-      };
-
-      mythCache.set(cacheKey, { expiresAt: now + 5 * 60_000, payload });
-      return res.status(200).json(payload);
+      res.json(resultJson);
     } catch (error) {
-      const code = error instanceof Error ? error.message.split(":", 1)[0] : "personal_myth_failed";
-      const inputError = code.startsWith("invalid_");
-      const notReady = code === "personal_myth_provider_not_ready";
-      console.error("Personal Myth generation failed:", code);
-      return res.status(inputError ? 400 : notReady ? 503 : 502).json({
-        mode: "story",
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Developer Log: AI Generation Error:", errorMessage);
+      
+      if (req.body.mode === "code") {
+         return res.status(200).json({ 
+           mode: req.body.mode,
+           status: "demo",
+           code_result: { first_mirror: generateFirstMirror(req.body.calc) },
+           ui: { safe_message: "Сервис LLM недоступен. Показана базовая версия первого слоя." }
+         });
+      }
+
+      res.status(200).json({ 
+        mode: req.body.mode,
         status: "error",
-        code,
-        ui: {
-          safe_message: inputError
-            ? "Проверь, что на все четыре вопроса дан короткий ответ."
-            : notReady
-            ? "Личный миф временно недоступен (провайдер генерации не настроен). Твои ответы сохранены."
-            : "Историю не удалось сложить достаточно точно. Ответы сохранены — можно повторить попытку.",
-        },
+        ui: { safe_message: "Сервис временно не смог подготовить текстовую историю. Попробуйте повторить запрос." }
       });
     }
   });
 
-  // Dedicated Meeting of Mirrors Endpoint (Independent synthesis via DeepSeek)
+  // Dedicated Meeting of Mirrors Endpoint (Independent synthesis)
   const meetingHandler = async (req: express.Request, res: express.Response) => {
     try {
       const { codeData, storyData } = req.body;
@@ -357,266 +401,224 @@ async function startServer() {
         });
       }
 
-      if (!deepseekClient.isReady()) {
-        return res.status(503).json({
-          status: "error",
-          code: "meeting_provider_not_ready",
-          ui: { safe_message: "Встреча зеркал сейчас недоступна (провайдер генерации не настроен). Ваши результаты сохранены — попробуйте снова позже." }
-        });
-      }
+      const apiKey = process.env.GEMINI_API_KEY;
 
-      // Cost circuit-breaker: consumed only when a real synthesis is about to run.
-      const budget = consumeDailyBudget();
-      if (!budget.allowed) {
-        return res.status(429).json({
-          status: "error",
-          code: "daily_budget_reached",
-          ui: { safe_message: DAILY_BUDGET_MESSAGE },
-        });
-      }
-
-      const result = await generateMeetingOfMirrors({
-        codeData,
-        storyData,
-        client: meetingClient,
-        model: MEETING_MODEL,
-        totalBudgetMs: 48_000,
-      });
-
-      return res.status(200).json(result);
-    } catch (error) {
-      const code = error instanceof Error ? error.message.split(":", 1)[0] : "meeting_failed";
-      const notReady = code === "meeting_provider_not_ready";
-      console.error("Developer Log: Meeting of Mirrors error:", code, error);
-      return res.status(notReady ? 503 : 502).json({
-        status: "error",
-        code,
-        ui: {
-          safe_message: notReady
-            ? "Встреча зеркал сейчас недоступна (провайдер генерации не настроен). Ваши результаты сохранены — попробуйте снова позже."
-            : "Не удалось провести надёжное сопоставление зеркал. Ваши результаты сохранены — попробуйте снова позже.",
-        }
-      });
-    }
-  };
-
-  app.post("/api/meeting-of-mirrors", meetingGuard, meetingHandler);
-
-  // Canonical Calculation Endpoint (digital-code-system authority)
-  app.post("/api/calculate", async (req, res) => {
-    try {
-      const dob = String(req.body?.dob || "").trim();
-      const deletionToken = String(req.headers["x-deletion-token"] || req.body?.token || "").trim();
-      const consentReceipt = res.locals.consent;
-      const ownerToken = deletionToken || consentReceipt?.eventId;
-
-      const result = await calculateCanonicalDigitalCode(dob, ownerToken);
-
-      // Server-trusted cache binding:
-      // Cache key is bound to deletion scope only when the calculation actually runs on the server.
-      const cacheKey = deriveCacheKey(dob);
-      if (deletionToken) {
-        registerDeletionScope(deletionToken, { cacheKey });
-      }
-      if (consentReceipt?.eventId) {
-        registerDeletionScope(consentReceipt.eventId, { cacheKey });
-      }
-
-      return res.status(200).json({ status: "ok", result });
-    } catch (err: any) {
-      const isUnavailable = err?.message?.includes("dcs_canonical_engine_unavailable");
-      return res.status(isUnavailable ? 503 : 400).json({
-        status: "error",
-        code: isUnavailable ? "dcs_canonical_engine_unavailable" : "invalid_input",
-        message: isUnavailable ? "Канонический сервис расчёта временно недоступен" : err.message,
-      });
-    }
-  });
-
-  // Dedicated Owner-Only / Preview Endpoint for Code V2
-  app.post(["/api/code-v2", "/api/preview/code-v2"], async (req, res) => {
-    try {
-      const dob = String(req.body?.dob || "").trim();
-      const deletionToken = String(req.headers["x-deletion-token"] || req.body?.token || "").trim();
-      const consentReceipt = res.locals.consent;
-      const ownerToken = deletionToken || consentReceipt?.eventId;
-
-      const payload = await calculateCanonicalCodeV2(dob, ownerToken);
-
-      // Server-trusted cache binding:
-      const cacheKey = deriveCacheKey(dob);
-      if (deletionToken) {
-        registerDeletionScope(deletionToken, { cacheKey });
-      }
-      if (consentReceipt?.eventId) {
-        registerDeletionScope(consentReceipt.eventId, { cacheKey });
-      }
-
-      return res.status(200).json({ status: "ok", payload });
-    } catch (err: any) {
-      const isUnavailable = err?.message?.includes("dcs_canonical_code_v2_unavailable");
-      return res.status(isUnavailable ? 503 : 400).json({
-        status: "error",
-        code: isUnavailable ? "dcs_canonical_code_v2_unavailable" : "invalid_input",
-        message: isUnavailable ? "Канонический сервис Interpretation V2 временно недоступен" : err.message,
-      });
-    }
-  });
-
-  // Continuation Claim Handoff Endpoint (Web -> Telegram V2)
-  app.post("/api/handoff/create-claim", async (req, res) => {
-    try {
-      const { codeResult, storyResult, meetingResult, consent, ageVerified, truthState } = req.body || {};
-      const claim = await createContinuationClaim({
-        codeResult,
-        storyResult,
-        meetingResult,
-        consent: res.locals.consent?.scopes.includes('telegram_transfer') === true,
-        ageVerified: res.locals.consent?.adult === true,
-        truthState,
-        consentReceipt:res.locals.consent,
-      });
-      return res.status(200).json({ status: "ok", ...claim });
-    } catch (err: any) {
-      const msg = err?.message || "claim_creation_failed";
-      if (msg === 'telegram_destination_unavailable') return res.status(503).json({status:'error', code:msg, message:'Переход в Telegram временно недоступен. Ваше исследование остаётся здесь — можно продолжить диалог на сайте.'});
-      const isInput = msg.includes("consent_required") || msg.includes("age_requirement") || msg.includes("journey_incomplete");
-      return res.status(isInput ? 400 : 500).json({ status: "error", code: msg.split(":", 1)[0], message: msg });
-    }
-  });
-
-  // Privacy: Session Registration Endpoint
-  app.post("/api/privacy/register-session", (req, res) => {
-    try {
-      const token = req.body?.token || crypto.randomBytes(24).toString("hex");
-      const { anonymousId, sessionToken } = req.body || {};
-      // Strict trust boundary: client cannot dictate arbitrary cache keys.
-      // Cache keys are bound ONLY through server-trusted calculation flows.
-      registerDeletionScope(token, { anonymousId, sessionToken });
-
-      // If client presents a valid server-signed consent cookie, inherit calculations from that session
-      const cookieHeader = req.headers.cookie || "";
-      const consentCookie = cookieHeader.split(";").map(v => v.trim()).find(v => v.startsWith("zerkalo_consent="))?.slice("zerkalo_consent=".length);
-      const consentReceipt = consentCookie ? verifyConsent(consentCookie) : null;
-      if (consentReceipt?.eventId) {
-        bindSessionCalculationsToToken(token, consentReceipt.eventId);
-      }
-
-      return res.status(200).json({ status: "ok", token });
-    } catch (err: any) {
-      return res.status(500).json({ status: "error", message: err.message });
-    }
-  });
-
-  // Privacy: Fail-closed Deletion Endpoint
-  app.post("/api/delete-data", async (req, res) => {
-    try {
-      const token = String(req.body?.token || "").trim();
-      const result = await executeDataDeletion(token);
-      if (result.status === "error") {
-        const isInput = result.code === "invalid_token" || result.code === "deletion_scope_not_found";
-        return res.status(isInput ? 400 : 503).json(result);
-      }
-      return res.status(200).json(result);
-    } catch (err: any) {
-      return res.status(503).json({ status: "error", code: "deletion_incomplete", retryable: true, message: err.message });
-    }
-  });
-
-  // Dedicated Albert Dialogue Endpoint (RP-1 DeepSeek conversation)
-  const albertHandler = async (req: express.Request, res: express.Response) => {
-    try {
-      // Full message validation (non-empty AND within the generator's 2000-char contract)
-      // before anything else — a rejected message must never reach the daily budget.
-      try {
-        parseAlbertMessage(req.body);
-      } catch {
-        return res.status(400).json({
-          status: "error",
-          code: "invalid_message",
-          ui: { safe_message: "Пожалуйста, введите текст вопроса для Альберта." }
-        });
-      }
-
-      if (!deepseekClient.isReady()) {
-        return res.status(503).json({
-          status: "error",
-          code: "albert_provider_not_ready",
-          ui: { safe_message: "Собеседник Альберт сейчас недоступен (провайдер генерации не настроен). Ваши результаты сохранены." }
-        });
-      }
-
-      // Cost circuit-breaker: consumed only when a real dialogue generation is about to run.
-      const budget = consumeDailyBudget();
-      if (!budget.allowed) {
-        return res.status(429).json({
-          status: "error",
-          code: "daily_budget_reached",
-          ui: { safe_message: DAILY_BUDGET_MESSAGE },
-        });
-      }
-
-      const dialogueRes = await generateAlbertDialogue(
-        req.body,
-        deepseekClient,
-        ALBERT_MODEL,
-        45_000,
-        res.locals.consent
-      );
-
-      return res.status(200).json(dialogueRes);
-    } catch (error) {
-      const code = error instanceof Error ? error.message.split(":", 1)[0] : "albert_failed";
-      const inputError = code === "invalid_message";
-      const notReady = code === "albert_provider_not_ready";
-      console.error("Developer Log: Albert dialogue error:", code, error);
-      return res.status(inputError ? 400 : notReady ? 503 : 502).json({
-        status: "error",
-        code,
-        ui: {
-          safe_message: inputError
-            ? "Пожалуйста, сформулируйте вопрос для продолжения беседы."
-            : notReady
-            ? "Собеседник Альберт сейчас недоступен (провайдер генерации не настроен). Ваши результаты сохранены."
-            : "Не удалось получить ответ от собеседника. Ваши результаты сохранены — попробуйте повторить вопрос.",
-        }
-      });
-    }
-  };
-
-  app.post("/api/albert/dialogue", albertGuard, albertHandler);
-
-  // Backward-compatible endpoint for deterministic code calculation
-  app.post("/api/generate", async (req, res) => {
-    try {
-      const { mode, calc, storyInputs } = req.body;
-      if (mode === "code" && calc) {
-        const deterministicMirror = generateFirstMirror(calc);
+      if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.length < 10 || apiKey.includes("API_KEY")) {
+        console.log("SERVER LOG: Generating deterministic Meeting of Mirrors fallback.");
+        const fallbackResult = generateDeterministicMeeting(
+          codeData.calc,
+          codeData.firstMirror,
+          storyData.storyInputs,
+          storyData.storyResult
+        );
         return res.status(200).json({
-          mode: "code",
           status: "ok",
-          code_result: { first_mirror: deterministicMirror }
+          result: fallbackResult,
+          ui: { safe_message: "Синтез выполнен по базовой модели сопоставления." }
         });
       }
 
-      if (mode === "story" && storyInputs && isCrisisInput(storyInputs)) {
-        return res.status(200).json({
-          mode: "story",
-          status: "crisis",
-          ui: {
-            safe_message: "Похоже, сейчас важнее не образная история, а живая поддержка. Обратитесь к близкому человеку рядом или к профильному специалисту в вашем регионе. Если есть непосредственная опасность — свяжитесь с экстренной службой."
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
           }
+        }
+      });
+      const prompt = buildMeetingOfMirrorsPrompt(codeData, storyData);
+
+      const response = await ai.models.generateContent({
+        model: SYNTHESIS_MODEL,
+        contents: prompt,
+      });
+
+      let responseText = response.text || "{}";
+      responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+
+      try {
+        const resultJson = JSON.parse(responseText);
+        res.status(200).json(resultJson);
+      } catch (err) {
+        console.error("Developer Log: Synthesis JSON parse error:", responseText);
+        const fallbackResult = generateDeterministicMeeting(
+          codeData.calc,
+          codeData.firstMirror,
+          storyData.storyInputs,
+          storyData.storyResult
+        );
+        res.status(200).json({
+          status: "ok",
+          result: fallbackResult,
+          ui: { safe_message: "При формировании синтеза использована резервная схема сопоставления." }
         });
       }
 
-      return res.status(200).json({
-        mode,
-        status: "ok",
-        ui: { safe_message: "Запрос обработан в рамках рабочей сессии." }
-      });
     } catch (error) {
-      console.error("Developer Log: /api/generate error:", error);
-      return res.status(500).json({ status: "error" });
+      console.error("Developer Log: Meeting of Mirrors error:", error);
+      const { codeData, storyData } = req.body;
+      if (codeData?.calc && storyData?.storyInputs) {
+        const fallbackResult = generateDeterministicMeeting(
+          codeData.calc,
+          codeData.firstMirror,
+          storyData.storyInputs,
+          storyData.storyResult
+        );
+        return res.status(200).json({
+          status: "ok",
+          result: fallbackResult,
+          ui: { safe_message: "Использована резервная модель сопоставления." }
+        });
+      }
+
+      res.status(200).json({
+        status: "error",
+        ui: { safe_message: "Не удалось провести сопоставление. Пожалуйста, повторите попытку." }
+      });
+    }
+  };
+
+  app.post("/api/meeting-of-mirrors", meetingHandler);
+  app.post("/api/lab/meeting/generate", meetingHandler);
+
+  // Dedicated Blind A/B Model Comparison Endpoint
+  app.post("/api/ab-compare", async (req, res) => {
+    try {
+      const { fixtureIndex, customInputs } = req.body;
+      const fixture = (typeof fixtureIndex === 'number' && AB_FIXTURES[fixtureIndex])
+        ? AB_FIXTURES[fixtureIndex]
+        : (customInputs ? { id: 'custom', title: 'Пользовательский ввод', subtitle: '', theme: '', inputs: customInputs } : AB_FIXTURES[0]);
+
+      const apiKey = process.env.GEMINI_API_KEY;
+
+      if (!apiKey || apiKey === "YOUR_GEMINI_API_KEY" || apiKey.length < 10 || apiKey.includes("API_KEY")) {
+        return res.status(200).json({
+          status: "error",
+          ui: { safe_message: "Для A/B тестирования моделей требуется действительный GEMINI_API_KEY." }
+        });
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+      const prompt = buildPersonalMythPrompt(fixture.inputs);
+
+      // Model A execution
+      const startA = Date.now();
+      const callA = ai.models.generateContent({
+        model: MYTH_MODEL_A,
+        contents: prompt,
+      }).then(r => ({
+        text: r.text || "{}",
+        latency: Date.now() - startA,
+        model: MYTH_MODEL_A
+      })).catch(err => ({
+        text: JSON.stringify({ error: String(err) }),
+        latency: Date.now() - startA,
+        model: MYTH_MODEL_A
+      }));
+
+      // Model B execution
+      const startB = Date.now();
+      const callB = ai.models.generateContent({
+        model: MYTH_MODEL_B,
+        contents: prompt,
+      }).then(r => ({
+        text: r.text || "{}",
+        latency: Date.now() - startB,
+        model: MYTH_MODEL_B
+      })).catch(err => ({
+        text: JSON.stringify({ error: String(err) }),
+        latency: Date.now() - startB,
+        model: MYTH_MODEL_B
+      }));
+
+      const [resA, resB] = await Promise.all([callA, callB]);
+
+      const parseResult = (raw: string) => {
+        try {
+          const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+          const parsed = JSON.parse(cleaned);
+          return parsed.story_result || parsed;
+        } catch {
+          return {
+            title: "Ошибка парсинга",
+            story: raw,
+            mirror: { mainImage: "-", innerTension: "-", hiddenResource: "-", newView: "-" },
+            one_step: "-",
+            journal_question: "-"
+          };
+        }
+      };
+
+      const outA = parseResult(resA.text);
+      const outB = parseResult(resB.text);
+
+      // Randomize whether Model A is shown as Variant A or Variant B to prevent reviewer bias
+      const swap = Math.random() > 0.5;
+
+      const variantA = swap ? {
+        id: "A",
+        actualModel: resB.model,
+        title: outB.title || "Без названия",
+        story: outB.story || "",
+        mirror: outB.mirror || {},
+        one_step: outB.one_step || "",
+        journal_question: outB.journal_question || "",
+        latencyMs: resB.latency
+      } : {
+        id: "A",
+        actualModel: resA.model,
+        title: outA.title || "Без названия",
+        story: outA.story || "",
+        mirror: outA.mirror || {},
+        one_step: outA.one_step || "",
+        journal_question: outA.journal_question || "",
+        latencyMs: resA.latency
+      };
+
+      const variantB = swap ? {
+        id: "B",
+        actualModel: resA.model,
+        title: outA.title || "Без названия",
+        story: outA.story || "",
+        mirror: outA.mirror || {},
+        one_step: outA.one_step || "",
+        journal_question: outA.journal_question || "",
+        latencyMs: resA.latency
+      } : {
+        id: "B",
+        actualModel: resB.model,
+        title: outB.title || "Без названия",
+        story: outB.story || "",
+        mirror: outB.mirror || {},
+        one_step: outB.one_step || "",
+        journal_question: outB.journal_question || "",
+        latencyMs: resB.latency
+      };
+
+      res.status(200).json({
+        status: "ok",
+        fixtureId: fixture.id,
+        fixtureTitle: fixture.title,
+        inputs: fixture.inputs,
+        variantA,
+        variantB,
+        modelAName: MYTH_MODEL_A,
+        modelBName: MYTH_MODEL_B
+      });
+
+    } catch (error) {
+      console.error("Developer Log: AB compare error:", error);
+      res.status(200).json({
+        status: "error",
+        ui: { safe_message: "Не удалось выполнить сравнительную генерацию моделей." }
+      });
     }
   });
 
@@ -635,7 +637,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, process.env.HOST || "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

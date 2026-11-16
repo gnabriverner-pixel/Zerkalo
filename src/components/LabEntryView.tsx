@@ -1,39 +1,21 @@
 import React, { useState, useRef } from 'react';
-import { motion } from 'motion/react';
-import { Bookmark, Trash2, ChevronRight } from 'lucide-react';
-import { Orb } from './Orb';
+import { motion, AnimatePresence } from 'motion/react';
+import { Orb, PLANET_PALETTES } from './Orb';
 import { PantheonModal } from './PantheonModal';
 import { CalculationResult, ApiResponse } from '../types';
-import { validateBirthDate } from '../services/birthDate';
-import { MyMirrorSnapshotV1, TransientDraftV1 } from '../services/myMirrorStorage';
-import { RotateCcw } from 'lucide-react';
-import mirrorHero from '../assets/mirror-hero.jpg';
+import { GRAHA_COSMOLOGY_PROFILES, COSMOLOGY_IMMERSION_CHAPTERS } from '../data/vedicCosmology';
 
 interface LabEntryViewProps {
   onSelectMyth?: () => void;
   onSelectCode?: (initialDate?: string) => void;
   onSelectMeeting?: () => void;
   onOpenPantheon?: () => void;
+  onOpenAbout?: () => void;
   onSelectMode?: (mode: 'entry' | 'code' | 'myth' | 'meeting' | 'ab-test', initialDate?: string) => void;
   hasCodeResult?: boolean;
   hasMythResult?: boolean;
   codeResult?: CalculationResult | null;
   storyResult?: ApiResponse['story_result'] | null;
-  savedSnapshot?: MyMirrorSnapshotV1 | null;
-  onRestoreSavedMirror?: () => void;
-  onDeleteSavedMirror?: () => void;
-  transientDraft?: TransientDraftV1 | null;
-  onRestoreDraft?: () => void;
-  onClearDraft?: () => void;
-}
-
-function pluralRu(value: number, one: string, few: string, many: string) {
-  const mod100 = value % 100;
-  const mod10 = value % 10;
-  if (mod100 >= 11 && mod100 <= 14) return many;
-  if (mod10 === 1) return one;
-  if (mod10 >= 2 && mod10 <= 4) return few;
-  return many;
 }
 
 export function LabEntryView({
@@ -41,23 +23,19 @@ export function LabEntryView({
   onSelectCode,
   onSelectMeeting,
   onOpenPantheon,
+  onOpenAbout,
   onSelectMode,
   hasCodeResult,
   hasMythResult,
   codeResult,
   storyResult,
-  savedSnapshot,
-  onRestoreSavedMirror,
-  onDeleteSavedMirror,
-  transientDraft,
-  onRestoreDraft,
-  onClearDraft,
 }: LabEntryViewProps) {
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
   const [dateError, setDateError] = useState('');
   const [isPantheonOpen, setIsPantheonOpen] = useState(false);
+  const [selectedPlanet, setSelectedPlanet] = useState<number>(1);
 
   const dayRef = useRef<HTMLInputElement>(null);
   const monthRef = useRef<HTMLInputElement>(null);
@@ -108,21 +86,23 @@ export function LabEntryView({
 
   const handleCodeSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const validation = validateBirthDate(day, month, year);
+    const d = parseInt(day, 10);
+    const m = parseInt(month, 10);
+    const y = parseInt(year, 10);
 
-    if (validation.valid) {
+    if (day.length === 2 && month.length === 2 && year.length === 4 && d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2099) {
+      const fullDate = `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`;
       if (onSelectCode) {
-        onSelectCode(validation.formatted);
+        onSelectCode(fullDate);
       } else if (onSelectMode) {
-        onSelectMode('code', validation.formatted);
+        onSelectMode('code', fullDate);
       }
     } else {
       if (!day || !month || !year) {
-        // If empty, just open code tab directly
         if (onSelectCode) onSelectCode();
         else if (onSelectMode) onSelectMode('code');
       } else {
-        setDateError('message' in validation ? validation.message : 'Проверьте дату рождения');
+        setDateError('Проверьте день, месяц и год (ДД.ММ.ГГГГ)');
       }
     }
   };
@@ -142,388 +122,314 @@ export function LabEntryView({
     else setIsPantheonOpen(true);
   };
 
+  const activeGraha = GRAHA_COSMOLOGY_PROFILES[selectedPlanet] || GRAHA_COSMOLOGY_PROFILES[1];
+  const activePalette = PLANET_PALETTES[selectedPlanet] || PLANET_PALETTES[1];
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4 sm:px-6 lg:px-8 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full selection:bg-[var(--color-antique-gold)]/20 selection:text-white">
-      <div className="absolute inset-x-0 top-0 h-[900px] overflow-hidden pointer-events-none" aria-hidden="true">
-        <img src={mirrorHero} alt="" className="h-full w-full object-cover opacity-55" />
-        <div className="absolute inset-0 bg-[radial-gradient(70%_58%_at_50%_38%,transparent_0%,rgba(9,13,21,0.3)_48%,#090D15_92%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-[#090D15]" />
-      </div>
+    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] py-20 sm:py-28 px-6 sm:px-10 text-[var(--color-text-primary)] font-sans relative overflow-x-hidden w-full">
       
-      {/* Central Content */}
-      <div className="w-full max-w-5xl flex flex-col items-center relative z-10 my-auto text-center space-y-24 pb-24">
+      <div className="w-full max-w-5xl flex flex-col items-center relative z-10 my-auto text-center space-y-32 sm:space-y-44">
         
         {/* ========================================================= */}
-        {/* 1. HERO HEADER */}
+        {/* 1. BREATHING HERO: OPEN SKY MANIFESTO                     */}
         {/* ========================================================= */}
         <motion.div 
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9 }}
-          className="min-h-[78svh] flex flex-col items-center justify-center space-y-6 max-w-3xl mx-auto pt-12"
+          transition={{ duration: 1.1 }}
+          className="space-y-8 max-w-3xl mx-auto flex flex-col items-center pt-4"
         >
-          <span className="text-[13px] uppercase tracking-[0.35em] text-[var(--color-antique-gold)] font-mono block opacity-90">
-            Посмотреть на себя с неожиданной стороны
+          <span className="text-[11px] uppercase tracking-[0.42em] text-[var(--color-antique-gold)] font-mono opacity-85">
+            Космология Свободы · Природа Человека
           </span>
 
-          <h1 className="font-serif text-6xl sm:text-7xl lg:text-[88px] text-[var(--color-text-primary)] font-light tracking-tight leading-[0.95]">
-            Зеркало себя
+          <h1 className="font-serif text-5xl sm:text-7xl lg:text-[88px] text-[var(--color-text-primary)] font-light tracking-tight leading-[1.03]">
+            В тебе дышит <span className="italic text-[var(--color-antique-gold)]">целый Космос</span>
           </h1>
 
-          <p className="text-[var(--color-text-secondary)] font-normal text-[17px] sm:text-[18px] max-w-2xl mx-auto leading-[1.7] pt-2">
-            Два независимых взгляда: язык Цифрового Кода и история из ваших собственных образов. Сопоставьте их, отметьте, что попало точно и с чем вы не согласны, и продолжите разговор с Альбертом о том, что важно вам сейчас.
+          <p className="font-serif text-xl sm:text-2xl text-[var(--color-text-secondary)] font-light max-w-2xl mx-auto leading-[1.8] pt-2">
+            Человек гораздо больше любых готовых схем. Здесь встречаются два чистых взгляда на твою природу: живая сказка твоего сегодняшнего состояния и звёздная геометрия даты рождения.
           </p>
-
-          <a href="#collection" className="mt-7 inline-flex min-h-12 items-center justify-center border border-[var(--color-border-gold)] bg-[#111723]/80 px-9 py-3 text-[13px] uppercase tracking-[0.28em] text-[var(--color-antique-gold)] transition-colors hover:bg-[#18202e]">
-            Выбрать зеркало
-          </a>
-          <p className="text-[13px] text-[var(--color-text-muted)]">Начните с любого зеркала. Встреча откроется только после обоих.</p>
         </motion.div>
 
         {/* ========================================================= */}
-        {/* 2. THE TWO GATES (ДВЕ НЕЗАВИСИМЫЕ ДВЕРИ) */}
+        {/* 2. TWO WEIGHTLESS PORTALS IN OPEN SPACE                   */}
         {/* ========================================================= */}
-        <section id="collection" className="w-full max-w-4xl mx-auto scroll-mt-24">
-          <div className="mx-auto mb-12 max-w-2xl text-center">
-            <span className="text-[13px] uppercase tracking-[0.32em] text-[var(--color-antique-gold)] font-mono">Коллекция зеркал</span>
-            <h2 className="mt-5 font-serif text-4xl sm:text-5xl font-light">Два самостоятельных взгляда</h2>
-            <p className="mt-4 text-sm leading-relaxed text-[var(--color-text-secondary)]">Система не смешивает дату с ответами и не придумывает сходство заранее.</p>
-          </div>
-
-          {/* ========================================================= */}
-          {/* TRANSIENT UNFINISHED DRAFT RECOVERY */}
-          {/* ========================================================= */}
-          {transientDraft && (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-              className="w-full mb-10 p-6 sm:p-8 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)]/60 shadow-[0_0_24px_rgba(200,164,93,0.08)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
-            >
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)]/50 shrink-0 mt-0.5">
-                  <RotateCcw size={20} className="text-[var(--color-antique-gold)]" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
-                      Черновик сессии · В процессе
-                    </span>
-                    <span className="text-[13px] font-mono text-stone-400">
-                      ({new Date(transientDraft.updatedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })})
-                    </span>
-                  </div>
-                  <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
-                    Найдено незавершённое зеркало
-                  </h3>
-                  <p className="text-[13px] text-stone-300 font-normal leading-relaxed max-w-lg">
-                    {transientDraft.codeDate ? `Код: ${transientDraft.codeDate}` : ''}
-                    {transientDraft.codeDate && (transientDraft.storyResult || transientDraft.storyInputs?.q1) ? ' · ' : ''}
-                    {transientDraft.storyResult ? `Миф: «${transientDraft.storyResult.title}»` : (transientDraft.storyInputs?.q1 ? 'Ответы на вопросы мифа сохранены' : '')}
-                    {transientDraft.meetingResult ? ' · Встреча зеркал готова' : ''}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
-                <button
-                  onClick={onRestoreDraft}
-                  className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
-                >
-                  <span>Продолжить</span>
-                  <ChevronRight size={14} />
-                </button>
-                {onClearDraft && (
-                  <button
-                    onClick={onClearDraft}
-                    title="Сбросить незавершённый черновик"
-                    className="px-4 py-3 text-stone-400 hover:text-stone-200 uppercase tracking-widest text-[13px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <span>Начать заново</span>
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-          {savedSnapshot && (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-              className="w-full mb-10 p-6 sm:p-8 rounded-xs bg-[#0D121D] border border-[var(--color-border-gold)] shadow-[0_0_30px_rgba(200,164,93,0.1)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-left"
-            >
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)] shrink-0 mt-0.5">
-                  <Bookmark size={20} className="text-[var(--color-antique-gold)]" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="text-[13px] uppercase font-mono tracking-[0.25em] text-[var(--color-antique-gold)] font-medium">
-                      Моё зеркало · Сохранено локально
-                    </span>
-                    <span className="text-[13px] font-mono text-stone-400">
-                      ({new Date(savedSnapshot.savedAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })})
-                    </span>
-                  </div>
-                  <h3 className="font-serif text-xl sm:text-2xl text-stone-100 font-light mb-1">
-                    Продолжить с того места
-                  </h3>
-                  <p className="text-[13px] text-stone-300 font-normal leading-relaxed max-w-lg">
-                    {savedSnapshot.meetingUserNote
-                      ? `Ваша заметка: «${savedSnapshot.meetingUserNote}»`
-                      : savedSnapshot.storyResult?.title
-                        ? `В Мифе остался образ «${savedSnapshot.storyResult.title}»`
-                        : `Код ${savedSnapshot.codeDate}`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto shrink-0">
-                <button
-                  onClick={onRestoreSavedMirror}
-                  className="px-6 py-3 bg-[var(--color-antique-gold)] hover:bg-[#D9B770] text-gray-950 uppercase tracking-[0.2em] text-[13px] font-semibold rounded-xs transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
-                >
-                  <span>Продолжить с того места</span>
-                  <ChevronRight size={14} />
-                </button>
-                {onDeleteSavedMirror && (
-                  <button
-                    onClick={onDeleteSavedMirror}
-                    title="Удалить сохранённое зеркало из браузера"
-                    className="px-3 py-3 text-stone-400 hover:text-red-300 uppercase tracking-widest text-[13px] font-mono transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Trash2 size={13} />
-                    <span className="sm:hidden">Удалить сохранённое</span>
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-20 max-w-5xl mx-auto items-start relative">
           
-          {/* DOOR 1: PERSONAL MYTH */}
+          {/* Subtle vertical hairline between the two portals on desktop */}
+          <div className="hidden lg:block absolute left-1/2 top-8 bottom-8 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent -translate-x-1/2 pointer-events-none" />
+
+          {/* PORTAL I: PERSONAL MYTH */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.15 }}
+            transition={{ duration: 0.9, delay: 0.15 }}
             onClick={handleMyth}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                handleMyth();
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            className="group relative flex flex-col items-center justify-between p-10 sm:p-12 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 cursor-pointer text-center"
+            className="group flex flex-col items-center text-center cursor-pointer px-4 sm:px-8 space-y-8"
           >
-            <div className="flex flex-col items-center w-full">
-              <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
-                Независимое зеркало · Личный миф
-              </span>
+            <span className="text-[10px] uppercase font-mono tracking-[0.35em] text-[#7CE8EE]/90">
+              Орбита I · Голос Воображения
+            </span>
 
-              <div className="my-3 transition-transform duration-700 group-hover:scale-105">
-                <Orb number={7} size={150} showNumber={false} glow={true} />
-              </div>
+            <div className="py-2 transition-transform duration-1000 group-hover:scale-105 animate-float-gentle">
+              <Orb number={7} size={175} glow={true} />
+            </div>
 
-              <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-8 mb-3">
-                Сказка про вас
+            <div className="space-y-4 max-w-sm">
+              <h2 className="font-serif text-4xl sm:text-5xl text-[var(--color-text-primary)] font-light">
+                Личный Миф
               </h2>
 
-              <p className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xs mb-8">
-                Через 4 вопроса о вашем восприятии. Внутреннее состояние превращается в живую метафорическую историю.
+              <p className="text-[16px] text-[var(--color-text-secondary)] font-light leading-[1.85]">
+                Четыре вопроса-образа в тишине. Без дат и расчётов твоё сегодняшнее ощущение мира складывается в живую притчу о твоём внутреннем ресурсе и крыльях.
               </p>
             </div>
 
-            <div className="w-full pt-4 border-t border-[var(--color-border-subtle)]">
-              <span className="text-[13px] uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono group-hover:tracking-[0.3em] transition-all">
+            <div className="pt-4">
+              <span className="inline-block pb-1.5 border-b border-[var(--color-antique-gold)]/40 group-hover:border-[var(--color-antique-gold)] text-[11px] uppercase tracking-[0.28em] text-[var(--color-antique-gold)] font-mono transition-all">
                 {hasMyth ? 'Открыть созданную сказку →' : 'Войти через образы →'}
               </span>
             </div>
           </motion.div>
 
-          {/* DOOR 2: DIGITAL CODE */}
+          {/* PORTAL II: DIGITAL CODE */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.25 }}
-            className="group relative flex flex-col items-center justify-between p-10 sm:p-12 rounded-xs bg-[#0D121D] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 text-center"
+            transition={{ duration: 0.9, delay: 0.25 }}
+            className="group flex flex-col items-center text-center px-4 sm:px-8 space-y-8"
           >
-            <div className="flex flex-col items-center w-full">
-              <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-text-muted)] mb-8">
-                Независимое зеркало · Цифровой код
-              </span>
+            <span className="text-[10px] uppercase font-mono tracking-[0.35em] text-[var(--color-antique-gold)]">
+              Орбита II · Музыка Первого Вдоха
+            </span>
 
-              <div className="my-3 transition-transform duration-700 group-hover:scale-105">
-                <Orb number={1} size={150} glow={true} />
-              </div>
+            <div className="py-2 transition-transform duration-1000 group-hover:scale-105 animate-float-gentle">
+              <Orb number={1} size={175} glow={true} />
+            </div>
 
-              <h2 className="font-serif text-3xl sm:text-4xl text-[var(--color-text-primary)] font-light mt-8 mb-3">
-                Архитектура природы
+            <div className="space-y-4 max-w-sm">
+              <h2 className="font-serif text-4xl sm:text-5xl text-[var(--color-text-primary)] font-light">
+                Космос Даты
               </h2>
 
-              <p className="text-sm text-[var(--color-text-secondary)] font-normal leading-relaxed max-w-xs mb-6">
-                Через дату рождения. Пять математических ключей и пошаговый разворот вашей карты.
+              <p className="text-[16px] text-[var(--color-text-secondary)] font-light leading-[1.85]">
+                Введи дату своего рождения. Откроется созвездие твоих пяти ключей, неповторимая мелодия дня рождения и масштаб мечты, на которую ты способен.
               </p>
-
-              {/* THREE CLEAN DATE FIELDS: [ ДД ] [ ММ ] [ ГГГГ ] */}
-              <form onSubmit={handleCodeSubmit} className="w-full flex flex-col items-center space-y-4 mb-4">
-                <div className="flex items-center justify-center gap-2 sm:gap-3">
-                  <div className="relative">
-                    <input
-                      ref={dayRef}
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="ДД"
-                      maxLength={2}
-                      value={day}
-                      onChange={handleDayChange}
-                      onKeyDown={(e) => handleKeyDown(e, 'day')}
-                      className="w-14 sm:w-16 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl sm:text-[26px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
-                    />
-                  </div>
-                  <span className="text-[var(--color-text-muted)] font-serif text-xl">·</span>
-                  <div className="relative">
-                    <input
-                      ref={monthRef}
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="ММ"
-                      maxLength={2}
-                      value={month}
-                      onChange={handleMonthChange}
-                      onKeyDown={(e) => handleKeyDown(e, 'month')}
-                      className="w-14 sm:w-16 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl sm:text-[26px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
-                    />
-                  </div>
-                  <span className="text-[var(--color-text-muted)] font-serif text-xl">·</span>
-                  <div className="relative">
-                    <input
-                      ref={yearRef}
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="ГГГГ"
-                      maxLength={4}
-                      value={year}
-                      onChange={handleYearChange}
-                      onKeyDown={(e) => handleKeyDown(e, 'year')}
-                      className="w-20 sm:w-24 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-2xl sm:text-[26px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none py-1.5 transition-colors"
-                    />
-                  </div>
-                </div>
-
-                {dateError && (
-                  <span className="text-[13px] text-red-300 font-light block">{dateError}</span>
-                )}
-
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 mt-2 border border-[var(--color-border-gold)] bg-[var(--color-antique-gold)]/10 hover:bg-[var(--color-antique-gold)]/20 text-[var(--color-antique-gold)] rounded-xs uppercase tracking-[0.2em] text-[13px] font-medium transition-all cursor-pointer"
-                >
-                  Рассчитать код
-                </button>
-              </form>
             </div>
 
-            <div className="w-full pt-4 border-t border-[var(--color-border-subtle)]">
-              <span 
-                onClick={handleCodeSubmit}
-                className="text-[13px] uppercase tracking-[0.25em] text-[var(--color-antique-gold)] font-mono group-hover:tracking-[0.3em] transition-all cursor-pointer"
+            {/* THREE WEIGHTLESS DATE FIELDS: [ ДД ] · [ ММ ] · [ ГГГГ ] */}
+            <form onSubmit={handleCodeSubmit} className="w-full flex flex-col items-center space-y-7 pt-1">
+              <div className="flex items-center justify-center gap-3 sm:gap-4">
+                <input
+                  ref={dayRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="ДД"
+                  maxLength={2}
+                  value={day}
+                  onChange={handleDayChange}
+                  onKeyDown={(e) => handleKeyDown(e, 'day')}
+                  className="w-14 sm:w-16 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-3xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/60 outline-none py-1.5 transition-colors tabular-nums"
+                />
+                <span className="text-[var(--color-antique-gold)]/60 font-serif text-2xl">·</span>
+                <input
+                  ref={monthRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="ММ"
+                  maxLength={2}
+                  value={month}
+                  onChange={handleMonthChange}
+                  onKeyDown={(e) => handleKeyDown(e, 'month')}
+                  className="w-14 sm:w-16 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-3xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/60 outline-none py-1.5 transition-colors tabular-nums"
+                />
+                <span className="text-[var(--color-antique-gold)]/60 font-serif text-2xl">·</span>
+                <input
+                  ref={yearRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="ГГГГ"
+                  maxLength={4}
+                  value={year}
+                  onChange={handleYearChange}
+                  onKeyDown={(e) => handleKeyDown(e, 'year')}
+                  className="w-20 sm:w-24 bg-transparent border-0 border-b border-[var(--color-border-gold)] focus:border-[var(--color-antique-gold)] text-center font-serif text-3xl text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]/60 outline-none py-1.5 transition-colors tabular-nums"
+                />
+              </div>
+
+              {dateError && (
+                <span className="text-xs text-amber-300 font-light block">{dateError}</span>
+              )}
+
+              <button
+                type="submit"
+                className="pb-1.5 border-b border-[var(--color-antique-gold)]/50 hover:border-[var(--color-antique-gold)] text-[11px] uppercase tracking-[0.28em] text-[var(--color-antique-gold)] font-mono transition-all cursor-pointer"
               >
-                {hasCode ? 'Открыть карту кода →' : 'Развернуть ключи →'}
-              </span>
-            </div>
+                {hasCode ? 'Вернуться к звёздному атласу →' : 'Раскрыть созвездие даты →'}
+              </button>
+            </form>
           </motion.div>
 
-          </div>
-        </section>
+        </div>
 
         {/* ========================================================= */}
-        {/* 3. SYNTHESIS BANNER (MEETING OF MIRRORS) */}
+        {/* 3. HARMONY OF THE 9 CELESTIAL LIGHTS (NO HEAVY BOXES)      */}
         {/* ========================================================= */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.35 }}
-          onClick={handleMeeting}
-          className={`w-full max-w-4xl p-8 sm:p-10 rounded-xs border transition-all duration-700 flex flex-col sm:flex-row items-center justify-between gap-6 text-left ${
-            isMeetingReady
-              ? 'bg-[var(--color-bg-surface)] border-[var(--color-border-gold)] shadow-[0_0_30px_rgba(200,164,93,0.1)] cursor-pointer hover:border-[var(--color-antique-gold)]'
-              : 'bg-[var(--color-bg-surface)]/50 border-[var(--color-border-subtle)] cursor-pointer hover:border-[var(--color-border-gold)]'
-          }`}
+          transition={{ duration: 0.9, delay: 0.35 }}
+          className="w-full max-w-4xl pt-20 border-t border-white/[0.08] flex flex-col items-center text-center space-y-12"
         >
-          <div className="flex items-center gap-6">
-            <div className="flex -space-x-3 shrink-0">
-              <Orb number={codeResult?.soul || 1} size={44} glow={false} />
-              <Orb number={7} size={44} glow={false} />
-            </div>
-            <div>
-              <div className="flex items-center gap-3">
-                <span className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light">
-                  Встреча Зеркал
-                </span>
-                {isMeetingReady && (
-                  <span className="text-[13px] uppercase font-mono px-2.5 py-0.5 rounded-full bg-[var(--color-antique-gold)]/10 border border-[var(--color-border-gold)] text-[var(--color-antique-gold)]">
-                    Готово к синтезу
-                  </span>
-                )}
-              </div>
-              <p className="text-[13px] sm:text-sm text-[var(--color-text-secondary)] font-normal mt-1 max-w-lg leading-relaxed">
-                Сопоставление двух независимых отражений: поиск параллелей, честное осмысление расхождений и синтез-вопрос.
-              </p>
-            </div>
+          <div className="space-y-3 max-w-2xl">
+            <span className="text-[10px] uppercase font-mono tracking-[0.38em] text-[#7CE8EE]">
+              Девять Светил Наваграха · Живой Планетарий
+            </span>
+            <h2 className="font-serif text-4xl sm:text-5xl text-[var(--color-text-primary)] font-light">
+              Девять лучей, из которых соткана природа человека
+            </h2>
+            <p className="text-sm sm:text-base text-[var(--color-text-secondary)] font-light leading-relaxed">
+              Прикоснитесь к любому числу, чтобы почувствовать его стихию, услышать простой образ и увидеть, какую мечту оно пробуждает.
+            </p>
           </div>
 
-          <div className="flex items-center gap-2 text-[13px] uppercase tracking-[0.2em] text-[var(--color-antique-gold)] font-mono whitespace-nowrap shrink-0">
-            <span>{isMeetingReady ? 'Провести встречу →' : 'Узнать больше →'}</span>
+          {/* Minimalist Star Selector Line */}
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-5">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => {
+              const p = PLANET_PALETTES[num];
+              const isSelected = selectedPlanet === num;
+              return (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setSelectedPlanet(num)}
+                  className={`w-11 h-11 rounded-full font-serif text-xl transition-all duration-500 flex items-center justify-center cursor-pointer ${
+                    isSelected
+                      ? 'scale-115 text-white border'
+                      : 'text-[var(--color-text-muted)] hover:text-white border border-transparent'
+                  }`}
+                  style={
+                    isSelected
+                      ? {
+                          borderColor: p.color,
+                          boxShadow: `0 0 28px ${p.glow}`,
+                          background: 'rgba(255,255,255,0.04)',
+                        }
+                      : undefined
+                  }
+                >
+                  {num}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Harmonious Flowing Story of the Selected Star */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedPlanet}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.35 }}
+              className="w-full max-w-3xl flex flex-col items-center space-y-8 pt-2"
+            >
+              <Orb number={selectedPlanet} size={160} glow={true} />
+
+              <div className="space-y-3">
+                <span
+                  className="text-[11px] font-mono uppercase tracking-[0.3em] block"
+                  style={{ color: activePalette.color }}
+                >
+                  Луч {selectedPlanet} · {activeGraha.sanskritName} · {activeGraha.element}
+                </span>
+
+                <h3 className="font-serif text-3xl sm:text-5xl text-[var(--color-text-primary)] font-light">
+                  {activeGraha.poeticTitle}
+                </h3>
+              </div>
+
+              <p className="font-serif italic text-xl sm:text-2xl text-[#EAE4D7] leading-[1.8] font-light max-w-2xl">
+                «{activeGraha.childExplanation}»
+              </p>
+
+              <p className="text-base sm:text-[17px] text-[var(--color-text-secondary)] font-light leading-[1.9] max-w-2xl">
+                {activeGraha.humanNatureManifestation} В теле и движении этот луч откликается как {activeGraha.bodyResonance.toLowerCase()}
+              </p>
+
+              <div className="pt-4 space-y-4">
+                <p className="font-serif italic text-lg text-[var(--color-antique-gold)] font-light">
+                  Горизонт мечты: «{activeGraha.lifeQuestion}»
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handlePantheon}
+                  className="text-[11px] uppercase font-mono tracking-[0.25em] text-[var(--color-text-muted)] hover:text-[var(--color-antique-gold)] transition-colors cursor-pointer"
+                >
+                  Открыть полный пантеон девяти сил →
+                </button>
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </motion.div>
 
         {/* ========================================================= */}
-        {/* 4. PANTHEON TEASER */}
+        {/* 4. MEETING OF MIRRORS & COSMOLOGY INVITATION              */}
         {/* ========================================================= */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.45 }}
-          className="w-full max-w-4xl pt-12 border-t border-[var(--color-border-subtle)] flex flex-col items-center"
+          transition={{ duration: 0.9, delay: 0.45 }}
+          className="w-full max-w-4xl pt-20 border-t border-white/[0.08] space-y-24"
         >
-          <div className="flex items-center justify-between w-full mb-8">
-            <div className="text-left">
-              <span className="text-[13px] uppercase font-mono tracking-[0.3em] text-[var(--color-antique-gold)] block mb-1">
-                Канон Вяземского
-              </span>
-              <h3 className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light">
-                Пантеон девяти архетипов
-              </h3>
+          {/* Meeting of Mirrors — Open, Breathable Invitation */}
+          <div
+            onClick={handleMeeting}
+            className="group flex flex-col items-center text-center space-y-6 cursor-pointer max-w-2xl mx-auto"
+          >
+            <div className="flex items-center justify-center -space-x-4 mb-2">
+              <Orb number={codeResult?.soul || 1} size={64} glow={true} />
+              <Orb number={7} size={64} glow={true} />
             </div>
 
-            <button
-              onClick={handlePantheon}
-              className="text-[13px] uppercase font-mono tracking-[0.2em] text-[var(--color-antique-gold)] hover:underline transition-colors cursor-pointer"
-            >
-              Смотреть все девять →
-            </button>
+            <span className="text-[10px] uppercase font-mono tracking-[0.35em] text-[var(--color-antique-gold)]">
+              {isMeetingReady ? 'Оба отражения готовы к встрече' : 'Третье пространство · Гармония двух зеркал'}
+            </span>
+
+            <h3 className="font-serif text-3xl sm:text-5xl text-[var(--color-text-primary)] font-light">
+              Встреча Зеркал
+            </h3>
+
+            <p className="text-base text-[var(--color-text-secondary)] font-light leading-[1.85]">
+              Когда соединяются вечный чертёж вашей даты рождения и живая сказка сегодняшнего дня, возникает удивительная объёмность: вы видите и свои глубокие корни, и то, куда тянутся ветви вашей мечты сейчас.
+            </p>
+
+            <span className="inline-block pb-1 border-b border-[var(--color-antique-gold)]/40 group-hover:border-[var(--color-antique-gold)] text-[11px] uppercase tracking-[0.28em] text-[var(--color-antique-gold)] font-mono transition-all">
+              {isMeetingReady ? 'Соединить оба созвездия →' : 'Перейти к пространству встречи →'}
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full text-left">
-            {[
-              { num: 1, name: 'Солнце · Сурья', desc: 'Единица. Первоисточник воли, прямое действие, авторство своей жизни.' },
-              { num: 6, name: 'Венера · Шукра', desc: 'Шестёрка. Гармония, эстетическое мастерство, глубина формы и чувств.' },
-              { num: 8, name: 'Сатурн · Шани', desc: 'Восьмёрка. Масштабные структуры, закон времени, терпение и весомость.' }
-            ].map((arch) => (
-              <div 
-                key={arch.num}
-                onClick={handlePantheon}
-                className="p-6 rounded-xs bg-[var(--color-bg-surface)] border border-[var(--color-border-subtle)] hover:border-[var(--color-border-gold)] transition-all duration-500 cursor-pointer flex flex-col justify-between"
+          {/* Flowing 2-Column Editorial Introduction to Vedic Cosmology */}
+          <div className="pt-16 border-t border-white/[0.06] grid grid-cols-1 md:grid-cols-2 gap-12 sm:gap-16 text-left">
+            {COSMOLOGY_IMMERSION_CHAPTERS.slice(0, 2).map((ch) => (
+              <div
+                key={ch.id}
+                onClick={onOpenAbout}
+                className="group cursor-pointer space-y-4"
               >
-                <div className="flex items-center gap-3 mb-4">
-                  <Orb number={arch.num} size={42} glow={false} />
-                  <span className="font-serif text-lg text-[var(--color-text-primary)]">{arch.name}</span>
-                </div>
-                <p className="text-[13px] text-[var(--color-text-secondary)] font-normal leading-relaxed">
-                  {arch.desc}
+                <span className="text-[10px] font-mono uppercase tracking-[0.3em] text-[var(--color-antique-gold)] block">
+                  {ch.tag}
+                </span>
+                <h4 className="font-serif text-2xl sm:text-3xl text-[var(--color-text-primary)] font-light group-hover:text-[var(--color-antique-gold)] transition-colors">
+                  {ch.title}
+                </h4>
+                <p className="font-serif italic text-base sm:text-lg text-[#EAE4D7] font-light leading-[1.75]">
+                  «{ch.simpleAnalogy}»
+                </p>
+                <p className="text-sm text-[var(--color-text-secondary)] font-light leading-[1.85]">
+                  {ch.deepText}
                 </p>
               </div>
             ))}

@@ -1,6 +1,30 @@
+export interface MatrixLine {
+  id: string;
+  name: string;
+  digits: [string, string, string];
+  totalCount: number;
+  strength: 'strong' | 'moderate' | 'gentle';
+  meaning: string;
+}
+
+export interface MatrixAnalysis {
+  peaks: { digit: string; count: number; quality: string; meaning: string }[];
+  voids: { digit: string; quality: string; meaning: string }[];
+  zerosCount: number;
+  zerosMeaning: string;
+  activeLines: MatrixLine[];
+  workingNumbers: {
+    rc1: number;
+    rc2: number;
+    rc3: number;
+    rc4: number;
+  };
+}
+
 export interface CalculationResult {
   soul: number;
   soulComposite: string;
+  birthDayNumber?: number;
   path: number;
   pathComposite: string;
   direction: number;
@@ -9,8 +33,11 @@ export interface CalculationResult {
   expressionComposite: string;
   result: number;
   resultComposite: string;
+  personalYear?: number;
+  personalYearComposite?: string;
   baseMatrix: Record<string, number>;
   detailedMatrix: Record<string, number>;
+  matrixAnalysis?: MatrixAnalysis;
 }
 
 export type FirstMirror = {
