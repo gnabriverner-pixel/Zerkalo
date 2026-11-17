@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Изолированный художественный прототип первого путешествия «Зеркала себя». Данные не отправляются и не сохраняются.">
+  <title>Зеркало себя · Внутренняя нить · Концепт A</title>
+  <style>
+    :root {
+      --paper: #f3eee4;
+      --paper-light: #faf7f0;
+      --ink: #1e1c2b;
+      --ink-muted: #68616b;
+      --line: #d5cabb;
+      --copper: #a6533c;
+      --copper-dark: #873d2d;
+      --night: #34466a;
+      --serif: 'Iowan Old Style', 'Baskerville', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+      --sans: 'Avenir Next', 'Manrope', 'Helvetica Neue', Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .16;
+      z-index: 6;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 150 150' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.76' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.19'/%3E%3C/svg%3E");
+    }
+    button { font: inherit; cursor: pointer; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--copper); outline-offset: 5px; }
+    button:disabled { cursor: default; opacity: .45; }
+    .skip { position: absolute; top: -100px; left: 20px; padding: 10px; color: var(--paper); background: var(--ink); z-index: 10; }
+    .skip:focus { top: 12px; }
+    .site { min-height: 100vh; display: flex; flex-direction: column; }
+    .masthead {
+      min-height: 106px;
+      padding: 34px clamp(25px, 5.8vw, 92px) 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand { display: flex; align-items: center; gap: 13px; user-select: none; }
+    .brand-mark { width: 21px; height: 33px; display: inline-block; }
+    .brand-name { display: block; font-family: var(--serif); font-size: 25px; letter-spacing: -.045em; line-height: 1; }
+    .brand-note { display: block; margin-top: 4px; font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: var(--ink-muted); }
+    .masthead-right { display: flex; align-items: center; gap: 30px; }
+    .edition { color: var(--ink-muted); font-size: 10px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; }
+    .quiet-link { border: 0; color: var(--ink); background: transparent; border-bottom: 1px solid var(--ink); padding: 6px 0; font-size: 12px; }
+    .progress-track { margin: 0 clamp(25px, 5.8vw, 92px); height: 1px; background: var(--line); position: relative; }
+    .progress-bar { width: 25%; height: 2px; position: absolute; top: -1px; left: 0; background: var(--copper); transition: width .55s ease; }
+    main { flex: 1; display: flex; }
+    .scene { display: none; width: 100%; min-height: min(725px, calc(100vh - 191px)); }
+    .scene.is-active { display: grid; animation: arrival .65s both; }
+    .scene--intro { grid-template-columns: minmax(0, 1fr) minmax(0, .91fr); }
+    .scene--chapter, .scene--tension, .scene--action { grid-template-columns: minmax(0, 1fr) minmax(0, .91fr); }
+    .narrative {
+      position: relative;
+      padding: clamp(40px, 6vw, 103px) clamp(25px, 5.8vw, 92px) clamp(42px, 5.8vw, 76px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .eyebrow { font-size: 10px; line-height: 1.6; letter-spacing: .19em; font-weight: 650; color: var(--copper-dark); text-transform: uppercase; }
+    .eyebrow::before { content: ''; display: inline-block; width: 22px; height: 1px; vertical-align: middle; background: var(--copper); margin-right: 12px; }
+    h1, h2, blockquote { font-family: var(--serif); font-weight: 400; }
+    h1, h2 { margin: 32px 0 26px; line-height: 1.04; letter-spacing: -.056em; }
+    h1 { max-width: 720px; font-size: clamp(52px, 5.15vw, 90px); }
+    h2 { font-size: clamp(52px, 4.9vw, 82px); }
+    h1 em, h2 em { display: block; color: var(--copper-dark); font-style: italic; font-weight: 400; }
+    .lead { max-width: 450px; font-size: clamp(16px, 1.24vw, 19px); font-family: var(--serif); line-height: 1.66; color: #484351; margin: 0; }
+    .rule { width: min(100%, 375px); height: 1px; background: var(--line); margin: 42px 0 26px; }
+    .support { max-width: 420px; margin: 0; line-height: 1.6; font-size: 12px; color: var(--ink-muted); }
+    .support strong { color: var(--ink); font-weight: 600; }
+    .cta {
+      min-height: 56px;
+      padding: 16px 23px;
+      display: inline-flex;
+      gap: 42px;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 36px;
+      background: var(--ink);
+      color: var(--paper-light);
+      border: 1px solid var(--ink);
+      font-size: 12px;
+      letter-spacing: .025em;
+      transition: color .2s, background .2s, gap .2s, transform .2s;
+    }
+    .cta:hover { background: var(--copper-dark); border-color: var(--copper-dark); gap: 50px; transform: translateY(-1px); }
+    .cta .arrow { font-size: 20px; line-height: 0; }
+    .secondary-cta { background: transparent; color: var(--ink); border-color: var(--ink); }
+    .secondary-cta:hover { color: var(--paper); }
+    .art-panel { overflow: hidden; position: relative; min-height: 650px; background: #e9e1d4; border-left: 1px solid var(--line); }
+    .art-panel--night { background: #27334d; }
+    .art-panel--night .artifact-caption, .art-panel--night .artifact-index { color: #ede8dc; }
+    .loom { width: 100%; height: 100%; position: absolute; inset: 0; }
+    .artifact-caption {
+      position: absolute;
+      bottom: 45px;
+      left: 49px;
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 15px;
+      color: #615b5f;
+      z-index: 1;
+    }
+    .artifact-index { position: absolute; top: 39px; right: 42px; font-size: 10px; letter-spacing: .15em; color: #6b6467; }
+    .folio {
+      position: absolute;
+      bottom: 30px;
+      left: clamp(25px, 5.8vw, 92px);
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      font-size: 10px;
+      letter-spacing: .16em;
+    }
+    .chapter-copy { font-size: clamp(17px, 1.4vw, 21px); line-height: 1.55; max-width: 450px; font-family: var(--serif); }
+    .chapter-copy strong { color: var(--copper-dark); font-weight: 400; }
+    .positions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: min(100%, 520px); margin: 42px 0 12px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .position { padding: 18px 8px 19px 0; color: var(--ink-muted); font-size: 11px; line-height: 1.5; }
+    .position::before { content: '◇'; display: block; color: var(--copper); font-size: 20px; margin-bottom: 7px; }
+    .position + .position { border-left: 1px solid var(--line); padding-left: 12px; }
+    .quote-block { border-left: 1px solid var(--copper); padding: 0 0 0 23px; margin: 26px 0 0; max-width: 550px; }
+    .quote-block p { font-family: var(--serif); font-size: clamp(22px, 2.15vw, 34px); line-height: 1.32; letter-spacing: -.022em; margin: 0; }
+    .quote-block .author { display: block; margin-top: 15px; color: var(--ink-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
+    .two-voices { display: grid; grid-template-columns: 1fr 1fr; gap: 27px; max-width: 600px; margin-top: 32px; }
+    .voice { border-top: 1px solid var(--line); padding-top: 15px; }
+    .voice-label { color: var(--copper-dark); font-size: 9px; letter-spacing: .18em; text-transform: uppercase; }
+    .voice p { font-family: var(--serif); font-size: clamp(19px, 1.65vw, 24px); line-height: 1.3; margin: 13px 0 0; }
+    .action-card { margin-top: 26px; padding: 27px 28px; width: min(100%, 525px); border: 1px solid #bb9d85; background: rgba(255, 255, 255, .29); }
+    .action-card .step { font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: var(--copper-dark); }
+    .action-card p { margin: 16px 0 0; font: 25px/1.35 var(--serif); }
+    .choice-wrap { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 24px; }
+    .choice { padding: 14px 20px; background: transparent; border: 1px solid #aaa091; font-size: 12px; color: var(--ink); transition: background .2s; }
+    .choice:hover { background: #e6dccc; }
+    .choice[aria-pressed="true"] { color: var(--paper); border-color: var(--night); background: var(--night); }
+    .feedback { min-height: 45px; font-size: 13px; line-height: 1.6; color: var(--night); max-width: 520px; margin-top: 15px; }
+    .step-footer { min-height: 85px; border-top: 1px solid var(--line); margin: 0 clamp(25px, 5.8vw, 92px); display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+    .step-number { font-size: 11px; color: var(--ink-muted); letter-spacing: .15em; }
+    .step-number b { font-size: 13px; color: var(--ink); font-weight: 500; }
+    .step-hint { font-size: 10px; color: var(--ink-muted); }
+    .back { background: transparent; border: none; border-bottom: 1px solid var(--ink); padding: 9px 0; color: var(--ink); font-size: 11px; }
+    .site-note { margin: 0 clamp(25px, 5.8vw, 92px); padding: 0 0 18px; color: #756d6a; font-size: 9px; letter-spacing: .015em; }
+    @keyframes arrival { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @media (min-width: 1500px) { .narrative { padding-left: max(calc((100vw - 1370px)/2), 90px); } }
+    @media (max-width: 960px) {
+      .scene--intro, .scene--chapter, .scene--tension, .scene--action { grid-template-columns: 1fr; }
+      .narrative { min-height: auto; padding-top: 55px; padding-bottom: 76px; }
+      h1 { font-size: clamp(54px, 7.6vw, 78px); } h2 { font-size: clamp(49px, 7.1vw, 72px); }
+      .art-panel { min-height: 440px; border-left: 0; border-top: 1px solid var(--line); }
+      .loom { height: 100%; }
+      .folio { display: none; }
+    }
+    @media (max-width: 600px) {
+      .masthead { padding: 20px 24px; min-height: 84px; }
+      .masthead-right { gap: 10px; }
+      .edition, .step-hint { display: none; }
+      .brand-name { font-size: 23px; }
+      .brand-mark { width: 16px; }
+      .quiet-link { font-size: 10px; }
+      .progress-track { margin: 0 24px; }
+      .narrative { padding: 42px 25px 49px; }
+      h1, h2 { margin: 28px 0 20px; line-height: 1.055; font-size: clamp(48px, 12vw, 64px); }
+      .lead { font-size: 17px; line-height: 1.5; }
+      .art-panel { min-height: 345px; }
+      .artifact-caption { left: 24px; bottom: 19px; font-size: 13px; }
+      .artifact-index { right: 24px; top: 20px; }
+      .positions { margin-top: 30px; }
+      .position { font-size: 9px; overflow-wrap: anywhere; }
+      .position + .position { padding-left: 6px; }
+      .two-voices { grid-template-columns: 1fr 1fr; gap: 15px; }
+      .voice p { font-size: 20px; }
+      .quote-block p { font-size: 25px; }
+      .cta { width: 100%; gap: 16px; }
+      .cta:hover { gap: 16px; }
+      .step-footer { margin: 0 24px; min-height: 75px; }
+      .site-note { margin: 0 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#journey">К содержанию</a>
+  <div class="site">
+    <header class="masthead">
+      <div class="brand" aria-label="Зеркало себя">
+        <svg class="brand-mark" viewBox="0 0 24 38" aria-hidden="true"><path d="M12 1V37M6 8c0 5 12 5 12 11S6 25 6 30M18 8C18 13 6 13 6 19s12 6 12 11" fill="none" stroke="#a6533c" stroke-width="1.2"/><circle cx="12" cy="19" r="2.2" fill="#1e1c2b"/></svg>
+        <div><span class="brand-name">Зеркало себя</span><span class="brand-note">Личный атлас</span></div>
+      </div>
+      <div class="masthead-right"><span class="edition">Опыт № 01 / 2026</span><button class="quiet-link" id="restart" type="button">С начала ↗</button></div>
+    </header>
+    <div class="progress-track" role="progressbar" aria-label="Прогресс путешествия" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" id="progress"><div class="progress-bar" id="progress-bar"></div></div>
+    <main id="journey">
+      <section class="scene scene--intro is-active" id="scene-0" aria-labelledby="title-0">
+        <div class="narrative">
+          <span class="eyebrow">Пролог · приглашение</span>
+          <h1 id="title-0">Сильная сторона<br>тоже может стать <em>преградой.</em></h1>
+          <p class="lead">Что, если ваш следующий шаг зависит не от нового качества — а от встречи двух сил, которые уже есть внутри?</p>
+          <div class="rule"></div>
+          <p class="support">В «Зеркале себя» пять сторон вашей формулы складываются в один сюжет. Не список свойств, а напряжение, которое можно узнать и исследовать.</p>
+          <button class="cta" type="button" data-next>Войти в историю <span class="arrow" aria-hidden="true">↗</span></button>
+          <span class="folio">Зеркало себя / Внутренняя нить</span>
+        </div>
+        <div class="art-panel" aria-hidden="true">
+          <span class="artifact-index">ФИГУРА I / ПЕРЕСЕЧЕНИЕ</span>
+          <svg class="loom" viewBox="0 0 700 760" preserveAspectRatio="xMidYMid slice">
+            <defs><linearGradient id="copper" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ad6549"/><stop offset="1" stop-color="#633a35"/></linearGradient><linearGradient id="crease" x1="0" x2="1"><stop stop-color="#ded2bf"/><stop offset=".53" stop-color="#f7f3e9"/><stop offset="1" stop-color="#dbccba"/></linearGradient></defs>
+            <rect width="700" height="760" fill="#e9e1d4"/>
+            <g stroke="#cfc1ae" stroke-width=".7" opacity=".7"><path d="M0 118H700M0 380H700M0 644H700"/><path d="M116 0V760M350 0V760M584 0V760"/></g>
+            <circle cx="350" cy="383" r="242" fill="none" stroke="#c8b29a" stroke-width="1.1"/>
+            <circle cx="350" cy="383" r="197" fill="none" stroke="#c8b29a" stroke-width=".7" stroke-dasharray="2 8"/>
+            <path d="M350 83V684" stroke="#927b6e" stroke-width="1.1"/>
+            <path d="M184 144C532 206 181 282 516 382S175 534 518 643" fill="none" stroke="url(#copper)" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="M520 132C174 235 527 276 184 396S527 552 180 651" fill="none" stroke="#8f8e8a" stroke-width="1.2"/>
+            <path d="M350 160C275 160 225 247 240 316c16 74 97 78 110 145 13-67 94-71 110-145 15-69-35-156-110-156Z" fill="url(#crease)" stroke="#bba790" stroke-width=".8" opacity=".84"/>
+            <path d="M350 224L381 382L350 537L319 382Z" fill="url(#copper)" opacity=".9"/>
+            <circle cx="350" cy="382" r="11" fill="#f3eee4" stroke="#a6533c" stroke-width="2"/>
+            <circle cx="184" cy="144" r="4.4" fill="#a6533c"/><circle cx="518" cy="643" r="4.4" fill="#a6533c"/>
+            <g font-family="Georgia,serif" font-size="16" fill="#8e7b6e" font-style="italic"><text x="84" y="371">a</text><text x="603" y="392">b</text></g>
+          </svg>
+          <span class="artifact-caption">Две силы. Одна внутренняя нить.</span>
+        </div>
+      </section>
+
+      <section class="scene scene--chapter" id="scene-1" aria-labelledby="title-1" hidden>
+        <div class="narrative">
+          <span class="eyebrow">Глава первая · устройство</span>
+          <h2 id="title-1">Не пять ярлыков. <em>Пять голосов.</em></h2>
+          <p class="chapter-copy">Душа, Выражение, Путь, Направление и Результат — пять позиций одной истории. Каждая по отдельности говорит немного. <strong>Их отношения говорят больше.</strong></p>
+          <div class="positions" aria-label="Пять позиций формулы">
+            <span class="position">Душа</span><span class="position">Выражение</span><span class="position">Путь</span><span class="position">Направление</span><span class="position">Результат</span>
+          </div>
+          <p class="support">В действующем продукте числа должны приходить из проверенного расчётного ядра. Здесь — художественная модель интерфейса, без вычисления и без анализа личности.</p>
+          <button class="cta" type="button" data-next>Увидеть столкновение <span class="arrow" aria-hidden="true">↗</span></button>
+        </div>
+        <div class="art-panel" aria-hidden="true">
+          <span class="artifact-index">ФИГУРА II / ПЯТЬ ГОЛОСОВ</span>
+          <svg class="loom" viewBox="0 0 700 760" preserveAspectRatio="xMidYMid slice">
+            <rect width="700" height="760" fill="#e9e1d4"/>
+            <g stroke="#c4b5a4" stroke-width="1" fill="none">
+              <path d="M125 112C250 300 450 340 575 112M125 648C250 460 450 420 575 648"/>
+              <path d="M125 112C220 200 220 560 125 648M575 112C480 200 480 560 575 648"/>
+              <path d="M125 112L575 648M575 112L125 648" stroke-dasharray="2 7"/>
+            </g>
+            <g font-family="Georgia,serif" font-size="45" fill="#1e1c2b" text-anchor="middle">
+              <text x="350" y="101">Ⅰ</text><text x="125" y="405">Ⅱ</text><text x="350" y="414">Ⅲ</text><text x="575" y="405">Ⅳ</text><text x="350" y="715">Ⅴ</text>
+            </g>
+            <g fill="#e9e1d4" stroke="#a6533c" stroke-width="1.2"><circle cx="350" cy="140" r="8"/><circle cx="125" cy="440" r="8"/><circle cx="350" cy="454" r="8"/><circle cx="575" cy="440" r="8"/><circle cx="350" cy="647" r="8"/></g>
+            <path d="M350 148V647" stroke="#a6533c" stroke-width="2"/>
+            <path d="M125 448C284 382 427 382 575 448" stroke="#a6533c" stroke-width="1.2" fill="none"/>
+          </svg>
+          <span class="artifact-caption">Позиции начинают говорить в отношениях.</span>
+        </div>
+      </section>
+
+      <section class="scene scene--tension" id="scene-2" aria-labelledby="title-2" hidden>
+        <div class="narrative">
+          <span class="eyebrow">Глава вторая · напряжение</span>
+          <h2 id="title-2">Иногда мастерству мешает <em>сам мастер.</em></h2>
+          <p class="chapter-copy">Вот как может звучать одно человеческое противоречие. Не характеристика вас — <strong>литературный пример</strong> того, что мы ищем в настоящем разборе.</p>
+          <div class="two-voices">
+            <div class="voice"><span class="voice-label">Голос первый</span><p>«Я отвечу за качество. Так будет надёжнее».</p></div>
+            <div class="voice"><span class="voice-label">Голос второй</span><p>«Но когда же то, что я сделал, станет моим?»</p></div>
+          </div>
+          <div class="quote-block"><p>Тот, кто умеет строить для других, однажды должен выйти из-за кулис собственной работы.</p><span class="author">Демонстрационный образ · не диагноз и не прогноз</span></div>
+          <button class="cta" type="button" data-next>От образа — к действию <span class="arrow" aria-hidden="true">↗</span></button>
+        </div>
+        <div class="art-panel art-panel--night" aria-hidden="true">
+          <span class="artifact-index">ФИГУРА III / ПЕРЕД ВЫХОДОМ</span>
+          <svg class="loom" viewBox="0 0 700 760" preserveAspectRatio="xMidYMid slice">
+            <rect width="700" height="760" fill="#27334d"/>
+            <path d="M0 0L350 0L350 760L0 760Z" fill="#354867"/>
+            <path d="M0 0C220 120 200 560 0 760M700 0C480 120 500 560 700 760" fill="none" stroke="#53647a" stroke-width="2"/>
+            <rect x="242" y="78" width="216" height="597" fill="#ddc8a2" opacity=".08"/>
+            <path d="M242 78V675M458 78V675" stroke="#d8ba89" stroke-width="1" opacity=".7"/>
+            <path d="M350 54V704" stroke="#ad6549" stroke-width="2.4"/>
+            <path d="M350 78C170 258 512 308 350 464C192 600 500 612 350 703" fill="none" stroke="#d1a18b" stroke-width="1.4"/>
+            <circle cx="350" cy="463" r="36" fill="#27334d" stroke="#e6d6bd" stroke-width="1.1"/>
+            <circle cx="350" cy="463" r="5" fill="#be7962"/>
+            <path d="M350 464L242 675H458Z" fill="#ded0bd" opacity=".11"/>
+            <g fill="#dbd4ca" font-family="Georgia,serif" font-size="16" font-style="italic"><text x="113" y="380">за кулисами</text><text x="475" y="380">на свету</text></g>
+          </svg>
+          <span class="artifact-caption">Сила и цена силы.</span>
+        </div>
+      </section>
+
+      <section class="scene scene--action" id="scene-3" aria-labelledby="title-3" hidden>
+        <div class="narrative">
+          <span class="eyebrow">Глава третья · сверка</span>
+          <h2 id="title-3">Зеркало имеет смысл, <em>если из него выйти.</em></h2>
+          <p class="chapter-copy">Сильный разбор заканчивается не обещанием судьбы, а проверяемым движением. Для этого демонстрационного сюжета — одно маленькое действие.</p>
+          <div class="action-card"><span class="step">Эксперимент на семь дней</span><p>Выберите одну сделанную вами вещь, которую обычно показывают другие. Представьте её своим голосом — без оправданий и без украшения.</p></div>
+          <p class="support" style="margin-top:22px"><strong>Главный вопрос:</strong> сама логика этого примера вам понятна и интересна?</p>
+          <div class="choice-wrap" role="group" aria-label="Оценка художественного примера">
+            <button class="choice" type="button" data-feedback="yes" aria-pressed="false">Да, цепляет</button>
+            <button class="choice" type="button" data-feedback="no" aria-pressed="false">Нет, не моё</button>
+            <button class="choice" type="button" data-feedback="unsure" aria-pressed="false">Пока не знаю</button>
+          </div>
+          <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+          <p class="support">Ответ останется только на этом экране. Ничего не отправляется, не собирается и не считается оценкой личности.</p>
+        </div>
+        <div class="art-panel" aria-hidden="true">
+          <span class="artifact-index">ФИГУРА IV / НИТЬ СНАРУЖИ</span>
+          <svg class="loom" viewBox="0 0 700 760" preserveAspectRatio="xMidYMid slice">
+            <rect width="700" height="760" fill="#e9e1d4"/>
+            <circle cx="350" cy="382" r="244" fill="none" stroke="#c4b5a4" stroke-width="1"/>
+            <path d="M350 0V760" stroke="#c4b5a4" stroke-width="1" stroke-dasharray="3 8"/>
+            <path d="M140 550C256 610 292 470 350 382S474 214 558 147" fill="none" stroke="#a6533c" stroke-width="3" stroke-linecap="round"/>
+            <path d="M350 382L558 147" stroke="#a6533c" stroke-width=".9"/>
+            <path d="M552 147L558 147L556 154" fill="none" stroke="#a6533c" stroke-width="1.5"/>
+            <g fill="#e9e1d4" stroke="#a6533c" stroke-width="1.3"><circle cx="140" cy="550" r="8"/><circle cx="350" cy="382" r="9"/><circle cx="558" cy="147" r="8"/></g>
+            <g fill="#6b6665" font-family="Georgia,serif" font-style="italic" font-size="18"><text x="115" y="594">узнать</text><text x="367" y="415">выбрать</text><text x="496" y="116">сделать</text></g>
+          </svg>
+          <span class="artifact-caption">Из наблюдения — в жизнь.</span>
+        </div>
+      </section>
+    </main>
+    <footer class="step-footer"><div class="step-number"><b id="current-step">01</b> / 04 · <span id="step-name">ПРОЛОГ</span></div><span class="step-hint">Клавиши ← → перемещают между главами</span><button class="back" type="button" id="back" hidden>← Назад</button></footer>
+    <p class="site-note">Арт-дирекшн R&D · отдельный офлайн-концепт · не использует ваши данные · не связан с расчётным ядром и production</p>
+  </div>
+  <script>
+    (() => {
+      'use strict';
+      let current = 0;
+      const titles = ['ПРОЛОГ', 'УСТРОЙСТВО', 'НАПРЯЖЕНИЕ', 'СВЕРКА'];
+      const scenes = [...document.querySelectorAll('.scene')];
+      const progress = document.getElementById('progress');
+      const progressBar = document.getElementById('progress-bar');
+      const back = document.getElementById('back');
+      const feedback = document.getElementById('feedback');
+      const feedbackText = {
+        yes: 'Это полезный сигнал для художественного направления, но ещё не подтверждение точности персонального разбора.',
+        no: 'Спасибо за честный ответ. Этот образ не обязан подходить вам — и не должен притворяться точным.',
+        unsure: 'Можно оставить вопрос открытым. В хорошем исследовании не обязательно соглашаться сразу.'
+      };
+      function show(index, focusHeading = true) {
+        current = Math.max(0, Math.min(scenes.length - 1, index));
+        scenes.forEach((scene, i) => {
+          scene.hidden = i !== current;
+          scene.classList.toggle('is-active', i === current);
+        });
+        progress.setAttribute('aria-valuenow', String(current + 1));
+        progressBar.style.width = ((current + 1) / scenes.length * 100) + '%';
+        document.getElementById('current-step').textContent = String(current + 1).padStart(2, '0');
+        document.getElementById('step-name').textContent = titles[current];
+        back.hidden = current === 0;
+        window.scrollTo({top: 0, behavior: 'instant'});
+        if (focusHeading) {
+          const heading = scenes[current].querySelector('h1,h2');
+          heading.setAttribute('tabindex', '-1');
+          heading.focus({preventScroll: true});
+        }
+      }
+      document.querySelectorAll('[data-next]').forEach(button => button.addEventListener('click', () => show(current + 1)));
+      back.addEventListener('click', () => show(current - 1));
+      document.getElementById('restart').addEventListener('click', () => {
+        document.querySelectorAll('[data-feedback]').forEach(button => button.setAttribute('aria-pressed', 'false'));
+        feedback.textContent = '';
+        show(0);
+      });
+      document.querySelectorAll('[data-feedback]').forEach(button => button.addEventListener('click', () => {
+        document.querySelectorAll('[data-feedback]').forEach(other => other.setAttribute('aria-pressed', String(other === button)));
+        feedback.textContent = feedbackText[button.dataset.feedback];
+      }));
+      document.addEventListener('keydown', event => {
+        if (event.altKey || event.ctrlKey || event.metaKey || event.target.matches('button, input, textarea, select, a')) return;
+        if (event.key === 'ArrowRight' && current < 3) show(current + 1);
+        if (event.key === 'ArrowLeft' && current > 0) show(current - 1);
+      });
+      show(0, false);
+    })();
+  </script>
+</body>
+</html>
