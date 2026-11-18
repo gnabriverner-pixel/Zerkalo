@@ -45,6 +45,12 @@
     .proof { border-left:1px solid var(--copper); padding-left:20px; margin:23px 0 0; max-width:500px; }
     .proof p { margin:0; font:clamp(20px,1.85vw,27px)/1.36 var(--serif); }
     .proof small { display:block; margin-top:12px; color:var(--muted); line-height:1.55; font-size:11px; }
+    .case-picker { margin:24px 0 1px; width:min(100%,540px); }
+    .case-picker p { margin:0 0 11px; font-size:10px; text-transform:uppercase; letter-spacing:.13em; color:#73665e; }
+    .case-options { display:flex; flex-wrap:wrap; gap:8px; }
+    .case-options button { min-height:44px; padding:10px 13px; font-size:12px; color:var(--ink); border:1px solid #b9a999; background:transparent; }
+    .case-options button[aria-pressed="true"] { background:var(--ink); color:var(--paper-bright); border-color:var(--ink); }
+    .case-options button:focus-visible { outline-offset:2px; }
     .cta { background:var(--ink); color:var(--paper-bright); border:1px solid var(--ink); padding:17px 20px; min-height:56px; min-width:225px; margin-top:25px;
       display:flex; align-items:center; justify-content:space-between; gap:24px; text-align:left; font-size:12px; transition:background .2s, transform .2s; }
     .cta:hover { background:#773e36; border-color:#773e36; transform:translateY(-1px); }
@@ -76,6 +82,12 @@
     .stage--rehearsal { background:#272c3c; }
     .stage--rehearsal::before { background:radial-gradient(circle at 26% 35%,rgba(233,188,132,.25),transparent 40%),radial-gradient(circle at 73% 35%,rgba(233,188,132,.03),transparent 42%); transition:background .55s; }
     .stage--rehearsal.revealed::before { background:radial-gradient(circle at 26% 35%,rgba(233,188,132,.17),transparent 44%),radial-gradient(circle at 73% 35%,rgba(240,185,115,.4),transparent 45%); }
+    .stage[data-case="2"] { --copper:#86adb4; background:#1a3037; }
+    .stage--rehearsal[data-case="2"]::before { background:radial-gradient(circle at 26% 35%,rgba(128,202,211,.29),transparent 41%),radial-gradient(circle at 73% 35%,rgba(129,213,202,.02),transparent 43%); }
+    .stage--rehearsal[data-case="2"].revealed::before { background:radial-gradient(circle at 26% 35%,rgba(128,202,211,.13),transparent 41%),radial-gradient(circle at 73% 35%,rgba(129,213,202,.37),transparent 44%); }
+    .stage[data-case="3"] { --copper:#dba09e; background:#352831; }
+    .stage--rehearsal[data-case="3"]::before { background:radial-gradient(circle at 26% 35%,rgba(230,164,160,.25),transparent 40%),radial-gradient(circle at 73% 35%,rgba(228,184,158,.025),transparent 42%); }
+    .stage--rehearsal[data-case="3"].revealed::before { background:radial-gradient(circle at 26% 35%,rgba(230,164,160,.12),transparent 40%),radial-gradient(circle at 73% 35%,rgba(228,184,158,.4),transparent 45%); }
     .scenery { display:grid; position:absolute; inset:20% 6% 19%; grid-template-columns:1fr 1fr; gap:28px; align-items:center; }
     .bay { position:relative; height:92%; min-width:0; border-top:1px solid #868078; border-bottom:1px solid #868078; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; transition:background .7s ease,box-shadow .7s ease; }
     .bay.help { background:radial-gradient(ellipse at 50% 48%,rgba(238,192,135,.2),transparent 68%); }
@@ -166,12 +178,20 @@
         <div class="words">
           <span class="kicker">Пролог · театральный опыт</span>
           <h1 id="title-0">Быть опорой<br>для другого. <em>А для себя?</em></h1>
-          <p class="intro-lead">Бывает, мы так хорошо помогаем замыслу другого стать реальностью, что собственный оставляем за кулисами.</p>
+          <p class="intro-lead" id="opening-copy">Бывает, мы так хорошо помогаем замыслу другого стать реальностью, что собственный оставляем за кулисами.</p>
           <div class="proof"><p>Здесь нет предсказания. Есть маленькая репетиция того, как одна формула может стать вопросом — и действием.</p>
-            <small>Показан учебный пример на тестовой дате 02.03.1995. Это не характеристика посетителя.</small></div>
+            <small id="sample-notice">Показан учебный пример на тестовой дате 02.03.1995. Это не характеристика посетителя.</small></div>
+          <div class="case-picker" aria-label="Три учебных сюжета">
+            <p>Лаборатория трёх разных формул · выберите сцену</p>
+            <div class="case-options" role="group" aria-label="Выбор учебной формулы">
+              <button type="button" data-case-choice="1" aria-pressed="true">01 · Авторство</button>
+              <button type="button" data-case-choice="2" aria-pressed="false">02 · Передача знания</button>
+              <button type="button" data-case-choice="3" aria-pressed="false">03 · Диалог</button>
+            </div>
+          </div>
           <button class="cta" type="button" data-next>Открыть сцену <span aria-hidden="true">→</span></button>
         </div>
-        <div class="stage" id="opening-stage" aria-hidden="true">
+        <div class="stage" id="opening-stage" data-case="1" aria-hidden="true">
           <div class="arch"></div><div class="light"></div><div class="thread"></div><div class="frame"></div><div class="aperture"></div><div class="floor"></div>
           <div class="curtain left"></div><div class="curtain right"></div>
           <span class="stage-index">01 / ПЕРЕД ВЫХОДОМ</span><span class="stage-caption">Всё начинается с малого сдвига света.</span>
@@ -181,17 +201,17 @@
         <div class="words">
           <span class="kicker">Акт I · один шаг на сцене</span>
           <h2 id="title-1">Когда помогать <em>привычно.</em><br>А создавать своё?</h2>
-          <p class="narrative">В этом учебном коде <b>Путь 29 → 11 → 2</b> связывают с помощью и пониманием людей. А <b>Направление 31 → 4</b> — с движением от знания и личного решения к созданию нового.</p>
+          <p class="narrative" id="act-narrative">В этом учебном коде <b>Путь 29 → 11 → 2</b> связывают с помощью и пониманием людей. А <b>Направление 31 → 4</b> — с движением от знания и личного решения к созданию нового.</p>
           <button class="cta" id="move-light" type="button" aria-pressed="false">Перенести свет на свой замысел <span aria-hidden="true">→</span></button>
           <div class="reveal-note" id="reveal-note" role="status" aria-live="polite" hidden>В модели этого случая цифры <b>4</b> нет даже в детальной матрице. Но она обозначает <b>Направление</b>. Это не «недостаток» человека: в логике методики — тема, которую можно пробовать развивать.</div>
           <button class="cta quiet" id="see-proof" type="button" hidden>Посмотреть, откуда это взялось <span aria-hidden="true">→</span></button>
-          <p class="footnote">Поддерживать других не ошибка. Сцена предлагает проверить одну связь — Пути и Направления. Выражение и Результат здесь не интерпретируются; смысловые связи остаются авторской гипотезой.</p>
+          <p class="footnote" id="scene-footnote">Поддерживать других не ошибка. Сцена предлагает проверить одну связь — Пути и Направления. Выражение и Результат здесь не интерпретируются; смысловые связи остаются авторской гипотезой.</p>
         </div>
-        <div class="stage stage--rehearsal" id="rehearsal" aria-hidden="true">
+        <div class="stage stage--rehearsal" id="rehearsal" data-case="1" aria-hidden="true">
           <span class="scene-note">Репетиция / не диагноз</span>
           <div class="scenery">
-            <div class="bay help"><div class="block"></div><div class="bay-label"><small>29 → 11 → 2</small>Чужой замысел</div></div>
-            <div class="bay own"><div class="block"></div><div class="bay-label"><small>31 → 4</small>Своя форма</div></div>
+            <div class="bay help"><div class="block"></div><div class="bay-label"><small id="path-compound">29 → 11 → 2</small><span id="path-name">Чужой замысел</span></div></div>
+            <div class="bay own"><div class="block"></div><div class="bay-label"><small id="direction-compound">31 → 4</small><span id="direction-name">Своя форма</span></div></div>
           </div>
           <div class="thread-bridge">→</div>
           <span class="message" id="stage-message">Сейчас свет легче держится там, где помощь уже знакома.</span>
@@ -203,16 +223,16 @@
           <h2 id="title-2">Не верить на слово. <em>Проверить в жизни.</em></h2>
           <p class="narrative">Символическая формула — повод для вопроса, а не объективное измерение личности. Вот откуда взялось именно это чтение.</p>
           <div class="formula" aria-label="Пять позиций демонстрационной формулы">
-            <div><small>Душа</small><strong>2</strong><span>день</span></div>
-            <div><small>Выражение</small><strong>5</strong><span>день + месяц</span></div>
-            <div><small>Путь</small><strong>2</strong><span>29 → 11 → 2</span></div>
-            <div><small>Направление</small><strong>4</strong><span>31 → 4</span></div>
-            <div><small>Результат</small><strong>8</strong><span>62 → 8</span></div>
+            <div><small>Душа</small><strong id="num-soul">2</strong><span id="compound-soul">день</span></div>
+            <div><small>Выражение</small><strong id="num-expression">5</strong><span id="compound-expression">день + месяц</span></div>
+            <div><small>Путь</small><strong id="num-path">2</strong><span id="compound-path">29 → 11 → 2</span></div>
+            <div><small>Направление</small><strong id="num-direction">4</strong><span id="compound-direction">31 → 4</span></div>
+            <div><small>Результат</small><strong id="num-result">8</strong><span id="compound-result">62 → 8</span></div>
           </div>
           <dl class="ledger">
-            <div><dt>Направление</dt><dd>2 + 29 = 31 → 4</dd></div>
-            <div><dt>Результат</dt><dd>2 + 29 + 31 = 62 → 8</dd></div>
-            <div><dt>Матрица · обе версии</dt><dd>4 и 8 отсутствуют</dd></div>
+            <div><dt>Направление</dt><dd id="check-direction">2 + 29 = 31 → 4</dd></div>
+            <div><dt>Результат</dt><dd id="check-result">2 + 29 + 31 = 62 → 8</dd></div>
+            <div><dt id="matrix-label">Матрица · обе версии</dt><dd id="matrix-detail">4 и 8 отсутствуют</dd></div>
           </dl>
           <div class="writing"><label for="small-idea" id="idea-label">Какой один маленький замысел вы могли бы показать от собственного имени за семь дней?</label>
             <textarea id="small-idea" maxlength="220" placeholder="Моя небольшая проба — ..." aria-describedby="privacy-note"></textarea></div>
@@ -226,10 +246,10 @@
         </div>
         <aside class="sheet">
           <span class="sheet-top">Лист из рабочего атласа / образец</span>
-          <h3>Чего ещё нет —<br><em>не обязательно не будет.</em></h3>
+          <h3 id="atlas-heading">Чего ещё нет —<br><em>не обязательно не будет.</em></h3>
           <p>В этой версии мы не обещаем, кем человек станет. Мы оставляем ему право сказать «не совпало», задать свой вопрос и попробовать одно действие.</p>
-          <p>Не нужно менять всю жизнь. Достаточно закончить маленькую работу, за которую вы сами готовы поставить подпись.</p>
-          <div class="source">Учебный пример 02.03.1995 · расчёт сверён с протоколом v1.4 · художественное чтение является гипотезой, а не психологической диагностикой.</div>
+          <p id="atlas-action">Не нужно менять всю жизнь. Достаточно закончить маленькую работу, за которую вы сами готовы поставить подпись.</p>
+          <div class="source" id="source-label">Учебный пример 02.03.1995 · расчёт сверён с протоколом v1.4 · художественное чтение является гипотезой, а не психологической диагностикой.</div>
         </aside>
       </section>
     </main>
@@ -241,10 +261,100 @@
       'use strict';
       let current=0;
       let revealed=false;
+      let selected='1';
       const acts=[...document.querySelectorAll('.act')];
       const titles=['ПРОЛОГ','РЕПЕТИЦИЯ','СВЕРКА'];
       const note=document.getElementById('reveal-note');
       const toProof=document.getElementById('see-proof');
+      // Три неизменяемых синтетических образца. Значения получены из core/02_dc_calc.py
+      // (v1.4; SELFTEST PASS); тексты ниже — авторские исследовательские гипотезы.
+      // Это НЕ калькулятор пользовательской даты и НЕ персональное заключение.
+      const cases={
+        '1':{
+          date:'02.03.1995',soul:'2',soulValue:2,soulCompound:'день',expression:'5',expressionCompound:'день + месяц',
+          path:'2',pathCompound:'29 → 11 → 2',pathValue:29,direction:'4',directionCompound:'31 → 4',directionValue:31,
+          result:'8',resultCompound:'62 → 8',resultValue:62,matrixLabel:'Матрица · детальная',matrix:'4, 7 и 8 отсутствуют',
+          opening:'Быть опорой<br>для другого. <em>А для себя?</em>',
+          lead:'Бывает, мы так хорошо помогаем замыслу другого стать реальностью, что собственный оставляем за кулисами.',
+          heading:'Когда помогать <em>привычно.</em><br>А создавать своё?',
+          narrative:'В учебной формуле <b>Путь 29 → 11 → 2</b> описывает помощь и понимание людей; <b>Направление 31 → 4</b> связано с переходом от знания и собственного решения к созданию нового.',
+          left:'Чужой замысел',right:'Своя форма',before:'Сейчас свет легче держится там, где помощь уже знакома.',
+          after:'Поддержка остаётся силой. Но и собственный замысел получает место.',
+          action:'Перенести свет на свой замысел',revealed:'Вернуть свет на прежнее место',
+          discovery:'В учебной модели цифра <b>4</b> обозначает Направление, но отсутствует и в детальной матрице. Это не дефект человека: это гипотеза о навыке, который стоит проверить действием.',
+          footnote:'Помогать другим не ошибка. Сцена проверяет связь Пути и Направления. Выражение и Результат показаны как расчёт, а не как готовый вывод о человеке.',
+          question:'Какой один маленький замысел вы могли бы показать от собственного имени за семь дней?',
+          placeholder:'Моя небольшая проба — ...',
+          atlas:'Чего ещё нет —<br><em>не обязательно не будет.</em>',
+          atlasAction:'Достаточно закончить небольшую работу, за которую вы сами готовы поставить подпись.'
+        },
+        '2':{
+          date:'04.03.1989',soul:'4',soulValue:4,soulCompound:'день',expression:'7',expressionCompound:'день + месяц',
+          path:'7',pathCompound:'34 → 7',pathValue:34,direction:'2',directionCompound:'38 → 11 → 2',directionValue:38,
+          result:'4',resultCompound:'76 → 13 → 4',resultValue:76,matrixLabel:'Матрица · детальная',matrix:'2 и 5 отсутствуют',
+          opening:'Видеть выход<br>из сложного. <em>И открыть его другим?</em>',
+          lead:'Тот, кто видит нестандартное решение, ещё не обязательно передал его так, чтобы рядом смогли действовать другие.',
+          heading:'Знать выход <em>самому.</em><br>Или разделить знание?',
+          narrative:'В учебной формуле <b>Путь 34 → 7</b> связывают с необычными знаниями и выходом из кризиса; <b>Направление 38 → 11 → 2</b> — с объединением людей через знания и собственную дисциплину.',
+          left:'Знаю путь',right:'Передаю ключ',before:'У левой кулисы решение уже есть. Но вход для других пока не освещён.',
+          after:'Знание не исчезает. Теперь рядом может появиться ещё один участник.',
+          action:'Открыть место для команды',revealed:'Вернуть свет к своему решению',
+          discovery:'В учебном расчёте <b>Направление 38 → 11 → 2</b> ведёт к двойке, которой нет и в детальной матрице. В рабочем прочтении это повод исследовать язык партнёрства, не утверждение об отсутствии эмпатии.',
+          footnote:'Знать сложное и делиться знанием — не противоположности. Между ними проверяется конкретное действие: стал ли выход понятен другому человеку?',
+          question:'Какую одну трудную вещь вы могли бы объяснить другому человеку за семь дней — и проверить, понял ли он?',
+          placeholder:'Я попробую передать — ...',
+          atlas:'Знание становится общим,<br><em>когда возникает диалог.</em>',
+          atlasAction:'Возьмите один реальный вопрос другого человека. Не демонстрируйте эрудицию — проверьте, что стало яснее.'
+        },
+        '3':{
+          date:'17.08.1994',soul:'8',soulValue:17,soulCompound:'17 → 8',expression:'7',expressionCompound:'16 → 7',
+          path:'3',pathCompound:'39 → 12 → 3',pathValue:39,direction:'2',directionCompound:'56 → 11 → 2',directionValue:56,
+          result:'4',resultCompound:'112 → 4',resultValue:112,matrixLabel:'Матрица · детальная',matrix:'пустот нет; 2 включается с возрастом',
+          opening:'Уметь вести<br>через знание. <em>А слышать в ответ?</em>',
+          lead:'Иногда на сцене уже готов ответ. Но важная перемена начинается с паузы, в которую может войти другой голос.',
+          heading:'Быстрый ответ <em>готов.</em><br>А вопрос услышан?',
+          narrative:'В учебной формуле <b>Путь 39 → 12 → 3</b> связан с активным наставничеством и помощью через знания; <b>Направление 56 → 11 → 2</b> — рабочий синтез общения, ценности и партнёрского понимания.',
+          left:'Готовый ответ',right:'Место для ответа',before:'Одна сторона сцены уже говорит. Другая ещё может промолчать.',
+          after:'Пауза не ослабила мысль. У второго голоса появилась собственная точка входа.',
+          action:'Оставить место для ответа',revealed:'Вернуть слово только себе',
+          discovery:'Здесь <b>Направление 56 → 11 → 2</b> ведёт к двойке: в исходной матрице её нет, зато в детальной она появляется с возрастом. В отличие от двух других сюжетов, речь не о сохраняющейся пустоте.',
+          footnote:'Это исследовательская метафора, не вывод о темпераменте. Сочетание 39 и 56 требует проверки в реальном разговоре, а не уверенного психологического ярлыка.',
+          question:'В каком разговоре на этой неделе вы могли бы задать один открытый вопрос и дослушать ответ без подсказок?',
+          placeholder:'Я дам место ответу в разговоре о — ...',
+          atlas:'Пауза —<br><em>тоже действие.</em>',
+          atlasAction:'Попробуйте один разговор, где ваша задача не убеждать, а услышать, что добавит второй человек.'
+        }
+      };
+      function setText(id,value){document.getElementById(id).textContent=String(value);}
+      function setAuthoredHTML(id,value){document.getElementById(id).innerHTML=value;}
+      function renderCase() {
+        const c=cases[selected];
+        setAuthoredHTML('title-0',c.opening);setText('opening-copy',c.lead);
+        setText('sample-notice','Показан учебный пример на тестовой дате '+c.date+'. Это не характеристика посетителя.');
+        setAuthoredHTML('title-1',c.heading);setAuthoredHTML('act-narrative',c.narrative);
+        setText('path-compound',c.pathCompound);setText('direction-compound',c.directionCompound);
+        setText('path-name',c.left);setText('direction-name',c.right);
+        setAuthoredHTML('reveal-note',c.discovery);setText('scene-footnote',c.footnote);
+        [['soul',c.soul,c.soulCompound],['expression',c.expression,c.expressionCompound],['path',c.path,c.pathCompound],
+          ['direction',c.direction,c.directionCompound],['result',c.result,c.resultCompound]].forEach(([part,n,formula])=>{
+          setText('num-'+part,n);setText('compound-'+part,formula);
+        });
+        setText('check-direction',c.soulValue+' + '+c.pathValue+' = '+c.directionCompound);
+        setText('check-result',c.soulValue+' + '+c.pathValue+' + '+c.directionValue+' = '+c.resultCompound);
+        setText('matrix-label',c.matrixLabel);setText('matrix-detail',c.matrix);
+        setText('idea-label',c.question);document.getElementById('small-idea').placeholder=c.placeholder;
+        setAuthoredHTML('atlas-heading',c.atlas);setText('atlas-action',c.atlasAction);
+        setText('source-label','Учебный пример '+c.date+' · значения получены из калькулятора v1.4 · смысловая сцена — гипотеза, не диагностика.');
+        for(const stageId of ['opening-stage','rehearsal'])document.getElementById(stageId).dataset.case=selected;
+        revealed=false;document.getElementById('rehearsal').classList.remove('revealed');
+        setText('stage-message',c.before);
+        note.hidden=true;toProof.hidden=true;
+        setText('move-light',c.action+' →');document.getElementById('move-light').setAttribute('aria-pressed','false');
+        document.getElementById('small-idea').value='';
+        document.querySelectorAll('[data-response]').forEach(b=>b.setAttribute('aria-pressed','false'));
+        setText('response-status','');
+        document.querySelectorAll('[data-case-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.caseChoice===selected)));
+      }
       function show(i, focus=true) {
         current=Math.max(0,Math.min(acts.length-1,i));
         acts.forEach((el,n)=>{el.hidden=n!==current; el.classList.toggle('active',n===current);});
@@ -258,34 +368,27 @@
         if(focus) {const heading=acts[current].querySelector('h1,h2'); heading.setAttribute('tabindex','-1'); heading.focus({preventScroll:true});}
       }
       document.querySelector('[data-next]').addEventListener('click',()=>show(1));
+      document.querySelectorAll('[data-case-choice]').forEach(b=>b.addEventListener('click',()=>{
+        selected=b.dataset.caseChoice;renderCase();show(0,false);
+      }));
       toProof.addEventListener('click',()=>show(2));
       document.getElementById('move-light').addEventListener('click',()=>{
         revealed=!revealed;
         document.getElementById('rehearsal').classList.toggle('revealed',revealed);
-        document.getElementById('stage-message').textContent=revealed?'Поддержка остаётся силой. Но и собственный замысел получает место.':'Сейчас свет легче держится там, где помощь уже знакома.';
+        document.getElementById('stage-message').textContent=revealed?cases[selected].after:cases[selected].before;
         note.hidden=!revealed;toProof.hidden=!revealed;
         const move=document.getElementById('move-light');
         move.setAttribute('aria-pressed',String(revealed));
-        move.textContent=revealed?'Вернуть свет на прежнее место ←':'Перенести свет на свой замысел →';
+        move.textContent=revealed?cases[selected].revealed+' ←':cases[selected].action+' →';
       });
       document.getElementById('back').addEventListener('click',()=>show(current-1));
-      document.getElementById('restart').addEventListener('click',()=>{
-        revealed=false;document.getElementById('rehearsal').classList.remove('revealed');
-        document.getElementById('stage-message').textContent='Сейчас свет легче держится там, где помощь уже знакома.';
-        note.hidden=true;toProof.hidden=true;
-        const button=document.getElementById('move-light');button.textContent='Перенести свет на свой замысел →';button.setAttribute('aria-pressed','false');
-        document.getElementById('small-idea').value='';
-        document.getElementById('idea-label').textContent='Какой один маленький замысел вы могли бы показать от собственного имени за семь дней?';
-        document.getElementById('small-idea').placeholder='Моя небольшая проба — ...';
-        document.querySelectorAll('[data-response]').forEach(b=>b.setAttribute('aria-pressed','false'));
-        document.getElementById('response-status').textContent='';show(0);
-      });
+      document.getElementById('restart').addEventListener('click',()=>{renderCase();show(0);});
       const messages={yes:'Спасибо. Узнавание — начало проверки, а не доказательство точности формулы.',no:'Этот сюжет не совпал с вашим опытом — это важный результат. Вспомните один случай, когда вы уже были автором собственного решения. Что тогда помогло?',maybe:'Оставьте вопрос открытым. Не нужно подгонять себя под текст.'};
       document.querySelectorAll('[data-response]').forEach(button=>button.addEventListener('click',()=>{
         document.querySelectorAll('[data-response]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
         document.getElementById('response-status').textContent=messages[button.dataset.response];
-        document.getElementById('idea-label').textContent=button.dataset.response==='no'?'Что в вашем опыте устроено иначе? Вспомните один пример собственного решения.':'Какой один маленький замысел вы могли бы показать от собственного имени за семь дней?';
-        document.getElementById('small-idea').placeholder=button.dataset.response==='no'?'В моём опыте иначе: ...':'Моя небольшая проба — ...';
+        document.getElementById('idea-label').textContent=button.dataset.response==='no'?'Что в вашем опыте устроено иначе? Вспомните один конкретный пример.':cases[selected].question;
+        document.getElementById('small-idea').placeholder=button.dataset.response==='no'?'В моём опыте иначе: ...':cases[selected].placeholder;
       }));
       document.addEventListener('keydown',e=>{
         if(e.altKey||e.ctrlKey||e.metaKey||e.target.matches('input,textarea,button,a'))return;
@@ -293,7 +396,7 @@
         if(e.key==='ArrowRight'&&current===0)show(1);
         if(e.key==='ArrowRight'&&current===1&&revealed)show(2);
       });
-      show(0,false);
+      renderCase();show(0,false);
     })();
   </script>
 </body>
