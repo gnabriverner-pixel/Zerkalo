@@ -15,7 +15,7 @@
     }
     * { box-sizing:border-box; }
     html { scroll-behavior:smooth; }
-    body { min-width:320px; margin:0; font-family:var(--sans); color:var(--ink); background:var(--paper); -webkit-font-smoothing:antialiased; }
+    body { min-width:0; margin:0; font-family:var(--sans); color:var(--ink); background:var(--paper); -webkit-font-smoothing:antialiased; }
     body::after { content:''; position:fixed; inset:0; z-index:20; pointer-events:none; opacity:.2;
       background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 150 150' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.67' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.23'/%3E%3C/svg%3E"); }
     button,textarea { font:inherit; } button { cursor:pointer; } button:focus-visible,textarea:focus-visible { outline:3px solid var(--copper); outline-offset:4px; }
@@ -122,10 +122,10 @@
     .formula div+div { border-left:1px solid var(--lightline); padding-left:8px; }
     .formula small { display:block; color:#675c58; font-size:10px; line-height:1.3; min-height:26px; }
     .formula strong { display:block; margin-top:7px; font:31px/1 var(--serif); color:var(--ink); }
-    .formula span { display:block; margin-top:5px; color:#844633; font-size:11px; }
+    .formula span { display:block; margin-top:5px; color:#844633; font-size:11px; overflow-wrap:anywhere; }
     .ledger { width:100%; max-width:530px; margin:17px 0 0; font:13px/1.5 var(--sans); border-top:1px solid var(--lightline); }
     .ledger div { display:flex; gap:25px; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--lightline); }
-    .ledger dt { color:var(--muted); } .ledger dd { margin:0; text-align:right; }
+    .ledger dt { color:var(--muted); } .ledger dd { margin:0; text-align:right; overflow-wrap:anywhere; }
     .writing { margin:24px 0 0; width:100%; max-width:525px; }
     .writing label { display:block; font:20px/1.4 var(--serif); }
     .writing textarea { display:block; margin-top:13px; width:100%; min-height:90px; resize:vertical; padding:13px 15px; border:1px solid #b5a696; background:#f9f5ed; color:var(--ink); font-size:14px; }
