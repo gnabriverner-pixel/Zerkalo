@@ -97,6 +97,20 @@
     .bay.help .block { width:113px; height:98px; background:linear-gradient(145deg,#d8b695,#937b68); }
     .bay.own .block { transform:translateY(24px) rotate(-7deg); opacity:.24; filter:grayscale(1); transition:transform 1s cubic-bezier(.2,.7,.3,1),opacity .7s,filter .7s; }
     .stage--rehearsal.revealed .bay.own .block { transform:translateY(0) rotate(-7deg); opacity:1; filter:none; }
+    /* У 34→38 задача не заполнить пустоту, а соединить знание с другим участником. */
+    .stage--rehearsal[data-case="2"] .bay.own .block { transform:translateY(0) rotate(-7deg) scale(.84); opacity:.45; }
+    .stage--rehearsal[data-case="2"].revealed .bay.own .block { transform:translateY(0) rotate(-7deg); opacity:1; }
+    .stage--rehearsal[data-case="2"] .bay.help { box-shadow:inset 0 0 36px rgba(112,207,204,.12); }
+    .stage--rehearsal[data-case="2"] .thread-bridge { z-index:4; left:25%; top:49%; height:2px; width:0; transform:none; font-size:0; background:#a8d4cb; box-shadow:0 0 14px rgba(142,212,203,.8); transition:width .85s ease; }
+    .stage--rehearsal[data-case="2"].revealed .thread-bridge { width:50%; }
+    /* У 39→56 важна пауза: второй голос получает место, не ещё один готовый блок. */
+    .stage--rehearsal[data-case="3"] .bay.help .block { transition:transform .85s ease,opacity .85s ease; }
+    .stage--rehearsal[data-case="3"].revealed .bay.help .block { transform:translateX(-28px) scale(.77) skewY(-7deg); opacity:.7; }
+    .stage--rehearsal[data-case="3"] .bay.own .block,
+    .stage--rehearsal[data-case="3"].revealed .bay.own .block { opacity:0; transform:translateY(0) scale(.55); }
+    .stage--rehearsal[data-case="3"] .bay.own::after { content:'···'; position:absolute; inset:auto 0 35%; text-align:center; color:#f1d8c6; font:53px/1 var(--serif); opacity:0; transform:translateY(12px); transition:opacity .8s ease,transform .8s ease; }
+    .stage--rehearsal[data-case="3"].revealed .bay.own::after { opacity:1; transform:translateY(0); }
+    .stage--rehearsal[data-case="3"] .thread-bridge { opacity:0; }
     .bay-label { text-align:center; font:italic 19px var(--serif); color:#ede0ce; line-height:1.3; }
     .bay-label small { display:block; color:#c59e83; margin-bottom:8px; font:10px var(--sans); letter-spacing:.12em; }
     .stage--rehearsal .thread-bridge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); color:#e3a07c; font:33px var(--serif); }
@@ -152,6 +166,10 @@
       .bay-label { font-size:16px; } .block { transform:scale(.74) skewY(-7deg); }
       .bay.own .block { transform:scale(.74) translateY(24px) rotate(-7deg); }
       .stage--rehearsal.revealed .bay.own .block { transform:scale(.74) translateY(0) rotate(-7deg); }
+      .stage--rehearsal[data-case="2"] .bay.own .block { transform:scale(.7) rotate(-7deg); }
+      .stage--rehearsal[data-case="2"].revealed .bay.own .block { transform:scale(.74) rotate(-7deg); }
+      .stage--rehearsal[data-case="3"] .bay.own .block,
+      .stage--rehearsal[data-case="3"].revealed .bay.own .block { opacity:0; transform:scale(.5); }
       .sheet { min-height:350px; padding:34px 25px; }.sheet h3 { font-size:41px; }
       .formula strong { font-size:25px; }.formula small { font-size:8px; overflow-wrap:anywhere; }.formula span { font-size:9px; }
       .disclaimer { padding-left:23px; padding-right:23px; }
@@ -169,7 +187,7 @@
         <svg viewBox="0 0 24 38" aria-hidden="true"><path d="M12 1V37M6 8c0 5 12 5 12 11S6 25 6 30M18 8C18 13 6 13 6 19s12 6 12 11" fill="none" stroke="#a6533c" stroke-width="1.2"/><circle cx="12" cy="19" r="2.2" fill="#242331"/></svg>
         <div><strong>Зеркало себя</strong><small>Опыт самонаблюдения</small></div>
       </div>
-      <span class="edition">Репетиция авторства · опыт 03</span>
+      <span class="edition">Три репетиции · исследование 03</span>
       <button class="restart" id="restart" type="button">С начала →</button>
     </header>
     <div class="line" role="progressbar" id="progress" aria-label="Прогресс опыта" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1"><div class="meter" id="meter"></div></div>
@@ -383,7 +401,7 @@
       });
       document.getElementById('back').addEventListener('click',()=>show(current-1));
       document.getElementById('restart').addEventListener('click',()=>{renderCase();show(0);});
-      const messages={yes:'Спасибо. Узнавание — начало проверки, а не доказательство точности формулы.',no:'Этот сюжет не совпал с вашим опытом — это важный результат. Вспомните один случай, когда вы уже были автором собственного решения. Что тогда помогло?',maybe:'Оставьте вопрос открытым. Не нужно подгонять себя под текст.'};
+      const messages={yes:'Спасибо. Узнавание — начало проверки, а не доказательство точности формулы.',no:'Этот сюжет не совпал с вашим опытом — это важный результат. Опишите один конкретный случай, когда было иначе.',maybe:'Оставьте вопрос открытым. Не нужно подгонять себя под текст.'};
       document.querySelectorAll('[data-response]').forEach(button=>button.addEventListener('click',()=>{
         document.querySelectorAll('[data-response]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
         document.getElementById('response-status').textContent=messages[button.dataset.response];
