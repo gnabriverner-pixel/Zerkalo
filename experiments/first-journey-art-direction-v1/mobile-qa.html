@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zerkalo · narrow viewport lab · R&D only</title>
+  <style>
+    * {box-sizing:border-box}
+    body {margin:0;padding:32px;min-width:320px;background:#d5c9ba;color:#222531;font:14px/1.5 Arial,sans-serif}
+    h1 {font:normal 35px/1.12 Georgia,serif;margin:0 0 12px}
+    p {max-width:900px}
+    .frames {display:flex;align-items:flex-start;flex-wrap:wrap;gap:28px;margin-top:28px}
+    section {flex:0 0 auto}
+    section h2 {font:16px Arial,sans-serif;margin:0 0 10px}
+    iframe {display:block;border:2px solid #272a35;border-radius:9px;background:white;max-width:100%}
+    @media(max-width:480px){body{padding:12px}.frames{gap:24px}}
+  </style>
+</head>
+<body>
+  <h1>Viewport lab · «Зеркало себя»</h1>
+  <p>Исследовательский тест узких iframe: реальные CSS media queries и интерактивность в рамках 390 и 320 px. Встроенный десктопный скроллбар и рамка уменьшают эффективную ширину контента (в проверенном браузере: 371 и 301 px). Это <strong>не эмулятор iPhone</strong> и не доказательство работы мобильного Safari, сенсорных жестов или безопасных областей экрана. Данные — три синтетические формулы; нет отправки данных.</p>
+  <div class="frames">
+    <section><h2>390 × 844 · узкий экран</h2><iframe title="390 px: Zerkalo scenario test" width="390" height="844" loading="eager" src="https://htmlpreview.github.io/?https://github.com/gnabriverner-pixel/Zerkalo/blob/3a31925ec4bffbd76f72c4a630f84948999b0bf3/experiments/first-journey-art-direction-v1/experience-c.html"></iframe></section>
+    <section><h2>320 × 700 · минимальная ширина</h2><iframe title="320 px: Zerkalo scenario test" width="320" height="700" loading="eager" src="https://htmlpreview.github.io/?https://github.com/gnabriverner-pixel/Zerkalo/blob/3a31925ec4bffbd76f72c4a630f84948999b0bf3/experiments/first-journey-art-direction-v1/experience-c.html"></iframe></section>
+  </div>
+</body>
+</html>
